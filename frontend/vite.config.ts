@@ -40,7 +40,7 @@ function ensureDuckdbWorkerSourcemaps(): Plugin {
  *   import wasm from "vite-plugin-wasm";
  *   import topLevelAwait from "vite-top-level-await";
  *
- * For the **COI / multithreaded** bundle (`wasm`), enable cross-origin isolation in dev:
+ * For the **COI / multithreaded** bundle (`coi`), enable cross-origin isolation in dev:
  *   (see `server.headers` below) — required for SharedArrayBuffer in some browsers.
  */
 function resolveApacheArrowDom(): string {
@@ -77,7 +77,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    // Uncomment if you use initDB("wasm") (COI bundle) and need pthreads / SAB:
+    // Uncomment if you use initDB("coi") (COI bundle) and need pthreads / SAB:
     // headers: {
     //   "Cross-Origin-Opener-Policy": "same-origin",
     //   "Cross-Origin-Embedder-Policy": "require-corp",
