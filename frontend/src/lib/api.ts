@@ -40,3 +40,8 @@ export function shardParquetUrl(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
   return `${base}${p}`;
 }
+
+/** Full URL for `player_index.parquet` on the API (DuckDB-WASM HTTP / range reads). */
+export function playerIndexParquetUrl(): string {
+  return shardParquetUrl("/data/player_index.parquet");
+}

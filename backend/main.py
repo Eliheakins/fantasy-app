@@ -222,9 +222,14 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Range", "Content-Length", "Accept-Ranges"],
 )
 
-if (os.environ.get("DATA_SOURCE", "local").strip().lower() or "local") == "local" and DATA_DIR.is_dir():
+# URL path `/data` maps to filesystem DATA_DIR (local: backend/data; Render: DATA_LOCAL_DIR e.g. /data).
+if (
+    (os.environ.get("DATA_SOURCE", "local").strip().lower() or "local") == "local"
+    and DATA_DIR.is_dir()
+):
     app.mount("/data", StaticFiles(directory=str(DATA_DIR)), name="data")
 
 
