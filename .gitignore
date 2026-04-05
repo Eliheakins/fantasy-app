@@ -10,8 +10,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
@@ -22,6 +20,9 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+# setuptools / local install dirs at repo root only — a bare `lib/` matches frontend/src/lib/ and breaks deploys
+/lib/
+/lib64/
 
 # Virtual environments
 venv/
