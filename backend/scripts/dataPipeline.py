@@ -13,10 +13,14 @@ from __future__ import annotations
 import gc
 import os
 from pathlib import Path
+from urllib.parse import urljoin
 
 import nflreadpy as nfl
 import polars as pl
 from nflreadpy.utils_date import get_current_season
+
+# Same release host as nflreadpy downloader; override with NFLVERSE_DOWNLOAD_BASE.
+_DEFAULT_NFLVERSE_DL = "https://github.com/nflverse/nflverse-data/releases/download/"
 
 # Same env as the API (`DATA_LOCAL_DIR` in render.yaml → `/data` on Render).
 # Default: backend/data locally.
@@ -85,6 +89,32 @@ NGS_RUSH = ["avg_time_to_los", "expected_rush_yards", "efficiency"]
 
 # After join: expose NGS rushing expected yards under the prompt’s name
 EXPECTED_RUN_YARDS_ALIAS = "expected_run_yards"
+
+
+def get_nfl_url(year: int, kind: str) -> str:
+    """Public nflverse-data release URL (same paths as nflreadpy `downloader.download`)."""
+    base = os.environ.get("NFLVERSE_DOWNLOAD_BASE", _DEFAULT_NFLVERSE_DL).strip()
+    if not base.endswith("/"):
+        base = f"{base}/"
+    if kind == "pbp":
+        rel = f"pbp/play_by_play_{year}.parquet"
+    else:
+        raise ValueError(f"Unknown nflverse asset kind {kind!r} (supported: 'pbp')")
+    return urljoin(base, rel)
+
+
+def _load_pbp_parquet_pruned(year: int) -> pl.DataFrame:
+    """Read PBP from nflverse Parquet with column pruning (lower RAM than full `load_pbp`)."""
+    url = get_nfl_url(year, "pbp")
+    schema = pl.scan_parquet(url).collect_schema()
+    names = set(schema.names())
+    cols = [c for c in PBP_COLS if c in names]
+    missing = [c for c in PBP_COLS if c not in names]
+    if missing:
+        print(f"⚠️  PBP URL missing columns (omitted): {missing}")
+    if "play_type" not in cols:
+        raise ValueError(f"PBP file for {year} has no play_type column (url={url})")
+    return pl.read_parquet(url, columns=cols)
 
 
 def create_player_index() -> None:
@@ -233,8 +263,8 @@ def _fill_and_cast(out: pl.DataFrame) -> pl.DataFrame:
 
 def build_stitched_for_year(year: int) -> pl.DataFrame:
     """One season at a time; release raw PBP and each NGS frame before loading the next."""
-    print(f"PBP {year}…")
-    pbp_raw = nfl.load_pbp([year])
+    print(f"PBP {year} (nflverse Parquet, pruned columns)…")
+    pbp_raw = _load_pbp_parquet_pruned(year)
     pbp = _prepare_pbp_base(pbp_raw)
     del pbp_raw
     if "season_type" not in pbp.columns:
