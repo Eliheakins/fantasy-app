@@ -1,6 +1,8 @@
 """
 Master data stitcher for The Bridge: PBP + participation + Next Gen Stats → lean Parquet shards.
 
+Processes one NFL season at a time so peak memory stays low (e.g. small cloud instances).
+
 Joins:
   A) Participation on (old_game_id, play_id)
   B) NGS passing / receiving / rushing on (season, week, season_type, player_gsis_id ↔ role id)
@@ -15,7 +17,8 @@ import nflreadpy as nfl
 import polars as pl
 from nflreadpy.utils_date import get_current_season
 
-# Same env as the API (`DATA_LOCAL_DIR` in render.yaml → `/data` on Render). Default: backend/data locally.
+# Same env as the API (`DATA_LOCAL_DIR` in render.yaml → `/data` on Render).
+# Default: backend/data locally.
 _backend_root = Path(__file__).resolve().parent.parent
 _default_data = _backend_root / "data"
 _data_override = os.environ.get("DATA_LOCAL_DIR", "").strip()
@@ -134,16 +137,15 @@ def _prepare_pbp_base(df: pl.DataFrame) -> pl.DataFrame:
     return out
 
 
-def _join_participation(pbp: pl.DataFrame) -> pl.DataFrame:
+def _join_participation_for_year(pbp: pl.DataFrame, year: int) -> pl.DataFrame:
     max_part_season = get_current_season(roster=True) - 1
-    part_years = [y for y in YEARS if y <= max_part_season]
-    if not part_years:
-        print("Skipping participation (no seasons ≤ max release).")
+    if year > max_part_season:
+        print(f"Skipping participation for {year} (max participation season {max_part_season}).")
         return pbp.with_columns([pl.lit(None).alias(c) for c in PART_COLS])
 
     need = ["old_game_id", "play_id", *PART_COLS]
-    print(f"Loading participation {part_years}…")
-    part = nfl.load_participation(part_years)
+    print(f"Loading participation for {year}…")
+    part = nfl.load_participation([year])
     have = [c for c in need if c in part.columns]
     miss = [c for c in need if c not in part.columns]
     if miss:
@@ -228,19 +230,20 @@ def _fill_and_cast(out: pl.DataFrame) -> pl.DataFrame:
     return out
 
 
-def build_stitched_shards() -> pl.DataFrame:
-    print(f"Streaming PBP {YEARS}…")
-    pbp_raw = nfl.load_pbp(YEARS)
+def build_stitched_for_year(year: int) -> pl.DataFrame:
+    """One season in memory at a time to keep peak RAM low (e.g. Render 512MB)."""
+    print(f"PBP {year}…")
+    pbp_raw = nfl.load_pbp([year])
     pbp = _prepare_pbp_base(pbp_raw)
     if "season_type" not in pbp.columns:
         raise ValueError("PBP is missing season_type — required for NGS weekly joins.")
 
-    pbp = _join_participation(pbp)
+    pbp = _join_participation_for_year(pbp, year)
 
-    print("Loading NGS (passing / receiving / rushing)…")
-    ngs_pass = nfl.load_nextgen_stats(YEARS, stat_type="passing")
-    ngs_rec = nfl.load_nextgen_stats(YEARS, stat_type="receiving")
-    ngs_rush = nfl.load_nextgen_stats(YEARS, stat_type="rushing")
+    print(f"NGS passing/receiving/rushing {year}…")
+    ngs_pass = nfl.load_nextgen_stats([year], stat_type="passing")
+    ngs_rec = nfl.load_nextgen_stats([year], stat_type="receiving")
+    ngs_rush = nfl.load_nextgen_stats([year], stat_type="rushing")
 
     pbp = _join_ngs_weekly(pbp, ngs_pass, "passer_player_id", NGS_PASS, "passing")
     pbp = _join_ngs_weekly(pbp, ngs_rec, "receiver_player_id", NGS_REC, "receiving")
@@ -255,17 +258,14 @@ def build_stitched_shards() -> pl.DataFrame:
 
     pbp = pbp.with_columns((pl.col("yardline_100") <= 20).alias("is_red_zone"))
 
-    pbp = _fill_and_cast(pbp)
-    return pbp
+    return _fill_and_cast(pbp)
 
 
 def main() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    stitched = build_stitched_shards()
-
     for year in YEARS:
-        shard = stitched.filter(pl.col("season") == year)
+        shard = build_stitched_for_year(year)
         path = DATA_DIR / f"nfl_pbp_{year}.parquet"
         shard.write_parquet(path)
         print(f"✅ Shard saved: {path} ({shard.height} rows)")
