@@ -15,6 +15,10 @@ services:
     envVars:
       - key: DATA_LOCAL_DIR
         value: /data
+      - key: POLARS_MAX_THREADS
+        value: "1"
+      - key: RAYON_NUM_THREADS
+        value: "1"
       - key: CORS_ORIGINS
         sync: false
       - key: DATA_SOURCE

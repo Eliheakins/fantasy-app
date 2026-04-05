@@ -10,6 +10,7 @@ Joins:
 
 from __future__ import annotations
 
+import gc
 import os
 from pathlib import Path
 
@@ -231,30 +232,37 @@ def _fill_and_cast(out: pl.DataFrame) -> pl.DataFrame:
 
 
 def build_stitched_for_year(year: int) -> pl.DataFrame:
-    """One season in memory at a time to keep peak RAM low (e.g. Render 512MB)."""
+    """One season at a time; release raw PBP and each NGS frame before loading the next."""
     print(f"PBP {year}…")
     pbp_raw = nfl.load_pbp([year])
     pbp = _prepare_pbp_base(pbp_raw)
+    del pbp_raw
     if "season_type" not in pbp.columns:
         raise ValueError("PBP is missing season_type — required for NGS weekly joins.")
 
     pbp = _join_participation_for_year(pbp, year)
 
-    print(f"NGS passing/receiving/rushing {year}…")
-    ngs_pass = nfl.load_nextgen_stats([year], stat_type="passing")
-    ngs_rec = nfl.load_nextgen_stats([year], stat_type="receiving")
-    ngs_rush = nfl.load_nextgen_stats([year], stat_type="rushing")
+    print(f"NGS passing {year}…")
+    ngs = nfl.load_nextgen_stats([year], stat_type="passing")
+    pbp = _join_ngs_weekly(pbp, ngs, "passer_player_id", NGS_PASS, "passing")
+    del ngs
 
-    pbp = _join_ngs_weekly(pbp, ngs_pass, "passer_player_id", NGS_PASS, "passing")
-    pbp = _join_ngs_weekly(pbp, ngs_rec, "receiver_player_id", NGS_REC, "receiving")
+    print(f"NGS receiving {year}…")
+    ngs = nfl.load_nextgen_stats([year], stat_type="receiving")
+    pbp = _join_ngs_weekly(pbp, ngs, "receiver_player_id", NGS_REC, "receiving")
+    del ngs
+
+    print(f"NGS rushing {year}…")
+    ngs = nfl.load_nextgen_stats([year], stat_type="rushing")
     pbp = _join_ngs_weekly(
         pbp,
-        ngs_rush,
+        ngs,
         "rusher_player_id",
         NGS_RUSH,
         "rushing",
         rename_expected_rush=True,
     )
+    del ngs
 
     pbp = pbp.with_columns((pl.col("yardline_100") <= 20).alias("is_red_zone"))
 
@@ -269,6 +277,9 @@ def main() -> None:
         path = DATA_DIR / f"nfl_pbp_{year}.parquet"
         shard.write_parquet(path)
         print(f"✅ Shard saved: {path} ({shard.height} rows)")
+        del shard
+        if os.environ.get("PIPELINE_GC", "1").strip().lower() not in ("0", "false", "no"):
+            gc.collect()
 
     create_player_index()
 
