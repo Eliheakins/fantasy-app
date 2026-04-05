@@ -43,7 +43,10 @@ def cors_allow_origins() -> list[str]:
 
 def get_player_index() -> pl.DataFrame:
     if _player_index is None:
-        raise RuntimeError("Player index is not initialized")
+        raise HTTPException(
+            status_code=503,
+            detail="Player index not loaded. Seed data (e.g. run scripts/dataPipeline.py into DATA_LOCAL_DIR) and restart the service.",
+        )
     return _player_index
 
 
@@ -199,8 +202,12 @@ async def lifespan(app: FastAPI):
         _pbp_shards_cached = discover_pbp_shards_r2(public_base, years)
     elif _data_source == "local":
         index_path = Path(os.environ.get("PLAYER_INDEX_PATH", str(DEFAULT_PLAYER_INDEX_PATH)))
-        _player_index = load_player_index_from_path(index_path)
-        _pbp_shards_cached = discover_pbp_shards_local(DATA_DIR)
+        if index_path.is_file():
+            _player_index = load_player_index_from_path(index_path)
+            _pbp_shards_cached = discover_pbp_shards_local(DATA_DIR)
+        else:
+            _player_index = None
+            _pbp_shards_cached = []
     else:
         raise RuntimeError(f"Invalid DATA_SOURCE={_data_source!r}; use 'local' or 'r2'")
 
@@ -229,7 +236,7 @@ if (os.environ.get("DATA_SOURCE", "local").strip().lower() or "local") == "local
 @app.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     return HealthResponse(
-        status="ok",
+        status="ok" if _player_index is not None else "degraded",
         data_source=_data_source,
         player_index_loaded=_player_index is not None,
     )

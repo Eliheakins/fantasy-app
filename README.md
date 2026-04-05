@@ -123,13 +123,29 @@ Use the repo root [`render.yaml`](render.yaml) with [Render Blueprints](https://
 
 1. **Create a Blueprint** from this repository. Render will provision:
    - **nfl-stat-api** — Python web service (`rootDir: backend`), health check `GET /health`, persistent disk mounted at `/data` with `DATA_LOCAL_DIR=/data`.
-   - **nfl-stat-ui** — Static site (`rootDir: frontend`), publish `frontend/dist`, SPA rewrite `/*` → `/index.html`.
+   - **nfl-stat-ui** — Static site (`rootDir: frontend`), publish directory `./dist` (Render paths are relative to `rootDir`, so this is `frontend/dist` in the repo), SPA rewrite `/*` → `/index.html`.
 
 2. When prompted, set **`VITE_API_BASE`** to your API’s public URL (for example `https://nfl-stat-api.onrender.com`, no trailing slash).
 
 3. Set **`CORS_ORIGINS`** on the API to your static site origin(s) (for example `https://nfl-stat-ui.onrender.com`). You can update this in the Render dashboard after the first deploy when URLs are known.
 
-4. **Upload Parquet files** to the API disk (`player_index.parquet`, `nfl_pbp_YYYY.parquet`) using [Render Shell](https://render.com/docs/one-off-jobs) or your own process, **or** switch the API to **`DATA_SOURCE=r2`** and set `PLAYER_INDEX_URL`, `PUBLIC_PBP_BASE`, and `PBP_YEARS` in the dashboard (and CORS on the bucket).
+4. **Seed data on the persistent disk** (the disk starts empty). The API is configured with `DATA_LOCAL_DIR=/data` so both the app and the pipeline write to the same place. After seeding, **restart** the `nfl-stat-api` service so the in-memory player index reloads.
+
+### Render post-deploy checklist (vs. generic “AI deploy” advice)
+
+| Topic | This repo | Common mistake |
+|--------|-----------|----------------|
+| **Shell command** | With `rootDir: backend`, open **Shell** on `nfl-stat-api` and run: `python scripts/dataPipeline.py` | There is no `backend/data_pipeline.py`; the script is [`backend/scripts/dataPipeline.py`](backend/scripts/dataPipeline.py). |
+| **Output path** | The pipeline reads **`DATA_LOCAL_DIR`** (set to `/data` in [`render.yaml`](render.yaml)), same as the API | Writing only under `backend/data` on the container disk would **not** land on the persistent volume. |
+| **Serving Parquet** | [`main.py`](backend/main.py) already mounts `StaticFiles` at **`/data`** when `DATA_SOURCE=local` and the data directory exists | You do **not** need a second mount or `aiofiles` for basic file serving. |
+| **Empty disk / first boot** | The API **starts** without `player_index.parquet`; `/health` reports `player_index_loaded: false` until you seed and restart | — |
+| **Tuesday “cron on Render”** | A **Cron Job** is a **separate** service: it does **not** share the web service’s persistent disk, so `python …/dataPipeline.py` there would not update the API’s `/data` unless you upload elsewhere (e.g. R2) | For updates on the **same** disk, re-run the pipeline in **Shell** on the API and restart, or use **`DATA_SOURCE=r2`** and automate uploads to object storage. |
+| **CORS** | Set **`CORS_ORIGINS`** to your static site origin (no trailing slash), e.g. `https://nfl-stat-ui.onrender.com` | Mismatch here shows up as browser “failed to fetch” / CORS errors. |
+| **Frontend + DuckDB** | [`frontend/src/lib/api.ts`](frontend/src/lib/api.ts) uses **`VITE_API_BASE`**; shard URLs from the API are already absolute or rooted under that base | No need to hard-code `…/data/nfl_pbp_2024.parquet` unless you are experimenting. |
+
+**Verify after seeding:** `ls /data` in Shell should list `player_index.parquet` and `nfl_pbp_*.parquet`. Hit `GET /health` and confirm `player_index_loaded` is `true` after restart.
+
+**Alternative:** Skip the disk entirely — set **`DATA_SOURCE=r2`**, `PLAYER_INDEX_URL`, `PUBLIC_PBP_BASE`, and `PBP_YEARS` in the dashboard (and CORS on the bucket).
 
 ---
 

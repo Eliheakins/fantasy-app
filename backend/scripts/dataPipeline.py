@@ -8,13 +8,18 @@ Joins:
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import nflreadpy as nfl
 import polars as pl
 from nflreadpy.utils_date import get_current_season
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+# Same env as the API (`DATA_LOCAL_DIR` in render.yaml → `/data` on Render). Default: backend/data locally.
+_backend_root = Path(__file__).resolve().parent.parent
+_default_data = _backend_root / "data"
+_data_override = os.environ.get("DATA_LOCAL_DIR", "").strip()
+DATA_DIR = Path(_data_override).resolve() if _data_override else _default_data
 YEARS = [2021, 2022, 2023, 2024, 2025]
 
 # --- PBP (lean) + join keys + advanced --------------------------------------
