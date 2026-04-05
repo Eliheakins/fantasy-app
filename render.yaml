@@ -1,0 +1,36 @@
+services:
+  # FastAPI backend — Parquet index + optional /data static files
+  - type: web
+    name: nfl-stat-api
+    runtime: python
+    rootDir: backend
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    disk:
+      name: nfl-data
+      mountPath: /data
+      sizeGB: 10
+    envVars:
+      - key: DATA_LOCAL_DIR
+        value: /data
+      - key: CORS_ORIGINS
+        sync: false
+      - key: DATA_SOURCE
+        value: local
+
+  # Vite + React frontend (build-time API URL — set at Blueprint setup)
+  - type: web
+    name: nfl-stat-ui
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE
+        sync: false
