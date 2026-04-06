@@ -10,8 +10,9 @@ import { cn } from "@/lib/utils";
 import type { QueryResult } from "@/types/workbench";
 import { useWorkbenchStore } from "@/store/useWorkbenchStore";
 
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
 
 export function FormulaLab() {
   const customFormula = useWorkbenchStore((s) => s.customFormula);
@@ -66,66 +67,77 @@ export function FormulaLab() {
   }, [result]);
 
   return (
-    <Card className="border-emerald-900/50 bg-zinc-950/90">
-      <CardHeader>
-        <CardTitle className="text-emerald-400">Formula Lab</CardTitle>
-        <p className="text-sm text-zinc-500">
-          SQL runs in DuckDB-WASM in your browser. Use{" "}
-          <code className="rounded bg-violet-500/20 px-1 text-violet-300">{PLAYER_IDS_TOKEN}</code> where quoted
-          GSIS ids should go (for example inside <code className="text-zinc-400">IN (...)</code>). Mounts views{" "}
-          <code className="text-zinc-300">nfl_pbp_YYYY</code> from pinned players&apos; shards.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <FormulaSqlEditor
-          value={customFormula}
-          onChange={setCustomFormula}
-          placeholder="SELECT ..."
-        />
+    <Card className="overflow-hidden border-border">
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="formula" className="border-0">
+          <AccordionTrigger className="px-4 py-4 hover:no-underline md:px-6">
+            <div className="flex flex-col items-start gap-1 pr-2 text-left">
+              <CardTitle className="text-lg text-ink">Formula Lab</CardTitle>
+              <p className="text-xs font-normal text-ink-muted">
+                Custom SQL · DuckDB-WASM · {PLAYER_IDS_TOKEN} for pinned ids
+              </p>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="space-y-4 border-t border-border px-4 pb-6 pt-4 md:px-6">
+              <p className="text-sm text-ink-muted">
+                Raw SQL with DuckDB-WASM in your browser. Use{" "}
+                <code className="rounded bg-accent-subtle px-1 font-mono text-xs text-accent">{PLAYER_IDS_TOKEN}</code>{" "}
+                where quoted GSIS ids should go (for example inside{" "}
+                <code className="font-mono text-xs text-ink">IN (...)</code>). Mounts views{" "}
+                <code className="font-mono text-xs text-ink">nfl_pbp_YYYY</code> from pinned players&apos; shards.
+              </p>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" onClick={() => void onRun()} disabled={running}>
-            {running ? "Running…" : "Run"}
-          </Button>
-          {usesPlayerToken && pinnedPlayers.length === 0 && (
-            <span className="text-xs text-amber-500">Pin players to fill {PLAYER_IDS_TOKEN}.</span>
-          )}
-          {usesPlayerToken && pinnedPlayers.length > 0 && (
-            <span className="text-xs text-zinc-500">
-              {pinnedPlayers.length} id{pinnedPlayers.length === 1 ? "" : "s"} injected at run.
-            </span>
-          )}
-        </div>
+              <FormulaSqlEditor
+                value={customFormula}
+                onChange={setCustomFormula}
+                placeholder="SELECT ..."
+              />
 
-        {error && (
-          <p className="rounded border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-            {error}
-          </p>
-        )}
-
-        {result && (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {statEntries.map(({ label, value }) => (
-              <div
-                key={label}
-                className={cn(
-                  "rounded-md border border-zinc-800 bg-zinc-900/60 px-4 py-3",
-                  "shadow-inner",
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="button" onClick={() => void onRun()} disabled={running}>
+                  {running ? "Running…" : "Run"}
+                </Button>
+                {usesPlayerToken && pinnedPlayers.length === 0 && (
+                  <span className="text-xs text-warn-fg">Pin players to fill {PLAYER_IDS_TOKEN}.</span>
                 )}
-              >
-                <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">{label}</p>
-                <p className="mt-1 font-mono text-lg text-zinc-100">{value}</p>
+                {usesPlayerToken && pinnedPlayers.length > 0 && (
+                  <span className="text-xs text-ink-muted">
+                    {pinnedPlayers.length} id{pinnedPlayers.length === 1 ? "" : "s"} injected at run.
+                  </span>
+                )}
               </div>
-            ))}
-          </div>
-        )}
 
-        {result && result.rows.length > 1 && (
-          <p className="text-xs text-zinc-500">
-            Showing metrics from the first row ({result.rows.length} rows returned).
-          </p>
-        )}
-      </CardContent>
+              {error && (
+                <p className="rounded-md border border-danger/25 bg-danger/5 px-3 py-2 text-sm text-danger-fg">{error}</p>
+              )}
+
+              {result && (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {statEntries.map(({ label, value }) => (
+                    <div
+                      key={label}
+                      className={cn(
+                        "rounded-md border border-border bg-input/50 px-4 py-3",
+                        "shadow-inner",
+                      )}
+                    >
+                      <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">{label}</p>
+                      <p className="mt-1 font-mono text-lg text-accent">{value}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {result && result.rows.length > 1 && (
+                <p className="text-xs text-ink-muted">
+                  Showing metrics from the first row ({result.rows.length} rows returned).
+                </p>
+              )}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </Card>
   );
 }

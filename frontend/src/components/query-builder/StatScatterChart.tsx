@@ -75,7 +75,7 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
     return (
       <div
         className={cn(
-          "flex h-[380px] items-center justify-center rounded-md border border-zinc-800 bg-zinc-900/40 text-sm text-zinc-500",
+          "flex h-[380px] items-center justify-center rounded-md border border-border bg-input/50 text-sm text-ink-muted",
           className,
         )}
       >
@@ -96,12 +96,12 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
       <svg
         width={W}
         height={H}
-        className="max-w-full text-zinc-400"
+        className="max-w-full text-ink-muted"
         viewBox={`0 0 ${W} ${H}`}
         role="img"
         aria-label={`Scatter of ${yLabel} versus ${xLabel}`}
       >
-        <rect x={M.left} y={M.top} width={plotW} height={plotH} fill="rgb(24 24 27 / 0.5)" rx={4} />
+        <rect x={M.left} y={M.top} width={plotW} height={plotH} fill="#f1f5f9" rx={4} />
         {ticksX.map((t, i) => (
           <g key={`gx-${i}`}>
             <line
@@ -109,14 +109,14 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
               y1={M.top}
               x2={scaleX(t)}
               y2={M.top + plotH}
-              stroke="rgb(63 63 70)"
+              stroke="#e2e8f0"
               strokeDasharray="3 4"
             />
             <text
               x={scaleX(t)}
               y={H - 12}
               textAnchor="middle"
-              className="fill-zinc-500 text-[9px]"
+              className="fill-ink-muted text-[9px]"
             >
               {fmt(t)}
             </text>
@@ -129,7 +129,7 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
               y1={scaleY(t)}
               x2={M.left + plotW}
               y2={scaleY(t)}
-              stroke="rgb(63 63 70)"
+              stroke="#e2e8f0"
               strokeDasharray="3 4"
             />
             <text
@@ -137,7 +137,7 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
               y={scaleY(t)}
               textAnchor="end"
               dominantBaseline="middle"
-              className="fill-zinc-500 text-[9px]"
+              className="fill-ink-muted text-[9px]"
             >
               {fmt(t)}
             </text>
@@ -148,14 +148,14 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
           y1={M.top + plotH}
           x2={M.left + plotW}
           y2={M.top + plotH}
-          stroke="rgb(82 82 91)"
+          stroke="#cbd5e1"
         />
-        <line x1={M.left} y1={M.top} x2={M.left} y2={M.top + plotH} stroke="rgb(82 82 91)" />
+        <line x1={M.left} y1={M.top} x2={M.left} y2={M.top + plotH} stroke="#cbd5e1" />
         <text
           x={M.left + plotW / 2}
           y={H - 4}
           textAnchor="middle"
-          className="fill-zinc-300 text-[11px]"
+          className="fill-ink text-[11px] font-medium"
         >
           {xLabel}
         </text>
@@ -163,7 +163,7 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
           x={14}
           y={M.top + plotH / 2}
           textAnchor="middle"
-          className="fill-zinc-300 text-[11px]"
+          className="fill-ink text-[11px] font-medium"
           transform={`rotate(-90 14 ${M.top + plotH / 2})`}
         >
           {yLabel}
@@ -179,8 +179,8 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
                 cy={cy}
                 r={isHover ? 9 : 6}
                 className={cn(
-                  "cursor-pointer stroke-emerald-600/80 transition-all",
-                  isHover ? "fill-emerald-500/40" : "fill-emerald-500/25",
+                  "cursor-pointer stroke-accent transition-all",
+                  isHover ? "fill-accent/45" : "fill-accent/25",
                 )}
                 strokeWidth={isHover ? 2 : 1}
                 onMouseEnter={() => setHover(i)}
@@ -191,9 +191,9 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
         })}
       </svg>
       {hover !== null && points[hover] ? (
-        <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-md border border-zinc-700 bg-zinc-900/95 px-3 py-1.5 text-center text-xs shadow-lg">
-          <div className="font-medium text-zinc-100">{points[hover]!.label}</div>
-          <div className="mt-0.5 font-mono text-zinc-400">
+        <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-md border border-border bg-surface px-3 py-1.5 text-center text-xs shadow-card">
+          <div className="font-medium text-ink">{points[hover]!.label}</div>
+          <div className="mt-0.5 font-mono text-ink-muted">
             {xLabel}: {points[hover]!.x.toFixed(3)} · {yLabel}: {points[hover]!.y.toFixed(3)}
           </div>
         </div>

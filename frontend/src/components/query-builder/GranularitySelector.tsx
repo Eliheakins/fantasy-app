@@ -11,22 +11,31 @@ const GRANULARITY_ITEMS: { value: GranularityMode; label: string }[] = [
   { value: "per_play", label: "Per play" },
 ];
 
-export function GranularitySelector() {
+interface GranularitySelectorProps {
+  /** Omit outer card section; use inside another container (e.g. aggregation accordion). */
+  embedded?: boolean;
+}
+
+export function GranularitySelector({ embedded = false }: GranularitySelectorProps) {
   const selectedStatIds = useQueryBuilderStore((s) => s.selectedStatIds);
   const activeGranularity = useQueryBuilderStore((s) => s.activeGranularity);
   const setGranularity = useQueryBuilderStore((s) => s.setActiveGranularity);
 
   const rateLocked = selectedStatIds.some((id) => getStatById(id)?.rate_only);
 
-  return (
-    <section className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-4">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">Granularity</h2>
-      <p className="mt-0.5 text-xs text-zinc-600">
-        How the stat is aggregated. Per game divides by <span className="text-zinc-400">active games</span> (any role,
-        no situational filters).
+  const body = (
+    <>
+      {!embedded ? (
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-muted">Granularity</h2>
+      ) : (
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Granularity</h3>
+      )}
+      <p className="mt-0.5 text-xs text-ink-muted">
+        How the stat is aggregated. Per game divides by <span className="font-medium text-ink">active games</span> (any
+        role, no situational filters).
       </p>
       {rateLocked && (
-        <p className="mt-2 text-xs text-amber-600/90">
+        <p className="mt-2 text-xs text-warn-fg">
           At least one selected metric is <strong className="font-medium">rate_only</strong> (fixed SQL formula). Total /
           Per game are disabled for all columns in this view.
         </p>
@@ -56,6 +65,12 @@ export function GranularitySelector() {
           );
         })}
       </ToggleGroup>
-    </section>
+    </>
   );
+
+  if (embedded) {
+    return <div className="space-y-1">{body}</div>;
+  }
+
+  return <section className="rounded-xl border border-border bg-input/30 p-4">{body}</section>;
 }
