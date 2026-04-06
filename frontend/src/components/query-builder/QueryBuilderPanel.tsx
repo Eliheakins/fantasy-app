@@ -286,7 +286,7 @@ export function QueryBuilderPanel({ children }: QueryBuilderPanelProps) {
   return (
     <>
       <div className="flex min-h-dvh flex-col bg-app lg:min-h-screen lg:flex-row">
-        <aside className="hidden w-full shrink-0 flex-col border-border bg-surface lg:flex lg:sticky lg:top-0 lg:h-screen lg:w-[300px] lg:max-w-[320px] lg:border-r">
+        <aside className="hidden w-full shrink-0 flex-col border-border bg-surface lg:flex lg:sticky lg:top-0 lg:h-screen lg:w-[360px] lg:border-r">
           <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-5">
             <QueryBuilderSidebarScroll {...sidebarScrollProps} />
           </div>
@@ -432,14 +432,16 @@ export function QueryBuilderPanel({ children }: QueryBuilderPanelProps) {
         <Drawer.Root
           open={mobileBuilderOpen}
           onOpenChange={setMobileBuilderOpen}
-          snapPoints={[50]}
           modal={false}
           shouldScaleBackground={false}
+          dismissible
+          noBodyStyles
         >
           <Drawer.Portal>
             <Drawer.Content
               className={cn(
-                "fixed inset-x-0 bottom-0 z-50 flex h-[50dvh] max-h-[50dvh] flex-col rounded-t-2xl border-x border-t border-border bg-surface outline-none",
+                "fixed inset-x-0 bottom-0 z-50 flex max-h-[50dvh] flex-col rounded-t-2xl border-x border-t border-border bg-surface shadow-[0_-8px_30px_rgb(15_23_42/0.12)] outline-none",
+                "h-[50dvh]",
               )}
             >
               <Drawer.Handle className="mx-auto mb-2 mt-3 h-1.5 w-12 shrink-0 rounded-full bg-border" />
@@ -465,18 +467,29 @@ export function QueryBuilderPanel({ children }: QueryBuilderPanelProps) {
 
         <button
           type="button"
-          onClick={() => setMobileBuilderOpen(true)}
+          onClick={() => {
+            if (mobileBuilderOpen) {
+              setMobileBuilderOpen(false);
+            } else {
+              window.setTimeout(() => setMobileBuilderOpen(true), 0);
+            }
+          }}
           className={cn(
-            "fixed z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-surface shadow-lg",
+            "fixed z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-surface shadow-lg",
             "transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-app",
             "bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] right-4",
-            mobileBuilderOpen && "pointer-events-none opacity-0",
           )}
-          aria-label="Open query builder"
+          aria-label={mobileBuilderOpen ? "Close query builder" : "Open query builder"}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-            <path d="M3 6h18M7 12h10M11 18h2" strokeLinecap="round" />
-          </svg>
+          {mobileBuilderOpen ? (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+            </svg>
+          ) : (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M3 6h18M7 12h10M11 18h2" strokeLinecap="round" />
+            </svg>
+          )}
         </button>
       </div>
     </>
