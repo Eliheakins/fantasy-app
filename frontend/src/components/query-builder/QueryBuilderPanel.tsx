@@ -33,6 +33,9 @@ interface QueryBuilderPanelProps {
   children?: ReactNode;
 }
 
+/** Mobile sheet snap heights as a fraction of the viewport (Vaul: e.g. 0.5 = 50%, not 50). */
+const MOBILE_BUILDER_SNAP_POINTS: (number | string)[] = [0.5, 1];
+
 /**
  * Guided query UI: sidebar (who / what / context) + main canvas + optional children (e.g. Formula Lab).
  */
@@ -121,6 +124,8 @@ export function QueryBuilderPanel({ children }: QueryBuilderPanelProps) {
   const [canvasView, setCanvasView] = useState<"table" | "scatter">("table");
   const [swapScatterAxes, setSwapScatterAxes] = useState(false);
   const [mobileBuilderOpen, setMobileBuilderOpen] = useState(false);
+  /** Vaul snap: default half viewport; user can drag to full height. */
+  const [mobileActiveSnap, setMobileActiveSnap] = useState<number | string | null>(0.5);
 
   const twoStatsMode = selectedStatIds.length === 2;
 
@@ -428,23 +433,66 @@ export function QueryBuilderPanel({ children }: QueryBuilderPanelProps) {
       </main>
       </div>
 
-      <div className="lg:hidden">
-        <Drawer.Root
-          open={mobileBuilderOpen}
-          onOpenChange={setMobileBuilderOpen}
-          modal={false}
-          shouldScaleBackground={false}
-          dismissible
-          noBodyStyles
-        >
-          <Drawer.Portal>
-            <Drawer.Content
-              className={cn(
-                "fixed inset-x-0 bottom-0 z-50 flex max-h-[50dvh] flex-col rounded-t-2xl border-x border-t border-border bg-surface shadow-[0_-8px_30px_rgb(15_23_42/0.12)] outline-none",
-                "h-[50dvh]",
-              )}
-            >
-              <Drawer.Handle className="mx-auto mb-2 mt-3 h-1.5 w-12 shrink-0 rounded-full bg-border" />
+      <button
+        type="button"
+        onClick={() => {
+          setMobileActiveSnap(0.5);
+          setMobileBuilderOpen(true);
+        }}
+        className={cn(
+          "fixed z-[70] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-surface shadow-lg lg:hidden",
+          "transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-app",
+          "bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] right-4",
+          mobileBuilderOpen && "hidden",
+        )}
+        aria-label="Open query builder"
+        aria-expanded={mobileBuilderOpen}
+        aria-haspopup="dialog"
+        tabIndex={mobileBuilderOpen ? -1 : undefined}
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <path d="M3 6h18M7 12h10M11 18h2" strokeLinecap="round" />
+        </svg>
+      </button>
+
+      <Drawer.Root
+        open={mobileBuilderOpen}
+        onOpenChange={(open) => {
+          setMobileBuilderOpen(open);
+          setMobileActiveSnap(0.5);
+        }}
+        snapPoints={MOBILE_BUILDER_SNAP_POINTS}
+        activeSnapPoint={mobileActiveSnap}
+        setActiveSnapPoint={setMobileActiveSnap}
+        modal
+        shouldScaleBackground={false}
+        dismissible
+        noBodyStyles
+        autoFocus
+      >
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-[65] bg-ink/40 backdrop-blur-[1px]" />
+          <Drawer.Content
+            className={cn(
+              "fixed inset-x-0 bottom-0 z-[66] flex max-h-[100dvh] flex-col rounded-t-2xl border-x border-t border-border bg-surface shadow-[0_-8px_30px_rgb(15_23_42/0.12)] outline-none",
+            )}
+          >
+              <div className="relative flex shrink-0 flex-col items-center pt-2">
+                <Drawer.Close asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-2 top-1 z-10 h-10 w-10 shrink-0 rounded-full p-0 text-ink hover:bg-input"
+                    aria-label="Close query builder"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                      <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+                    </svg>
+                  </Button>
+                </Drawer.Close>
+                <Drawer.Handle className="mx-auto mb-2 mt-1 h-1.5 w-12 shrink-0 rounded-full bg-border" />
+              </div>
               <Drawer.Title className="sr-only">Query builder</Drawer.Title>
               <Drawer.Description className="sr-only">
                 Adjust players, metrics, aggregation, and context filters. Results update in the view above.
@@ -461,37 +509,9 @@ export function QueryBuilderPanel({ children }: QueryBuilderPanelProps) {
                   className="rounded-none border-t border-border p-3 pt-2"
                 />
               </div>
-            </Drawer.Content>
-          </Drawer.Portal>
-        </Drawer.Root>
-
-        <button
-          type="button"
-          onClick={() => {
-            if (mobileBuilderOpen) {
-              setMobileBuilderOpen(false);
-            } else {
-              window.setTimeout(() => setMobileBuilderOpen(true), 0);
-            }
-          }}
-          className={cn(
-            "fixed z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-surface shadow-lg",
-            "transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-app",
-            "bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] right-4",
-          )}
-          aria-label={mobileBuilderOpen ? "Close query builder" : "Open query builder"}
-        >
-          {mobileBuilderOpen ? (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
-            </svg>
-          ) : (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <path d="M3 6h18M7 12h10M11 18h2" strokeLinecap="round" />
-            </svg>
-          )}
-        </button>
-      </div>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
     </>
   );
 }
