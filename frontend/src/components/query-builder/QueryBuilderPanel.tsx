@@ -33,8 +33,8 @@ interface QueryBuilderPanelProps {
   children?: ReactNode;
 }
 
-/** Mobile sheet snap heights as a fraction of the viewport (Vaul: e.g. 0.5 = 50%, not 50). */
-const MOBILE_BUILDER_SNAP_POINTS: (number | string)[] = [0.5, 1];
+/** Mobile sheet: full viewport height only (Vaul fractions 0–1, not 0–100). */
+const MOBILE_BUILDER_SNAP_POINTS: (number | string)[] = [1];
 
 /**
  * Guided query UI: sidebar (who / what / context) + main canvas + optional children (e.g. Formula Lab).
@@ -124,8 +124,8 @@ export function QueryBuilderPanel({ children }: QueryBuilderPanelProps) {
   const [canvasView, setCanvasView] = useState<"table" | "scatter">("table");
   const [swapScatterAxes, setSwapScatterAxes] = useState(false);
   const [mobileBuilderOpen, setMobileBuilderOpen] = useState(false);
-  /** Vaul snap: default half viewport; user can drag to full height. */
-  const [mobileActiveSnap, setMobileActiveSnap] = useState<number | string | null>(0.5);
+  /** Vaul snap: full-height sheet only. */
+  const [mobileActiveSnap, setMobileActiveSnap] = useState<number | string | null>(1);
 
   const twoStatsMode = selectedStatIds.length === 2;
 
@@ -436,7 +436,7 @@ export function QueryBuilderPanel({ children }: QueryBuilderPanelProps) {
       <button
         type="button"
         onClick={() => {
-          setMobileActiveSnap(0.5);
+          setMobileActiveSnap(1);
           setMobileBuilderOpen(true);
         }}
         className={cn(
@@ -459,7 +459,7 @@ export function QueryBuilderPanel({ children }: QueryBuilderPanelProps) {
         open={mobileBuilderOpen}
         onOpenChange={(open) => {
           setMobileBuilderOpen(open);
-          setMobileActiveSnap(0.5);
+          setMobileActiveSnap(1);
         }}
         snapPoints={MOBILE_BUILDER_SNAP_POINTS}
         activeSnapPoint={mobileActiveSnap}
