@@ -41,11 +41,13 @@ pip install -r backend/dev-requirements.txt
 
 ### 2. Data files (local)
 
-Generate Parquet shards and the player index (writes into `backend/data/`):
+Generate Parquet shards, player index, and Rosetta outputs (writes into `backend/data/` by default):
 
 ```bash
-python backend/scripts/dataPipeline.py
+python backend/scripts/build_data.py
 ```
+
+Use `python backend/scripts/build_data.py --help` for options (`--years`, `--rosetta-only`, `--skip-cfb`, etc.). [`backend/scripts/dataPipeline.py`](backend/scripts/dataPipeline.py) remains a thin alias that runs the same full build without CLI flags.
 
 You should end up with:
 
@@ -104,6 +106,7 @@ Output is written to `frontend/dist/`. The `frontend/public/_redirects` file is 
 | `PLAYER_INDEX_URL` | `DATA_SOURCE=r2` | **Required.** HTTPS URL to `player_index.parquet` (e.g. public object URL) |
 | `PUBLIC_PBP_BASE` | `DATA_SOURCE=r2` | **Required.** HTTPS base URL (no trailing slash) where `nfl_pbp_YYYY.parquet` objects are readable, e.g. `https://<bucket>.<account>.r2.cloudflarestorage.com` or a custom domain |
 | `PBP_YEARS` | `DATA_SOURCE=r2` | **Required.** Comma-separated seasons matching files in object storage, e.g. `2021,2022,2023,2024,2025` |
+| `OPENAI_API_KEY` | Optional | **NLQ (`POST /nlq`).** If unset, natural-language Ask in the UI returns 503. Use a server-side secret only (never `VITE_*`). Model: `gpt-4o-mini`. **Local:** `main.py` loads a `.env` file at the **repository root** (parent of `backend/`) via `python-dotenv`; put `OPENAI_API_KEY=...` there. Variables already set in the process environment are not overwritten. |
 
 With `DATA_SOURCE=r2`, the API does **not** mount `/data` from disk; shard `path` values in JSON are **absolute HTTPS URLs** so the browser (DuckDB-WASM) fetches Parquet **directly from storage**. Configure **CORS on the bucket** to allow `GET` from your static site origin.
 
@@ -137,16 +140,16 @@ Use the repo root [`render.yaml`](render.yaml) with [Render Blueprints](https://
 
 | Topic | This repo | Common mistake |
 |--------|-----------|----------------|
-| **Shell command** | With `rootDir: backend`, open **Shell** on `nfl-stat-api` and run: `python scripts/dataPipeline.py` | There is no `backend/data_pipeline.py`; the script is [`backend/scripts/dataPipeline.py`](backend/scripts/dataPipeline.py). |
+| **Shell command** | With `rootDir: backend`, open **Shell** on `nfl-stat-api` and run: `python scripts/build_data.py` | The unified script is [`backend/scripts/build_data.py`](backend/scripts/build_data.py); [`dataPipeline.py`](backend/scripts/dataPipeline.py) is a compatibility alias. |
 | **Output path** | The pipeline reads **`DATA_LOCAL_DIR`** (set to `/data` in [`render.yaml`](render.yaml)), same as the API | Writing only under `backend/data` on the container disk would **not** land on the persistent volume. |
-| **Serving Parquet** | [`main.py`](backend/main.py) mounts `StaticFiles` at URL path **`/data`** from filesystem **`DATA_DIR`** (`backend/data` locally, `/data` on Render). [`requirements.txt`](backend/requirements.txt) includes **`aiofiles`** for Starlette’s async static file I/O. | Hard-coding `directory="/data"` only would break local dev; use **`DATA_LOCAL_DIR`** on Render. |
+| **Serving Parquet** | [`main.py`](backend/main.py) mounts `StaticFiles` at URL path **`/data`** from filesystem **`DATA_DIR`** (`backend/data` locally, `/data` on Render). Production API installs [`requirements-api.txt`](backend/requirements-api.txt); full local pipeline dev uses [`requirements.txt`](backend/requirements.txt) (API + pipeline). | Hard-coding `directory="/data"` only would break local dev; use **`DATA_LOCAL_DIR`** on Render. |
 | **Empty disk / first boot** | The API **starts** without `player_index.parquet`; `/health` reports `player_index_loaded: false` until you seed and restart | — |
-| **Tuesday “cron on Render”** | A **Cron Job** is a **separate** service: it does **not** share the web service’s persistent disk, so `python …/dataPipeline.py` there would not update the API’s `/data` unless you upload elsewhere (e.g. R2) | For updates on the **same** disk, re-run the pipeline in **Shell** on the API and restart, or use **`DATA_SOURCE=r2`** and automate uploads to object storage. |
+| **Tuesday “cron on Render”** | A **Cron Job** is a **separate** service: it does **not** share the web service’s persistent disk, so `python …/build_data.py` there would not update the API’s `/data` unless you upload elsewhere (e.g. R2) | For updates on the **same** disk, re-run the pipeline in **Shell** on the API and restart, or use **`DATA_SOURCE=r2`** and automate uploads to object storage. |
 | **CORS** | Set **`CORS_ORIGINS`** to your static site origin (no trailing slash), e.g. `https://nfl-stat-ui.onrender.com` | Mismatch here shows up as browser “failed to fetch” / CORS errors. |
 | **Frontend + DuckDB** | [`index.html`](frontend/index.html) loads the app with **`<script type="module" src="/src/main.tsx">`**. Use **`shardParquetUrl`** / **`playerIndexParquetUrl`** so Parquet URLs are always `${VITE_API_BASE}/data/...` (works locally and on Render). | — |
-| **Pipeline memory** | PBP is read from **nflverse GitHub Parquet** via `pl.read_parquet(..., columns=…)` (see `get_nfl_url` in [`dataPipeline.py`](backend/scripts/dataPipeline.py)), not `nfl.load_pbp`. [`render.yaml`](render.yaml) sets **`POLARS_MAX_THREADS=1`** and **`RAYON_NUM_THREADS=1`**. NGS loads stay **one at a time** with explicit `del`. | Override base URL with **`NFLVERSE_DOWNLOAD_BASE`** if needed. Set **`PIPELINE_GC=0`** to skip `gc.collect()` between seasons. |
+| **Pipeline memory** | PBP is read from **nflverse GitHub Parquet** via `pl.read_parquet(..., columns=…)` (see `get_nfl_url` in [`nfl_pipeline.py`](backend/pipeline/nfl_pipeline.py)), not `nfl.load_pbp`. [`render.yaml`](render.yaml) sets **`POLARS_MAX_THREADS=1`** and **`RAYON_NUM_THREADS=1`**. NGS loads stay **one at a time** with explicit `del`. | Override base URL with **`NFLVERSE_DOWNLOAD_BASE`** if needed. Set **`PIPELINE_GC=0`** to skip `gc.collect()` between seasons. |
 
-**Verify after seeding:** `ls /data` in Shell should list `player_index.parquet` and `nfl_pbp_*.parquet`. Hit `GET /health` and confirm `player_index_loaded` is `true` after restart.
+**Verify after seeding:** `ls /data` in Shell should list `player_index.parquet`, `nfl_pbp_*.parquet`, and (if you ran the Rosetta step) `player_hub.parquet`, `gold_unified_performance.parquet`, `hub_dictionary.json`, and `manifests/`. Hit `GET /health` and confirm `player_index_loaded` is `true` after restart.
 
 **Alternative:** Skip the disk entirely — set **`DATA_SOURCE=r2`**, `PLAYER_INDEX_URL`, `PUBLIC_PBP_BASE`, and `PBP_YEARS` in the dashboard (and CORS on the bucket).
 
@@ -164,9 +167,11 @@ Use the repo root [`render.yaml`](render.yaml) with [Render Blueprints](https://
 
 | Path | Role |
 |------|------|
-| `backend/main.py` | FastAPI app: `/health`, `/search`, `/player/{gsis_id}`, optional static `/data` |
-| `backend/data/` | Local `player_index.parquet` and `nfl_pbp_*.parquet` |
-| `backend/scripts/dataPipeline.py` | Downloads and builds Parquet from nflverse |
+| `backend/main.py` | FastAPI app: `/health`, `/search`, `/player/{gsis_id}`, `POST /nlq`, optional static `/data` |
+| `backend/data/` | Local `player_index.parquet`, `nfl_pbp_*.parquet`, Rosetta outputs (`gold_unified_performance.parquet`, `hub_dictionary.json`, …) |
+| `backend/scripts/build_data.py` | **Single entry:** NFL/CFB PBP shards, `player_index`, Rosetta gold + manifests (`--help` for partial runs) |
+| `backend/scripts/dataPipeline.py` | Compatibility alias for a full `build_data` run (no CLI) |
+| `backend/pipeline/` | Python package: `nfl_pipeline`, `college_data`, `rosetta_layer`, `cli` (invoked via `build_data.py`) |
 | `frontend/` | Vite + React + DuckDB-WASM workbench |
 | `frontend/public/_redirects` | SPA fallback for hosts that honor `_redirects` |
 | `render.yaml` | Render Blueprint (API + static site) |

@@ -21,10 +21,13 @@
     "@tanstack/react-query": "^5.62.0",
     "apache-arrow": "^17.0.0",
     "clsx": "^2.1.1",
+    "fuzzysort": "^3.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-router-dom": "^7.14.0",
     "tailwind-merge": "^2.6.0",
     "vaul": "^1.1.2",
+    "zod": "^4.3.6",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
@@ -37,6 +40,7 @@
     "eslint": "^9.17.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.16",
+    "eslint-plugin-unused-imports": "^4.4.1",
     "globals": "^15.14.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.15",

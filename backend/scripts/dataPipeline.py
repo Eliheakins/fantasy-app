@@ -1,55 +1,33 @@
 """
-Chunked Parquet writer for The Bridge data directory.
+Backward-compatible alias for the unified data build.
 
-Orchestrates league-specific builders into `DATA_LOCAL_DIR` / `backend/data`.
+Prefer: ``python scripts/build_data.py`` (same options and defaults).
 """
 
 from __future__ import annotations
 
-import gc
-import os
+import sys
 from pathlib import Path
 
-from collegeData import build_cfb_stitched_for_year
-from nfl_pipeline import build_stitched_for_year, create_player_index
-from rosetta_layer import build_rosetta_layer
+_backend = Path(__file__).resolve().parent.parent
+if str(_backend) not in sys.path:
+    sys.path.insert(0, str(_backend))
 
-# Same env as the API (`DATA_LOCAL_DIR` in render.yaml → `/data` on Render).
-# Default: backend/data locally.
-_backend_root = Path(__file__).resolve().parent.parent
-_default_data = _backend_root / "data"
-_data_override = os.environ.get("DATA_LOCAL_DIR", "").strip()
-DATA_DIR = Path(_data_override).resolve() if _data_override else _default_data
-YEARS = [2021, 2022, 2023, 2024, 2025]
+from pipeline.cli import DEFAULT_YEARS, data_output_dir, run_build
 
-
-def _maybe_gc() -> None:
-    if os.environ.get("PIPELINE_GC", "1").strip().lower() not in ("0", "false", "no"):
-        gc.collect()
+DATA_DIR = data_output_dir()
+YEARS = list(DEFAULT_YEARS)
 
 
 def main() -> None:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-    for year in YEARS:
-        shard = build_stitched_for_year(year)
-        path = DATA_DIR / f"nfl_pbp_{year}.parquet"
-        shard.write_parquet(path)
-        print(f"✅ Shard saved: {path} ({shard.height} rows)")
-        del shard
-        _maybe_gc()
-
-    for year in YEARS:
-        shard = build_cfb_stitched_for_year(year)
-        path = DATA_DIR / f"cfb_pbp_{year}.parquet"
-        shard.write_parquet(path)
-        print(f"✅ Shard saved: {path} ({shard.height} rows)")
-        del shard
-        _maybe_gc()
-
-    create_player_index(DATA_DIR, YEARS)
-
-    build_rosetta_layer(DATA_DIR)
+    run_build(
+        DATA_DIR,
+        YEARS,
+        build_nfl=True,
+        build_cfb=True,
+        build_player_index=True,
+        build_rosetta=True,
+    )
 
 
 if __name__ == "__main__":

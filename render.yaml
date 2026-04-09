@@ -5,7 +5,7 @@ services:
     runtime: python
     rootDir: backend
     plan: starter
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements-api.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     disk:
@@ -23,6 +23,8 @@ services:
         sync: false
       - key: DATA_SOURCE
         value: local
+      - key: OPENAI_API_KEY
+        sync: false
 
   # Vite + React frontend (build-time API URL — set at Blueprint setup)
   - type: web

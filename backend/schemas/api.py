@@ -1,0 +1,45 @@
+from __future__ import annotations
+
+from datetime import date, datetime
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class PlayerRecord(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    gsis_id: str
+    full_name: str | None = None
+
+    @field_validator("gsis_id", mode="before")
+    @classmethod
+    def gsis_id_as_str(cls, v: Any) -> str:
+        if v is None:
+            raise ValueError("gsis_id is required")
+        return str(v).strip()
+
+    position: str | None = None
+    team: str | None = None
+    headshot_url: str | None = None
+    birth_date: date | datetime | str | None = None
+    years_exp: int | float | None = None
+
+
+class PbpShard(BaseModel):
+    year: int = Field(..., description="Season year from the parquet filename")
+    path: str = Field(
+        ...,
+        description="Relative URL under the API (/data/...) or absolute HTTPS URL (e.g. R2 public URL)",
+    )
+
+
+class PlayerDetailResponse(BaseModel):
+    player: PlayerRecord
+    shards: list[PbpShard]
+
+
+class HealthResponse(BaseModel):
+    status: str
+    data_source: str
+    player_index_loaded: bool
