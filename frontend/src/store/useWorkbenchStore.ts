@@ -6,22 +6,41 @@ import type { NFLPlayer } from "@/types/workbench";
 
 export const MAX_PINNED_PLAYERS = 5;
 
-const defaultFormula = `SELECT 
+/** Track A: play-by-play shards (`nfl_pbp_*`). */
+export type FormulaLabTrack = "microscope" | "telescope";
+
+const defaultFormulaMicroscope = `SELECT 
   SUM(yards_gained) AS total_yards,
   AVG(success) * 100 AS success_rate_pct
 FROM nfl_pbp_2024
 WHERE passer_player_id IN (${PLAYER_IDS_TOKEN})
   AND play_type = 'pass';`;
 
+const defaultFormulaTelescope = `SELECT
+  season,
+  level,
+  epa_per_play,
+  total_yards,
+  play_count
+FROM gold_unified_performance
+WHERE nfl_id IN (${PLAYER_IDS_TOKEN})
+ORDER BY level DESC, season;`;
+
 export interface WorkbenchState {
   activePlayer: NFLPlayer | null;
+  /** Track A (Microscope): SQL against nfl_pbp_* views. */
   customFormula: string;
+  /** Track B (Telescope): SQL against gold_unified_performance (+ player_hub mounted). */
+  customFormulaTelescope: string;
+  formulaLabTrack: FormulaLabTrack;
   isEngineReady: boolean;
   pinnedPlayers: NFLPlayer[];
   /** Shards last fetched per pinned player (gsis_id → shards). */
   playerShardMap: Record<string, PbpShardInfo[]>;
   setActivePlayer: (player: NFLPlayer | null) => void;
   setCustomFormula: (sql: string) => void;
+  setCustomFormulaTelescope: (sql: string) => void;
+  setFormulaLabTrack: (track: FormulaLabTrack) => void;
   setEngineReady: (ready: boolean) => void;
   /** Returns false if already pinned, at capacity, or duplicate. */
   tryPinPlayer: (player: NFLPlayer, shards: PbpShardInfo[]) => boolean;
@@ -31,12 +50,16 @@ export interface WorkbenchState {
 
 export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
   activePlayer: null,
-  customFormula: defaultFormula,
+  customFormula: defaultFormulaMicroscope,
+  customFormulaTelescope: defaultFormulaTelescope,
+  formulaLabTrack: "microscope",
   isEngineReady: false,
   pinnedPlayers: [],
   playerShardMap: {},
   setActivePlayer: (player) => set({ activePlayer: player }),
   setCustomFormula: (sql) => set({ customFormula: sql }),
+  setCustomFormulaTelescope: (sql) => set({ customFormulaTelescope: sql }),
+  setFormulaLabTrack: (track) => set({ formulaLabTrack: track }),
   setEngineReady: (ready) => set({ isEngineReady: ready }),
 
   tryPinPlayer: (player, shards) => {

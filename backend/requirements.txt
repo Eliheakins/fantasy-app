@@ -17,3 +17,21 @@ nflreadpy>=0.1.0
 
 # --- Local SQL experiments (e.g. scripts/testDuckdb.py) ---
 duckdb>=1.0.0
+
+pyarrow>=15.0.0  # Required for Polars/DuckDB/CFB Parquet interop
+
+# --- College Football Data ---
+cfbfastR-py>=0.0.28
+# setuptools 82+ dropped pkg_resources; cfbfastR still imports it.
+setuptools>=69.0.0,<82
+
+# --- Web & API Support ---
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=5.1.0
+
+# --- Modeling (Used by cfbfastR internally) ---
+scipy>=1.12.0
+# XGBoost 3.x dropped the old binary model format shipped with cfbfastR.
+xgboost>=2.0.0,<3
+matplotlib>=3.8.0

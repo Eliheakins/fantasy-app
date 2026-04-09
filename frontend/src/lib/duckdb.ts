@@ -112,6 +112,15 @@ export function initDB(bundle: DuckDBBundleKind = "mvp"): Promise<void> {
 }
 
 /**
+ * Mount Rosetta Telescope layer: `player_hub` and `gold_unified_performance` (static Parquet URLs).
+ * Call once per run when using Unified/Career SQL; IDs are baked into gold for `WHERE nfl_id IN (...)`.
+ */
+export async function mountGoldLayer(playerHubUrl: string, goldUnifiedUrl: string): Promise<void> {
+  await mountRemoteShard(playerHubUrl, "player_hub");
+  await mountRemoteShard(goldUnifiedUrl, "gold_unified_performance");
+}
+
+/**
  * Register a remote Parquet URL and expose it as a view `tableName` (safe identifier).
  */
 export async function mountRemoteShard(url: string, tableName: string): Promise<void> {

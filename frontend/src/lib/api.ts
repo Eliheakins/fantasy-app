@@ -45,3 +45,13 @@ export function shardParquetUrl(path: string): string {
 export function playerIndexParquetUrl(): string {
   return shardParquetUrl("/data/player_index.parquet");
 }
+
+/** Rosetta gold layer: NFL+CFB season aggregates with baked `nfl_id` / `cfb_id` (DuckDB-WASM). */
+export function goldUnifiedParquetUrl(): string {
+  return shardParquetUrl("/data/gold_unified_performance.parquet");
+}
+
+/** DynastyProcess-aligned hub for joins / reference (Telescope track mounts this with gold). */
+export function playerHubParquetUrl(): string {
+  return shardParquetUrl("/data/player_hub.parquet");
+}
