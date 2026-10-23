@@ -20,6 +20,18 @@ _NAME = re.compile(r"^[a-z][a-z0-9_]*$")
 
 _S, _I, _F, _B = pl.String, pl.Int64, pl.Float64, pl.Boolean
 
+
+def _cols(
+    strings: str = "", ints: str = "", floats: str = ""
+) -> dict[str, pl.DataType | type[pl.DataType]]:
+    """Build a schema from space-separated column names."""
+    return {
+        **dict.fromkeys(strings.split(), _S),
+        **dict.fromkeys(ints.split(), _I),
+        **dict.fromkeys(floats.split(), _F),
+    }
+
+
 # table name -> {column: dtype}. Stages add their tables here as they are built.
 SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     # written by sync_sleeper (area: raw)
@@ -101,6 +113,51 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     "trending": {"fetched_at": _S, "kind": _S, "sleeper_id": _S, "count": _I},
     # written by crosswalk (area: derived)
     "id_map": {"sleeper_id": _S, "gsis_id": _S, "nfl_team": _S, "match_method": _S},
+    # written by ingest_nfl (area: raw). Only the columns later stages use.
+    "nfl_player_stats": _cols(
+        strings="player_id player_display_name position season_type team opponent_team "
+        "fg_made_list fg_missed_list",
+        ints="season week",
+        floats="completions attempts passing_yards passing_tds passing_interceptions "
+        "sacks_suffered sack_fumbles_lost passing_2pt_conversions carries rushing_yards "
+        "rushing_tds rushing_fumbles_lost rushing_2pt_conversions receptions targets "
+        "receiving_yards receiving_tds receiving_fumbles_lost receiving_2pt_conversions "
+        "target_share air_yards_share special_teams_tds fg_made fg_att fg_missed "
+        "fg_made_0_19 fg_made_20_29 fg_made_30_39 fg_made_40_49 fg_made_50_59 fg_made_60_ "
+        "fg_missed_0_19 fg_missed_20_29 fg_missed_30_39 fg_missed_40_49 fg_missed_50_59 "
+        "fg_missed_60_ pat_made pat_att pat_missed fantasy_points fantasy_points_ppr",
+    ),
+    "nfl_team_stats": _cols(
+        strings="team season_type opponent_team",
+        ints="season week",
+        floats="attempts carries passing_yards rushing_yards passing_tds rushing_tds "
+        "passing_interceptions sacks_suffered def_sacks def_interceptions def_tds def_safeties "
+        "def_fumbles_forced fumble_recovery_opp special_teams_tds def_fg_blocks "
+        "def_pat_blocks def_punt_blocks",
+    ),
+    "nfl_snaps": _cols(
+        strings="game_id pfr_player_id gsis_id player position team opponent",
+        ints="season week",
+        floats="offense_snaps offense_pct defense_snaps defense_pct st_snaps st_pct",
+    ),
+    "nfl_injuries": _cols(
+        strings="game_type team gsis_id position full_name report_status "
+        "report_primary_injury practice_status practice_primary_injury",
+        ints="season week",
+    ),
+    "nfl_schedules": _cols(
+        strings="game_id game_type gameday gametime away_team home_team roof",
+        ints="season week away_score home_score",
+        floats="spread_line total_line temp wind away_rest home_rest",
+    ),
+    "nfl_ff_opportunity": _cols(
+        strings="game_id player_id full_name position posteam",
+        ints="season week",
+        floats="pass_attempt rec_attempt rush_attempt pass_fantasy_points_exp "
+        "rec_fantasy_points_exp rush_fantasy_points_exp total_fantasy_points_exp "
+        "total_fantasy_points total_yards_gained_exp total_touchdown_exp pass_attempt_team "
+        "rec_attempt_team rush_attempt_team",
+    ),
 }
 
 

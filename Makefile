@@ -2,6 +2,7 @@
 
 refresh:
 	uv run python -m fantasy.stages.sync_sleeper
+	uv run python -m fantasy.stages.ingest_nfl
 	uv run python -m fantasy.stages.crosswalk
 
 app:
