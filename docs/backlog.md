@@ -2,6 +2,21 @@
 
 One story is one working session. Engine and dashboard stories are merged per epic, so every epic ends with a usable panel. This file is canonical for story IDs and order. Story IDs in modeling.md and dashboard.md are superseded. modeling.md sections 10b and 10c override its earlier sections. Reference designs: spec/architecture.md, spec/modeling.md, spec/dashboard.md, spec/data-sources.md. Original brainstorm: archive/plan.md.
 
+## Status (2026-10-23, end of the first working session)
+
+**Done and verified on live data (21 issues closed):** E0-1 to E0-3, E1-1 to E1-4, E2-1, E3-1 to E3-5, E4-1, E4-3, E4-4, E4-6, E5-1, E5-3, E5-4 (deadline guard only), E5-D2. All 17 fast-path stories are done.
+
+**Partial (issue open, first cut shipped):**
+- E4-D1: Lineup page (expected-points lineup, text ranges, comparison with Sleeper). No win probability, range bars or objective toggle, and it ignores games already started.
+- E4-D2: Home shows my playoff, bye and title odds. No range bars, top actions or lock state.
+- E4-D3: Outlook ranks all teams and charts saved runs. No rank histogram or schedule table.
+- E5-D1: Waivers page (top 15 adds). No row detail or trending.
+- E3-7: DEF is each league's measured starting-defense average; K is from history. No streaming rules, no DEF scoring from team stats.
+
+**Not started:** E1-5, E2-2 (needs a free Odds API key), E3-6 (tau is provisional), E3-8, E4-2, E4-5, E4-7, E5-2, E5-5, E5-D3.
+
+**Known gaps:** injuries are not modeled (an Out player still projects normally); tau and the spread of season win totals are untested (no league history); DEF is an average; the highest-projected players are under-projected by about 0.3 points a game; there is no GitHub Project board (the token lacks the `project` scope).
+
 ## E0 Foundation
 
 | ID | Story | Done when |

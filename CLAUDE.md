@@ -8,6 +8,13 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 - `make check`: ruff, mypy and pytest. Run before committing.
 - `make fmt`: auto-fix lint and formatting
 
+## Run it
+
+- `make refresh`: pull Sleeper and nflverse and rebuild every table (needs the network)
+- `make app`: open the dashboard
+- Checks against real data: `uv run python -m fantasy.stages.validate_scoring`, `validate_standings`, `backtest`, `calibration`
+- Never pipe `make check` into `tail` before committing: the pipe hides a failing exit code
+
 ## Where things are
 
 - Plan: `docs/one-pager.md`. Backlog: `docs/backlog.md` (canonical story IDs). Decisions log: `docs/decisions.md`.

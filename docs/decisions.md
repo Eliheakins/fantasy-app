@@ -184,6 +184,14 @@ Run with `python -m fantasy.stages.calibration`. For 120 team-weeks (weeks 1 to 
 - **DEF constant fixed:** the provisional 8.0 over-predicted starting defenses (actual 6.8 to 7.0). It is now each league's measured starting-defense mean and variance from completed weeks (`MIN_DEF_ROWS` 20) until E3-7 scores defenses properly. K still comes from 2023 to 2025 history.
 - **Not tested:** the persistent-error scale (tau) and the season-long spread of win totals, which need a league history this account does not have.
 
+## End of the first working session (2026-10-23)
+
+- **Built and pushed to `main` (about 25 commits, 97 tests):** Sleeper sync, ID crosswalk, nflverse store, per-league scoring (exact against Sleeper), baseline projections with a backtest, outcome distributions with measured correlations, lineup logic, standings and playoff seeding, Monte Carlo season odds, waiver ranking, trade evaluator, calibration check, and five dashboard pages (Home with odds, Lineup, Waivers, Trades, Outlook). The whole pipeline runs with `make refresh`.
+- **Honest state of the model:** the baseline beats a trailing average on out-of-sample pinball loss (2.4% at +1 week, 4.9% at +5) but single games stay very noisy (typical miss about 6 points). Weekly team-score intervals are calibrated (80% interval holds 83%), but set lineups beat predictions by about 11 points a team-week, mostly starter selection. The odds are only as good as that: they assume current rosters and do not model injuries.
+- **Provisional constants still in the code:** persistent player error (QB, RB, WR 2.0, TE 1.5), team drift 2.0, projection half-life 4, shrinkage K 3, blend 0.5, context exponent 0.5.
+- **Process note:** one commit went out with a type error because a `| tail` pipe hid a failing `make check`; fixed in the next commit, and every commit since is gated on the check's real exit code (also written in `CLAUDE.md`).
+- **Ticket state:** 21 story issues closed, 15 open, plus the post-MVP tracker (#37). Progress comments are on every issue. No Project board (token lacks the `project` scope).
+
 ## GitHub issues (2026-10-23)
 
 Created in `Eliheakins/fantasy-app` from `docs/backlog.md`: 36 story issues (#1 to #36) plus a Post-MVP tracking issue (#37). Labels: epic (E0 to E5), engine or dashboard, fast-path, optional, spike, post-mvp. Milestones: one per epic. E0-3 (#3) is closed. No Project board: it needs the `project` token scope, which the personal token lacks (`gh auth refresh -s project` is interactive). The repo itself has no commits pushed yet, so the doc paths in issue bodies are plain text, not links.

@@ -1,5 +1,7 @@
 # Fantasy app one-pager (v3, 2026-10-23)
 
+**Status:** the 17-story trade fast path is done and checked on live data, plus Lineup, Waivers, Trades, Home odds and Outlook pages. 21 of 36 story issues are closed; what remains is listed at the top of `backlog.md`.
+
 **Goal:** a local dashboard that tells me each week, for Colgate and YinzBurgh (Sleeper redraft): who to start, who to add, and which trades raise my title odds.
 
 **Core idea:** score every decision by its effect on win probability, using simulated outcome ranges under each league's own scoring. Every recommendation carries a confidence tag (clear, lean, toss-up) from the share of paired simulations where it helps, with model uncertainty included.
