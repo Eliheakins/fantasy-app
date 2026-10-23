@@ -8,9 +8,14 @@ One story is one working session. Engine and dashboard stories are merged per ep
 
 **Not done:** E3-8 (ECR rank-to-points check, blocked on the FantasyPros redistribution terms) and everything under Post-MVP below.
 
+**Added after the first status:** trade partner finder (one-for-one), live in-week scoring with a Refresh button, per-week injury draws (sampler and season simulation), and Sleeper projections blended 50/50 into the next four weeks.
+
 **Known gaps:**
-- Injuries scale the mean (Out 0, Doubtful 0.02, Questionable 0.76 of normal for the current week; IR and similar zero for 4 weeks). The simulation does not draw play or no-play per player-week.
-- Win probability ignores points already scored in games under way, and uses league-average K and DEF.
+- Injury status: Out 0, Doubtful 0.02, Questionable 0.76 of normal for the current week; IR and similar zero for 4 weeks; later weeks use a measured absence chain (7% to miss, 55% to stay out). No usage bump for teammates, no practice-status signal.
+- Live scoring uses a 200-minute game clock and the last refresh; nothing polls, and season odds on Home only update on `simulate`.
+- The trade finder is one-for-one only.
+- Win probability uses league-average K and DEF for what is left to play.
+- The Sleeper blend weight (50%) is untested on clean data: #40, around week 11.
 - DEF scoring matches Sleeper exactly in 52 of 60 (Colgate) and 41 of 60 (YinzBurgh) team-weeks; the rest are off by 1 to 2 points, likely special-teams recoveries. The K projection is no better than the league average; the DEF projection is about 3% better.
 - The season simulation still uses league-average K and DEF per slot.
 - tau is now estimated from history, but the spread of season win totals is untested (no league history).
