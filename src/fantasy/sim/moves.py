@@ -6,8 +6,9 @@ team that receives more players than it gives drops its lowest-value players, an
 receives fewer picks up the best free agents (an assumption, stated in decisions.md).
 """
 
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
+import numpy as np
 import polars as pl
 
 from fantasy.sim.lineup import Player, auto_lineup, lineup_slots
@@ -56,12 +57,16 @@ def free_agents(data: LeagueData, rosters: pl.DataFrame | None = None) -> list[s
     return sorted(available - rostered(data, rosters))
 
 
-def team_total(data: LeagueData, ids: list[str]) -> float:
-    """Expected skill-position points over the rest of the season with best weekly lineups."""
+def team_total(
+    data: LeagueData, ids: list[str], values_by_week: dict[int, dict[str, float]] | None = None
+) -> float:
+    """Expected skill-position points over the rest of the season with best weekly lineups.
+
+    Pass `values_by_week` (from week_values) when scoring many rosters to skip regrouping."""
     slots = lineup_slots(data.roster_positions)
     positions = position_of(data)
     total = 0.0
-    for values in week_values(data).values():
+    for values in (week_values(data) if values_by_week is None else values_by_week).values():
         pool = [Player(i, positions[i], values[i]) for i in ids if i in values and i in positions]
         total += auto_lineup(pool, slots).total
     return total
@@ -104,7 +109,7 @@ def waiver_odds(
     `se_title` is the independent-runs standard error of the title change, an upper bound since
     shared draws make the two runs move together.
     """
-    before, _ = league_odds(data, None, n_sims, seed)
+    before, _ = league_odds(data, None, n_sims, seed, reoptimize=True)
     me = data.roster_ids.index(my_id)
     rows = []
     for w in adds:
@@ -113,7 +118,7 @@ def waiver_odds(
         mine = pl.DataFrame(
             [(my_id, i, position_of(data)[i]) for i in ids], schema=rest.schema, orient="row"
         )
-        after, _ = league_odds(data, pl.concat([rest, mine]), n_sims, seed)
+        after, _ = league_odds(data, pl.concat([rest, mine]), n_sims, seed, reoptimize=True)
         p0, p1 = float(before.p_title[me]), float(after.p_title[me])
         rows.append(
             {
@@ -190,8 +195,8 @@ def evaluate_trade(
     if data.current_week > data.trade_deadline:
         raise ValueError(f"the trade deadline (week {data.trade_deadline}) has passed")
     after_rosters = apply_trade(data, my_id, partner_id, give, get)
-    before, _ = league_odds(data, None, n_sims, seed)
-    after, _ = league_odds(data, after_rosters, n_sims, seed)
+    before, _ = league_odds(data, None, n_sims, seed, reoptimize=True)
+    after, _ = league_odds(data, after_rosters, n_sims, seed, reoptimize=True)
     rows = []
     for side, rid in (("me", my_id), ("them", partner_id)):
         i = data.roster_ids.index(rid)
@@ -209,3 +214,115 @@ def evaluate_trade(
             }
         )
     return pl.DataFrame(rows)
+
+
+POOL_SIZE = 6  # each team's most valuable players considered for a swap
+SCREEN_TOL = 2.0  # rest-of-season points either side may lose in the cheap screen
+SHORTLIST = 8  # swaps per partner that get a full re-simulation
+CONFIRM = 10  # best swaps re-checked on fresh random draws
+FINDER_COLUMNS = {
+    "partner_id": pl.Int64,
+    "give_id": pl.String,
+    "get_id": pl.String,
+    "my_playoff": pl.Float64,
+    "my_title": pl.Float64,
+    "their_playoff": pl.Float64,
+    "their_title": pl.Float64,
+    "se_title": pl.Float64,
+}
+
+
+def trade_pool(data: LeagueData, roster_id: int, n: int = POOL_SIZE) -> list[str]:
+    """A team's n players with the most rest-of-season points (zero-value players excluded)."""
+    ids = team_ids(data, roster_id)
+    values = ros_value(data, ids)
+    ranked = sorted((i for i in ids if values[i] > 0), key=lambda i: (-values[i], i))
+    return ranked[:n]
+
+
+def paired_se(before: np.ndarray, after: np.ndarray) -> float:
+    """Standard error of the change in a 0/1 outcome measured on the same random draws."""
+    diff = after.astype(float) - before.astype(float)
+    return float(diff.std() / np.sqrt(diff.size))
+
+
+def _rerun(
+    data: LeagueData, my_id: int, swaps: list[tuple[int, str, str]], n_sims: int, seed: int
+) -> list[dict[str, float]]:
+    """Both teams' odds change for each (partner, give, get), against one unchanged baseline."""
+    before, _ = league_odds(data, None, n_sims, seed, reoptimize=True)
+    me = data.roster_ids.index(my_id)
+    out = []
+    for partner_id, give, get in swaps:
+        after, _ = league_odds(
+            data,
+            apply_trade(data, my_id, partner_id, [give], [get]),
+            n_sims,
+            seed,
+            reoptimize=True,
+        )
+        them = data.roster_ids.index(partner_id)
+        out.append(
+            {
+                "my_playoff": float(after.p_playoffs[me] - before.p_playoffs[me]),
+                "my_title": float(after.p_title[me] - before.p_title[me]),
+                "their_playoff": float(after.p_playoffs[them] - before.p_playoffs[them]),
+                "their_title": float(after.p_title[them] - before.p_title[them]),
+                "se_title": paired_se(before.champion == me, after.champion == me),
+            }
+        )
+    return out
+
+
+def _both_gain(result: dict[str, float]) -> bool:
+    """Both teams' playoff plus title odds rise. Neither alone works: a team near the playoff
+    ceiling can only gain title odds, and title odds alone are too noisy."""
+    return (
+        result["my_playoff"] + result["my_title"] > 0
+        and result["their_playoff"] + result["their_title"] > 0
+    )
+
+
+def find_trades(data: LeagueData, my_id: int, n_sims: int = 20000, seed: int = 0) -> pl.DataFrame:
+    """One-for-one trades that raise both teams' odds, best for me first.
+
+    Stage 1 screens every swap of two teams' top players by rest-of-season points; stage 2
+    re-simulates the best few per partner and keeps those where both teams' playoff plus title odds
+    rise; stage 3 re-checks the leaders on fresh draws and reports those
+    numbers, so the winner of many candidates is not flattered by its own draws.
+    """
+    if data.current_week > data.trade_deadline:
+        raise ValueError(f"the trade deadline (week {data.trade_deadline}) has passed")
+    values = week_values(data)
+    mine = team_ids(data, my_id)
+    base_mine = team_total(data, mine, values)
+    screened: list[tuple[float, int, str, str]] = []
+    for partner_id in data.roster_ids:
+        if partner_id == my_id:
+            continue
+        theirs = team_ids(data, partner_id)
+        base_theirs = team_total(data, theirs, values)
+        local = []
+        for give in trade_pool(data, my_id):
+            for get in trade_pool(data, partner_id):
+                d_me = team_total(data, [i for i in mine if i != give] + [get], values) - base_mine
+                d_them = (
+                    team_total(data, [i for i in theirs if i != get] + [give], values) - base_theirs
+                )
+                if min(d_me, d_them) >= -SCREEN_TOL:
+                    local.append((min(d_me, d_them), partner_id, give, get))
+        screened += sorted(local, key=lambda t: -t[0])[:SHORTLIST]
+
+    swaps = [(p, g, r) for _, p, g, r in screened]
+    first = _rerun(data, my_id, swaps, n_sims, seed)
+    kept = [(s, r) for s, r in zip(swaps, first, strict=True) if _both_gain(r)]
+    kept.sort(key=lambda sr: (-sr[1]["my_title"], -sr[1]["my_playoff"]))
+    leaders = [s for s, _ in kept[:CONFIRM]]
+    second = _rerun(data, my_id, leaders, n_sims, seed + 1)
+    rows: list[dict[str, Any]] = [
+        {"partner_id": p, "give_id": g, "get_id": r, **res}
+        for (p, g, r), res in zip(leaders, second, strict=True)
+        if _both_gain(res)
+    ]
+    rows.sort(key=lambda r: (-r["my_title"], -r["my_playoff"]))
+    return pl.DataFrame(rows, schema=FINDER_COLUMNS)

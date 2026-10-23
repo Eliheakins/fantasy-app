@@ -14,6 +14,11 @@ def evaluate(league_key: str, partner: int, give: tuple[str, ...], get: tuple[st
     return odds, changes
 
 
+@st.cache_data(ttl=CACHE_SECONDS)
+def find(league_key: str):
+    return data_api.find_trades(league_key)
+
+
 def labels(assets: pl.DataFrame) -> dict[str, str]:
     return {
         r["gsis_id"]: f"{r['full_name']} ({r['position']}, {r['ros_points']:.0f} pts)"
@@ -45,6 +50,42 @@ except FileNotFoundError:
     no_data_warning()
     st.stop()
 
+st.subheader("Find trades")
+st.caption(
+    "One-for-one swaps of each team's top six players that raise both teams' playoff plus "
+    "title odds, best for you first. Managers accept trades based on how they value players, "
+    "which is not modeled. Changes are in percentage points; error is the Monte Carlo error "
+    "of your title change."
+)
+if st.button("Find trades"):
+    try:
+        found = find(league_key)
+    except ValueError as err:
+        st.warning(str(err))
+    else:
+        if found.is_empty():
+            st.info("No one-for-one swap helps both teams right now.")
+        else:
+            percent = ["my_playoff", "my_title", "their_playoff", "their_title", "se_title"]
+            st.dataframe(
+                found.with_columns(pl.col(percent) * 100),
+                hide_index=True,
+                width="stretch",
+                column_config={
+                    "partner": "Partner",
+                    "give": "You give",
+                    "get": "You get",
+                    "my_playoff": st.column_config.NumberColumn("Your playoffs", format="%+.1f%%"),
+                    "my_title": st.column_config.NumberColumn("Your title", format="%+.1f%%"),
+                    "their_playoff": st.column_config.NumberColumn(
+                        "Their playoffs", format="%+.1f%%"
+                    ),
+                    "their_title": st.column_config.NumberColumn("Their title", format="%+.1f%%"),
+                    "se_title": st.column_config.NumberColumn("Error", format="%.2f%%"),
+                },
+            )
+
+st.subheader("Evaluate a trade")
 team_names = dict(zip(partners["roster_id"], partners["team_name"], strict=True))
 partner = st.selectbox("Trade partner", list(team_names), format_func=team_names.get)
 theirs = data_api.trade_assets(league_key, int(partner))

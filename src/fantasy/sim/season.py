@@ -40,6 +40,8 @@ class SeasonResult:
     p_title: np.ndarray
     exp_wins: np.ndarray
     p_seed: np.ndarray  # (T, T): share of runs in which team t takes seed k+1
+    made_playoffs: np.ndarray  # (T, S) bool, per run, for paired error estimates
+    champion: np.ndarray  # (S,) index of the title winner in each run
 
 
 def noise_matrix(roster_ids: list[int], weeks: list[int], n_sims: int, seed: int) -> np.ndarray:
@@ -91,10 +93,16 @@ def simulate_season(inp: SeasonInputs) -> SeasonResult:
     def share(chosen: np.ndarray) -> np.ndarray:
         return np.bincount(chosen.ravel(), minlength=n_teams) / n_sims
 
+    made = np.zeros((n_teams, n_sims), dtype=bool)
+    for k in range(N_PLAYOFF_TEAMS):
+        made[order[:, k], np.arange(n_sims)] = True
+
     return SeasonResult(
         p_playoffs=share(order[:, :N_PLAYOFF_TEAMS]),
         p_bye=share(order[:, :BYE_SEEDS]),
         p_title=share(champion),
         exp_wins=wins.mean(axis=1),
         p_seed=np.stack([share(order[:, k]) for k in range(n_teams)], axis=1),
+        made_playoffs=made,
+        champion=champion,
     )

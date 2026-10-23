@@ -119,3 +119,47 @@ def test_trades_are_refused_after_the_deadline() -> None:
     data = replace(league_with([]), current_week=5, trade_deadline=4)
     with pytest.raises(ValueError, match="deadline"):
         moves.evaluate_trade(data, 1, 2, give=["t1_rb1"], get=["t2_rb1"], n_sims=200)
+
+
+def test_reoptimizing_lets_an_acquired_player_fill_a_traded_starters_slot() -> None:
+    from fantasy.sim import odds
+    from fantasy.sim.lineup import auto_lineup, lineup_slots
+
+    data = league_with([])
+    values = moves.week_values(data)[1]
+    positions = moves.position_of(data)
+    pool = [Player(i, positions[i], values[i]) for i in moves.team_ids(data, 1)]
+    starters = tuple(
+        p for p in pool if p.id in auto_lineup(pool, lineup_slots(data.roster_positions)).players
+    )
+    state = odds.CurrentWeek(realized=0.0, open_players=starters, open_k=0, open_def=0)
+    data = replace(data, current={1: state})
+    after_rosters = moves.apply_trade(data, 1, 2, give=["t1_rb1"], get=["t2_rb1"])
+    kept = odds.build_inputs(data, after_rosters, n_sims=50, seed=0)
+    refilled = odds.build_inputs(data, after_rosters, n_sims=50, seed=0, reoptimize=True)
+    before = odds.build_inputs(data, None, n_sims=50, seed=0, reoptimize=True)
+    assert kept.mean[0, 0] < before.mean[0, 0]  # the lineup set in Sleeper loses the slot
+    assert refilled.mean[0, 0] == pytest.approx(before.mean[0, 0])  # an equal RB takes it
+
+
+def test_finder_refuses_after_the_deadline_and_never_picks_my_own_team() -> None:
+    late = replace(league_with([]), current_week=5, trade_deadline=4)
+    with pytest.raises(ValueError, match="deadline"):
+        moves.find_trades(late, 1)
+    found = moves.find_trades(league_with([], boost={"t2_wr1": 8.0}), 1, n_sims=4000)
+    assert 1 not in found["partner_id"].to_list()
+    for row in found.iter_rows(named=True):
+        assert row["my_playoff"] + row["my_title"] > 0
+        assert row["their_playoff"] + row["their_title"] > 0
+
+
+def test_paired_se_is_zero_for_identical_runs_and_below_the_independent_bound() -> None:
+    import numpy as np
+
+    rng = np.random.default_rng(0)
+    before = rng.random(20000) < 0.2
+    assert moves.paired_se(before, before) == 0.0
+    after = before.copy()
+    after[:200] = ~after[:200]  # a small change made on the same draws
+    independent = (0.2 * 0.8 / 20000 * 2) ** 0.5
+    assert 0 < moves.paired_se(before, after) < independent

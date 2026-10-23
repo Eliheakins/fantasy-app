@@ -49,6 +49,7 @@ def current_state(
             open_players=players,
             open_k=waiting.filter(pl.col("position") == "K").height,
             open_def=waiting.filter(pl.col("position") == "DEF").height,
+            locked_starters=frozenset(scored["gsis_id"].drop_nulls().to_list()),
         )
     return out
 
@@ -166,6 +167,7 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         def_mean=float(def_points.mean()) if enough else DEF_MEAN,
         def_var=float(def_points.var(ddof=1)) if enough else DEF_VAR,
         current=current_state(mp, week_projection, week_pool),
+        played=frozenset(mp.filter(pl.col("points") > 0)["gsis_id"].drop_nulls().to_list()),
         positions=positions,
         trade_deadline=int(league["trade_deadline"] or 99),
         league_id=lid,

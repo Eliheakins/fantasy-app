@@ -14,7 +14,13 @@ from dataclasses import dataclass, field
 import numpy as np
 import polars as pl
 
-from fantasy.sim.lineup import Player, auto_lineup, constant_slot_count, lineup_slots
+from fantasy.sim.lineup import (
+    Player,
+    auto_lineup,
+    constant_slot_count,
+    lineup_slots,
+    lineup_with_locks,
+)
 from fantasy.sim.season import SeasonInputs, SeasonResult, simulate_season
 
 # Persistent per-player error, points a game: sd of 5-game mean error beyond what weekly noise
@@ -32,6 +38,7 @@ class CurrentWeek:
     open_players: tuple[Player, ...]  # set starters whose points are not in yet
     open_k: int
     open_def: int
+    locked_starters: frozenset[str] = frozenset()  # set starters who have already scored
 
 
 @dataclass(frozen=True)
@@ -56,6 +63,7 @@ class LeagueData:
     positions: dict[str, str] = field(default_factory=dict)  # gsis_id -> position, free agents too
     trade_deadline: int = 99  # last week trades are allowed
     league_id: str = ""
+    played: frozenset[str] = frozenset()  # everyone who has scored this week, any roster
 
 
 def lineup_moments(
@@ -85,8 +93,15 @@ def player_error(gsis_id: str, n_sims: int, seed: int) -> np.ndarray:
 
 
 def build_inputs(
-    data: LeagueData, rosters: pl.DataFrame | None, n_sims: int, seed: int
+    data: LeagueData,
+    rosters: pl.DataFrame | None,
+    n_sims: int,
+    seed: int,
+    reoptimize: bool = False,
 ) -> SeasonInputs:
+    """`reoptimize` refills this week's unplayed slots with the best available players instead
+    of keeping the lineup set in Sleeper. Move evaluators use it for both the before and after
+    runs, so an acquired player can fill the slot of one traded away."""
     rosters = data.rosters if rosters is None else rosters
     weeks = list(range(data.current_week, data.playoff_start + PLAYOFF_WEEKS))
     slots = lineup_slots(data.roster_positions)
@@ -110,6 +125,13 @@ def build_inputs(
             if state is not None:
                 # a player traded away this week leaves the lineup; acquired players start benched
                 lineup = [p for p in state.open_players if p.id in position]
+                if reoptimize:
+                    values = by_week.get(week, {})
+                    pool = [Player(g, position[g], values.get(g, 0.0)) for g in position]
+                    best = lineup_with_locks(
+                        pool, slots, set(data.played) & set(position), set(state.locked_starters)
+                    )
+                    lineup = [p for p in pool if p.id in best.players and p.id not in data.played]
                 offset, k_open, def_open = state.realized, state.open_k, state.open_def
             else:
                 values = by_week.get(week, {})
@@ -146,7 +168,11 @@ def build_inputs(
 
 
 def league_odds(
-    data: LeagueData, rosters: pl.DataFrame | None = None, n_sims: int = 20000, seed: int = 0
+    data: LeagueData,
+    rosters: pl.DataFrame | None = None,
+    n_sims: int = 20000,
+    seed: int = 0,
+    reoptimize: bool = False,
 ) -> tuple[SeasonResult, SeasonInputs]:
-    inputs = build_inputs(data, rosters, n_sims, seed)
+    inputs = build_inputs(data, rosters, n_sims, seed, reoptimize)
     return simulate_season(inputs), inputs

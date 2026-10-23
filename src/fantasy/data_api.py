@@ -742,3 +742,41 @@ def freshness(now: datetime | None = None) -> pl.DataFrame:
     schema = ["source", "updated_at", "age_hours"]
     frame = pl.DataFrame(rows, schema=schema, orient="row")
     return frame if rows else pl.DataFrame(schema=_FRESHNESS_SCHEMA)
+
+
+def find_trades(league_key: str) -> pl.DataFrame:
+    """One-for-one trades that raise both teams' odds. May raise ValueError after the deadline.
+
+    Columns: partner, give, get (names with position), my_playoff, my_title, their_playoff,
+    their_title (changes in probability) and se_title (paired Monte Carlo error of my_title).
+    """
+    data, mine = _league(league_key)
+    found = moves.find_trades(data, mine)
+    names, positions = _names(), moves.position_of(data)
+
+    def label(gid: str) -> str:
+        return f"{names.get(gid, gid)} ({positions[gid]})"
+
+    rows = [
+        {
+            "partner": data.team_names[r["partner_id"]],
+            "give": label(r["give_id"]),
+            "get": label(r["get_id"]),
+            **{
+                k: r[k]
+                for k in ("my_playoff", "my_title", "their_playoff", "their_title", "se_title")
+            },
+        }
+        for r in found.iter_rows(named=True)
+    ]
+    schema: dict[str, pl.DataType | type[pl.DataType]] = {
+        "partner": _S,
+        "give": _S,
+        "get": _S,
+        "my_playoff": _F,
+        "my_title": _F,
+        "their_playoff": _F,
+        "their_title": _F,
+        "se_title": _F,
+    }
+    return pl.DataFrame(rows, schema=schema)
