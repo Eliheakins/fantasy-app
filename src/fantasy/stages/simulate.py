@@ -34,7 +34,7 @@ from fantasy.stages.outlook import live_context
 SKILL = ["QB", "RB", "WR", "TE"]
 K_HISTORY_FROM = 2023
 DEF_MEAN, DEF_VAR = 8.0, 25.0  # fallback when too few starting defenses have scored
-MIN_DEF_ROWS = 20  # otherwise use the league's own starting-defense scores (until E3-7)
+MIN_DEF_ROWS = 20  # otherwise use the league's own starting-defense scores
 
 
 def current_state(

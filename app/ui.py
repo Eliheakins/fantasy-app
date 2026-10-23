@@ -48,10 +48,3 @@ def league_picker() -> tuple[str, int]:
     current = int(leagues.filter(leagues["league_key"] == league_key)["current_week"][0] or 1)
     week = st.sidebar.selectbox("Week", range(1, MAX_WEEK + 1), index=current - 1, key="week")
     return str(league_key), int(week)
-
-
-def coming_soon(title: str, story: str, blurb: str) -> None:
-    league_key, week = league_picker()
-    st.title(title)
-    st.caption(f"{league_key} · week {week}")
-    st.info(f"{blurb} Built in {story}.")

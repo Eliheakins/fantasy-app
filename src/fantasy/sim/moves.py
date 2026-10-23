@@ -13,7 +13,7 @@ import numpy as np
 import polars as pl
 
 from fantasy.sim.lineup import Player, auto_lineup, lineup_slots
-from fantasy.sim.odds import HAZARD, PLAYOFF_WEEKS, STAY_OUT, LeagueData, league_odds
+from fantasy.sim.odds import HAZARD, STAY_OUT, LeagueData, league_odds
 from fantasy.sim.value import (
     absence_probs,
     conditional_values,
@@ -33,10 +33,6 @@ class Waiver(NamedTuple):
     delta_mu: (
         float  # extra expected points over the rest of the season, depth and replacement counted
     )
-
-
-def remaining_weeks(data: LeagueData) -> list[int]:
-    return list(range(data.current_week, data.playoff_start + PLAYOFF_WEEKS))
 
 
 def position_of(data: LeagueData) -> dict[str, str]:

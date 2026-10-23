@@ -5,7 +5,7 @@ progress, the starters already set, with realized points counted), its mean, its
 variance (player spread scaled from the projection, with measured correlations between
 teammates), and a persistent per-player error shared by every week of one simulated season.
 
-Constants marked provisional are replaced when the backtest or E3-6 / E3-7 give measured values.
+TAU and the absence rates are measured; DRIFT_SD is an assumption (docs/decisions.md).
 """
 
 import zlib
@@ -28,7 +28,7 @@ from fantasy.sim.value import conditional_values, play_curves, replacement_pool,
 # Persistent per-player error, points a game: sd of 5-game mean error beyond what weekly noise
 # explains, from walk-forward projections 2018 to 2025, averaged over both leagues' scoring.
 TAU = {"QB": 1.5, "RB": 1.7, "WR": 0.8, "TE": 0.55}
-DRIFT_SD = 2.0  # provisional weekly roster drift per team
+DRIFT_SD = 2.0  # assumed weekly roster drift per team, not measured
 PLAYOFF_WEEKS = 3
 # Absences after this week, measured on nflverse 2018 to 2025 for skill players with at least 5
 # touches or targets: a player who played misses the next week 6.9% of the time, and a player who

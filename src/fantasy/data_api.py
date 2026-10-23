@@ -99,7 +99,6 @@ _ENGINE_STUBS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "exp_wins": _F,
         "is_me": _B,
     },
-    "kdef": {"team": _S, "position": _S, "week": _S, "projection": _F},
 }
 
 
@@ -449,10 +448,6 @@ def odds_history(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFra
         return pl.DataFrame(schema={c: store.SCHEMAS["sim_season_history"][c] for c in columns})
     history = _read("sim_season_history", data_dir, area="archive")
     return history.filter(pl.col("league_id") == row["league_id"][0]).select(columns)
-
-
-def kdef(league_key: str, week: int) -> pl.DataFrame:
-    return pl.DataFrame(schema=_ENGINE_STUBS["kdef"])
 
 
 STREAM_WEEKS = 3

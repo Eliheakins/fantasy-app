@@ -105,3 +105,15 @@ def test_future_targets_skip_bye_weeks() -> None:
     plays = games([(2025, 4, "KC", None), (2025, 6, "KC", None), (2025, 5, "BUF", None)])
     out = p.future_targets(form, current, none, plays)
     assert sorted(out.filter(pl.col("gsis_id") == "A")["week"].to_list()) == [4, 6]
+
+
+def test_future_targets_drop_a_player_with_no_current_team() -> None:
+    exp = world()
+    form = p.build_form(exp, p.position_prior(exp))
+    current = pl.DataFrame(
+        {"gsis_id": ["A"], "team": [None], "position": ["QB"]},
+        schema={"gsis_id": pl.String, "team": pl.String, "position": pl.String},
+    )
+    none = pl.DataFrame(schema={"league_id": pl.String, "gsis_id": pl.String})
+    plays = games([(2025, 4, "KC", None)])
+    assert p.future_targets(form, current, none, plays).filter(pl.col("gsis_id") == "A").is_empty()

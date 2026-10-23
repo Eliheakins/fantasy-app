@@ -3,8 +3,8 @@
 Slot eligibility is nested (SUPER_FLEX contains FLEX contains RB, WR and TE, and QB sits inside
 SUPER_FLEX), so filling the narrowest slots first with the best remaining player is optimal.
 `top_lineups` enumerates every lineup and is used to check the greedy fill and, later, to offer
-near-optimal alternatives. K and DEF slots are not filled here: they have no player projections
-until E3-7, so callers add a constant for them.
+near-optimal alternatives. K and DEF slots are not filled here: they are not skill
+players, so callers add their own value for them.
 """
 
 from typing import NamedTuple

@@ -1,8 +1,8 @@
 """Per-league fantasy scoring: Sleeper scoring_settings applied to nflverse stat lines.
 
 Covers offensive players and kickers. Team defenses need points and yards allowed from
-other tables and are scored separately (E3-7); their Sleeper keys are listed in DEFENSE_KEYS so a
-league that uses them still passes the unknown-key check.
+other tables and are scored in stages/streaming.py; their Sleeper keys are listed in DEFENSE_KEYS
+so a league that uses them still passes the unknown-key check.
 """
 
 import polars as pl

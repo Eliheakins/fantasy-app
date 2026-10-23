@@ -6,9 +6,9 @@ For a player and a target game, the projection uses only games played BEFORE it:
   projection = form * context, where context = (team implied total / season average) ** 0.5
 
 Expected points come from nflverse's opportunity model (touchdown and yardage luck removed),
-scored under each league's rules. Players with no history get the position prior. Constants are
-provisional until the backtest (E3-5) tunes them. Quarterbacks, running backs, receivers and tight
-ends only; kickers and defenses are E3-7.
+scored under each league's rules. Players with no history get the position prior. Constants were
+tuned in a 2019 to 2023 / 2024 to 2025 test (docs/decisions.md). Quarterbacks, running backs,
+receivers and tight ends only; kickers and defenses are projected in stages/streaming.py.
 
 Run: uv run python -m fantasy.stages.project
 """
@@ -163,8 +163,9 @@ def future_targets(
     players = (
         pl.concat([last, extra])
         .join(now, on="gsis_id", how="left")
-        .with_columns(team=pl.coalesce("now", "team"))
-        .drop("now")
+        .filter(pl.col("now").is_not_null())  # a player with no current team plays no games
+        .drop("team")
+        .rename({"now": "team"})
     )
     weeks = pl.DataFrame({"week": list(range(week + 1, LAST_WEEK + 1))}, schema={"week": pl.Int64})
     played = games.filter(pl.col("game_type") == "REG").select("season", "week", "team")

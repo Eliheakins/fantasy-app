@@ -1,7 +1,7 @@
 """Check computed points against Sleeper's reported player points for a completed week.
 
 Run: uv run python -m fantasy.stages.validate_scoring [week]
-Defenses are skipped (scored in E3-7). Unmapped players are counted, not compared.
+Defenses are skipped (scored in stages/streaming.py). Unmapped players are counted, not compared.
 """
 
 import json
