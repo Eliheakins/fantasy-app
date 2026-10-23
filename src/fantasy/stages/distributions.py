@@ -48,6 +48,8 @@ def estimate_marginals(res: pl.DataFrame) -> pl.DataFrame:
     usable = res.filter(pl.col("projection") > MIN_PROJECTION)
     for (league_id, position), g in usable.group_by("league_id", "position"):
         ratio = (g["points"] / g["projection"]).to_numpy()
+        resid, projection = g["resid"].to_numpy(), g["projection"].to_numpy()
+        cv = float(np.sqrt((resid**2).sum() / (projection**2).sum()))
         for tau, value in zip(LEVELS, np.quantile(ratio, LEVELS), strict=True):
             rows.append(
                 {
@@ -56,6 +58,7 @@ def estimate_marginals(res: pl.DataFrame) -> pl.DataFrame:
                     "tau": float(tau),
                     "ratio": float(value),
                     "n": len(ratio),
+                    "cv": cv,
                 }
             )
     return pl.DataFrame(rows, schema=store.SCHEMAS["marginals"]).sort(

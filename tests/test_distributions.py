@@ -40,6 +40,7 @@ def test_marginals_are_quantiles_of_actual_over_projection() -> None:
     assert out.height == 99
     assert out["ratio"].to_list() == pytest.approx([1.5] * 99)
     assert out["n"].unique().to_list() == [50]
+    assert out["cv"].unique().to_list() == pytest.approx([0.5])  # residual is half the projection
 
 
 def test_marginals_capture_a_heavy_lower_tail() -> None:

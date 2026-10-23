@@ -126,6 +126,17 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         floats="points team_implied opp_implied total_line temp wind",
     )
     | {"is_home": _B},
+    # written by simulate (area: derived; the history copy is in archive and only ever appended)
+    "sim_season": _cols(
+        strings="league_id team_name",
+        ints="roster_id as_of_week n_sims",
+        floats="p_playoffs p_bye p_title exp_wins",
+    ),
+    "sim_season_history": _cols(
+        strings="league_id team_name run_at",
+        ints="roster_id as_of_week n_sims",
+        floats="p_playoffs p_bye p_title exp_wins",
+    ),
     # written by backtest (area: derived)
     "backtest_metrics": _cols(
         strings="league_id position forecaster",
@@ -133,7 +144,8 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         floats="rmse mae pinball coverage80",
     ),
     # written by distributions (area: derived). ratio = quantile tau of actual / projected points.
-    "marginals": _cols(strings="league_id position", ints="n", floats="tau ratio"),
+    # cv = sqrt(sum of squared residuals / sum of squared projections), the spread scale
+    "marginals": _cols(strings="league_id position", ints="n", floats="tau ratio cv"),
     "correlation_pairs": _cols(
         strings="league_id relation role_a role_b", ints="n", floats="rho_spearman rho"
     ),
