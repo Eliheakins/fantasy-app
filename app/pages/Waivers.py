@@ -12,18 +12,34 @@ except FileNotFoundError:
     st.stop()
 
 st.caption(
-    "Free agents ranked by extra projected points over the rest of the season if added in place "
-    "of your lowest-value player. A shortcut: it ignores bye-week coverage and injuries. "
-    "Playoff and title odds per add come later."
+    "Free agents ranked by extra projected points over the rest of the season, each paired with "
+    "the drop that costs the least (bye weeks included). Playoff and title changes re-run the "
+    "season simulation with the move made, on the same random draws as the unchanged roster. "
+    "The title change carries a Monte Carlo error of up to the value in the last column, so "
+    "title changes smaller than that are noise. Injured players are scaled by their status."
 )
+if adds.is_empty():
+    st.info("No free agent adds expected points to your team.")
+    st.stop()
 st.dataframe(
-    adds.select("full_name", "position", "delta_points", "drop_name"),
+    adds.select(
+        "full_name",
+        "position",
+        "drop_name",
+        "delta_points",
+        "playoff_delta",
+        "title_delta",
+        "se_title",
+    ),
     hide_index=True,
     width="stretch",
     column_config={
         "full_name": "Add",
         "position": "Pos",
-        "delta_points": st.column_config.NumberColumn("Extra points", format="%+.1f"),
         "drop_name": "Drop",
+        "delta_points": st.column_config.NumberColumn("Extra points", format="%+.1f"),
+        "playoff_delta": st.column_config.NumberColumn("Playoffs", format="percent"),
+        "title_delta": st.column_config.NumberColumn("Title", format="percent"),
+        "se_title": st.column_config.NumberColumn("Title error", format="percent"),
     },
 )

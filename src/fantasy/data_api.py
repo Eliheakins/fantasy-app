@@ -61,6 +61,9 @@ _ENGINE_STUBS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "position": _S,
         "drop_name": _S,
         "delta_points": _F,
+        "playoff_delta": _F,
+        "title_delta": _F,
+        "se_title": _F,
     },
     "season_odds": {
         "roster_id": pl.Int64,
@@ -259,6 +262,8 @@ def waivers(league_key: str, week: int = 0) -> pl.DataFrame:
     """Best adds for my team by extra points over the rest of the season (a shortcut)."""
     data, mine = _league(league_key)
     names = _names()
+    adds = [w for w in moves.waiver_candidates(data, mine, top_n=15) if w.delta_mu > MIN_GAIN]
+    odds = {r["gsis_id"]: r for r in moves.waiver_odds(data, mine, adds).iter_rows(named=True)}
     rows = [
         {
             "gsis_id": w.gsis_id,
@@ -266,8 +271,11 @@ def waivers(league_key: str, week: int = 0) -> pl.DataFrame:
             "position": w.position,
             "drop_name": names.get(w.drop_id, w.drop_id),
             "delta_points": w.delta_mu,
+            "playoff_delta": odds[w.gsis_id]["playoff_delta"],
+            "title_delta": odds[w.gsis_id]["title_delta"],
+            "se_title": odds[w.gsis_id]["se_title"],
         }
-        for w in moves.waiver_candidates(data, mine, top_n=15)
+        for w in adds
     ]
     return pl.DataFrame(rows, schema=_ENGINE_STUBS["waivers"])
 
@@ -346,6 +354,7 @@ def kdef(league_key: str, week: int) -> pl.DataFrame:
     return pl.DataFrame(schema=_ENGINE_STUBS["kdef"])
 
 
+MIN_GAIN = 0.05  # expected points below this are not worth a roster move
 LINEUP_SIMS = 20000
 LINEUP_SEED = 11
 KD_SEED_OFFSET = 1000  # K and DEF draws are independent of the player draws

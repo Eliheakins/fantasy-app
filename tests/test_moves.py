@@ -77,6 +77,31 @@ def test_getting_the_better_player_helps_me_and_hurts_them() -> None:
     assert me["wins_after"] > me["wins_before"]
 
 
+def test_best_swap_never_does_worse_than_dropping_the_lowest_value_player() -> None:
+    data = league_with([("fa_wr", "WR", 15.0)])
+    ids = moves.team_ids(data, 1)
+    base = moves.team_total(data, ids)
+    swap = moves.best_swap(data, ids, "fa_wr", base)
+    values = moves.ros_value(data, ids)
+    lowest = min(ids, key=lambda i: (values[i], i))
+    naive = moves.team_total(data, [i for i in ids if i != lowest] + ["fa_wr"]) - base
+    assert swap.drop_id in ids
+    assert swap.delta_mu >= naive
+
+
+def test_a_much_better_free_agent_raises_title_odds_and_a_scrub_does_not() -> None:
+    data = league_with([("fa_great", "WR", 30.0), ("fa_scrub", "WR", 0.5)])
+    ids = moves.team_ids(data, 1)
+    base = moves.team_total(data, ids)
+    adds = [moves.best_swap(data, ids, c, base) for c in ("fa_great", "fa_scrub")]
+    odds = moves.waiver_odds(data, 1, adds, n_sims=8000)
+    out = {r["gsis_id"]: r for r in odds.iter_rows(named=True)}
+    assert out["fa_great"]["title_delta"] > 0
+    assert out["fa_great"]["playoff_delta"] > out["fa_scrub"]["playoff_delta"]
+    assert out["fa_scrub"]["title_delta"] <= 0  # a scrub costs the player dropped for him
+    assert out["fa_great"]["se_title"] > 0
+
+
 def test_a_traded_away_starter_leaves_the_week_in_progress() -> None:
     from fantasy.sim import odds
 

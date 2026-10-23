@@ -222,3 +222,11 @@ Backlog and story IDs: `docs/backlog.md`. `docs/spec/modeling.md` sections 10b a
 - Confidence tag uses the paired share: of games where the chosen and max-points lineups disagree on the win, how often the chosen one wins. 70% or more is clear, 55 to 70 lean, below toss-up; identical choice reads "same as max points".
 - Opponent plays the lineup set in Sleeper (current week), else their best lineup. K and DEF are league-average draws. Points already scored are not used. Injury scaling is a mean multiplier, not a play/no-play draw.
 - Live result, week 7: both leagues come out "same as max points" (Colgate 53.7%, YinzBurgh 50.0%), as the one-pager predicted for most weeks.
+
+## 2026-10-23: Waiver value by re-simulation (E5-2)
+
+- Each shortlisted add is paired with the drop that costs the least expected points over the rest of the season (every rostered player is tried, so bye weeks and position depth count), not just the lowest-value player.
+- The season is re-simulated for the top 15 adds with the same random draws as the unchanged roster. A full season run takes about 0.04 s, so this is instant.
+- `se_title` is the independent-runs binomial error of the title change (about 0.3 points at 20,000 sims). Shared draws make the true error smaller, so it is an upper bound. Most title changes in week 7 are below it; playoff change is the better signal.
+- Adds worth under 0.05 expected points are hidden.
+- Live: Colgate's best add is Daniel Jones for J.J. McCarthy (+9.4 points, +1.6 playoff points). YinzBurgh has almost nothing on the wire.
