@@ -245,3 +245,11 @@ Backlog and story IDs: `docs/backlog.md`. `docs/spec/modeling.md` sections 10b a
 - Effect on odds is small: Colgate 76.0% playoffs, 8.8% title (was 75.5%, 9.0%).
 - Not tested: season win-total spread against real seasons (these leagues have no past seasons), and the estimates exclude injury-driven role changes beyond what the sample contains.
 - #38: the top-8-per-position-week bias is real in direction (QB over-projected about 1 point, RB under about 0.9, TE under about 0.5, same sign in nearly every season) but pooled across positions it is +0.08 a game (2019 to 2025) and 2026's +1.17 is under 2 standard errors. Subtracting or adding the position-by-tier mean from earlier seasons cuts out-of-sample RMSE by 0.2 to 0.3% (14 of 16 cells better). Not worth the extra code; not shipped.
+
+## 2026-10-23: Dashboard polish (E1-5, E4-D1 to E4-D3, E5-D3)
+
+- Sidebar footer shows the age of each data source and the Sleeper and nflverse attribution. An amber banner appears when Sleeper data is over 24 hours old or NFL stats over 48.
+- Lineup: range bars (10 to 90% with the projection as a dot) for the starters, and an "Optimize for" toggle (expected points or win probability) that appears only when the two lineups differ.
+- Home: chance to win this week and a "Do this now" list (up to 3, in order: injured or out starters in your lineup, a lineup change, a waiver add worth at least half a point of playoff odds). Cached for 5 minutes.
+- Outlook: seed distribution for my team (new `sim_seeds` table written by the simulation) and the remaining schedule with expected points and a normal-approximation win chance.
+- Not done: trades never appear in "Do this now" (no partner finder yet).

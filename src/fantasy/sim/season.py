@@ -39,6 +39,7 @@ class SeasonResult:
     p_bye: np.ndarray
     p_title: np.ndarray
     exp_wins: np.ndarray
+    p_seed: np.ndarray  # (T, T): share of runs in which team t takes seed k+1
 
 
 def noise_matrix(roster_ids: list[int], weeks: list[int], n_sims: int, seed: int) -> np.ndarray:
@@ -95,4 +96,5 @@ def simulate_season(inp: SeasonInputs) -> SeasonResult:
         p_bye=share(order[:, :BYE_SEEDS]),
         p_title=share(champion),
         exp_wins=wins.mean(axis=1),
+        p_seed=np.stack([share(order[:, k]) for k in range(n_teams)], axis=1),
     )

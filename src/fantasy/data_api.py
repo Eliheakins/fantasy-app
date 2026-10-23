@@ -15,7 +15,13 @@ from fantasy import store
 from fantasy.config import load_config
 from fantasy.sim import moves
 from fantasy.sim.availability import locked_teams
-from fantasy.sim.lineup import Player, auto_lineup, lineup_slots, lineup_with_locks
+from fantasy.sim.lineup import (
+    Player,
+    auto_lineup,
+    constant_slot_count,
+    lineup_slots,
+    lineup_with_locks,
+)
 from fantasy.sim.odds import LeagueData
 from fantasy.sim.sampler import LEVELS, Slate, correlation_matrix, sample_points
 from fantasy.sim.winprob import choose, swap_candidates
@@ -52,6 +58,7 @@ _ENGINE_STUBS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "win_prob": _F,
         "expected_points": _F,
         "gsis_ids": pl.List(_S),
+        "slots": pl.List(_S),
         "share_better": _F,
         "tag": _S,
     },
@@ -415,12 +422,19 @@ def win_probability(
     options = {"max_points": base, "win_prob": verdict.chosen}
     if sleeper:
         options["sleeper_now"] = sleeper
+
+    def slots_of(chosen: frozenset[str]) -> list[str]:
+        lu = auto_lineup([Player(i, positions[i], mean_of[i]) for i in chosen], slots)
+        slot_by_id = {pid: slot for slot, pid in lu.slots}
+        return [slot_by_id[i] for i in sorted(chosen)]
+
     rows = [
         {
             "option": name,
             "win_prob": verdict.win_prob[ids_],
             "expected_points": sum(mean_of[i] for i in ids_),
             "gsis_ids": sorted(ids_),
+            "slots": slots_of(ids_),
             "share_better": verdict.share_better if name == "win_prob" else 0.5,
             "tag": verdict.tag if name == "win_prob" else "",
         }
@@ -565,3 +579,140 @@ def streamers(league_key: str, kind: str, top_n: int = 8) -> pl.DataFrame:
         [rows.filter(pl.col("is_mine")), free.sort("next_three", descending=True).head(top_n)]
     )
     return keep.select(*_ENGINE_STUBS["streamers"]).sort("next_three", descending=True)
+
+
+def seed_distribution(league_key: str) -> pl.DataFrame:
+    """Chance my team finishes each regular-season seed (1 is best): columns seed, p."""
+    row = leagues().filter(pl.col("league_key") == league_key)
+    if row.is_empty():
+        return pl.DataFrame(schema={"seed": pl.Int64, "p": pl.Float64})
+    seeds = _read("sim_seeds", store.DATA_DIR, area="derived")
+    mine = seeds.filter(
+        (pl.col("league_id") == row["league_id"][0]) & (pl.col("roster_id") == row["roster_id"][0])
+    )
+    return mine.select("seed", "p").sort("seed")
+
+
+def schedule(league_key: str) -> pl.DataFrame:
+    """My remaining regular-season games: opponent, both teams' expected points and my chance.
+
+    The chance is a normal approximation from each lineup's mean and spread (injury-scaled
+    projections, K and DEF at league averages); the season simulation is the sharper number.
+    """
+    from scipy.stats import norm
+
+    from fantasy.sim.odds import lineup_moments
+
+    data, mine = _league(league_key)
+    positions, by_week = moves.position_of(data), moves.week_values(data)
+    slots = lineup_slots(data.roster_positions)
+    counts = constant_slot_count(data.roster_positions)
+    kd_mean = counts.get("K", 0) * data.k_mean + counts.get("DEF", 0) * data.def_mean
+    kd_var = counts.get("K", 0) * data.k_var + counts.get("DEF", 0) * data.def_var
+
+    def moments(roster_id: int, week: int) -> tuple[float, float]:
+        values = by_week.get(week, {})
+        pool = [
+            Player(i, positions[i], values[i])
+            for i in moves.team_ids(data, roster_id)
+            if i in values
+        ]
+        best = auto_lineup(pool, slots)
+        chosen = [p for p in pool if p.id in best.players]
+        mean, var, persistent = lineup_moments(chosen, data.cv, data.pair_rho)
+        return mean + kd_mean, var + persistent + kd_var
+
+    rows = []
+    for week in range(data.current_week, data.playoff_start):
+        for a, b in data.pairings.get(week, []):
+            if mine not in (a, b):
+                continue
+            opp = b if a == mine else a
+            (m1, v1), (m2, v2) = moments(mine, week), moments(opp, week)
+            chance = float(norm.cdf((m1 - m2) / (v1 + v2) ** 0.5))
+            rows.append((week, data.team_names[opp], m1, m2, chance))
+    schema = ["week", "opponent", "my_points", "their_points", "win_chance"]
+    return pl.DataFrame(rows, schema=schema, orient="row")
+
+
+_FRESHNESS_SCHEMA: dict[str, pl.DataType | type[pl.DataType]] = {
+    "source": _S,
+    "updated_at": pl.Datetime("us", "UTC"),
+    "age_hours": _F,
+}
+UNAVAILABLE = frozenset({"Out", "Doubtful", "IR", "PUP", "Sus", "NFI"})
+LINEUP_GAP = 1.0  # expected points below the best lineup before the gap is worth a note
+WAIVER_PLAYOFF_GAIN = 0.005  # playoff odds change that makes an add worth mentioning
+
+
+def actions(league_key: str, n: int = 3) -> pl.DataFrame:
+    """The most useful things to do now, most urgent first: kind and text.
+
+    Order: injured or out players in your lineup, a lineup change, then a waiver add.
+    """
+    rows = lineup(league_key)
+    found: list[tuple[str, str]] = []
+    if not rows.is_empty():
+        for r in rows.filter(pl.col("starting_now") & ~pl.col("locked")).iter_rows(named=True):
+            if r["injury"] in UNAVAILABLE:
+                found.append(("Injury", f"{r['full_name']} is {r['injury']} and in your lineup"))
+        known = bool(rows["starting_now"].any())
+        gap = float(
+            rows.filter(pl.col("recommended"))["projection"].to_numpy().sum()
+            - rows.filter(pl.col("starting_now"))["projection"].to_numpy().sum()
+        )
+        by_name = rows["full_name"]
+        if known and gap >= LINEUP_GAP:
+            start = by_name.filter(rows["recommended"] & ~rows["starting_now"]).to_list()
+            sit = by_name.filter(rows["starting_now"] & ~rows["recommended"]).to_list()
+            found.append(
+                ("Lineup", f"Start {', '.join(start)} over {', '.join(sit)} (+{gap:.1f} points)")
+            )
+    odds = win_probability(league_key)
+    if not odds.is_empty():
+        by_option = {r["option"]: r for r in odds.iter_rows(named=True)}
+        pick, best = by_option["win_prob"], by_option["max_points"]
+        if pick["tag"] != "same as max points":
+            names = dict(zip(rows["gsis_id"], rows["full_name"], strict=True))
+            ins = [names[i] for i in set(pick["gsis_ids"]) - set(best["gsis_ids"])]
+            out = [names[i] for i in set(best["gsis_ids"]) - set(pick["gsis_ids"])]
+            found.append(
+                (
+                    "Win probability",
+                    f"{pick['tag'].capitalize()}: start {', '.join(ins)} over {', '.join(out)} "
+                    f"({pick['win_prob']:.1%} vs {best['win_prob']:.1%} to win)",
+                )
+            )
+    adds = waivers(league_key)
+    if not adds.is_empty():
+        top = adds.sort("playoff_delta", descending=True).row(0, named=True)
+        if top["playoff_delta"] >= WAIVER_PLAYOFF_GAIN:
+            found.append(
+                (
+                    "Waiver",
+                    f"Add {top['full_name']}, drop {top['drop_name']}: "
+                    f"{top['playoff_delta']:+.1%} playoff odds, {top['delta_points']:+.1f} points",
+                )
+            )
+    return pl.DataFrame(found[:n], schema={"kind": _S, "text": _S}, orient="row")
+
+
+FRESHNESS_SOURCES = (
+    ("Sleeper", "leagues", "raw"),
+    ("NFL stats", "nfl_player_stats", "raw"),
+    ("Simulation", "sim_season", "derived"),
+)
+
+
+def freshness(now: datetime | None = None) -> pl.DataFrame:
+    """When each data source was last written: source, updated_at (UTC), age_hours."""
+    now = now or datetime.now(UTC)
+    rows = []
+    for label, table, area in FRESHNESS_SOURCES:
+        path = store.table_path(table, area)
+        if path.exists():
+            updated = datetime.fromtimestamp(path.stat().st_mtime, UTC)
+            rows.append((label, updated, (now - updated).total_seconds() / 3600))
+    schema = ["source", "updated_at", "age_hours"]
+    frame = pl.DataFrame(rows, schema=schema, orient="row")
+    return frame if rows else pl.DataFrame(schema=_FRESHNESS_SCHEMA)

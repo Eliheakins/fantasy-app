@@ -141,6 +141,7 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         ints="roster_id as_of_week n_sims",
         floats="p_playoffs p_bye p_title exp_wins",
     ),
+    "sim_seeds": _cols(strings="league_id", ints="roster_id seed", floats="p"),
     "sim_season_history": _cols(
         strings="league_id team_name run_at",
         ints="roster_id as_of_week n_sims",

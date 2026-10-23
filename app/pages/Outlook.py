@@ -31,6 +31,38 @@ st.dataframe(
     },
 )
 
+try:
+    seeds = data_api.seed_distribution(league_key)
+    games = data_api.schedule(league_key)
+except FileNotFoundError:
+    seeds, games = pl.DataFrame(), pl.DataFrame()
+if not seeds.is_empty():
+    st.subheader("Where you finish")
+    st.caption(
+        "Chance of each regular-season seed. Seeds 1 to 6 make the playoffs, 1 and 2 get byes."
+    )
+    st.bar_chart(seeds.with_columns(pl.col("seed").cast(pl.String)), x="seed", y="p")
+if not games.is_empty():
+    st.subheader("Your remaining schedule")
+    st.caption(
+        "Expected points are each team's best lineup this week, with K and DEF at league "
+        "averages. The win chance is a quick normal approximation, not the full simulation."
+    )
+    st.dataframe(
+        games,
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "week": "Week",
+            "opponent": "Opponent",
+            "my_points": st.column_config.NumberColumn("You", format="%.1f"),
+            "their_points": st.column_config.NumberColumn("Them", format="%.1f"),
+            "win_chance": st.column_config.ProgressColumn(
+                "Win chance", format="percent", min_value=0.0, max_value=1.0
+            ),
+        },
+    )
+
 history = data_api.odds_history(league_key)
 mine = odds.filter(pl.col("is_me"))
 if not mine.is_empty() and history["run_at"].n_unique() >= 2:

@@ -175,11 +175,15 @@ def append_history(latest: pl.DataFrame, data_dir: Path = store.DATA_DIR) -> pl.
 def run(n_sims: int | None = None) -> pl.DataFrame:
     cfg = load_config()
     n_sims = n_sims or cfg.n_sims
-    rows = []
+    rows, seed_rows = [], []
     for league in store.read_table("leagues", "raw").iter_rows(named=True):
         data = load_league_data(league)
         result, _ = league_odds(data, n_sims=n_sims)
         for i, roster_id in enumerate(data.roster_ids):
+            seed_rows += [
+                (league["league_id"], roster_id, k + 1, float(result.p_seed[i, k]))
+                for k in range(len(data.roster_ids))
+            ]
             rows.append(
                 {
                     "league_id": league["league_id"],
@@ -195,6 +199,9 @@ def run(n_sims: int | None = None) -> pl.DataFrame:
             )
     latest = pl.DataFrame(rows, schema=store.SCHEMAS["sim_season"])
     store.write_table("sim_season", latest)
+    store.write_table(
+        "sim_seeds", pl.DataFrame(seed_rows, schema=store.SCHEMAS["sim_seeds"], orient="row")
+    )
     append_history(latest)
     return latest
 

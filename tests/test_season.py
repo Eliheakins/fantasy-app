@@ -43,6 +43,14 @@ def test_probabilities_sum_to_six_playoff_spots_two_byes_and_one_title() -> None
     assert res.p_title.sum() == pytest.approx(1.0)
 
 
+def test_seed_shares_form_a_doubly_stochastic_matrix_that_matches_the_odds() -> None:
+    res = simulate_season(inputs(np.linspace(90, 110, N_TEAMS), 20.0))
+    assert res.p_seed.sum(axis=0) == pytest.approx(1.0)  # each seed goes to exactly one team
+    assert res.p_seed.sum(axis=1) == pytest.approx(1.0)  # each team takes exactly one seed
+    assert res.p_seed[:, :6].sum(axis=1) == pytest.approx(res.p_playoffs)
+    assert res.p_seed[:, :2].sum(axis=1) == pytest.approx(res.p_bye)
+
+
 def test_equal_teams_get_equal_odds_within_monte_carlo_error() -> None:
     res = simulate_season(inputs(np.full(N_TEAMS, 100.0), 20.0, n_sims=20000))
     assert res.p_playoffs == pytest.approx(np.full(N_TEAMS, 0.75), abs=0.02)
