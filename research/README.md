@@ -30,7 +30,7 @@ baseline. A feature ships only if it improves held-out error.
 | `qb_test.py` | Does the starting QB being out change teammates' points? | No |
 | `replication.py` | Do the shipped environment effects keep their sign in 2019-2023 and 2024 on? | Opposing corner out and pass efficiency do; sack rate does not (switched off) |
 | `team_score_backtest.py` | Is the weekly team-score spread calibrated on seasons the fit did not see? | Pooled spread 20% too wide; spread by size tier fixed most of it |
-| `fantasydata_blend.py` | Does an outside weekly projection beat ours, and what blend weight is best, on past seasons? | FantasyData beats ours in all of 2019 to 2021; best weight on it 0.75 to 0.9 |
+| `fd_panel.py`, `fd_tests.py` | What does an outside weekly projection (FantasyData, open set, 2019-2021) tell us about ours? Nine tests, leave-one-season-out | It beats ours (6.71 vs 6.99); best weight on it 0.8, the same in every segment; the game-script exponent was too high (0.5 to 0.25, shipped) |
 | `slot_test.py` | Does a slot corner being out help slot receivers? | Not measurable with free data (no alignment) |
 | `h2h_test.py` | Does history against a specific opponent predict points, divisional or not? | No out-of-sample signal |
 | `inj_explore.py` | How do injury status, practice report and injury type predict playing? | Became `stages/injuries.py` |

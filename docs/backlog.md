@@ -16,7 +16,7 @@ One story is one working session. Engine and dashboard stories are merged per ep
 
 **Added in the cleanup pass:** point-valued effects are scaled to each league's scoring; the app binds to localhost; the stale banner names projection layers whose stage has not run; teamless players are no longer projected; 21 more tests (205 total).
 
-**Fourth working session (phase 4):** per-player draw streams in the sampler, an effect replication rule, a calibration check with out-of-fit curves, a historical team-score test and a weekly spread by size tier (the spread was 20% too wide), and small trade-page fixes. Numbers in `decisions.md`.
+**Fourth working session (phase 4):** per-player draw streams in the sampler, an effect replication rule, a calibration check with out-of-fit curves, a historical team-score test and a weekly spread by size tier (the spread was 20% too wide), small trade-page fixes, and nine tests on an open historical projection set (FantasyData, 2019-2021) that moved the game-script exponent from 0.5 to 0.25. Numbers in `decisions.md`.
 
 **Known gaps:**
 - Injury status: measured by status, practice report and injury type for the next four games; IR and similar are zero for 4 games. Defender injury curves reuse the skill-player curves. Vacancy bumps are shared equally among a team's receivers or backs.

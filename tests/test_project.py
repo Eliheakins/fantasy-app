@@ -91,7 +91,7 @@ def test_debut_player_gets_the_position_prior() -> None:
 
 def test_context_scales_by_implied_total_to_the_exponent() -> None:
     g = games([(2025, 3, "KC", 30.0), (2025, 3, "BUF", 10.0)])  # season average 20
-    assert projection(world(), target("A", 3), g) == pytest.approx(55 / 7 * 1.5**0.5)
+    assert projection(world(), target("A", 3), g) == pytest.approx(55 / 7 * 1.5**0.25)
 
 
 def test_future_targets_skip_bye_weeks() -> None:

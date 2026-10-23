@@ -3,7 +3,7 @@
 For a player and a target game, the projection uses only games played BEFORE it:
   shrunk(x)  = (n * ewma(x) + K * position_prior) / (n + K), n = games played (capped)
   form       = 0.5 * shrunk(expected points) + 0.5 * shrunk(actual points)
-  projection = form * context, where context = (team implied total / season average) ** 0.5
+  projection = form * context, where context = (team implied total / season average) ** 0.25
 
 Expected points come from nflverse's opportunity model (touchdown and yardage luck removed),
 scored under each league's rules. Players with no history get the position prior. Constants were
@@ -24,7 +24,7 @@ HALF_LIFE = 4.0  # games
 SHRINK_K = 3.0  # games of prior weight
 EXPECTED_WEIGHT = 0.5  # blend of expected and actual points; 0.5 won a 2019-2023 / 2024-2025 test
 N_CAP = 10
-CONTEXT_EXPONENT = 0.5  # 0.1 was tried: with the size calibration refit it scored no better
+CONTEXT_EXPONENT = 0.25  # 0.5 over-reacts to the implied total; see docs/decisions.md
 FIRST_PROJECTED_SEASON = 2019  # the first season with a prior season to lean on
 LAST_WEEK = 17
 POSITIONS = ["QB", "RB", "WR", "TE"]
