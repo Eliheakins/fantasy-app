@@ -141,6 +141,8 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         ints="roster_id as_of_week n_sims",
         floats="p_playoffs p_bye p_title exp_wins",
     ),
+    # written by sleeper_projections (area: archive, only ever appended)
+    "sleeper_proj_snapshots": _cols(strings="fetched_at sleeper_id stats", ints="week"),
     "sim_seeds": _cols(strings="league_id", ints="roster_id seed", floats="p"),
     "sim_season_history": _cols(
         strings="league_id team_name run_at",

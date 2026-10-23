@@ -253,3 +253,11 @@ Backlog and story IDs: `docs/backlog.md`. `docs/spec/modeling.md` sections 10b a
 - Home: chance to win this week and a "Do this now" list (up to 3, in order: injured or out starters in your lineup, a lineup change, a waiver add worth at least half a point of playoff odds). Cached for 5 minutes.
 - Outlook: seed distribution for my team (new `sim_seeds` table written by the simulation) and the remaining schedule with expected points and a normal-approximation win chance.
 - Not done: trades never appear in "Do this now" (no partner finder yet).
+
+## 2026-10-23: E3-8 replaced: Sleeper's own projections instead of FantasyPros ranks
+
+- FantasyPros ranks via nflverse: the data belongs to FantasyPros and is governed by their terms, which could not be read (the terms pages render with JavaScript). Their API is personal and non-commercial only. Dropped.
+- Found instead: Sleeper serves weekly stat projections (company RotoWire) at `api.sleeper.com/projections/nfl/<season>/<week>`, no key, undocumented. The stat keys match Sleeper's scoring keys, so they can be scored under each league's own rules.
+- Weeks 1 to 6 of 2026, scored with each league's rules, against actual points (3,586 player-weeks, offense only): RMSE 6.01 Sleeper vs 6.26 ours (blend 5.94), MAE 4.43 vs 4.81. Correlation 0.86. Better in every position except TE (tied).
+- NOT a clean test: past weeks are re-stamped the Tuesday after the games, and Sleeper's projection averaged 1.3 points for players who scored 0 versus 8.2 for those who played, which looks like inactive-player knowledge that may be after the fact. Part of the gain may be legitimate injury information, part leakage; cannot tell.
+- Action: `make refresh` now archives the current week and next three (`sleeper_projections` stage, table `sleeper_proj_snapshots`, append only). After about four weeks of clean pre-game snapshots, rerun the comparison. Until then nothing uses them. Risk: undocumented endpoint, could change or disappear.

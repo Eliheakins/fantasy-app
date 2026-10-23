@@ -2,6 +2,7 @@
 
 refresh:
 	uv run python -m fantasy.stages.sync_sleeper
+	uv run python -m fantasy.stages.sleeper_projections
 	uv run python -m fantasy.stages.ingest_nfl
 	uv run python -m fantasy.stages.crosswalk
 	uv run python -m fantasy.stages.score
