@@ -8,9 +8,9 @@ refresh:
 	uv run python -m fantasy.stages.score
 	uv run python -m fantasy.stages.streaming
 	uv run python -m fantasy.stages.project
+	uv run python -m fantasy.stages.distributions
 	uv run python -m fantasy.stages.injuries
 	uv run python -m fantasy.stages.outlook
-	uv run python -m fantasy.stages.distributions
 	uv run python -m fantasy.stages.simulate
 
 app:

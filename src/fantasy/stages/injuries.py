@@ -15,6 +15,7 @@ from typing import NamedTuple
 import polars as pl
 
 from fantasy import store
+from fantasy.stages.distributions import calibrated
 
 HORIZON = 4
 SHRINK = 30.0  # pseudo-observations pulling a cell toward its parent
@@ -223,9 +224,11 @@ def run() -> int:
         store.read_table("player_points")
         .filter(pl.col("league_id") == league_id)
         .select("gsis_id", "season", "week", "points"),
-        store.read_table("proj_baseline")
-        .filter((pl.col("league_id") == league_id) & ~pl.col("is_future") & pl.col("has_history"))
-        .select("gsis_id", "season", "week", pl.col("projection").alias("proj")),
+        calibrated(
+            store.read_table("proj_baseline").filter(
+                (pl.col("league_id") == league_id) & ~pl.col("is_future") & pl.col("has_history")
+            )
+        ).select("gsis_id", "season", "week", pl.col("projection").alias("proj")),
     )
     table = estimate(panel)
     store.write_table("injury_effects", table)

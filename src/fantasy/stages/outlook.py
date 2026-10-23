@@ -19,6 +19,7 @@ import polars as pl
 
 from fantasy import store
 from fantasy.sim.outlook import MIN_SHARE, Context
+from fantasy.stages.distributions import calibrated
 
 HALF_LIFE = 4.0  # games, for the usage averages
 RIDGE = 1.0
@@ -265,10 +266,14 @@ def run() -> int:
         store.read_table("player_points")
         .filter(pl.col("league_id") == league_id)
         .select("gsis_id", "season", "week", "points"),
-        store.read_table("proj_baseline")
-        .filter((pl.col("league_id") == league_id) & ~pl.col("is_future") & pl.col("has_history"))
-        .filter(pl.col("season") < season)
-        .select("gsis_id", "season", "week", "position", "team", "projection"),
+        calibrated(
+            store.read_table("proj_baseline").filter(
+                (pl.col("league_id") == league_id)
+                & ~pl.col("is_future")
+                & pl.col("has_history")
+                & (pl.col("season") < season)
+            )
+        ).select("gsis_id", "season", "week", "position", "team", "projection"),
     )
     table = estimate(panel)
     store.write_table("outlook_effects", table)

@@ -23,6 +23,7 @@ from fantasy.sim.odds import CurrentWeek, LeagueData, league_odds
 from fantasy.sim.outlook import apply_outlook, effects_dict
 from fantasy.sim.schedule import pairings, standings
 from fantasy.stages.crosswalk import TEAM_MAP
+from fantasy.stages.distributions import calibrated
 from fantasy.stages.injuries import PRACTICE
 from fantasy.stages.outlook import live_context
 
@@ -180,8 +181,11 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         .filter(pl.col("gsis_id").is_not_null())
     )
     flags = _injury_flags(flagged, current)
+    # our baseline is calibrated by size before it is blended with Sleeper's own projections
     blended = _blend_sleeper(
-        future.select("gsis_id", "week", "position", "team", "projection"), lid, id_map
+        calibrated(future).select("gsis_id", "week", "position", "team", "projection"),
+        lid,
+        id_map,
     )
     try:
         model = InjuryModel(store.read_table("injury_effects"))
@@ -202,7 +206,9 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         .filter(pl.col("gsis_id_right").is_not_null())
     )
     positions = dict(zip(active["gsis_id_right"], active["position"], strict=True))
-    marginals = store.read_table("marginals").filter(pl.col("league_id") == lid)
+    marginals = store.read_table("marginals").filter(
+        (pl.col("league_id") == lid) & (pl.col("tier") == -1)
+    )
     cv = dict(marginals.select("position", "cv").unique().iter_rows())
     same_team = store.read_table("correlation_pairs").filter(
         (pl.col("league_id") == lid) & (pl.col("relation") == "same_team")

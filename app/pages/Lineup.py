@@ -25,12 +25,21 @@ except FileNotFoundError:
 by_option = {} if odds is None else {r["option"]: r for r in odds.iter_rows(named=True)}
 pick, best = by_option.get("win_prob"), by_option.get("max_points")
 differs = pick is not None and pick["tag"] != "same as max points"
+LABELS = {
+    "Expected points": "max_points",
+    "Win probability": "win_prob",
+    "Max ceiling": "ceiling",
+    "Max floor": "floor",
+}
 
 objective = "Expected points"
-if differs:
-    objective = st.radio("Optimize for", ["Expected points", "Win probability"], horizontal=True)
-if objective == "Win probability" and pick is not None:
-    slot_of = dict(zip(pick["gsis_ids"], pick["slots"], strict=True))
+if best is not None:
+    if best["script"]:
+        st.subheader(best["script"])
+    objective = st.radio("Optimize for", list(LABELS), horizontal=True, key="lineup_objective")
+shown_option = by_option.get(LABELS[objective]) if best is not None else None
+if shown_option is not None and LABELS[objective] != "max_points":
+    slot_of = dict(zip(shown_option["gsis_ids"], shown_option["slots"], strict=True))
     rows = rows.with_columns(
         pl.col("gsis_id").is_in(list(slot_of)).alias("recommended"),
         pl.col("gsis_id").replace_strict(slot_of, default="BN").alias("slot"),
@@ -47,12 +56,9 @@ cols[0].metric("Lineup shown", f"{best_total:.1f} pts")
 if known:
     gap = current_total - best_total
     cols[1].metric("Set in Sleeper now", f"{current_total:.1f} pts", delta=f"{gap:+.1f}")
-if best is not None and pick is not None:
-    shown = pick if objective == "Win probability" else best
-    cols[2].metric("Chance to win", f"{shown['win_prob']:.1%}")
-    if not differs:
-        st.caption("No swap raises the win probability: the highest-scoring lineup is also best.")
-    else:
+if best is not None and shown_option is not None:
+    cols[2].metric("Chance to win", f"{shown_option['win_prob']:.1%}")
+    if differs:
         ins = [name_of[i] for i in set(pick["gsis_ids"]) - set(best["gsis_ids"])]
         out = [name_of[i] for i in set(best["gsis_ids"]) - set(pick["gsis_ids"])]
         st.info(
@@ -60,6 +66,32 @@ if best is not None and pick is not None:
             f"({pick['win_prob']:.1%} vs {best['win_prob']:.1%}). In games where the two "
             f"lineups disagree, this one wins {pick['share_better']:.0%} of the time."
         )
+    else:
+        st.caption(
+            "No swap raises the win probability enough to matter: one flex slot is a small part "
+            "of a team score that spreads about 30 points, so trading expected points for "
+            "upside rarely pays. The comparison below shows what each choice does."
+        )
+    comparison = odds.filter(pl.col("option") != "sleeper_now").with_columns(
+        pl.col("option").replace_strict({v: k for k, v in LABELS.items()}, default=pl.col("option"))
+    )
+    st.dataframe(
+        comparison.select("option", "win_prob", "floor", "median", "ceiling"),
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "option": "Lineup",
+            "win_prob": st.column_config.NumberColumn("Chance to win", format="percent"),
+            "floor": st.column_config.NumberColumn("Floor (10%)", format="%.0f"),
+            "median": st.column_config.NumberColumn("Median", format="%.0f"),
+            "ceiling": st.column_config.NumberColumn("Ceiling (90%)", format="%.0f"),
+        },
+    )
+    st.caption(
+        "Team score including points already scored and K and DEF. Floor and ceiling are the "
+        "10th and 90th percentiles. Win probability, ceiling and floor lineups are chosen on "
+        "half the simulated games and scored on the other half."
+    )
 
 
 def change(row: dict) -> str:

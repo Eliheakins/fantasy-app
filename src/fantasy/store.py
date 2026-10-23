@@ -163,7 +163,8 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     ),
     # written by distributions (area: derived). ratio = quantile tau of actual / projected points.
     # cv = sqrt(sum of squared residuals / sum of squared projections), the spread scale
-    "marginals": _cols(strings="league_id position", ints="n", floats="tau ratio cv"),
+    "marginals": _cols(strings="league_id position", ints="n tier", floats="tau ratio cv proj_max"),
+    "projection_calibration": _cols(strings="league_id position", ints="n", floats="center factor"),
     "correlation_pairs": _cols(
         strings="league_id relation role_a role_b", ints="n", floats="rho_spearman rho"
     ),

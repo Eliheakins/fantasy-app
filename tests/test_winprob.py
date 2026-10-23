@@ -75,3 +75,56 @@ def test_choose_says_same_when_the_baseline_is_best():
         [a, b], baseline=a, totals=totals, opponent=95 + 5 * rng.standard_normal(20_000)
     )
     assert verdict.chosen == a and verdict.tag == "same as max points"
+
+
+def test_search_climbs_through_successive_improvements_and_returns_everything_it_saw() -> None:
+    from fantasy.sim.winprob import search
+
+    a, b, c, d = "a", "b", "c", "d"
+    base, mid, top = frozenset({a, b}), frozenset({c, b}), frozenset({c, d})
+    worth = {base: 0.40, mid: 0.45, top: 0.50, frozenset({a, d}): 0.30}
+    graph = {base: [mid, frozenset({a, d})], mid: [top, base], top: [mid]}
+    found = search(base, lambda x: graph[x], lambda x: worth.get(x, 0.0))
+    assert top in found and mid in found and frozenset({a, d}) in found
+
+
+def test_search_stops_when_no_neighbor_improves_enough() -> None:
+    from fantasy.sim.winprob import search
+
+    base, other = frozenset({"a"}), frozenset({"b"})
+    found = search(base, lambda x: [other], lambda x: 0.5 + (0.0005 if x == other else 0.0))
+    assert set(found) == {base, other}  # looked at, but not moved to (gain below min_gain)
+
+
+def test_ceiling_and_floor_picks_favor_spread_and_steadiness() -> None:
+    from fantasy.sim.winprob import pick_by_quantile
+
+    rng = np.random.default_rng(3)
+    steady, boom = frozenset({"s"}), frozenset({"b"})
+    totals = {
+        steady: 100 + 5 * rng.standard_normal(20_000),
+        boom: 100 + 25 * rng.standard_normal(20_000),
+    }
+    assert pick_by_quantile([steady, boom], totals, 0.9)[0] == boom
+    assert pick_by_quantile([steady, boom], totals, 0.1)[0] == steady
+    chosen, held = pick_by_quantile([steady, boom], totals, 0.9)
+    assert held[chosen] > held[steady]  # and it holds on the half not used to choose
+
+
+def test_the_sampler_gives_each_size_tier_its_own_floor_and_ceiling() -> None:
+    slate = Slate(
+        ids=("small", "big"),
+        positions=("WR", "WR"),
+        teams=("X", "Y"),
+        roles=("WR1", "WR1"),
+        means=(10.0, 10.0),
+        tiers=(0, 2),
+    )
+    corr = correlation_matrix(slate, {}, {}, {})
+    steady = 0.7 + 0.6 * LEVELS  # ratios from 0.7 to 1.3
+    duds = np.where(LEVELS < 0.8, 0.1, 3.0 + 10 * (LEVELS - 0.8))  # mostly 0.1, then a long tail
+    draws = sample_points(slate, corr, {"WR": steady, "WR:0": duds, "WR:2": steady}, 50_000, 0)
+    assert (
+        np.quantile(draws[:, 0], 0.5) < 2.0 < np.quantile(draws[:, 1], 0.5)
+    )  # small median far below
+    assert np.quantile(draws[:, 0], 0.97) > 3 * np.quantile(draws[:, 1], 0.97) * 0.7  # but upside

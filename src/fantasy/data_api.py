@@ -5,6 +5,7 @@ Engine outputs that do not exist yet (lineup, waivers, odds, trades) return empt
 """
 
 import json
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from fantasy import store
 from fantasy.config import load_config
 from fantasy.sim import moves
 from fantasy.sim.availability import LONG_TERM, locked_teams
+from fantasy.sim.calibration import tier_of
 from fantasy.sim.lineup import (
     Player,
     auto_lineup,
@@ -24,7 +26,7 @@ from fantasy.sim.lineup import (
 )
 from fantasy.sim.odds import CurrentWeek, LeagueData
 from fantasy.sim.sampler import LEVELS, Slate, correlation_matrix, sample_points
-from fantasy.sim.winprob import choose, swap_candidates
+from fantasy.sim.winprob import choose, pick_by_quantile, search, swap_candidates
 
 POSITION_ORDER = {"QB": 0, "RB": 1, "WR": 2, "TE": 3, "K": 4, "DEF": 5}
 ROSTER_COLUMNS = [
@@ -64,6 +66,10 @@ _ENGINE_STUBS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "slots": pl.List(_S),
         "share_better": _F,
         "tag": _S,
+        "floor": _F,
+        "median": _F,
+        "ceiling": _F,
+        "script": _S,
     },
     "streamers": {
         "unit": _S,
@@ -194,8 +200,10 @@ def lineup(league_key: str, week: int = 0, now: datetime | None = None) -> pl.Da
         pl.col("league_id") == data.league_id
     )
     ratio = {
-        (r["position"], round(r["tau"], 2)): r["ratio"] for r in marginals.iter_rows(named=True)
+        (r["position"], r["tier"], round(r["tau"], 2)): r["ratio"]
+        for r in marginals.iter_rows(named=True)
     }
+    edges = _tier_edges(marginals)
     starting: set[str] = set()
     if week == data.current_week:
         ids = _read("id_map", store.DATA_DIR, area="derived").select("sleeper_id", "gsis_id")
@@ -238,8 +246,8 @@ def lineup(league_key: str, week: int = 0, now: datetime | None = None) -> pl.Da
                 "full_name": names.get(p.id, p.id),
                 "position": p.position,
                 "projection": p.value,
-                "p10": p.value * ratio.get((p.position, 0.1), 0.0),
-                "p90": p.value * ratio.get((p.position, 0.9), 0.0),
+                "p10": p.value * ratio.get((p.position, _tier(edges, p), 0.1), 0.0),
+                "p90": p.value * ratio.get((p.position, _tier(edges, p), 0.9), 0.0),
                 "starting_now": p.id in starting,
                 "recommended": p.id in slot_of,
                 "injury": status.get(p.id),
@@ -250,6 +258,20 @@ def lineup(league_key: str, week: int = 0, now: datetime | None = None) -> pl.Da
             }
         )
     return pl.DataFrame(rows, schema=_ENGINE_STUBS["lineup"])
+
+
+def _tier_edges(marginals: pl.DataFrame) -> dict[str, list[float]]:
+    """Per position, the upper projection edges of tiers 0 and 1 (tier 2 is everything above)."""
+    rows = marginals.filter(pl.col("tier").is_in([0, 1])).select("position", "tier", "proj_max")
+    out: dict[str, dict[int, float]] = {}
+    for position, tier, upper in rows.unique().iter_rows():
+        out.setdefault(position, {})[tier] = upper
+    return {p: [t[0], t[1]] for p, t in out.items() if len(t) == 2}
+
+
+def _tier(edges: dict[str, list[float]], player: Player) -> int:
+    """The marginal tier of a player's projection, or the all-tier shape (-1) if unknown."""
+    return tier_of(edges[player.position], player.value) if player.position in edges else -1
 
 
 def _injury_note(data: LeagueData, gsis_id: str) -> str | None:
@@ -436,6 +458,8 @@ def kdef(league_key: str, week: int) -> pl.DataFrame:
 STREAM_WEEKS = 3
 MIN_GAIN = 0.05  # expected points below this are not worth a roster move
 LINEUP_SIMS = 20000
+UNDERDOG = 0.45  # below this chance to win with the best lineup, variance is an asset
+FAVORITE = 0.55  # above it, protect the floor
 LINEUP_SEED = 11
 KD_SEED_OFFSET = 1000  # K and DEF draws are independent of the player draws
 
@@ -467,11 +491,8 @@ def win_probability(
 
     base = frozenset(mine_rows.filter(pl.col("recommended"))["gsis_id"])
     locked = set(mine_rows.filter(pl.col("locked"))["gsis_id"])
-    bench = [i for i in mine_rows.filter(~pl.col("recommended"))["gsis_id"] if values.get(i, 0) > 0]
-    candidates = swap_candidates(base, bench, positions, slots, locked)
+    pool_ids = list(mine_rows["gsis_id"])
     sleeper = frozenset(mine_rows.filter(pl.col("starting_now"))["gsis_id"])
-    if sleeper and sleeper not in candidates:
-        candidates.append(sleeper)
 
     ids = sorted({*mine_rows["gsis_id"], *opp_ids})
     live = data.live if week == data.current_week else {}
@@ -482,7 +503,8 @@ def win_probability(
     scaled = {i: values.get(i, 0.0) * share[k] for k, i in enumerate(ids)}
     chance = _play_probs(data, week)
     plays = {i: (1.0 if share[k] < 1.0 else chance.get(i, 1.0)) for k, i in enumerate(ids)}
-    points = _draw_points(data, ids, positions, scaled, plays, week, n_sims) + actual
+    tier_means = {i: values.get(i, 0.0) / max(chance.get(i, 1.0), 1e-9) for i in ids}
+    points = _draw_points(data, ids, positions, scaled, plays, tier_means, week, n_sims) + actual
     column = {i: j for j, i in enumerate(ids)}
     current = week == data.current_week
 
@@ -491,13 +513,50 @@ def win_probability(
         state = data.current.get(team) if current else None
         return points[:, cols].sum(axis=1) + _constant_points(data, n_sims, team_seed, state)
 
-    totals = {c: total(c, mine, LINEUP_SEED + KD_SEED_OFFSET) for c in candidates}
-    verdict = choose(
-        candidates, base, totals, total(opp_ids, opp, LINEUP_SEED + KD_SEED_OFFSET + 1)
+    opponent = total(opp_ids, opp, LINEUP_SEED + KD_SEED_OFFSET + 1)
+    cache: dict[frozenset[str], np.ndarray] = {}
+
+    def totals_of(c: frozenset[str]) -> np.ndarray:
+        if c not in cache:
+            cache[c] = total(c, mine, LINEUP_SEED + KD_SEED_OFFSET)
+        return cache[c]
+
+    half = n_sims // 2
+
+    def train_win(c: frozenset[str]) -> float:
+        return float((totals_of(c)[:half] > opponent[:half]).mean())
+
+    def neighbors(c: frozenset[str]) -> list[frozenset[str]]:
+        bench = [i for i in pool_ids if i not in c and values.get(i, 0) > 0]
+        return swap_candidates(c, bench, positions, slots, locked)
+
+    # several swaps at once are looked for, so two ceiling plays together can be found
+    candidates = search(base, neighbors, train_win)
+    if sleeper and sleeper not in candidates:
+        candidates.append(sleeper)
+    totals = {c: totals_of(c) for c in candidates}
+    verdict = choose(candidates, base, totals, opponent)
+    ceiling, ceiling_held = pick_by_quantile(candidates, totals, 0.9)
+    floor, floor_held = pick_by_quantile(candidates, totals, 0.1)
+    median_held = {c: float(np.quantile(totals[c][half:], 0.5)) for c in candidates}
+    low_held = {c: float(np.quantile(totals[c][half:], 0.1)) for c in candidates}
+    high_held = {c: float(np.quantile(totals[c][half:], 0.9)) for c in candidates}
+    favourite = verdict.win_prob[base]
+    script = (
+        f"Underdog ({favourite:.0%} to win): variance helps"
+        if favourite < UNDERDOG
+        else f"Favorite ({favourite:.0%} to win): protect the floor"
+        if favourite > FAVORITE
+        else f"Toss-up ({favourite:.0%} to win)"
     )
 
     mean_of = {r["gsis_id"]: r["projection"] for r in mine_rows.iter_rows(named=True)}
-    options = {"max_points": base, "win_prob": verdict.chosen}
+    options = {
+        "max_points": base,
+        "win_prob": verdict.chosen,
+        "ceiling": ceiling,
+        "floor": floor,
+    }
     if sleeper:
         options["sleeper_now"] = sleeper
 
@@ -515,6 +574,10 @@ def win_probability(
             "slots": slots_of(ids_),
             "share_better": verdict.share_better if name == "win_prob" else 0.5,
             "tag": verdict.tag if name == "win_prob" else "",
+            "floor": low_held[ids_],
+            "median": median_held[ids_],
+            "ceiling": high_held[ids_],
+            "script": script,
         }
         for name, ids_ in options.items()
     ]
@@ -555,11 +618,13 @@ def _draw_points(
     positions: dict[str, str],
     values: dict[str, float],
     plays: dict[str, float],
+    tier_means: dict[str, float],
     week: int,
     n_sims: int,
 ) -> np.ndarray:
     """Joint draws for `ids` this week: marginals and correlations measured in this league.
-    `values` are expected points and `plays` each player's chance of playing."""
+    `values` are expected points, `plays` each player's chance of playing, and `tier_means` his
+    full-game points when he plays, which picks the floor-and-ceiling shape his size has."""
     base = _read("proj_baseline", store.DATA_DIR, area="derived").filter(
         (pl.col("league_id") == data.league_id) & (pl.col("week") == week) & pl.col("is_future")
     )
@@ -599,10 +664,16 @@ def _draw_points(
         pl.col("league_id") == data.league_id
     )
     ratios = {
-        position: g.sort("tau")["ratio"].to_numpy()
-        for (position,), g in marginals.group_by("position")
+        (position if tier < 0 else f"{position}:{tier}"): g.sort("tau")["ratio"].to_numpy()
+        for (position, tier), g in marginals.group_by("position", "tier")
     }
     assert all(len(r) == len(LEVELS) for r in ratios.values())
+    edges = _tier_edges(marginals)
+    tiers = tuple(
+        tier_of(edges[positions[i]], tier_means.get(i, 0.0)) if positions[i] in edges else -1
+        for i in ids
+    )
+    slate = replace(slate, tiers=tiers)
     corr = correlation_matrix(slate, rho["same_team"], rho["opposing"], opponent_of)
     return sample_points(slate, corr, ratios, n_sims, LINEUP_SEED)
 

@@ -26,6 +26,7 @@ class Slate:
     roles: tuple[str, ...]  # "WR1", or "" for a depth player with no measured correlations
     means: tuple[float, ...]  # expected points counting the chance of not playing
     play_probs: tuple[float, ...] = ()  # chance each plays; empty means everyone plays
+    tiers: tuple[int, ...] = ()  # size tier of each player's projection; empty means all one shape
 
 
 def correlation_matrix(
@@ -68,13 +69,15 @@ def sample_points(
     z = np.random.default_rng(seed).standard_normal((n_sims, len(slate.ids)))
     u = norm.cdf(z @ np.linalg.cholesky(corr).T)
     probs = slate.play_probs or (1.0,) * len(slate.ids)
+    tiers = slate.tiers or (-1,) * len(slate.ids)
     out = np.empty_like(u)
-    for j, (pid, position, mean, p) in enumerate(
-        zip(slate.ids, slate.positions, slate.means, probs, strict=True)
+    for j, (pid, position, mean, p, tier) in enumerate(
+        zip(slate.ids, slate.positions, slate.means, probs, tiers, strict=True)
     ):
+        shape = ratios.get(f"{position}:{tier}", ratios[position])
         if p <= 0.0:
             out[:, j] = 0.0
             continue
         plays = np.random.default_rng([seed, zlib.crc32(pid.encode())]).random(n_sims) < p
-        out[:, j] = np.where(plays, (mean / p) * np.interp(u[:, j], LEVELS, ratios[position]), 0.0)
+        out[:, j] = np.where(plays, (mean / p) * np.interp(u[:, j], LEVELS, shape), 0.0)
     return out

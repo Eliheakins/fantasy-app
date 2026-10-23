@@ -1,8 +1,14 @@
 """Estimate how far actual points scatter around the baseline projection, and how that scatter
 moves together across players.
 
-marginals          quantiles of actual / projected points per league and position, from
-                   walk-forward residuals (projection * ratio quantile = a player-game's outcome)
+projection_calibration
+                   points over projection by projection size (the baseline over-projects low
+                   projections), per league and position; see sim/calibration.py
+marginals          quantiles of actual / calibrated projection per league and position, from
+                   walk-forward residuals (projection * ratio quantile = a player-game's outcome).
+                   tier -1 is all projections; tiers 0, 1 and 2 are the bottom, middle and top
+                   third by projection, whose floors and ceilings differ a lot (a low projection
+                   has a median far below its mean and a long upper tail)
 correlation_pairs  Gaussian-copula correlation between roles (QB1, RB1, WR1, ...), for teammates
                    and for opposing players in the same game, from Spearman rank correlation of
                    residuals: rho = 2 sin(pi * rho_spearman / 6)
@@ -16,9 +22,12 @@ import numpy as np
 import polars as pl
 
 from fantasy import store
+from fantasy.sim.calibration import CALIBRATION_BINS, apply_curves
 
 LEVELS = np.arange(1, 100) / 100
 MIN_PROJECTION = 0.5
+MIN_TIER_ROWS = 100  # a tier with fewer games than this borrows the all-tier shape
+TOP = 1e9  # proj_max of the top tier and of the all-tier rows
 ROLES = ["QB1", "RB1", "RB2", "WR1", "WR2", "WR3", "TE1"]
 MIN_PAIR_ROWS = 200
 TEAM_WEEK = ["league_id", "season", "week", "team"]
@@ -38,31 +47,78 @@ def residual_frame(proj: pl.DataFrame, points: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def estimate_marginals(res: pl.DataFrame) -> pl.DataFrame:
-    """Quantiles of actual / projection per league and position (the shape around the mean).
-
-    A Gamma with constant CV was tried first and covered only 66 to 74 percent of outcomes with
-    its 80 percent interval: real games have more near-zero outcomes than a Gamma allows.
-    """
+def estimate_curves(res: pl.DataFrame) -> pl.DataFrame:
+    """Calibration curves: at each of CALIBRATION_BINS projection quantile bins per league and
+    position, the median projection (center) and points over projection (factor)."""
     rows = []
     usable = res.filter(pl.col("projection") > MIN_PROJECTION)
     for (league_id, position), g in usable.group_by("league_id", "position"):
-        ratio = (g["points"] / g["projection"]).to_numpy()
-        resid, projection = g["resid"].to_numpy(), g["projection"].to_numpy()
-        cv = float(np.sqrt((resid**2).sum() / (projection**2).sum()))
-        for tau, value in zip(LEVELS, np.quantile(ratio, LEVELS), strict=True):
+        x, y = g["projection"].to_numpy(), g["points"].to_numpy()
+        edges = np.quantile(x, np.linspace(0, 1, CALIBRATION_BINS + 1))
+        index = np.clip(np.digitize(x, edges[1:-1]), 0, CALIBRATION_BINS - 1)
+        for k in range(CALIBRATION_BINS):
+            in_bin = index == k
+            if in_bin.sum() == 0:
+                continue
             rows.append(
                 {
                     "league_id": league_id,
                     "position": position,
-                    "tau": float(tau),
-                    "ratio": float(value),
-                    "n": len(ratio),
-                    "cv": cv,
+                    "center": float(np.median(x[in_bin])),
+                    "factor": float(y[in_bin].sum() / x[in_bin].sum()),
+                    "n": int(in_bin.sum()),
                 }
             )
+    return pl.DataFrame(rows, schema=store.SCHEMAS["projection_calibration"]).sort(
+        "league_id", "position", "center"
+    )
+
+
+def _quantile_rows(
+    league_id: str, position: str, ratio: np.ndarray, cv: float, tier: int, proj_max: float
+) -> list[dict[str, float | int | str]]:
+    return [
+        {
+            "league_id": league_id,
+            "position": position,
+            "tau": float(tau),
+            "ratio": float(value),
+            "n": len(ratio),
+            "cv": cv,
+            "tier": tier,
+            "proj_max": proj_max,
+        }
+        for tau, value in zip(LEVELS, np.quantile(ratio, LEVELS), strict=True)
+    ]
+
+
+def estimate_marginals(res: pl.DataFrame) -> pl.DataFrame:
+    """Quantiles of actual / projection per league, position and tier (the shape around the
+    mean). `res` should carry the calibrated projection.
+
+    A Gamma with constant CV was tried first and covered only 66 to 74 percent of outcomes with
+    its 80 percent interval: real games have more near-zero outcomes than a Gamma allows.
+    Tier -1 is every projection; tiers 0 to 2 split the position into thirds by projection,
+    because a low projection's outcome is mostly a dud with a long upper tail while a high
+    projection's is steadier (position by tier cut pinball loss 2.6% out of sample).
+    """
+    rows: list[dict[str, float | int | str]] = []
+    usable = res.filter(pl.col("projection") > MIN_PROJECTION)
+    for (league_id, position), g in usable.group_by("league_id", "position"):
+        points, projection = g["points"].to_numpy(), g["projection"].to_numpy()
+        ratio = points / projection
+        resid = g["resid"].to_numpy()
+        cv = float(np.sqrt((resid**2).sum() / (projection**2).sum()))
+        rows += _quantile_rows(league_id, position, ratio, cv, -1, TOP)
+        edges = np.quantile(projection, [1 / 3, 2 / 3])
+        tier = np.digitize(projection, edges)
+        for t in range(3):
+            chosen = ratio[tier == t]
+            shape = chosen if len(chosen) >= MIN_TIER_ROWS else ratio
+            upper = float(edges[t]) if t < 2 else TOP
+            rows += _quantile_rows(league_id, position, shape, cv, t, upper)
     return pl.DataFrame(rows, schema=store.SCHEMAS["marginals"]).sort(
-        "league_id", "position", "tau"
+        "league_id", "position", "tier", "tau"
     )
 
 
@@ -114,11 +170,30 @@ def estimate_pairs(roled: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
 
 def run() -> dict[str, int]:
     res = residual_frame(store.read_table("proj_baseline"), store.read_table("player_points"))
-    marginals = estimate_marginals(res)
-    pairs = estimate_pairs(with_roles(res), store.read_table("team_games"))
+    curves = estimate_curves(res)
+    calibrated = apply_curves(res, curves).with_columns(
+        (pl.col("points") - pl.col("projection")).alias("resid")
+    )
+    marginals = estimate_marginals(calibrated)
+    pairs = estimate_pairs(with_roles(calibrated), store.read_table("team_games"))
+    store.write_table("projection_calibration", curves)
     store.write_table("marginals", marginals)
     store.write_table("correlation_pairs", pairs)
-    return {"marginals": marginals.height, "correlation_pairs": pairs.height}
+    return {
+        "projection_calibration": curves.height,
+        "marginals": marginals.height,
+        "correlation_pairs": pairs.height,
+    }
+
+
+def calibrated(frame: pl.DataFrame) -> pl.DataFrame:
+    """`frame` (league_id, position, projection) with the projection calibrated by size, when the
+    curves have been estimated; otherwise unchanged."""
+    try:
+        curves = store.read_table("projection_calibration")
+    except FileNotFoundError:
+        return frame
+    return apply_curves(frame, curves)
 
 
 def main() -> None:

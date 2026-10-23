@@ -5,6 +5,7 @@ unlocked starter for an unlocked bench player. The choice is made on one half of
 reported on the other, so picking the best of many candidates does not inflate its win rate.
 """
 
+from collections.abc import Callable
 from typing import NamedTuple
 
 import numpy as np
@@ -67,3 +68,38 @@ def choose(
     share = a_only / (a_only + b_only) if a_only + b_only else 0.5
     tag = "clear" if share >= CLEAR_SHARE else "lean" if share >= LEAN_SHARE else "toss-up"
     return Verdict(chosen, held, share, tag)
+
+
+def search(
+    base: frozenset[str],
+    neighbors: Callable[[frozenset[str]], list[frozenset[str]]],
+    score: Callable[[frozenset[str]], float],
+    max_steps: int = 3,
+    min_gain: float = 0.002,
+) -> list[frozenset[str]]:
+    """Greedy search from `base`: move to the best-scoring neighbor while it beats the current
+    lineup by `min_gain`, up to `max_steps` times. Returns every lineup looked at, so a
+    combination of swaps (two ceiling plays at once) can be found, not just single swaps."""
+    seen = {base}
+    current, current_score = base, score(base)
+    for _ in range(max_steps):
+        options = [n for n in neighbors(current) if n != current]
+        seen.update(options)
+        if not options:
+            break
+        best = max(options, key=lambda n: (score(n), sorted(n)))
+        if score(best) < current_score + min_gain:
+            break
+        current, current_score = best, score(best)
+    return sorted(seen, key=sorted)
+
+
+def pick_by_quantile(
+    candidates: list[frozenset[str]], totals: dict[frozenset[str], np.ndarray], q: float
+) -> tuple[frozenset[str], dict[frozenset[str], float]]:
+    """The lineup with the highest q-quantile of team points (the 0.9 quantile is the ceiling,
+    0.1 the floor), chosen on the first half of the draws and reported on the second half."""
+    half = len(next(iter(totals.values()))) // 2
+    chosen = max(candidates, key=lambda c: (float(np.quantile(totals[c][:half], q)), sorted(c)))
+    held = {c: float(np.quantile(totals[c][half:], q)) for c in candidates}
+    return chosen, held
