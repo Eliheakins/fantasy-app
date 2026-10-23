@@ -83,4 +83,4 @@ def test_missing_tables_return_empty_frames_not_errors(tmp_path: Path) -> None:
     assert data_api.leagues(tmp_path).is_empty()
     assert data_api.roster("test", tmp_path).is_empty()
     assert data_api.unmatched(tmp_path).is_empty()
-    assert data_api.lineup("test", 7).columns[:3] == ["slot", "sleeper_id", "full_name"]
+    assert data_api.season_odds("test").columns[:2] == ["roster_id", "team_name"]

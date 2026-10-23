@@ -11,6 +11,7 @@ import polars as pl
 
 from fantasy import store
 from fantasy.sim import moves
+from fantasy.sim.lineup import Player, auto_lineup, lineup_slots
 from fantasy.sim.odds import LeagueData
 
 POSITION_ORDER = {"QB": 0, "RB": 1, "WR": 2, "TE": 3, "K": 4, "DEF": 5}
@@ -27,7 +28,17 @@ ROSTER_COLUMNS = [
 _S, _F, _B = pl.String, pl.Float64, pl.Boolean
 # Shapes of engine outputs, filled in by later stories (E4, E5).
 _ENGINE_STUBS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
-    "lineup": {"slot": _S, "sleeper_id": _S, "full_name": _S, "p10": _F, "p50": _F, "p90": _F},
+    "lineup": {
+        "slot": _S,
+        "gsis_id": _S,
+        "full_name": _S,
+        "position": _S,
+        "projection": _F,
+        "p10": _F,
+        "p90": _F,
+        "starting_now": _B,
+        "recommended": _B,
+    },
     "waivers": {
         "gsis_id": _S,
         "full_name": _S,
@@ -122,8 +133,57 @@ def unmatched(data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
     )
 
 
-def lineup(league_key: str, week: int, objective: str = "win") -> pl.DataFrame:
-    return pl.DataFrame(schema=_ENGINE_STUBS["lineup"])
+def lineup(league_key: str, week: int = 0) -> pl.DataFrame:
+    """My best lineup by projected points for a remaining week, plus the bench.
+
+    `starting_now` marks who is set to start in Sleeper (only known for the current week).
+    p10 and p90 come from how actual points have scattered around projections.
+    """
+    data, mine = _league(league_key)
+    week = week or data.current_week
+    names, positions = _names(), moves.position_of(data)
+    values = moves.week_values(data).get(week, {})
+    pool = [Player(i, positions[i], values[i]) for i in moves.team_ids(data, mine) if i in values]
+    best = auto_lineup(pool, lineup_slots(data.roster_positions))
+    slot_of = {pid: slot for slot, pid in best.slots}
+
+    marginals = _read("marginals", store.DATA_DIR, area="derived").filter(
+        pl.col("league_id") == data.league_id
+    )
+    ratio = {
+        (r["position"], round(r["tau"], 2)): r["ratio"] for r in marginals.iter_rows(named=True)
+    }
+    starting: set[str] = set()
+    if week == data.current_week:
+        ids = _read("id_map", store.DATA_DIR, area="derived").select("sleeper_id", "gsis_id")
+        set_starters = (
+            _read("matchup_players", store.DATA_DIR)
+            .filter(
+                (pl.col("league_id") == data.league_id)
+                & (pl.col("week") == week)
+                & (pl.col("roster_id") == mine)
+                & pl.col("is_starter")
+            )
+            .join(ids, on="sleeper_id")
+        )
+        starting = set(set_starters["gsis_id"].to_list())
+
+    rows = []
+    for p in sorted(pool, key=lambda p: (p.id not in slot_of, -p.value)):
+        rows.append(
+            {
+                "slot": slot_of.get(p.id, "BN"),
+                "gsis_id": p.id,
+                "full_name": names.get(p.id, p.id),
+                "position": p.position,
+                "projection": p.value,
+                "p10": p.value * ratio.get((p.position, 0.1), 0.0),
+                "p90": p.value * ratio.get((p.position, 0.9), 0.0),
+                "starting_now": p.id in starting,
+                "recommended": p.id in slot_of,
+            }
+        )
+    return pl.DataFrame(rows, schema=_ENGINE_STUBS["lineup"])
 
 
 def _names() -> dict[str, str]:

@@ -169,6 +169,11 @@ Per-league scoring from nflverse stats matches Sleeper's reported player points 
 - **Sample on real data (Colgate):** trading DJ Moore for Matthew Stafford moves my title odds from 8.6% to 13.9% and the partner's from 9.5% to 3.0% (a superflex league, so a starting QB matters a lot).
 - **Test gap:** Streamlit's headless test runner crashes on multiselect widgets that use display labels (a runner bug), so the Evaluate click path is covered by calling the functions behind it, and the pages are checked to render without errors.
 
+## Lineup page, first cut (2026-10-23)
+
+- **What it does:** for any remaining week, the best lineup by projected points for skill positions (`data_api.lineup`), the bench, a 10-to-90% range per player from the measured scatter of actual vs projected points, and for the current week a comparison with the lineup set in Sleeper (marking Start and Sit changes). Live check: YinzBurgh's current lineup is 6.4 projected points below the best week-7 lineup, Colgate's 1.6.
+- **Not done (still on the backlog):** it ignores which games have already started (E4-7), K and DEF slots (E3-7), and win probability versus an opponent (E4-2 and E4-5), so it maximizes expected points, not the chance to win. The range is shown as text, not a bar (E4-D1).
+
 ## GitHub issues (2026-10-23)
 
 Created in `Eliheakins/fantasy-app` from `docs/backlog.md`: 36 story issues (#1 to #36) plus a Post-MVP tracking issue (#37). Labels: epic (E0 to E5), engine or dashboard, fast-path, optional, spike, post-mvp. Milestones: one per epic. E0-3 (#3) is closed. No Project board: it needs the `project` token scope, which the personal token lacks (`gh auth refresh -s project` is interactive). The repo itself has no commits pushed yet, so the doc paths in issue bodies are plain text, not links.

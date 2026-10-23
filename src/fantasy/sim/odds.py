@@ -53,6 +53,7 @@ class LeagueData:
     current: dict[int, CurrentWeek] = field(default_factory=dict)
     positions: dict[str, str] = field(default_factory=dict)  # gsis_id -> position, free agents too
     trade_deadline: int = 99  # last week trades are allowed
+    league_id: str = ""
 
 
 def lineup_moments(

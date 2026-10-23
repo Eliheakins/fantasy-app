@@ -133,6 +133,7 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         current=current_state(mp, week_projection, week_pool),
         positions=positions,
         trade_deadline=int(league["trade_deadline"] or 99),
+        league_id=lid,
     )
 
 
