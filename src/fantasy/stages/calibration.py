@@ -5,6 +5,10 @@ simulator uses (projection made before the game, measured spread and teammate co
 DEF constants, plus team drift). The standardized miss z = (actual - mean) / sd should have mean 0,
 spread 1, and an 80% interval that holds about 80% of outcomes.
 
+Projections get the size calibration the simulation applies, with curves refit on seasons before
+the one being scored, so the scored weeks play no part in the fit. (Spreads and correlations are
+still fit on every week, this season's included, about 4% of the data.)
+
 Run: uv run python -m fantasy.stages.calibration
 """
 
@@ -14,8 +18,10 @@ from typing import Any
 import polars as pl
 
 from fantasy import store
+from fantasy.sim.calibration import apply_curves
 from fantasy.sim.lineup import Player
 from fantasy.sim.odds import DRIFT_SD, LeagueData, lineup_moments
+from fantasy.stages.distributions import estimate_curves, residual_frame
 from fantasy.stages.simulate import SKILL, load_league_data
 
 Z80 = 1.2815515655446004  # 80% two-sided
@@ -41,7 +47,7 @@ def team_week_scores(
                 players.append(Player(r["gsis_id"], r["position"], value))
         k = g.filter(pl.col("position") == "K").height
         d = g.filter(pl.col("position") == "DEF").height
-        mean, var, _ = lineup_moments(players, data.cv, data.pair_rho)
+        mean, var, _ = lineup_moments(players, data.cv, data.pair_rho, data.cv_tiers)
         mean += k * data.k_mean + d * data.def_mean
         var += k * data.k_var + d * data.def_var + DRIFT_SD**2
         sd = math.sqrt(var)
@@ -84,6 +90,7 @@ def run() -> pl.DataFrame:
     id_map = store.read_table("id_map").select("sleeper_id", "gsis_id")
     players = store.read_table("sleeper_players", "raw").select("sleeper_id", "position")
     out = []
+    history = residual_frame(store.read_table("proj_baseline"), store.read_table("player_points"))
     for league in store.read_table("leagues", "raw").iter_rows(named=True):
         lid, season = league["league_id"], int(league["season"])
         last = int(league["current_week"]) - 1
@@ -98,6 +105,7 @@ def run() -> pl.DataFrame:
         hist = store.read_table("proj_baseline").filter(
             (pl.col("league_id") == lid) & ~pl.col("is_future") & (pl.col("season") == season)
         )
+        hist = apply_curves(hist, estimate_curves(history.filter(pl.col("season") < season)))
         projections = {
             (r["gsis_id"], r["week"]): r["projection"] for r in hist.iter_rows(named=True)
         }

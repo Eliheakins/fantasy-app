@@ -164,3 +164,14 @@ def test_missing_effect_tables_do_not_stop_the_load(
     data = load_league_data(LEAGUE)
     assert data.trade_deadline == 99 and data.roster_ids == [1, 2, 3, 4, 5, 6]
     assert data.injuries["G_RB"][0] == "Out"
+
+
+def test_tier_spreads_lists_each_positions_edges_in_ascending_order() -> None:
+    from fantasy.stages.simulate import tier_spreads
+
+    rows = [
+        {"position": "WR", "tier": tier, "proj_max": edge, "cv": cv, "tau": 0.5}
+        for tier, edge, cv in ((2, 1e9, 0.4), (0, 6.0, 1.0), (1, 12.0, 0.8))
+    ] + [{"position": "WR", "tier": -1, "proj_max": 1e9, "cv": 0.7, "tau": 0.5}]
+    out = tier_spreads(pl.DataFrame(rows))
+    assert out == {"WR": ((6.0, 1.0), (12.0, 0.8), (1e9, 0.4))}

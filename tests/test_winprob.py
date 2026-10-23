@@ -128,3 +128,12 @@ def test_the_sampler_gives_each_size_tier_its_own_floor_and_ceiling() -> None:
         np.quantile(draws[:, 0], 0.5) < 2.0 < np.quantile(draws[:, 1], 0.5)
     )  # small median far below
     assert np.quantile(draws[:, 0], 0.97) > 3 * np.quantile(draws[:, 1], 0.97) * 0.7  # but upside
+
+
+def test_a_players_draws_do_not_change_when_other_players_join_the_slate() -> None:
+    alone = Slate(("a",), ("WR",), ("X",), ("WR1",), (10.0,))
+    crowd = Slate(("b", "a"), ("WR", "WR"), ("Y", "X"), ("WR1", "WR1"), (7.0, 10.0))
+    draws_alone = sample_points(alone, correlation_matrix(alone, {}, {}, {}), RATIOS, 1000, 5)
+    corr = correlation_matrix(crowd, {}, {}, {})
+    draws_crowd = sample_points(crowd, corr, RATIOS, 1000, 5)
+    assert np.array_equal(draws_alone[:, 0], draws_crowd[:, 1])

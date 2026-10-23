@@ -77,10 +77,29 @@ class LeagueData:
     injuries: dict[str, tuple[str, str | None, str | None]] = field(
         default_factory=dict
     )  # id -> (status, body, practice)
+    cv_tiers: dict[str, tuple[tuple[float, float], ...]] = field(default_factory=dict)
+    # position -> ((upper projection edge, cv), ...) by size tier; the starters' spread is smaller
+
+
+def spread_cv(
+    position: str,
+    value: float,
+    cv: dict[str, float],
+    tiers: dict[str, tuple[tuple[float, float], ...]],
+) -> float:
+    """Spread of a player's points over his projection: the cv of his size tier when the position
+    has tiers ((upper projection edge, cv) in ascending order), else the position's pooled cv."""
+    for upper, tier_cv in tiers.get(position, ()):
+        if value < upper:
+            return tier_cv
+    return cv[position]
 
 
 def lineup_moments(
-    players: list[Player], cv: dict[str, float], rho: dict[tuple[str, str], float]
+    players: list[Player],
+    cv: dict[str, float],
+    rho: dict[tuple[str, str], float],
+    tiers: dict[str, tuple[tuple[float, float], ...]] | None = None,
 ) -> tuple[float, float, float]:
     """(mean, total variance, persistent variance) of a lineup's points in one week."""
     ordered = sorted(players, key=lambda p: (-p.value, p.id))
@@ -89,7 +108,7 @@ def lineup_moments(
     for p in ordered:
         seen[p.position] = seen.get(p.position, 0) + 1
         roles.append(f"{p.position}{seen[p.position]}")
-        sds.append(p.value * cv[p.position])
+        sds.append(p.value * spread_cv(p.position, p.value, cv, tiers or {}))
     var = sum(s * s for s in sds)
     for i in range(len(ordered)):
         for j in range(i + 1, len(ordered)):
@@ -193,7 +212,7 @@ def build_inputs(
                 known = {p.id: p for p in pool + floor}
                 lineup = [known[pid] for _, pid in full.slots]
                 offset, k_open, def_open = 0.0, constants.get("K", 0), constants.get("DEF", 0)
-            m, var, persistent = lineup_moments(lineup, data.cv, data.pair_rho)
+            m, var, persistent = lineup_moments(lineup, data.cv, data.pair_rho, data.cv_tiers)
             weekly = max(var - persistent, 0.5 * var)
             fixed_var = k_open * data.k_var + def_open * data.def_var
             mean[t, w] = offset + m + k_open * data.k_mean + def_open * data.def_mean

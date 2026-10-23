@@ -75,7 +75,10 @@ st.caption(
     "they value players, which is not modeled. Changes are in percentage points; error is the "
     "Monte Carlo error of your title change."
 )
+found_key = f"found_{league_key}"
 if st.button("Find trades"):
+    st.session_state[found_key] = True
+if st.session_state.get(found_key):
     try:
         found = find(league_key)
     except ValueError as err:
@@ -124,7 +127,10 @@ st.caption(
     "Odds assume current rosters."
 )
 
+evaluated = (league_key, int(partner), tuple(give), tuple(get))
 if st.button("Evaluate", disabled=not (give and get)):
+    st.session_state["evaluated"] = evaluated
+if give and get and st.session_state.get("evaluated") == evaluated:
     try:
         odds, changes = evaluate(league_key, int(partner), tuple(give), tuple(get))
     except ValueError as err:

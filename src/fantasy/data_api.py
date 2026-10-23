@@ -417,7 +417,7 @@ def trade_roster_changes(
         team = data.team_names[roster_id]
         before_ids = set(moves.team_ids(data, roster_id))
         after_ids = set(moves.team_ids(data, roster_id, after))
-        for gid in sorted(before_ids - after_ids - set(sent)):
+        for gid in sorted((before_ids | set(received)) - after_ids - set(sent)):
             rows.append((team, "dropped", names.get(gid, gid), positions[gid]))
         for gid in sorted(after_ids - before_ids - set(received)):
             rows.append((team, "picked up", names.get(gid, gid), positions[gid]))
@@ -784,7 +784,9 @@ def schedule(league_key: str) -> pl.DataFrame:
         ]
         best = auto_lineup(pool, slots)
         chosen = [p for p in pool if p.id in best.players]
-        mean, var, _ = lineup_moments(chosen, data.cv, data.pair_rho)  # var is already total
+        mean, var, _ = lineup_moments(
+            chosen, data.cv, data.pair_rho, data.cv_tiers
+        )  # var is already total
         return mean + kd_mean, var + kd_var + DRIFT_SD**2
 
     rows = []

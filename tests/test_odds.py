@@ -110,3 +110,15 @@ def test_history_appends_and_never_overwrites(tmp_path: Path) -> None:
     second = sim_stage.append_history(latest, tmp_path)
     assert first.height == 1 and second.height == 2
     assert store.read_table("sim_season_history", "archive", tmp_path).height == 2
+
+
+def test_a_big_projection_uses_its_own_size_tiers_spread() -> None:
+    tiers = {"WR": ((6.0, 1.0), (12.0, 0.8), (1e9, 0.4))}
+    steady = odds.lineup_moments([Player("a", "WR", 10.0)], {"WR": 0.7}, {}, tiers)
+    erratic = odds.lineup_moments([Player("b", "WR", 4.0)], {"WR": 0.7}, {}, tiers)
+    huge = odds.lineup_moments([Player("c", "WR", 20.0)], {"WR": 0.7}, {}, tiers)
+    assert steady[1] == pytest.approx((10.0 * 0.8) ** 2)
+    assert erratic[1] == pytest.approx((4.0 * 1.0) ** 2)
+    assert huge[1] == pytest.approx((20.0 * 0.4) ** 2)
+    unlisted = odds.lineup_moments([Player("d", "QB", 10.0)], {"QB": 0.5}, {}, tiers)
+    assert unlisted[1] == pytest.approx(25.0)  # a position without tiers keeps its pooled spread

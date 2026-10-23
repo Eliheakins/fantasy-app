@@ -257,11 +257,9 @@ def live_context(
     return Context(missed, after, shares)
 
 
-def run() -> int:
-    leagues = store.read_table("leagues", "raw")
-    league_id = reference_league(leagues)  # point effects are scaled to the other league later
-    season = int(leagues["season"].to_numpy().max())
-    panel = build_panel(
+def history_panel(league_id: str, season: int) -> pl.DataFrame:
+    """Player-game panel for every season before `season`."""
+    return build_panel(
         store.read_table("nfl_player_stats", "raw"),
         store.read_table("nfl_team_stats", "raw"),
         store.read_table("nfl_injuries", "raw").filter(pl.col("season") < season),
@@ -278,7 +276,13 @@ def run() -> int:
             )
         ).select("gsis_id", "season", "week", "position", "team", "projection"),
     )
-    table = estimate(panel)
+
+
+def run() -> int:
+    leagues = store.read_table("leagues", "raw")
+    league_id = reference_league(leagues)  # point effects are scaled to the other league later
+    season = int(leagues["season"].to_numpy().max())
+    table = estimate(history_panel(league_id, season))
     store.write_table("outlook_effects", table)
     return table.height
 

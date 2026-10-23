@@ -28,6 +28,8 @@ baseline. A feature ships only if it improves held-out error.
 | `epa_test.py`, `epa_test2.py` | Do opponent defense efficiency and team offense efficiency predict misses? | Offense sack rate and pass efficiency mean-revert a little (shipped); opponent defense no |
 | `ctx_test.py` | Is the Vegas implied-total exponent of 0.5 right? | Yes; refit the calibration per exponent, 0.5 won |
 | `qb_test.py` | Does the starting QB being out change teammates' points? | No |
+| `replication.py` | Do the shipped environment effects keep their sign in 2019-2023 and 2024 on? | Opposing corner out and pass efficiency do; sack rate does not (switched off) |
+| `team_score_backtest.py` | Is the weekly team-score spread calibrated on seasons the fit did not see? | Pooled spread 20% too wide; spread by size tier fixed most of it |
 | `slot_test.py` | Does a slot corner being out help slot receivers? | Not measurable with free data (no alignment) |
 | `h2h_test.py` | Does history against a specific opponent predict points, divisional or not? | No out-of-sample signal |
 | `inj_explore.py` | How do injury status, practice report and injury type predict playing? | Became `stages/injuries.py` |

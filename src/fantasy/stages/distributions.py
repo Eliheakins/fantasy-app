@@ -113,10 +113,18 @@ def estimate_marginals(res: pl.DataFrame) -> pl.DataFrame:
         edges = np.quantile(projection, [1 / 3, 2 / 3])
         tier = np.digitize(projection, edges)
         for t in range(3):
-            chosen = ratio[tier == t]
-            shape = chosen if len(chosen) >= MIN_TIER_ROWS else ratio
+            in_tier = tier == t
+            chosen = ratio[in_tier]
+            enough = len(chosen) >= MIN_TIER_ROWS
+            shape = chosen if enough else ratio
+            # starters sit in the top tier, where the spread is much smaller than the pooled one
+            tier_cv = (
+                float(np.sqrt((resid[in_tier] ** 2).sum() / (projection[in_tier] ** 2).sum()))
+                if enough
+                else cv
+            )
             upper = float(edges[t]) if t < 2 else TOP
-            rows += _quantile_rows(league_id, position, shape, cv, t, upper)
+            rows += _quantile_rows(league_id, position, shape, tier_cv, t, upper)
     return pl.DataFrame(rows, schema=store.SCHEMAS["marginals"]).sort(
         "league_id", "position", "tier", "tau"
     )

@@ -149,3 +149,10 @@ def test_pairs_below_the_minimum_sample_are_dropped() -> None:
         schema={"season": pl.Int64, "week": pl.Int64, "team": pl.String, "opponent": pl.String},
     )
     assert d.estimate_pairs(d.with_roles(res(rows)), games).is_empty()
+
+
+def test_each_size_tier_carries_its_own_spread_and_the_pooled_one_sits_between() -> None:
+    out = d.estimate_marginals(_two_sizes()).filter(pl.col("tau") == 0.5)
+    cv = {r["tier"]: r["cv"] for r in out.iter_rows(named=True)}
+    assert cv[2] < 0.15 < cv[0]  # steady big projections, erratic small ones
+    assert cv[2] < cv[-1] < cv[0]

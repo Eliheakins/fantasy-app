@@ -14,6 +14,7 @@ import polars as pl
 
 from fantasy.sim.lineup import Player, auto_lineup, lineup_slots
 from fantasy.sim.odds import HAZARD, STAY_OUT, LeagueData, league_odds
+from fantasy.sim.season import SeasonResult
 from fantasy.sim.value import (
     absence_probs,
     conditional_values,
@@ -338,9 +339,9 @@ def _rerun(
     ros, free, taken = _ros_all(data), sorted(free_agents(data)), rostered(data)
     free.sort(key=lambda i: (-ros.get(i, 0.0), i))
     base, _ = league_odds(data, None, n_sims, seed, reoptimize=True)
-    pickup_worlds: dict[int, Any] = {}
+    pickup_worlds: dict[int, SeasonResult] = {}
 
-    def world_with_pickup(roster_id: int) -> Any:
+    def world_with_pickup(roster_id: int) -> SeasonResult:
         if roster_id not in pickup_worlds:
             ids = team_ids(data, roster_id)
             kept = data.rosters.filter(pl.col("roster_id") != roster_id)

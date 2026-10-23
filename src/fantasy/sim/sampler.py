@@ -2,8 +2,9 @@
 with each player's marginal taken from the empirical quantiles of actual over projected points.
 
 Teammates and opposing players are correlated by role pair (QB1 with WR1 and so on, from
-`correlation_pairs`); everyone else is independent. Draws are seeded, so two lineups scored on
-the same sample see the same weeks (common random numbers).
+`correlation_pairs`); everyone else is independent. Each player's base normals come from his own
+seeded stream, so a player correlated with nobody added or dropped keeps the same draws when the
+slate changes (common random numbers across scenarios).
 """
 
 import zlib
@@ -66,7 +67,12 @@ def sample_points(
     A player with play probability p scores 0 in a share 1 - p of draws and otherwise draws from
     his distribution with mean `mean / p`, so his overall mean is `mean`. Whether he plays comes
     from his own seeded stream, so it is the same in every scenario scored on these draws."""
-    z = np.random.default_rng(seed).standard_normal((n_sims, len(slate.ids)))
+    z = np.column_stack(
+        [
+            np.random.default_rng([seed, zlib.crc32(i.encode()), 1]).standard_normal(n_sims)
+            for i in slate.ids
+        ]
+    )
     u = norm.cdf(z @ np.linalg.cholesky(corr).T)
     probs = slate.play_probs or (1.0,) * len(slate.ids)
     tiers = slate.tiers or (-1,) * len(slate.ids)

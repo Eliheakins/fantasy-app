@@ -16,6 +16,8 @@ One story is one working session. Engine and dashboard stories are merged per ep
 
 **Added in the cleanup pass:** point-valued effects are scaled to each league's scoring; the app binds to localhost; the stale banner names projection layers whose stage has not run; teamless players are no longer projected; 21 more tests (205 total).
 
+**Fourth working session (phase 4):** per-player draw streams in the sampler, an effect replication rule, a calibration check with out-of-fit curves, a historical team-score test and a weekly spread by size tier (the spread was 20% too wide), and small trade-page fixes. Numbers in `decisions.md`.
+
 **Known gaps:**
 - Injury status: measured by status, practice report and injury type for the next four games; IR and similar are zero for 4 games. Defender injury curves reuse the skill-player curves. Vacancy bumps are shared equally among a team's receivers or backs.
 - No slot-matchup modeling (free data has no alignment).
@@ -25,7 +27,7 @@ One story is one working session. Engine and dashboard stories are merged per ep
 - Win probability uses league-average K and DEF for what is left to play.
 - The Sleeper blend weight (50%) is untested on clean data: #40, around week 11.
 - DEF scoring matches Sleeper exactly in 52 of 60 (Colgate) and 41 of 60 (YinzBurgh) team-weeks; the rest are off by 1 to 2 points, likely special-teams recoveries. The K projection is no better than the league average; the DEF projection is about 3% better.
-- The season simulation still uses league-average K and DEF per slot.
+- The season simulation still uses league-average K and DEF per slot (accepted).
 - tau is now estimated from history, but the spread of season win totals is untested (no league history).
 - The playoff bracket, byes and tiebreaks are assumptions; the user confirmed 6 teams, byes for seeds 1 and 2, weeks 15 to 17.
 - Top-player bias (#38) was investigated and not corrected: the effect is 0.2 to 0.3% of RMSE.
@@ -122,4 +124,5 @@ Not in the first build. Plan each after the redraft version works.
 - Per-player-week availability draws in the season simulation, and bootstrap re-estimation of correlations.
 - Paid prop-line backfill, if backtests show props help (budget is $0 for now).
 - Full K and DEF models, if the simple streaming rules turn out to matter.
+- Defender injury curves: measure the chance of playing for corners and other defenders instead of reusing the skill-player curves (the injury data covers every position). It only touches the corner-out effect, so it is low priority.
 - News LLM, React front end (revisit if phone access matters), draft assistant, lineup what-if.

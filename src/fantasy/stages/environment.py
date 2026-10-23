@@ -39,6 +39,8 @@ SHRINK = 1.0  # pseudo-games at the league average
 MIN_GAMES_CB = 4  # a team needs this many games before its leading corners are known
 CB_LEADERS = 2
 MIN_T = 2.0
+REPLICATE_T = 1.0  # each half of the history must show the same sign with at least this |t|
+SPLIT_SEASON = 2024  # the halves are before this season and from it on
 TTL_HOURS = 12.0
 RIDGE = 1.0
 SKILL = ["QB", "RB", "WR", "TE"]
@@ -320,10 +322,8 @@ def live(
     return Live(team_z, cb, opponent)
 
 
-def run() -> int:
-    leagues = store.read_table("leagues", "raw")
-    league_id = reference_league(leagues)  # point effects are scaled to the other league later
-    season = int(leagues["season"].to_numpy().max())
+def history_panel(league_id: str, season: int) -> pl.DataFrame:
+    """Player-game panel for every season before `season`, with environment features."""
     efficiency = load_efficiency(season)
     stats = store.read_table("nfl_player_stats", "raw")
     injuries = store.read_table("nfl_injuries", "raw").filter(pl.col("season") < season)
@@ -351,12 +351,42 @@ def run() -> int:
     panel = panel.join(
         baseline.select("gsis_id", "season", "week", "context"), on=["gsis_id", "season", "week"]
     ).join(opponents, on=["gsis_id", "season", "week"], how="left")
-    panel = build_panel_env(
+    return build_panel_env(
         panel,
         ratings(efficiency.filter(pl.col("season") < season)),
         cb_out_table(store.read_table("nfl_snaps", "raw"), injuries),
     )
-    table = estimate(panel)
+
+
+def replicated(full: pl.DataFrame, early: pl.DataFrame, late: pl.DataFrame) -> pl.DataFrame:
+    """`full` with t set to 0 for every effect that does not show up in both halves of the history
+    with the same sign (the |t| of 2 cut is chosen on the same data the effect is fit on)."""
+    keys = ["position", "kind"]
+    halves = early.select(*keys, e_value="value", e_t="t").join(
+        late.select(*keys, l_value="value", l_t="t"), on=keys
+    )
+    joined = full.join(halves, on=keys, how="left")
+    holds = (
+        (pl.col("value").sign() == pl.col("e_value").sign())
+        & (pl.col("value").sign() == pl.col("l_value").sign())
+        & (pl.col("e_t").abs() >= REPLICATE_T)
+        & (pl.col("l_t").abs() >= REPLICATE_T)
+    ).fill_null(False)
+    return joined.with_columns(t=pl.when(holds).then(pl.col("t")).otherwise(0.0)).select(
+        full.columns
+    )
+
+
+def run() -> int:
+    leagues = store.read_table("leagues", "raw")
+    league_id = reference_league(leagues)  # point effects are scaled to the other league later
+    season = int(leagues["season"].to_numpy().max())
+    panel = history_panel(league_id, season)
+    table = replicated(
+        estimate(panel),
+        estimate(panel.filter(pl.col("season") < SPLIT_SEASON)),
+        estimate(panel.filter(pl.col("season") >= SPLIT_SEASON)),
+    )
     store.write_table("environment_effects", table)
     return table.height
 

@@ -64,3 +64,19 @@ def test_streamers_list_free_kickers_and_mine_but_never_another_teams(
     out = data_api.streamers("t", "K")
     assert out["unit"].to_list() == ["G_FREEK", "G_K"]
     assert out["is_mine"].to_list() == [False, True]
+
+
+def test_trade_roster_changes_show_a_drop_that_lands_on_a_player_just_received(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    build_store(tmp_path, monkeypatch, [(100.0, 90.0)])
+    write_rows(tmp_path, "trending")
+    real = data_api.moves.apply_trade
+
+    def drop_received(*args, **kwargs):
+        return real(*args, **kwargs).filter(pl.col("gsis_id") != "G_OPP")
+
+    monkeypatch.setattr(data_api.moves, "apply_trade", drop_received)
+    out = data_api.trade_roster_changes("t", 2, ["G_RB"], ["G_OPP"])
+    dropped = out.filter((pl.col("team_name") == "Mine") & (pl.col("action") == "dropped"))
+    assert dropped["full_name"].to_list() == ["opp"]

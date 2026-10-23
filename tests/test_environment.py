@@ -148,3 +148,39 @@ def test_apply_adds_the_effects_scaled_by_play_chance_and_clips_at_zero() -> Non
     negative = {("WR", "team_sack_rate"): -1.0}
     clipped = apply_environment(_projections(), situation, negative, current_week=7)
     assert clipped.filter(pl.col("gsis_id") == "low")["projection"][0] == 0.0
+
+
+def _effects(rows: list[tuple[str, str, float, float]]) -> pl.DataFrame:
+    return pl.DataFrame(
+        [(p, k, 100, v, t) for p, k, v, t in rows],
+        schema=store.SCHEMAS["environment_effects"],
+        orient="row",
+    )
+
+
+def test_an_effect_that_vanishes_or_flips_in_either_half_is_switched_off() -> None:
+    full = _effects(
+        [
+            ("WR", "opp_cb_out", 0.6, 3.6),  # holds in both halves
+            ("QB", "team_sack_rate", 0.4, 2.4),  # gone in the later seasons
+            ("RB", "team_pass_epa", -0.3, -2.8),  # flips sign in the early seasons
+        ]
+    )
+    early = _effects(
+        [
+            ("WR", "opp_cb_out", 0.6, 2.9),
+            ("QB", "team_sack_rate", 0.5, 2.7),
+            ("RB", "team_pass_epa", 0.1, 0.6),
+        ]
+    )
+    late = _effects(
+        [
+            ("WR", "opp_cb_out", 0.7, 2.2),
+            ("QB", "team_sack_rate", 0.0, 0.1),
+            ("RB", "team_pass_epa", -0.4, -2.4),
+        ]
+    )
+    out = env.replicated(full, early, late)
+    t = dict(zip(out["kind"], out["t"], strict=True))
+    assert t["opp_cb_out"] == 3.6 and t["team_sack_rate"] == 0.0 and t["team_pass_epa"] == 0.0
+    assert set(out.columns) == set(full.columns)

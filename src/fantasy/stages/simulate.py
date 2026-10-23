@@ -37,6 +37,20 @@ DEF_MEAN, DEF_VAR = 8.0, 25.0  # fallback when too few starting defenses have sc
 MIN_DEF_ROWS = 20  # otherwise use the league's own starting-defense scores
 
 
+def tier_spreads(marginals: pl.DataFrame) -> dict[str, tuple[tuple[float, float], ...]]:
+    """position -> ((upper projection edge, cv), ...) ascending, from the size-tier rows."""
+    tiers = (
+        marginals.filter(pl.col("tier") >= 0)
+        .select("position", "tier", "proj_max", "cv")
+        .unique()
+        .sort("position", "tier")
+    )
+    out: dict[str, list[tuple[float, float]]] = {}
+    for r in tiers.iter_rows(named=True):
+        out.setdefault(r["position"], []).append((r["proj_max"], r["cv"]))
+    return {position: tuple(rows) for position, rows in out.items()}
+
+
 def current_state(
     mp: pl.DataFrame,
     projections: dict[str, float],
@@ -249,10 +263,8 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         .filter(pl.col("gsis_id_right").is_not_null())
     )
     positions = dict(zip(active["gsis_id_right"], active["position"], strict=True))
-    marginals = store.read_table("marginals").filter(
-        (pl.col("league_id") == lid) & (pl.col("tier") == -1)
-    )
-    cv = dict(marginals.select("position", "cv").unique().iter_rows())
+    marginals = store.read_table("marginals").filter(pl.col("league_id") == lid)
+    cv = dict(marginals.filter(pl.col("tier") == -1).select("position", "cv").unique().iter_rows())
     same_team = store.read_table("correlation_pairs").filter(
         (pl.col("league_id") == lid) & (pl.col("relation") == "same_team")
     )
@@ -301,6 +313,7 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         rosters=rosters,
         projections=projections,
         cv=cv,
+        cv_tiers=tier_spreads(marginals),
         pair_rho=rho,
         pairings={
             week: [(int(a), int(b)) for a, b in g.select("roster_a", "roster_b").iter_rows()]
