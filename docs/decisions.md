@@ -230,3 +230,11 @@ Backlog and story IDs: `docs/backlog.md`. `docs/spec/modeling.md` sections 10b a
 - `se_title` is the independent-runs binomial error of the title change (about 0.3 points at 20,000 sims). Shared draws make the true error smaller, so it is an upper bound. Most title changes in week 7 are below it; playoff change is the better signal.
 - Adds worth under 0.05 expected points are hidden.
 - Live: Colgate's best add is Daniel Jones for J.J. McCarthy (+9.4 points, +1.6 playoff points). YinzBurgh has almost nothing on the wire.
+
+## 2026-10-23: DEF scoring and K/DEF streaming (E3-7, E5-5)
+
+- `stages/streaming.py` scores team defenses from nflverse team stats under each league's rules, including points-allowed and yards-allowed tiers. Points allowed exclude touchdowns the opponent's own defense and special teams scored. Checked against Sleeper DEF starters, weeks 1 to 6: 52 of 60 exact for Colgate, 41 of 60 for YinzBurgh, the rest off by 1 to 2 points (6 once). Adding `def_st_ff` on top of `ff` made it worse (27 of 60), so it stays out. Likely cause of the misses: special-teams fumble recoveries that team stats do not carry (not traced).
+- Projection = form (half-life 4 games, shrink 3 games toward the league mean) plus a least-squares slope on the game's implied total (opponent's for DEF, own for K) and a dome bonus for K.
+- Walk-forward test on 2024 to 2025, RMSE against the plain league average: Colgate DEF 5.60 vs 5.74, YinzBurgh DEF 5.91 vs 6.20 (small edge); K 5.21 vs 5.24 and 4.40 vs 4.40 (no edge). The Waivers page says so.
+- The season simulation still uses league-average K and DEF per slot. Per-team DEF means would only move title odds slightly; not worth the plumbing yet.
+- Weather is not used (nflverse has it for weeks 1 to 4 only).

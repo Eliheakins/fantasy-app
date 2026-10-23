@@ -55,6 +55,14 @@ _ENGINE_STUBS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "share_better": _F,
         "tag": _S,
     },
+    "streamers": {
+        "unit": _S,
+        "name": _S,
+        "team": _S,
+        "is_mine": _B,
+        "this_week": _F,
+        "next_three": _F,
+    },
     "waivers": {
         "gsis_id": _S,
         "full_name": _S,
@@ -354,6 +362,7 @@ def kdef(league_key: str, week: int) -> pl.DataFrame:
     return pl.DataFrame(schema=_ENGINE_STUBS["kdef"])
 
 
+STREAM_WEEKS = 3
 MIN_GAIN = 0.05  # expected points below this are not worth a roster move
 LINEUP_SIMS = 20000
 LINEUP_SEED = 11
@@ -511,3 +520,48 @@ def _constant_points(data: LeagueData, n_sims: int, seed: int) -> np.ndarray:
     mean = counts.get("K", 0) * data.k_mean + counts.get("DEF", 0) * data.def_mean
     var = counts.get("K", 0) * data.k_var + counts.get("DEF", 0) * data.def_var
     return mean + np.sqrt(var) * np.random.default_rng(seed).standard_normal(n_sims)
+
+
+def streamers(league_key: str, kind: str, top_n: int = 8) -> pl.DataFrame:
+    """Best free K or DEF over the next weeks, plus mine for comparison. kind is "K" or "DEF"."""
+    from fantasy.stages.crosswalk import TEAM_MAP
+
+    row = leagues().filter(pl.col("league_key") == league_key)
+    if row.is_empty() or kind not in ("K", "DEF"):
+        return pl.DataFrame(schema=_ENGINE_STUBS["streamers"])
+    lid, current, mine = row["league_id"][0], int(row["current_week"][0]), row["roster_id"][0]
+    proj = (
+        _read("streaming_projection", store.DATA_DIR, area="derived")
+        .filter((pl.col("league_id") == lid) & (pl.col("kind") == kind))
+        .filter(pl.col("week") < current + STREAM_WEEKS)
+    )
+    rostered = _read("rosters", store.DATA_DIR).filter(pl.col("league_id") == lid)
+    players = _read("sleeper_players", store.DATA_DIR).select("sleeper_id", "full_name", "position")
+    if kind == "DEF":
+        owned = rostered.join(players, on="sleeper_id").filter(pl.col("position") == "DEF")
+        owned = owned.with_columns(
+            pl.col("sleeper_id")
+            .replace_strict(TEAM_MAP, default=pl.col("sleeper_id"))
+            .alias("unit")
+        )
+        name = {u: f"{u} D/ST" for u in proj["unit"].unique()}
+    else:
+        id_map = _read("id_map", store.DATA_DIR, area="derived").select("sleeper_id", "gsis_id")
+        owned = rostered.join(id_map, on="sleeper_id").join(players, on="sleeper_id")
+        owned = owned.filter(pl.col("position") == "K").rename({"gsis_id": "unit"})
+        name = _names()
+    mine_units = set(owned.filter(pl.col("roster_id") == mine)["unit"])
+    taken_units = set(owned["unit"]) - mine_units
+    totals = proj.group_by("unit", "team").agg(
+        pl.col("projection").filter(pl.col("week") == current).sum().alias("this_week"),
+        pl.col("projection").sum().alias("next_three"),
+    )
+    rows = totals.with_columns(
+        pl.col("unit").replace_strict(name, default=pl.col("unit")).alias("name"),
+        pl.col("unit").is_in(list(mine_units)).alias("is_mine"),
+    )
+    free = rows.filter(~pl.col("unit").is_in(list(taken_units | mine_units)))
+    keep = pl.concat(
+        [rows.filter(pl.col("is_mine")), free.sort("next_three", descending=True).head(top_n)]
+    )
+    return keep.select(*_ENGINE_STUBS["streamers"]).sort("next_three", descending=True)

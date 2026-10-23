@@ -20,26 +20,53 @@ st.caption(
 )
 if adds.is_empty():
     st.info("No free agent adds expected points to your team.")
-    st.stop()
-st.dataframe(
-    adds.select(
-        "full_name",
-        "position",
-        "drop_name",
-        "delta_points",
-        "playoff_delta",
-        "title_delta",
-        "se_title",
-    ),
-    hide_index=True,
-    width="stretch",
-    column_config={
-        "full_name": "Add",
-        "position": "Pos",
-        "drop_name": "Drop",
-        "delta_points": st.column_config.NumberColumn("Extra points", format="%+.1f"),
-        "playoff_delta": st.column_config.NumberColumn("Playoffs", format="percent"),
-        "title_delta": st.column_config.NumberColumn("Title", format="percent"),
-        "se_title": st.column_config.NumberColumn("Title error", format="percent"),
-    },
+else:
+    st.dataframe(
+        adds.select(
+            "full_name",
+            "position",
+            "drop_name",
+            "delta_points",
+            "playoff_delta",
+            "title_delta",
+            "se_title",
+        ),
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "full_name": "Add",
+            "position": "Pos",
+            "drop_name": "Drop",
+            "delta_points": st.column_config.NumberColumn("Extra points", format="%+.1f"),
+            "playoff_delta": st.column_config.NumberColumn("Playoffs", format="percent"),
+            "title_delta": st.column_config.NumberColumn("Title", format="percent"),
+            "se_title": st.column_config.NumberColumn("Title error", format="percent"),
+        },
+    )
+
+st.header("Streaming: defense and kicker")
+st.caption(
+    "Projected points over the next three weeks (a bye week counts as zero). The projection is "
+    "recent form plus the game's implied total, and beats a plain league average only slightly "
+    "for defenses (about 3% lower error) and not at all for kickers, so treat small gaps as "
+    "noise. Your own player is marked."
 )
+for kind, label in (("DEF", "Defenses"), ("K", "Kickers")):
+    try:
+        picks = data_api.streamers(league_key, kind)
+    except FileNotFoundError:
+        st.info("Run the streaming stage to see this.")
+        break
+    st.subheader(label)
+    st.dataframe(
+        picks.select("name", "team", "is_mine", "this_week", "next_three"),
+        hide_index=True,
+        width="stretch",
+        column_config={
+            "name": label[:-1],
+            "team": "Team",
+            "is_mine": "Mine",
+            "this_week": st.column_config.NumberColumn("This week", format="%.1f"),
+            "next_three": st.column_config.NumberColumn("Next 3 weeks", format="%.1f"),
+        },
+    )

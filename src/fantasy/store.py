@@ -126,6 +126,15 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         floats="points team_implied opp_implied total_line temp wind",
     )
     | {"is_home": _B},
+    # written by streaming (area: derived)
+    "defense_points": _cols(
+        strings="league_id team roof",
+        ints="season week",
+        floats="points team_implied opp_implied",
+    ),
+    "streaming_projection": _cols(
+        strings="league_id kind unit team", ints="week", floats="projection"
+    ),
     # written by simulate (area: derived; the history copy is in archive and only ever appended)
     "sim_season": _cols(
         strings="league_id team_name",
