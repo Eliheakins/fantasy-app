@@ -42,7 +42,8 @@ def run() -> None:
             | (pl.col("losses") != pl.col("losses_sleeper"))
             | (pl.col("ties") != pl.col("ties_sleeper"))
         ).height
-        gap = (joined["points_for"] - joined["points_for_sleeper"]).abs().max()
+        diff = (pl.col("points_for") - pl.col("points_for_sleeper")).abs()
+        gap = joined.select(diff.max()).item()
         total = sleeper.height
         print(
             f"{row['league_key']} through week {through}: records match {total - records_off} of "
