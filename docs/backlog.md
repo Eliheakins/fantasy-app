@@ -126,3 +126,15 @@ Not in the first build. Plan each after the redraft version works.
 - Full K and DEF models, if the simple streaming rules turn out to matter.
 - Defender injury curves: measure the chance of playing for corners and other defenders instead of reusing the skill-player curves (the injury data covers every position). It only touches the corner-out effect, so it is low priority.
 - News LLM, React front end (revisit if phone access matters), draft assistant, lineup what-if.
+
+## Modeling v2 (proposed, not approved)
+
+From the 2026-10-23 research and tests in `decisions.md`. In order:
+
+1. **Learned player model.** Replace the rolling baseline as the model-based component with a gradient-boosted model on lagged features (1.3% lower RMSE out of sample, better in 2024, 2025 and 2026). Re-estimate calibration, marginals and correlations from its residuals. Ships only if it keeps beating the baseline on weeks as they arrive.
+2. **Weight on an outside projection.** The prior from FantasyData is about 0.8 on the outside source; #40 sets the Sleeper weight around week 11. Consider moving the default above 50% if the first snapshots agree.
+3. **Market data test.** One month of the Odds API $30 plan to backfill 2023 to 2025 prop closing lines (about 5K credits, estimated), de-vig and convert to means, compare held-out RMSE of the market mean, the learned model and FantasyData on covered players. Meanwhile keep the weekly free-tier snapshots running.
+4. **Full-stack evaluation.** Backfill the injury, return and environment layers historically so the production stack, not only the baseline, can be scored against an outside source.
+5. **Role data.** Load depth charts, participation (routes, personnel), weekly rosters, draft picks and combine data; draft capital as the prior for players with no history (FantasyData is 20% better on them).
+6. **Availability.** A separate chance-of-playing model from practice status, depth chart and game context, scored on all listed players rather than played-only rows.
+7. **Player-level checks.** Pinball loss and coverage by size tier on held-out player-weeks, beside the team-score check.
