@@ -154,6 +154,13 @@ Per-league scoring from nflverse stats matches Sleeper's reported player points 
 - **Caveats:** odds assume current rosters (no future waiver moves, trades or injuries beyond the outcome spread). `tau`, the drift and the DEF constants are provisional; the calibration check (E4-6) tests team-score coverage. A started player with exactly 0 points who already played is counted as still to play (rare).
 - **Tables:** `sim_season` (latest) and `sim_season_history` (archive, appended each run).
 
+## E5-1 and E5-3 waivers and trades (2026-10-23)
+
+- **Free agents (`sim/moves.py`):** active Sleeper players (status Active, on a team, mapped to an nflverse ID) with a projection and no roster in the league: 392 in Colgate, 385 in YinzBurgh. A first version used any projected player and offered players Sleeper doesn't list as active; the smoke test caught it.
+- **Waiver shortcut:** for each of the top 10 free agents per position, add him and drop the roster's lowest remaining-season-value player, then recompute best weekly lineups; rank by extra expected points over the rest of the season. It ignores bye-week coverage and injuries, and the drop choice is a heuristic; E5-2 re-simulates the survivors for playoff and title odds. Live: Colgate's best add is Daniel Jones (QB, superflex) at +9.4 points, YinzBurgh's best is +0.5.
+- **Trade evaluator:** applies the swap, keeps each team's roster size (a team that receives more players than it gives drops its lowest-value players; one that receives fewer picks up the best free agents, an assumption), then runs the season simulation before and after with the same random draws, so differences are stable. Refuses after the trade deadline (a deadline guard from E5-4 is included). Sample on real data: giving my lowest-value Colgate player for the partner's best moves my title odds from 8.6% to 15.3% and theirs from 13.3% to 6.9%.
+- **Limits:** the evaluator values a trade only through projected points and the simulation; it does not model whether the partner would accept, positional scarcity beyond lineups, or injuries. K and DEF are not traded.
+
 ## GitHub issues (2026-10-23)
 
 Created in `Eliheakins/fantasy-app` from `docs/backlog.md`: 36 story issues (#1 to #36) plus a Post-MVP tracking issue (#37). Labels: epic (E0 to E5), engine or dashboard, fast-path, optional, spike, post-mvp. Milestones: one per epic. E0-3 (#3) is closed. No Project board: it needs the `project` token scope, which the personal token lacks (`gh auth refresh -s project` is interactive). The repo itself has no commits pushed yet, so the doc paths in issue bodies are plain text, not links.

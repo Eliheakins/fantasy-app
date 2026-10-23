@@ -72,11 +72,18 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         .select("roster_id", "gsis_id", "position")
         .unique()
     )
-    projections = (
-        store.read_table("proj_baseline")
-        .filter((pl.col("league_id") == lid) & pl.col("is_future") & (pl.col("week") >= current))
-        .select("gsis_id", "week", "projection")
+    future = store.read_table("proj_baseline").filter(
+        (pl.col("league_id") == lid) & pl.col("is_future") & (pl.col("week") >= current)
     )
+    projections = future.select("gsis_id", "week", "projection")
+    active = (
+        store.read_table("sleeper_players", "raw")
+        .filter((pl.col("status") == "Active") & pl.col("team").is_not_null())
+        .filter(pl.col("position").is_in(SKILL))
+        .join(id_map, on="sleeper_id")
+        .filter(pl.col("gsis_id_right").is_not_null())
+    )
+    positions = dict(zip(active["gsis_id_right"], active["position"], strict=True))
     marginals = store.read_table("marginals").filter(pl.col("league_id") == lid)
     cv = dict(marginals.select("position", "cv").unique().iter_rows())
     same_team = store.read_table("correlation_pairs").filter(
@@ -124,6 +131,8 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         def_mean=DEF_MEAN,
         def_var=DEF_VAR,
         current=current_state(mp, week_projection, week_pool),
+        positions=positions,
+        trade_deadline=int(league["trade_deadline"] or 99),
     )
 
 

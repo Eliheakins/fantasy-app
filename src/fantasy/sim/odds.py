@@ -51,6 +51,8 @@ class LeagueData:
     def_mean: float
     def_var: float
     current: dict[int, CurrentWeek] = field(default_factory=dict)
+    positions: dict[str, str] = field(default_factory=dict)  # gsis_id -> position, free agents too
+    trade_deadline: int = 99  # last week trades are allowed
 
 
 def lineup_moments(
