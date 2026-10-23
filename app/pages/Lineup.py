@@ -44,16 +44,19 @@ def table(frame: pl.DataFrame) -> pl.DataFrame:
     return frame.with_columns(
         pl.struct(frame.columns).map_elements(change, return_dtype=pl.String).alias("change"),
         (low + " to " + high).alias("range"),
-    ).select("slot", "full_name", "position", "projection", "range", "change")
+        pl.when(pl.col("locked")).then(pl.lit("Locked")).otherwise(pl.lit("")).alias("lock"),
+    ).select("slot", "full_name", "position", "injury", "projection", "range", "change", "lock")
 
 
 config = {
     "slot": "Slot",
     "full_name": "Player",
     "position": "Pos",
+    "injury": "Status",
     "projection": st.column_config.NumberColumn("Proj", format="%.1f"),
     "range": "10 to 90%",
     "change": "Change",
+    "lock": "Game",
 }
 st.subheader("Start")
 st.dataframe(table(start), hide_index=True, width="stretch", column_config=config)
@@ -62,8 +65,10 @@ if not bench.is_empty():
     st.dataframe(table(bench), hide_index=True, width="stretch", column_config=config)
 st.caption(
     "Best lineup by projected points for skill positions; K and DEF are not handled yet, and "
-    "players on bye are left out. It does not know which games have already started, so check "
-    "kickoff times before moving a player whose game is under way. The range is where about 80 "
-    "percent of outcomes have landed for players like this. A win-probability version comes "
-    "later. " + ("" if known else "Sleeper lineups are only known for the current week.")
+    "players on bye are left out. Players whose game has started are locked in place: locked "
+    "starters stay, locked bench players are not recommended. Injury status scales the "
+    "projection (Out 0%, Doubtful 2%, Questionable 76% of normal, from past reports). The range "
+    "is where about 80 percent of outcomes have landed for players like this. A win-probability "
+    "version comes later. "
+    + ("" if known else "Sleeper lineups are only known for the current week.")
 )

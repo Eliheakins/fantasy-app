@@ -5,13 +5,16 @@ Engine outputs that do not exist yet (lineup, waivers, odds, trades) return empt
 """
 
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import polars as pl
 
 from fantasy import store
+from fantasy.config import load_config
 from fantasy.sim import moves
-from fantasy.sim.lineup import Player, auto_lineup, lineup_slots
+from fantasy.sim.availability import locked_teams
+from fantasy.sim.lineup import Player, lineup_slots, lineup_with_locks
 from fantasy.sim.odds import LeagueData
 
 POSITION_ORDER = {"QB": 0, "RB": 1, "WR": 2, "TE": 3, "K": 4, "DEF": 5}
@@ -38,6 +41,8 @@ _ENGINE_STUBS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "p90": _F,
         "starting_now": _B,
         "recommended": _B,
+        "injury": _S,
+        "locked": _B,
     },
     "waivers": {
         "gsis_id": _S,
@@ -141,7 +146,7 @@ def unmatched(data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
     )
 
 
-def lineup(league_key: str, week: int = 0) -> pl.DataFrame:
+def lineup(league_key: str, week: int = 0, now: datetime | None = None) -> pl.DataFrame:
     """My best lineup by projected points for a remaining week, plus the bench.
 
     `starting_now` marks who is set to start in Sleeper (only known for the current week).
@@ -152,9 +157,6 @@ def lineup(league_key: str, week: int = 0) -> pl.DataFrame:
     names, positions = _names(), moves.position_of(data)
     values = moves.week_values(data).get(week, {})
     pool = [Player(i, positions[i], values[i]) for i in moves.team_ids(data, mine) if i in values]
-    best = auto_lineup(pool, lineup_slots(data.roster_positions))
-    slot_of = {pid: slot for slot, pid in best.slots}
-
     marginals = _read("marginals", store.DATA_DIR, area="derived").filter(
         pl.col("league_id") == data.league_id
     )
@@ -176,6 +178,12 @@ def lineup(league_key: str, week: int = 0) -> pl.DataFrame:
         )
         starting = set(set_starters["gsis_id"].to_list())
 
+    status, locked = _status_and_locks(week, data.current_week, now)
+    best = lineup_with_locks(
+        pool, lineup_slots(data.roster_positions), {p.id for p in pool if p.id in locked}, starting
+    )
+    slot_of = {pid: slot for slot, pid in best.slots}
+
     rows = []
     for p in sorted(pool, key=lambda p: (p.id not in slot_of, -p.value)):
         rows.append(
@@ -189,9 +197,30 @@ def lineup(league_key: str, week: int = 0) -> pl.DataFrame:
                 "p90": p.value * ratio.get((p.position, 0.9), 0.0),
                 "starting_now": p.id in starting,
                 "recommended": p.id in slot_of,
+                "injury": status.get(p.id),
+                "locked": p.id in locked,
             }
         )
     return pl.DataFrame(rows, schema=_ENGINE_STUBS["lineup"])
+
+
+def _status_and_locks(
+    week: int, current_week: int, now: datetime | None = None
+) -> tuple[dict[str, str], set[str]]:
+    """Injury status by nflverse ID, and ids whose game has started (current week only)."""
+    ids = _read("id_map", store.DATA_DIR, area="derived").select(
+        "sleeper_id", "gsis_id", "nfl_team"
+    )
+    players = _read("sleeper_players", store.DATA_DIR).select("sleeper_id", "injury_status")
+    joined = ids.join(players, on="sleeper_id").filter(pl.col("gsis_id").is_not_null())
+    status = {g: s for g, s in zip(joined["gsis_id"], joined["injury_status"], strict=True) if s}
+    if week != current_week:
+        return status, set()
+    started = locked_teams(
+        _read("nfl_schedules", store.DATA_DIR), load_config().season, week, now or datetime.now(UTC)
+    )
+    locked = set(joined.filter(pl.col("nfl_team").is_in(started))["gsis_id"].to_list())
+    return status, locked
 
 
 def _names() -> dict[str, str]:

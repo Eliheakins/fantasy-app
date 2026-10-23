@@ -15,6 +15,7 @@ import polars as pl
 
 from fantasy import store
 from fantasy.config import load_config
+from fantasy.sim.availability import scale_projections
 from fantasy.sim.lineup import Player
 from fantasy.sim.odds import CurrentWeek, LeagueData, league_odds
 from fantasy.sim.schedule import pairings, standings
@@ -76,7 +77,18 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
     future = store.read_table("proj_baseline").filter(
         (pl.col("league_id") == lid) & pl.col("is_future") & (pl.col("week") >= current)
     )
-    projections = future.select("gsis_id", "week", "projection")
+    flagged = (
+        store.read_table("sleeper_players", "raw")
+        .select("sleeper_id", "injury_status")
+        .filter(pl.col("injury_status").is_not_null())
+        .join(id_map, on="sleeper_id")
+        .filter(pl.col("gsis_id").is_not_null())
+    )
+    projections = scale_projections(
+        future.select("gsis_id", "week", "projection"),
+        dict(zip(flagged["gsis_id"], flagged["injury_status"], strict=True)),
+        current,
+    )
     active = (
         store.read_table("sleeper_players", "raw")
         .filter((pl.col("status") == "Active") & pl.col("team").is_not_null())

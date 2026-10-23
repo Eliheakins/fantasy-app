@@ -69,6 +69,21 @@ def auto_lineup(players: list[Player], slots: list[str]) -> Lineup:
     return Lineup(total, frozenset(used), tuple(chosen))
 
 
+def lineup_with_locks(
+    players: list[Player], slots: list[str], locked: set[str], starting: set[str]
+) -> Lineup:
+    """Best lineup when locked players cannot move: locked starters keep a slot, locked bench
+    players cannot start. Everyone else is filled greedily into the slots left over."""
+    pinned = auto_lineup([p for p in players if p.id in locked and p.id in starting], slots)
+    open_slots = list(slots)
+    for slot, _ in pinned.slots:
+        open_slots.remove(slot)
+    rest = auto_lineup([p for p in players if p.id not in locked], open_slots)
+    return Lineup(
+        pinned.total + rest.total, pinned.players | rest.players, (*pinned.slots, *rest.slots)
+    )
+
+
 def top_lineups(players: list[Player], slots: list[str], k: int) -> list[Lineup]:
     """The k best distinct lineups (by set of players), found by exhaustive search."""
     ordered = _narrowest_first(slots)

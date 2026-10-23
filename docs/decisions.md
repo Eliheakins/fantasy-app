@@ -206,3 +206,11 @@ Backlog and story IDs: `docs/backlog.md`. `docs/spec/modeling.md` sections 10b a
 - `make odds` archives raw prop-line JSON per game under `data/archive/odds/<timestamp>/`, logging credits in `credit_log.csv`. Six markets, one region (us), next 7 days of games, refuses below 100 credits left.
 - Key lives in gitignored `.env` (`ODDS_API_KEY`), read by `snapshot_odds.api_key`. The user said sharing it in chat was fine.
 - First snapshot: 14 games, 78 credits used, 422 left. Nothing downstream reads the files yet; the point is to build history for a later backtest.
+
+## 2026-10-23: Locks and injuries (E4-7, #39)
+
+- `sim/availability.py`: projections are multiplied by availability when `load_league_data` builds them, so lineup, waivers, trades and season odds all see it. Out 0, Doubtful 0.02, Questionable 0.76 for the current week only. IR, PUP, NFI, Sus and DNR are zero for 4 weeks, then full.
+- Rates measured on nflverse 2018 to 2025 reports, skill players with 5 or more touches or targets the week before: 0.2% of Out, 1.8% of Doubtful, 73% of Questionable played, against 96% with no designation. 0.76 is 73 over 96.
+- Known limits: expected-value scaling, not a per-week play/no-play draw in the simulation; "plays" means any touch or target, not a full workload; a game-day status says nothing about later weeks; Out is assumed to last one week.
+- Locks: a team is locked once its kickoff (nflverse schedule, US Eastern) has passed, current week only. Locked starters keep their slot, locked bench players are never recommended. Greedy fill runs on the slots left over.
+- Re-ran simulate: Colgate 75% playoffs, 24% bye, 9.0% title (was 8.7%).
