@@ -1,5 +1,6 @@
 """Dashboard entry point. Run: make app"""
 
+import polars as pl
 import streamlit as st
 from ui import league_picker, no_data_warning
 
@@ -22,6 +23,15 @@ def home() -> None:
         st.subheader(f"{row['name']} · {row['team_name']}")
         st.caption(f"{record} · {row['points_for']:.1f} PF · week {row['current_week']}")
         st.caption(row["scoring_labels"])
+        mine = data_api.season_odds(league_key).filter(pl.col("is_me"))
+        if not mine.is_empty():
+            odds = mine.row(0, named=True)
+            cols = st.columns(4)
+            cols[0].metric("Make playoffs", f"{odds['p_playoffs']:.0%}")
+            cols[1].metric("First-round bye", f"{odds['p_bye']:.0%}")
+            cols[2].metric("Win the title", f"{odds['p_title']:.1%}")
+            cols[3].metric("Expected wins", f"{odds['exp_wins']:.1f}")
+            st.caption("Odds assume current rosters. Details on the Outlook page.")
         roster = data_api.roster(league_key)
         st.dataframe(
             roster.select("full_name", "position", "team", "injury_status", "is_starter"),

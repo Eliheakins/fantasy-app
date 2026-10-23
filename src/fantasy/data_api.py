@@ -46,7 +46,15 @@ _ENGINE_STUBS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "drop_name": _S,
         "delta_points": _F,
     },
-    "season_odds": {"roster_id": _S, "team_name": _S, "p_playoffs": _F, "p_title": _F},
+    "season_odds": {
+        "roster_id": pl.Int64,
+        "team_name": _S,
+        "p_playoffs": _F,
+        "p_bye": _F,
+        "p_title": _F,
+        "exp_wins": _F,
+        "is_me": _B,
+    },
     "kdef": {"team": _S, "position": _S, "week": _S, "projection": _F},
 }
 
@@ -269,8 +277,29 @@ def trade_roster_changes(
     return pl.DataFrame(rows, schema=schema, orient="row")
 
 
-def season_odds(league_key: str) -> pl.DataFrame:
-    return pl.DataFrame(schema=_ENGINE_STUBS["season_odds"])
+def season_odds(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+    """Latest simulated playoff and title odds for every team, best title odds first."""
+    row = leagues(data_dir).filter(pl.col("league_key") == league_key)
+    if row.is_empty():
+        return pl.DataFrame(schema=_ENGINE_STUBS["season_odds"])
+    odds = _read("sim_season", data_dir, area="derived").filter(
+        pl.col("league_id") == row["league_id"][0]
+    )
+    return (
+        odds.with_columns((pl.col("roster_id") == row["roster_id"][0]).alias("is_me"))
+        .select(*_ENGINE_STUBS["season_odds"])
+        .sort("p_title", descending=True)
+    )
+
+
+def odds_history(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+    """Every saved simulation run for a league: run_at, team_name, p_playoffs, p_title."""
+    row = leagues(data_dir).filter(pl.col("league_key") == league_key)
+    columns = ["run_at", "team_name", "roster_id", "p_playoffs", "p_title"]
+    if row.is_empty():
+        return pl.DataFrame(schema={c: store.SCHEMAS["sim_season_history"][c] for c in columns})
+    history = _read("sim_season_history", data_dir, area="archive")
+    return history.filter(pl.col("league_id") == row["league_id"][0]).select(columns)
 
 
 def kdef(league_key: str, week: int) -> pl.DataFrame:

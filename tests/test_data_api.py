@@ -65,6 +65,30 @@ def test_roster_puts_starters_first_then_position_order(tmp_path: Path) -> None:
     assert df["is_starter"].to_list() == [True, True, False]
 
 
+def test_season_odds_marks_my_team_and_sorts_by_title_odds(tmp_path: Path) -> None:
+    write_sample(tmp_path)
+    rows = [
+        ("L1", "Eli FC", 1, 7, 100, 0.6, 0.1, 0.05, 7.0),
+        ("L1", "Other", 2, 7, 100, 0.4, 0.2, 0.30, 6.0),
+    ]
+    odds = pl.DataFrame(rows, schema=store.SCHEMAS["sim_season"], orient="row")
+    store.write_table("sim_season", odds, data_dir=tmp_path)
+    out = data_api.season_odds("test", tmp_path)
+    assert out["team_name"].to_list() == ["Other", "Eli FC"]
+    assert out["is_me"].to_list() == [False, True]
+    assert data_api.season_odds("nope", tmp_path).is_empty()
+
+
+def test_odds_history_returns_saved_runs_for_the_league(tmp_path: Path) -> None:
+    write_sample(tmp_path)
+    run = ("L1", "Eli FC", "2026-10-23T00:00:00+00:00", 1, 7, 100, 0.6, 0.1, 0.05, 7.0)
+    history = pl.DataFrame([run], schema=store.SCHEMAS["sim_season_history"], orient="row")
+    store.write_table("sim_season_history", history, area="archive", data_dir=tmp_path)
+    out = data_api.odds_history("test", tmp_path)
+    assert out.height == 1 and out["p_title"].item() == 0.05
+    assert data_api.odds_history("test", tmp_path / "empty").is_empty()
+
+
 def test_unmatched_uses_the_crosswalk_not_the_sleeper_file_id(tmp_path: Path) -> None:
     write_sample(tmp_path)
     id_map = pl.DataFrame(
