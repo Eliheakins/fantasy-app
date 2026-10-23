@@ -21,7 +21,8 @@ from fantasy.sim.schedule import pairings, standings
 
 SKILL = ["QB", "RB", "WR", "TE"]
 K_HISTORY_FROM = 2023
-DEF_MEAN, DEF_VAR = 8.0, 25.0  # provisional until E3-7 scores team defenses
+DEF_MEAN, DEF_VAR = 8.0, 25.0  # fallback when too few starting defenses have scored
+MIN_DEF_ROWS = 20  # otherwise use the league's own starting-defense scores (until E3-7)
 
 
 def current_state(
@@ -99,6 +100,14 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         & (pl.col("season") >= K_HISTORY_FROM)
     )
     k_points = kicker["points"].to_numpy()
+    def_done = (
+        store.read_table("matchup_players", "raw")
+        .filter((pl.col("league_id") == lid) & (pl.col("week") < current) & pl.col("is_starter"))
+        .join(players, on="sleeper_id")
+        .filter((pl.col("position") == "DEF") & pl.col("points").is_not_null())
+    )
+    def_points = def_done["points"].to_numpy()
+    enough = def_points.size >= MIN_DEF_ROWS
     mp = (
         store.read_table("matchup_players", "raw")
         .filter((pl.col("league_id") == lid) & (pl.col("week") == current))
@@ -128,8 +137,8 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         points0={int(k): float(v) for k, v in points0.items()},
         k_mean=float(k_points.mean()) if k_points.size else 0.0,
         k_var=float(k_points.var(ddof=1)) if k_points.size > 1 else 0.0,
-        def_mean=DEF_MEAN,
-        def_var=DEF_VAR,
+        def_mean=float(def_points.mean()) if enough else DEF_MEAN,
+        def_var=float(def_points.var(ddof=1)) if enough else DEF_VAR,
         current=current_state(mp, week_projection, week_pool),
         positions=positions,
         trade_deadline=int(league["trade_deadline"] or 99),
