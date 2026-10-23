@@ -36,16 +36,33 @@ def scale_projections(
     return projections.with_columns(pl.col("projection") * pl.Series(factors, dtype=pl.Float64))
 
 
-def locked_teams(schedules: pl.DataFrame, season: int, week: int, now: datetime) -> set[str]:
-    """NFL teams whose game has kicked off. Schedule times are US Eastern."""
+GAME_MINUTES = (
+    200  # shortcut: overtime and delays read as final early; upgrade with a live game clock
+)
+
+
+def kickoffs(schedules: pl.DataFrame, season: int, week: int) -> dict[str, datetime]:
+    """Kickoff time of each team's game this week. Schedule times are US Eastern."""
     games = schedules.filter((pl.col("season") == season) & (pl.col("week") == week))
-    teams: set[str] = set()
+    out: dict[str, datetime] = {}
     for day, time, away, home in games.select(
         "gameday", "gametime", "away_team", "home_team"
     ).iter_rows():
         if day is None or time is None:
             continue
         kickoff = datetime.fromisoformat(f"{day}T{time}").replace(tzinfo=EASTERN)
-        if kickoff <= now:
-            teams |= {away, home}
-    return teams
+        out[away] = out[home] = kickoff
+    return out
+
+
+def remaining_share(kickoff: datetime | None, now: datetime) -> float:
+    """Share of a game still to play: 1 before kickoff, 0 once GAME_MINUTES have passed."""
+    if kickoff is None or now <= kickoff:
+        return 1.0
+    elapsed = (now - kickoff).total_seconds() / 60
+    return max(0.0, 1.0 - elapsed / GAME_MINUTES)
+
+
+def locked_teams(schedules: pl.DataFrame, season: int, week: int, now: datetime) -> set[str]:
+    """NFL teams whose game has kicked off."""
+    return {t for t, k in kickoffs(schedules, season, week).items() if k <= now}

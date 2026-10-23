@@ -36,9 +36,10 @@ class CurrentWeek:
 
     realized: float
     open_players: tuple[Player, ...]  # set starters whose points are not in yet
-    open_k: int
-    open_def: int
-    locked_starters: frozenset[str] = frozenset()  # set starters who have already scored
+    open_k: float  # K and DEF slots still to score, counting a game under way by its share left
+    open_def: float
+    locked_starters: frozenset[str] = frozenset()  # set starters whose game has started
+    kd_actual: float = 0.0  # points already scored by K and DEF starters (part of realized)
 
 
 @dataclass(frozen=True)
@@ -63,7 +64,8 @@ class LeagueData:
     positions: dict[str, str] = field(default_factory=dict)  # gsis_id -> position, free agents too
     trade_deadline: int = 99  # last week trades are allowed
     league_id: str = ""
-    played: frozenset[str] = frozenset()  # everyone who has scored this week, any roster
+    played: frozenset[str] = frozenset()  # everyone whose game has started this week
+    live: dict[str, tuple[float, float]] = field(default_factory=dict)  # id -> (points, share left)
 
 
 def lineup_moments(
@@ -131,7 +133,12 @@ def build_inputs(
                     best = lineup_with_locks(
                         pool, slots, set(data.played) & set(position), set(state.locked_starters)
                     )
-                    lineup = [p for p in pool if p.id in best.players and p.id not in data.played]
+                    in_progress = [
+                        p for p in state.open_players if p.id in data.played and p.id in position
+                    ]
+                    lineup = in_progress + [
+                        p for p in pool if p.id in best.players and p.id not in data.played
+                    ]
                 offset, k_open, def_open = state.realized, state.open_k, state.open_def
             else:
                 values = by_week.get(week, {})

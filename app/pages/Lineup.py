@@ -77,8 +77,9 @@ def table(frame: pl.DataFrame) -> pl.DataFrame:
     return frame.with_columns(
         pl.struct(frame.columns).map_elements(change, return_dtype=pl.String).alias("change"),
         (low + " to " + high).alias("range"),
-        pl.when(pl.col("locked")).then(pl.lit("Locked")).otherwise(pl.lit("")).alias("lock"),
-    ).select("slot", "full_name", "position", "injury", "projection", "range", "change", "lock")
+    ).select(
+        "slot", "full_name", "position", "injury", "projection", "range", "actual", "game", "change"
+    )
 
 
 config = {
@@ -89,7 +90,8 @@ config = {
     "projection": st.column_config.NumberColumn("Proj", format="%.1f"),
     "range": "10 to 90%",
     "change": "Change",
-    "lock": "Game",
+    "actual": st.column_config.NumberColumn("Pts so far", format="%.1f"),
+    "game": "Game",
 }
 st.subheader("Start")
 st.dataframe(table(start), hide_index=True, width="stretch", column_config=config)
@@ -109,7 +111,8 @@ if not bench.is_empty():
 st.caption(
     "Best lineup by projected points for skill positions; K and DEF are not handled yet, and "
     "players on bye are left out. Players whose game has started are locked in place: locked "
-    "starters stay, locked bench players are not recommended. Injury status scales the "
+    "starters stay, locked bench players are not recommended. A game counts as over 200 "
+    "minutes after kickoff, and points are as fresh as the last refresh. Injury status scales the "
     "projection (Out 0%, Doubtful 2%, Questionable 76% of normal, from past reports). The range "
     "is where about 80 percent of outcomes have landed for players like this. In the win "
     "probability, the opponent plays the lineup set in Sleeper and K and DEF are league averages. "

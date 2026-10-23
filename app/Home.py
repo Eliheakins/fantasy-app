@@ -45,6 +45,20 @@ def home() -> None:
             cols[2].metric("Win the title", f"{odds['p_title']:.1%}")
             cols[3].metric("Expected wins", f"{odds['exp_wins']:.1f}")
             st.caption("Odds assume current rosters. Details on the Outlook page.")
+        if st.button("Refresh scores"):
+            data_api.refresh_live()
+            st.cache_data.clear()
+            st.rerun()
+        score = data_api.live_score(league_key)
+        if not score.is_empty():
+            cols = st.columns(len(score))
+            for col, r in zip(cols, score.iter_rows(named=True), strict=True):
+                col.metric(
+                    r["team_name"],
+                    f"{r['points']:.1f}",
+                    delta=f"projected final {r['projected_final']:.0f}",
+                    delta_color="off",
+                )
         chance = _win_chance(league_key)
         if chance is not None:
             st.metric("Chance to win this week", f"{chance:.0%}")

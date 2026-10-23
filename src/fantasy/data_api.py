@@ -22,7 +22,7 @@ from fantasy.sim.lineup import (
     lineup_slots,
     lineup_with_locks,
 )
-from fantasy.sim.odds import LeagueData
+from fantasy.sim.odds import CurrentWeek, LeagueData
 from fantasy.sim.sampler import LEVELS, Slate, correlation_matrix, sample_points
 from fantasy.sim.winprob import choose, swap_candidates
 
@@ -52,6 +52,8 @@ _ENGINE_STUBS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "recommended": _B,
         "injury": _S,
         "locked": _B,
+        "actual": _F,
+        "game": _S,
     },
     "win_probability": {
         "option": _S,
@@ -214,6 +216,18 @@ def lineup(league_key: str, week: int = 0, now: datetime | None = None) -> pl.Da
     )
     slot_of = {pid: slot for slot, pid in best.slots}
 
+    live = data.live if week == data.current_week else {}
+
+    def points_so_far(gsis_id: str) -> float:
+        points, share = live.get(gsis_id, (0.0, 1.0))
+        return points if share < 1.0 else 0.0
+
+    def game_state(gsis_id: str) -> str:
+        share = live.get(gsis_id, (0.0, 1.0))[1]
+        if share >= 1.0:
+            return "Not started"
+        return "Final" if share <= 0.0 else f"Live, {share:.0%} left"
+
     rows = []
     for p in sorted(pool, key=lambda p: (p.id not in slot_of, -p.value)):
         rows.append(
@@ -229,6 +243,8 @@ def lineup(league_key: str, week: int = 0, now: datetime | None = None) -> pl.Da
                 "recommended": p.id in slot_of,
                 "injury": status.get(p.id),
                 "locked": p.id in locked,
+                "actual": points_so_far(p.id),
+                "game": game_state(p.id),
             }
         )
     return pl.DataFrame(rows, schema=_ENGINE_STUBS["lineup"])
@@ -408,8 +424,10 @@ def win_probability(
     """My max-points lineup, the lineup set in Sleeper, and the lineup with the best chance of
     beating this week's opponent, each with its win probability on held-out draws.
 
-    The opponent plays the lineup set in Sleeper, or their best lineup if none is set. Points
-    already scored are not used: every player is drawn fresh, locked or not.
+    The opponent plays the lineup set in Sleeper, or their best lineup if none is set. In the
+    current week a player whose game has started counts the points he has, plus a draw scaled to
+    the share of his game still to play (a game is assumed to last 200 minutes from kickoff).
+    Sleeper points are only as fresh as the last refresh.
     """
     empty = pl.DataFrame(schema=_ENGINE_STUBS["win_probability"])
     data, mine = _league(league_key)
@@ -434,15 +452,25 @@ def win_probability(
         candidates.append(sleeper)
 
     ids = sorted({*mine_rows["gsis_id"], *opp_ids})
-    points = _draw_points(data, ids, positions, values, week, n_sims)
+    live = data.live if week == data.current_week else {}
+    share = np.array([live.get(i, (0.0, 1.0))[1] for i in ids])
+    actual = np.array(
+        [live.get(i, (0.0, 1.0))[0] if share[k] < 1.0 else 0.0 for k, i in enumerate(ids)]
+    )
+    scaled = {i: values.get(i, 0.0) * share[k] for k, i in enumerate(ids)}
+    points = _draw_points(data, ids, positions, scaled, week, n_sims) + actual
     column = {i: j for j, i in enumerate(ids)}
+    current = week == data.current_week
 
-    def total(lineup_ids: frozenset[str] | list[str], team_seed: int) -> np.ndarray:
+    def total(lineup_ids: frozenset[str] | list[str], team: int, team_seed: int) -> np.ndarray:
         cols = [column[i] for i in lineup_ids]
-        return points[:, cols].sum(axis=1) + _constant_points(data, n_sims, team_seed)
+        state = data.current.get(team) if current else None
+        return points[:, cols].sum(axis=1) + _constant_points(data, n_sims, team_seed, state)
 
-    totals = {c: total(c, LINEUP_SEED + KD_SEED_OFFSET) for c in candidates}
-    verdict = choose(candidates, base, totals, total(opp_ids, LINEUP_SEED + KD_SEED_OFFSET + 1))
+    totals = {c: total(c, mine, LINEUP_SEED + KD_SEED_OFFSET) for c in candidates}
+    verdict = choose(
+        candidates, base, totals, total(opp_ids, opp, LINEUP_SEED + KD_SEED_OFFSET + 1)
+    )
 
     mean_of = {r["gsis_id"]: r["projection"] for r in mine_rows.iter_rows(named=True)}
     options = {"max_points": base, "win_prob": verdict.chosen}
@@ -490,7 +518,7 @@ def _opponent_lineup(
         .join(ids, on="sleeper_id")["gsis_id"]
         .to_list()
     )
-    known = [i for i in set_now if i in values and i in positions]
+    known = [i for i in set_now if i in positions]
     if week == data.current_week and known:
         return known
     pool = [Player(i, positions[i], values[i]) for i in moves.team_ids(data, opp) if i in values]
@@ -552,13 +580,19 @@ def _draw_points(
     return sample_points(slate, corr, ratios, n_sims, LINEUP_SEED)
 
 
-def _constant_points(data: LeagueData, n_sims: int, seed: int) -> np.ndarray:
-    """K and DEF slots: each is a league-average draw (their points are not projected yet)."""
+def _constant_points(
+    data: LeagueData, n_sims: int, seed: int, state: CurrentWeek | None = None
+) -> np.ndarray:
+    """K and DEF slots: points already scored plus a league-average draw for what is left
+    (their points are not projected yet). `state` is None for a week not yet under way."""
     from fantasy.sim.lineup import constant_slot_count
 
     counts = constant_slot_count(data.roster_positions)
-    mean = counts.get("K", 0) * data.k_mean + counts.get("DEF", 0) * data.def_mean
-    var = counts.get("K", 0) * data.k_var + counts.get("DEF", 0) * data.def_var
+    open_k = counts.get("K", 0) if state is None else state.open_k
+    open_def = counts.get("DEF", 0) if state is None else state.open_def
+    scored = 0.0 if state is None else state.kd_actual
+    mean = scored + open_k * data.k_mean + open_def * data.def_mean
+    var = open_k * data.k_var + open_def * data.def_var
     return mean + np.sqrt(var) * np.random.default_rng(seed).standard_normal(n_sims)
 
 
@@ -780,3 +814,43 @@ def find_trades(league_key: str) -> pl.DataFrame:
         "se_title": _F,
     }
     return pl.DataFrame(rows, schema=schema)
+
+
+def refresh_live() -> int:
+    """Pull this week's matchups from Sleeper again so scores are current. Returns player rows."""
+    from fantasy.stages.sync_sleeper import sync_week
+
+    week = int(leagues()["current_week"].to_numpy().max())
+    return sync_week(week)
+
+
+def live_score(league_key: str) -> pl.DataFrame:
+    """This week's score so far and projected final for me and my opponent.
+
+    Columns: side ("me" or "them"), team_name, points (so far), projected_final. The projected
+    final adds the unconditional projection of what is left in each set lineup. Empty before
+    the week has any matchup data.
+    """
+    data, mine = _league(league_key)
+    opp = next(
+        (
+            b if a == mine else a
+            for a, b in data.pairings.get(data.current_week, [])
+            if mine in (a, b)
+        ),
+        None,
+    )
+    rows = []
+    for side, rid in (("me", mine), ("them", opp)):
+        state = data.current.get(rid) if rid is not None else None
+        if rid is None or state is None:
+            continue
+        left = (
+            sum(p.value for p in state.open_players)
+            + state.open_k * data.k_mean
+            + state.open_def * data.def_mean
+        )
+        rows.append((side, data.team_names[rid], state.realized, state.realized + left))
+    return pl.DataFrame(
+        rows, schema=["side", "team_name", "points", "projected_final"], orient="row"
+    )

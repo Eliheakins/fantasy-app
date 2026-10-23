@@ -246,6 +246,21 @@ def run(cfg: Config) -> dict[str, int]:
     return counts
 
 
+def sync_week(week: int, data_dir: Path = store.DATA_DIR) -> int:
+    """Re-fetch one week's matchups for every league and replace those rows (two API calls).
+
+    Used for live scores during games; the full sync stays `run`. Returns the player rows."""
+    league_ids = store.read_table("leagues", "raw", data_dir)["league_id"].to_list()
+    fetched = [
+        matchups_frames(lid, week, fetch(f"/league/{lid}/matchups/{week}")) for lid in league_ids
+    ]
+    for name, index in (("matchups", 0), ("matchup_players", 1)):
+        old = store.read_table(name, "raw", data_dir)
+        kept = old.filter(~((pl.col("week") == week) & pl.col("league_id").is_in(league_ids)))
+        store.write_table(name, pl.concat([kept, *(f[index] for f in fetched)]), "raw", data_dir)
+    return sum(f[1].height for f in fetched)
+
+
 def main() -> None:
     for name, rows in run(load_config()).items():
         print(f"{name}: {rows} rows")

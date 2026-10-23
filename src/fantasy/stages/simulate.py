@@ -15,11 +15,12 @@ import polars as pl
 
 from fantasy import store
 from fantasy.config import load_config
-from fantasy.sim.availability import scale_projections
+from fantasy.sim.availability import kickoffs, remaining_share, scale_projections
 from fantasy.sim.blend import blend
 from fantasy.sim.lineup import Player
 from fantasy.sim.odds import CurrentWeek, LeagueData, league_odds
 from fantasy.sim.schedule import pairings, standings
+from fantasy.stages.crosswalk import TEAM_MAP
 
 SKILL = ["QB", "RB", "WR", "TE"]
 K_HISTORY_FROM = 2023
@@ -28,29 +29,61 @@ MIN_DEF_ROWS = 20  # otherwise use the league's own starting-defense scores (unt
 
 
 def current_state(
-    mp: pl.DataFrame, projections: dict[str, float], week_pool: dict[str, str]
+    mp: pl.DataFrame,
+    projections: dict[str, float],
+    week_pool: dict[str, str],
+    remaining: dict[str, float] | None = None,
 ) -> dict[int, CurrentWeek]:
-    """Per roster: realized points of set starters, and the starters still to score.
+    """Per roster: points already scored by set starters whose game has started, and the
+    starters still to score (a game under way counts its remaining share of the projection).
 
     mp: this week's matchup_players for one league joined to position and gsis_id.
     week_pool maps gsis_id to position for players that have a projection this week.
+    remaining maps sleeper_id to the share of that player's game still to play; without it a
+    starter counts as started once he has scored.
     """
+
+    def left(row: dict) -> float:
+        if remaining is None:
+            return 0.0 if (row["points"] or 0) > 0 else 1.0
+        return remaining.get(row["sleeper_id"], 1.0)
+
     out = {}
     for (roster_id,), g in mp.filter(pl.col("is_starter")).group_by("roster_id"):
-        scored = g.filter(pl.col("points") > 0)
-        waiting = g.filter(pl.col("points").is_null() | (pl.col("points") <= 0))
+        rows = [(r, left(r)) for r in g.iter_rows(named=True)]
+        started = [r for r, share in rows if share < 1.0]
         players = tuple(
-            Player(r["gsis_id"], r["position"], projections[r["gsis_id"]])
-            for r in waiting.iter_rows(named=True)
-            if r["position"] in SKILL and r["gsis_id"] in projections and r["gsis_id"] in week_pool
+            Player(r["gsis_id"], r["position"], projections[r["gsis_id"]] * share)
+            for r, share in rows
+            if share > 0
+            and r["position"] in SKILL
+            and r["gsis_id"] in projections
+            and r["gsis_id"] in week_pool
         )
         out[int(roster_id)] = CurrentWeek(
-            realized=float(scored["points"].sum() or 0.0),
+            realized=float(sum(r["points"] or 0.0 for r in started)),
             open_players=players,
-            open_k=waiting.filter(pl.col("position") == "K").height,
-            open_def=waiting.filter(pl.col("position") == "DEF").height,
-            locked_starters=frozenset(scored["gsis_id"].drop_nulls().to_list()),
+            open_k=sum(share for r, share in rows if r["position"] == "K"),
+            open_def=sum(share for r, share in rows if r["position"] == "DEF"),
+            locked_starters=frozenset(r["gsis_id"] for r in started if r["gsis_id"]),
+            kd_actual=float(
+                sum(r["points"] or 0.0 for r in started if r["position"] in ("K", "DEF"))
+            ),
         )
+    return out
+
+
+def live_clock(
+    mp: pl.DataFrame, players: pl.DataFrame, schedules: pl.DataFrame, season: int, week: int
+) -> dict[str, float]:
+    """Share of each player's game still to play, keyed by sleeper_id (DEF uses the team code)."""
+    kicks = kickoffs(schedules, season, week)
+    team = dict(zip(players["sleeper_id"], players["team"], strict=True))
+    now = datetime.now(UTC)
+    out = {}
+    for sid in mp["sleeper_id"].unique().to_list():
+        code: str = team.get(sid) or sid
+        out[sid] = remaining_share(kicks.get(TEAM_MAP.get(code, code)), now)
     return out
 
 
@@ -141,6 +174,13 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         .join(players, on="sleeper_id")
         .join(id_map, on="sleeper_id", how="left")
     )
+    clock = live_clock(
+        mp,
+        store.read_table("sleeper_players", "raw").select("sleeper_id", "team"),
+        store.read_table("nfl_schedules", "raw"),
+        load_config().season,
+        current,
+    )
     this_week = projections.filter(pl.col("week") == current)
     week_projection = dict(zip(this_week["gsis_id"], this_week["projection"], strict=True))
     week_pool = dict(zip(rosters["gsis_id"], rosters["position"], strict=True))
@@ -166,8 +206,17 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         k_var=float(k_points.var(ddof=1)) if k_points.size > 1 else 0.0,
         def_mean=float(def_points.mean()) if enough else DEF_MEAN,
         def_var=float(def_points.var(ddof=1)) if enough else DEF_VAR,
-        current=current_state(mp, week_projection, week_pool),
-        played=frozenset(mp.filter(pl.col("points") > 0)["gsis_id"].drop_nulls().to_list()),
+        current=current_state(mp, week_projection, week_pool, clock),
+        played=frozenset(
+            r["gsis_id"]
+            for r in mp.iter_rows(named=True)
+            if r["gsis_id"] and clock[r["sleeper_id"]] < 1.0
+        ),
+        live={
+            r["gsis_id"]: (float(r["points"] or 0.0), clock[r["sleeper_id"]])
+            for r in mp.iter_rows(named=True)
+            if r["gsis_id"]
+        },
         positions=positions,
         trade_deadline=int(league["trade_deadline"] or 99),
         league_id=lid,
