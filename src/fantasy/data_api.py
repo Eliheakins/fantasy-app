@@ -458,7 +458,9 @@ def win_probability(
         [live.get(i, (0.0, 1.0))[0] if share[k] < 1.0 else 0.0 for k, i in enumerate(ids)]
     )
     scaled = {i: values.get(i, 0.0) * share[k] for k, i in enumerate(ids)}
-    points = _draw_points(data, ids, positions, scaled, week, n_sims) + actual
+    chance = _play_probs(data, week)
+    plays = {i: (1.0 if share[k] < 1.0 else chance.get(i, 1.0)) for k, i in enumerate(ids)}
+    points = _draw_points(data, ids, positions, scaled, plays, week, n_sims) + actual
     column = {i: j for j, i in enumerate(ids)}
     current = week == data.current_week
 
@@ -530,10 +532,12 @@ def _draw_points(
     ids: list[str],
     positions: dict[str, str],
     values: dict[str, float],
+    plays: dict[str, float],
     week: int,
     n_sims: int,
 ) -> np.ndarray:
-    """Joint draws for `ids` this week: marginals and correlations measured in this league."""
+    """Joint draws for `ids` this week: marginals and correlations measured in this league.
+    `values` are expected points and `plays` each player's chance of playing."""
     base = _read("proj_baseline", store.DATA_DIR, area="derived").filter(
         (pl.col("league_id") == data.league_id) & (pl.col("week") == week) & pl.col("is_future")
     )
@@ -553,6 +557,7 @@ def _draw_points(
         teams,
         roles,
         tuple(values.get(i, 0.0) for i in ids),
+        tuple(plays.get(i, 1.0) for i in ids),
     )
 
     pairs = _read("correlation_pairs", store.DATA_DIR, area="derived").filter(
@@ -578,6 +583,14 @@ def _draw_points(
     assert all(len(r) == len(LEVELS) for r in ratios.values())
     corr = correlation_matrix(slate, rho["same_team"], rho["opposing"], opponent_of)
     return sample_points(slate, corr, ratios, n_sims, LINEUP_SEED)
+
+
+def _play_probs(data: LeagueData, week: int) -> dict[str, float]:
+    """Each projected player's chance of playing in `week` (1.0 where not recorded)."""
+    if "play_prob" not in data.projections.columns:
+        return {}
+    rows = data.projections.filter(pl.col("week") == week)
+    return dict(zip(rows["gsis_id"], rows["play_prob"], strict=True))
 
 
 def _constant_points(

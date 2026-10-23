@@ -131,12 +131,13 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         .join(id_map, on="sleeper_id")
         .filter(pl.col("gsis_id").is_not_null())
     )
+    # blend first: Sleeper zeroes Out, Doubtful and IR players but does not discount Questionable
+    # ones, so the availability scaling applies to the blended number
     projections = scale_projections(
-        future.select("gsis_id", "week", "projection"),
+        _blend_sleeper(future.select("gsis_id", "week", "projection"), lid, id_map),
         dict(zip(flagged["gsis_id"], flagged["injury_status"], strict=True)),
         current,
     )
-    projections = _blend_sleeper(projections, lid, id_map)
     active = (
         store.read_table("sleeper_players", "raw")
         .filter((pl.col("status") == "Active") & pl.col("team").is_not_null())

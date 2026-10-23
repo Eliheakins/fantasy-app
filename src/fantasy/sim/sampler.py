@@ -6,6 +6,7 @@ Teammates and opposing players are correlated by role pair (QB1 with WR1 and so 
 the same sample see the same weeks (common random numbers).
 """
 
+import zlib
 from dataclasses import dataclass
 
 import numpy as np
@@ -23,7 +24,8 @@ class Slate:
     positions: tuple[str, ...]
     teams: tuple[str, ...]
     roles: tuple[str, ...]  # "WR1", or "" for a depth player with no measured correlations
-    means: tuple[float, ...]
+    means: tuple[float, ...]  # expected points counting the chance of not playing
+    play_probs: tuple[float, ...] = ()  # chance each plays; empty means everyone plays
 
 
 def correlation_matrix(
@@ -58,10 +60,21 @@ def sample_points(
     n_sims: int,
     seed: int,
 ) -> np.ndarray:
-    """(n_sims, n_players) points. `ratios[position]` holds the quantiles at LEVELS."""
+    """(n_sims, n_players) points. `ratios[position]` holds the quantiles at LEVELS.
+
+    A player with play probability p scores 0 in a share 1 - p of draws and otherwise draws from
+    his distribution with mean `mean / p`, so his overall mean is `mean`. Whether he plays comes
+    from his own seeded stream, so it is the same in every scenario scored on these draws."""
     z = np.random.default_rng(seed).standard_normal((n_sims, len(slate.ids)))
     u = norm.cdf(z @ np.linalg.cholesky(corr).T)
+    probs = slate.play_probs or (1.0,) * len(slate.ids)
     out = np.empty_like(u)
-    for j, (position, mean) in enumerate(zip(slate.positions, slate.means, strict=True)):
-        out[:, j] = mean * np.interp(u[:, j], LEVELS, ratios[position])
+    for j, (pid, position, mean, p) in enumerate(
+        zip(slate.ids, slate.positions, slate.means, probs, strict=True)
+    ):
+        if p <= 0.0:
+            out[:, j] = 0.0
+            continue
+        plays = np.random.default_rng([seed, zlib.crc32(pid.encode())]).random(n_sims) < p
+        out[:, j] = np.where(plays, (mean / p) * np.interp(u[:, j], LEVELS, ratios[position]), 0.0)
     return out

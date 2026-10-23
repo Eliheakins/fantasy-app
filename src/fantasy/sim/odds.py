@@ -10,6 +10,7 @@ Constants marked provisional are replaced when the backtest or E3-6 / E3-7 give 
 
 import zlib
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 import numpy as np
 import polars as pl
@@ -28,6 +29,12 @@ from fantasy.sim.season import SeasonInputs, SeasonResult, simulate_season
 TAU = {"QB": 1.5, "RB": 1.7, "WR": 0.8, "TE": 0.55}
 DRIFT_SD = 2.0  # provisional weekly roster drift per team
 PLAYOFF_WEEKS = 3
+# Absences after this week, measured on nflverse 2018 to 2025 for skill players with at least 5
+# touches or targets: a player who played misses the next week 6.9% of the time, and a player who
+# missed one misses another 53% of the time (a bit low, since players who never return drop out of
+# the sample). Baseline projections are for games played, so these are absences on top of them.
+HAZARD = 0.07
+STAY_OUT = 0.55
 
 
 @dataclass(frozen=True)
@@ -88,6 +95,22 @@ def lineup_moments(
     return mean, var, persistent
 
 
+@lru_cache(maxsize=2048)
+def absence_path(
+    gsis_id: str, p_now: float, n_weeks: int, n_sims: int, seed: int, hazard: float, stay_out: float
+) -> np.ndarray:
+    """(n_weeks, n_sims) True where the player is out. Week 0 comes from his chance of playing
+    now (his injury status); later weeks follow a two-state chain. The draws belong to the
+    player, so his path is the same in every roster scenario and follows him in a trade."""
+    u = np.random.default_rng([seed, zlib.crc32(gsis_id.encode()), 17]).random((n_weeks, n_sims))
+    out = np.empty((n_weeks, n_sims), dtype=bool)
+    out[0] = u[0] >= p_now
+    for w in range(1, n_weeks):
+        out[w] = np.where(out[w - 1], u[w] < stay_out, u[w] < hazard)
+    out.setflags(write=False)
+    return out
+
+
 def player_error(gsis_id: str, n_sims: int, seed: int) -> np.ndarray:
     """A player's persistent error draws, the same in every scenario for the same seed."""
     z = np.random.default_rng([seed, zlib.crc32(gsis_id.encode())]).standard_normal(n_sims)
@@ -117,6 +140,10 @@ def build_inputs(
         w: dict(zip(g["gsis_id"], g["projection"], strict=True))
         for (w,), g in data.projections.group_by("week")
     }
+    p_now: dict[str, float] = {}
+    if "play_prob" in data.projections.columns:
+        first = data.projections.filter(pl.col("week") == data.current_week)
+        p_now = dict(zip(first["gsis_id"], first["play_prob"], strict=True))
 
     for rid, t in index.items():
         team = rosters.filter(pl.col("roster_id") == rid)
@@ -155,6 +182,16 @@ def build_inputs(
             noise_sd[t, w] = np.sqrt(weekly + fixed_var + DRIFT_SD**2)
             for p in lineup:
                 shift[t, w] += errors[p.id]
+            if w >= 1 and HAZARD > 0 and state is None:
+                # a starter who is out is replaced from the bench: lose the lineup's drop
+                total = sum(p.value for p in lineup)
+                for p in lineup:
+                    rest = [q for q in pool if q.id != p.id]
+                    loss = total - auto_lineup(rest, slots).total
+                    gone = absence_path(
+                        p.id, p_now.get(p.id, 1.0), n_weeks, n_sims, seed, HAZARD, STAY_OUT
+                    )[w]
+                    shift[t, w] -= loss * gone
 
     return SeasonInputs(
         roster_ids=data.roster_ids,

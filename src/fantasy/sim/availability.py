@@ -28,12 +28,18 @@ def rate(status: str | None, week: int, current_week: int) -> float:
 def scale_projections(
     projections: pl.DataFrame, status: dict[str, str], current_week: int
 ) -> pl.DataFrame:
-    """Return `projections` with `projection` multiplied by each player's availability."""
-    factors = [
-        rate(status.get(g), w, current_week)
-        for g, w in zip(projections["gsis_id"], projections["week"], strict=True)
-    ]
-    return projections.with_columns(pl.col("projection") * pl.Series(factors, dtype=pl.Float64))
+    """Return `projections` with `projection` multiplied by each player's availability and a
+    `play_prob` column holding that availability (the chance he plays)."""
+    factors = pl.Series(
+        [
+            rate(status.get(g), w, current_week)
+            for g, w in zip(projections["gsis_id"], projections["week"], strict=True)
+        ],
+        dtype=pl.Float64,
+    )
+    return projections.with_columns(
+        (pl.col("projection") * factors).alias("projection"), factors.alias("play_prob")
+    )
 
 
 GAME_MINUTES = (

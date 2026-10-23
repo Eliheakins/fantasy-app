@@ -59,8 +59,8 @@ def choose(
     train = {c: float((totals[c][:half] > opponent[:half]).mean()) for c in candidates}
     chosen = max(candidates, key=lambda c: (train[c], c == baseline))
     held = {c: float((totals[c][half:] > opponent[half:]).mean()) for c in candidates}
-    if chosen == baseline:
-        return Verdict(chosen, held, 0.5, "same as max points")
+    if chosen == baseline or held[chosen] <= held[baseline]:
+        return Verdict(baseline, held, 0.5, "same as max points")  # no gain on the held-out half
     win_a = totals[chosen][half:] > opponent[half:]
     win_b = totals[baseline][half:] > opponent[half:]
     a_only, b_only = int((win_a & ~win_b).sum()), int((win_b & ~win_a).sum())
