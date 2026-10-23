@@ -126,6 +126,18 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         floats="points team_implied opp_implied total_line temp wind",
     )
     | {"is_home": _B},
+    # written by project (area: derived)
+    "player_form": _cols(
+        strings="league_id gsis_id position team",
+        ints="season week n_games",
+        floats="form ewma_actual",
+    ),
+    "proj_baseline": _cols(
+        strings="league_id gsis_id position team",
+        ints="season week as_of_season as_of_week",
+        floats="projection context",
+    )
+    | {"has_history": _B, "is_future": _B},
     # written by ingest_nfl (area: raw). Only the columns later stages use.
     "nfl_player_stats": _cols(
         strings="player_id player_display_name position season_type team opponent_team "
@@ -169,7 +181,10 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         floats="pass_attempt rec_attempt rush_attempt pass_fantasy_points_exp "
         "rec_fantasy_points_exp rush_fantasy_points_exp total_fantasy_points_exp "
         "total_fantasy_points total_yards_gained_exp total_touchdown_exp pass_attempt_team "
-        "rec_attempt_team rush_attempt_team",
+        "rec_attempt_team rush_attempt_team receptions_exp pass_yards_gained_exp "
+        "rec_yards_gained_exp rush_yards_gained_exp pass_touchdown_exp rec_touchdown_exp "
+        "rush_touchdown_exp pass_two_point_conv_exp rec_two_point_conv_exp "
+        "rush_two_point_conv_exp pass_interception_exp",
     ),
 }
 

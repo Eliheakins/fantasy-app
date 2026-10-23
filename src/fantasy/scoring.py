@@ -43,6 +43,21 @@ PLAYER_TERMS: dict[str, pl.Expr] = {
     "fgm_yds": _FG_YARDS,
 }
 
+# Sleeper scoring key -> expected stat from nflverse's ff_opportunity model (opportunity-adjusted).
+EXPECTED_TERMS: dict[str, pl.Expr] = {
+    "pass_yd": pl.col("pass_yards_gained_exp"),
+    "pass_td": pl.col("pass_touchdown_exp"),
+    "pass_int": pl.col("pass_interception_exp"),
+    "pass_2pt": pl.col("pass_two_point_conv_exp"),
+    "rush_yd": pl.col("rush_yards_gained_exp"),
+    "rush_td": pl.col("rush_touchdown_exp"),
+    "rush_2pt": pl.col("rush_two_point_conv_exp"),
+    "rec": pl.col("receptions_exp"),
+    "rec_yd": pl.col("rec_yards_gained_exp"),
+    "rec_td": pl.col("rec_touchdown_exp"),
+    "rec_2pt": pl.col("rec_two_point_conv_exp"),
+}
+
 # Keys for team defense and defensive or special-teams plays. Not scored for offensive players.
 DEFENSE_KEYS = {
     "blk_kick",
@@ -85,6 +100,16 @@ def points_expr(scoring: dict[str, float]) -> pl.Expr:
         if (weight := scoring.get(key, 0.0))
     ]
     return pl.sum_horizontal(*terms).round(2) if terms else pl.lit(0.0)
+
+
+def expected_points_expr(scoring: dict[str, float]) -> pl.Expr:
+    """League-scored expected points from ff_opportunity rows (offense only, no fumbles)."""
+    terms = [
+        expr.fill_null(0.0) * weight
+        for key, expr in EXPECTED_TERMS.items()
+        if (weight := scoring.get(key, 0.0))
+    ]
+    return pl.sum_horizontal(*terms) if terms else pl.lit(0.0)
 
 
 def score_player_stats(stats: pl.DataFrame, scoring: dict[str, float]) -> pl.DataFrame:

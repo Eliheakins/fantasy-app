@@ -40,3 +40,4 @@ warn_unused_ignores = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = ["ignore:Sortedness of columns cannot be checked"]

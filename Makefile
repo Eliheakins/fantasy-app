@@ -5,6 +5,7 @@ refresh:
 	uv run python -m fantasy.stages.ingest_nfl
 	uv run python -m fantasy.stages.crosswalk
 	uv run python -m fantasy.stages.score
+	uv run python -m fantasy.stages.project
 
 app:
 	uv run streamlit run app/Home.py

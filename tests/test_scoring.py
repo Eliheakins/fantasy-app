@@ -2,7 +2,7 @@ import polars as pl
 import pytest
 
 from fantasy import store
-from fantasy.scoring import check_keys, score_player_stats
+from fantasy.scoring import check_keys, expected_points_expr, score_player_stats
 
 SCHEMA = store.SCHEMAS["nfl_player_stats"]
 
@@ -46,6 +46,27 @@ def test_kicker_per_yard_and_extra_points() -> None:
     # 52 + 39 + 58 + 20 = 169 yards * 0.1 = 16.9, 3 PAT, 1 missed FG
     got = points(scoring, fg_made_list="52;39;58;20", pat_made=3, fg_missed=1)
     assert got == pytest.approx(16.9 + 3 - 1)
+
+
+def test_expected_points_apply_league_weights_to_expected_stats() -> None:
+    opp = pl.DataFrame(
+        {
+            "receptions_exp": [5.0],
+            "rec_yards_gained_exp": [60.0],
+            "rec_touchdown_exp": [0.5],
+            "rush_yards_gained_exp": [None],
+        },
+        schema={
+            "receptions_exp": pl.Float64,
+            "rec_yards_gained_exp": pl.Float64,
+            "rec_touchdown_exp": pl.Float64,
+            "rush_yards_gained_exp": pl.Float64,
+        },
+    )
+    base = {"rec_yd": 0.1, "rec_td": 6, "rush_yd": 0.1}
+    full = opp.select(expected_points_expr({**base, "rec": 1.0}))
+    half = opp.select(expected_points_expr({**base, "rec": 0.5}))
+    assert full.item() == 5 + 6 + 3 and full.item() - half.item() == 2.5
 
 
 def test_blocked_field_goal_counts_as_a_miss() -> None:
