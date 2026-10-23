@@ -1,6 +1,6 @@
 # Fantasy app one-pager (v3, 2026-10-23)
 
-**Status:** every story except E3-8 is done and checked on live data (35 of 36 issues closed): Home with actions and odds, Lineup with win probability and locks, Waivers with re-simulated odds and K/DEF streaming, Trades, and Outlook with seeds and schedule. Known gaps are listed at the top of `backlog.md`.
+**Status:** every story except E3-8 is done and checked on live data (35 of 36 issues closed): Home with actions and odds, Lineup with win probability and locks, Waivers with re-simulated odds and K/DEF streaming, Trades, and Outlook with seeds and schedule. Since then: replacement-level valuation, multi-player trades, an injury model, ceiling and floor start/sit, size calibration, a Player outlook page and environment effects. Known gaps are listed at the top of `backlog.md`.
 
 **Goal:** a local dashboard that tells me each week, for Colgate and YinzBurgh (Sleeper redraft): who to start, who to add, and which trades raise my title odds.
 
@@ -42,5 +42,5 @@ A decision queue with evidence. League selector (Both only on Home). Home cards 
 - FantasyPros ECR via nflverse: redistribution terms unchecked, so nothing depends on it.
 - DEF scoring: 2 of 19 mismatched, cause not traced.
 - Sleeper future-week matchups and playoff settings: spike is the first part of E1-1.
-- All spread and error constants (tau, CVs, play probabilities) are provisional until the backtest.
+- Measured: tau, CVs, calibration, injury and outlook effects. Assumed: the weekly roster drift and the 50% Sleeper blend weight (retest around week 11, #40).
 - Odds API free key: needed for E2-2.

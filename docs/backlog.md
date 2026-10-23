@@ -10,17 +10,22 @@ One story is one working session. Engine and dashboard stories are merged per ep
 
 **Added after the first status:** trade partner finder (one-for-one), live in-week scoring with a Refresh button, per-week injury draws (sampler and season simulation), and Sleeper projections blended 50/50 into the next four weeks.
 
+**Added in the third working session:** replacement-level valuation (waivers, drops and trades are valued over a free-agent stand-in, with a position-strength table), trades of 1-for-1, 1-for-2, 2-for-1 and 2-for-2, an injury model by status, practice report and injury type, ceiling and floor start/sit with a game-script label, a size calibration of the baseline with projection-tier distributions, a Player outlook page (return-from-absence ratios, teammate vacancy), and environment effects (opposing corner out, offense sack rate and pass efficiency). Tested and rejected, with numbers, in `decisions.md`: per-player volatility, share trends, opponent defense, rookie status, offensive and defensive line health, starting QB out, slot corner, a different Vegas exponent, head-to-head history, FantasyPros ECR.
+
+**Added in the cleanup pass:** point-valued effects are scaled to each league's scoring; the app binds to localhost; the stale banner names projection layers whose stage has not run; teamless players are no longer projected; 21 more tests (205 total).
+
 **Known gaps:**
-- Injury status: Out 0, Doubtful 0.02, Questionable 0.76 of normal for the current week; IR and similar zero for 4 weeks; later weeks use a measured absence chain (7% to miss, 55% to stay out). No usage bump for teammates, no practice-status signal.
+- Injury status: measured by status, practice report and injury type for the next four games; IR and similar are zero for 4 games. Defender injury curves reuse the skill-player curves. Vacancy bumps are shared equally among a team's receivers or backs.
+- No slot-matchup modeling (free data has no alignment).
+- Simulated draws are shared only for an identical set of players, so comparisons that change the player set (a different opponent) do not share draws.
 - Live scoring uses a 200-minute game clock and the last refresh; nothing polls, and season odds on Home only update on `simulate`.
-- The trade finder is one-for-one only.
+- The trade finder searches each team's top 6 players only.
 - Win probability uses league-average K and DEF for what is left to play.
 - The Sleeper blend weight (50%) is untested on clean data: #40, around week 11.
 - DEF scoring matches Sleeper exactly in 52 of 60 (Colgate) and 41 of 60 (YinzBurgh) team-weeks; the rest are off by 1 to 2 points, likely special-teams recoveries. The K projection is no better than the league average; the DEF projection is about 3% better.
 - The season simulation still uses league-average K and DEF per slot.
 - tau is now estimated from history, but the spread of season win totals is untested (no league history).
 - The playoff bracket, byes and tiebreaks are assumptions; the user confirmed 6 teams, byes for seeds 1 and 2, weeks 15 to 17.
-- Trades are never suggested automatically (partner finder is post-MVP).
 - Top-player bias (#38) was investigated and not corrected: the effect is 0.2 to 0.3% of RMSE.
 - No GitHub Project board (the token lacks the `project` scope; the user does not want one).
 
