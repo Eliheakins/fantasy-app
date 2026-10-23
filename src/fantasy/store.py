@@ -113,6 +113,19 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     "trending": {"fetched_at": _S, "kind": _S, "sleeper_id": _S, "count": _I},
     # written by crosswalk (area: derived)
     "id_map": {"sleeper_id": _S, "gsis_id": _S, "nfl_team": _S, "match_method": _S},
+    # written by score (area: derived)
+    "team_games": _cols(
+        strings="game_id game_type gameday team opponent roof",
+        ints="season week points_for points_against",
+        floats="spread total_line team_implied opp_implied temp wind rest",
+    )
+    | {"is_home": _B},
+    "player_points": _cols(
+        strings="league_id gsis_id season_type position team opponent_team roof",
+        ints="season week",
+        floats="points team_implied opp_implied total_line temp wind",
+    )
+    | {"is_home": _B},
     # written by ingest_nfl (area: raw). Only the columns later stages use.
     "nfl_player_stats": _cols(
         strings="player_id player_display_name position season_type team opponent_team "
