@@ -28,6 +28,27 @@ if known:
     gap = current_total - best_total
     cols[1].metric("Set in Sleeper now", f"{current_total:.1f} pts", delta=f"{gap:+.1f}")
 
+name_of = dict(zip(rows["gsis_id"], rows["full_name"], strict=True))
+try:
+    odds = data_api.win_probability(league_key, week)
+except FileNotFoundError:
+    odds = None
+if odds is not None and not odds.is_empty():
+    by_option = {r["option"]: r for r in odds.iter_rows(named=True)}
+    pick, best = by_option["win_prob"], by_option["max_points"]
+    st.subheader("Win probability against your opponent")
+    st.metric("Chance to win with the recommended lineup", f"{best['win_prob']:.1%}")
+    if pick["tag"] == "same as max points":
+        st.caption("No swap raises the win probability: the highest-scoring lineup is also best.")
+    else:
+        ins = [name_of[i] for i in set(pick["gsis_ids"]) - set(best["gsis_ids"])]
+        out = [name_of[i] for i in set(best["gsis_ids"]) - set(pick["gsis_ids"])]
+        st.info(
+            f"**{pick['tag'].capitalize()}**: start {', '.join(ins)} over {', '.join(out)} "
+            f"({pick['win_prob']:.1%} vs {best['win_prob']:.1%}). In games where the two "
+            f"lineups disagree, this one wins {pick['share_better']:.0%} of the time."
+        )
+
 
 def change(row: dict) -> str:
     if not known:
@@ -68,7 +89,7 @@ st.caption(
     "players on bye are left out. Players whose game has started are locked in place: locked "
     "starters stay, locked bench players are not recommended. Injury status scales the "
     "projection (Out 0%, Doubtful 2%, Questionable 76% of normal, from past reports). The range "
-    "is where about 80 percent of outcomes have landed for players like this. A win-probability "
-    "version comes later. "
+    "is where about 80 percent of outcomes have landed for players like this. In the win "
+    "probability, the opponent plays the lineup set in Sleeper and K and DEF are league averages. "
     + ("" if known else "Sleeper lineups are only known for the current week.")
 )

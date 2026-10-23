@@ -214,3 +214,11 @@ Backlog and story IDs: `docs/backlog.md`. `docs/spec/modeling.md` sections 10b a
 - Known limits: expected-value scaling, not a per-week play/no-play draw in the simulation; "plays" means any touch or target, not a full workload; a game-day status says nothing about later weeks; Out is assumed to last one week.
 - Locks: a team is locked once its kickoff (nflverse schedule, US Eastern) has passed, current week only. Locked starters keep their slot, locked bench players are never recommended. Greedy fill runs on the slots left over.
 - Re-ran simulate: Colgate 75% playoffs, 24% bye, 9.0% title (was 8.7%).
+
+## 2026-10-23: Player sampler and win-probability lineup (E4-2, E4-5)
+
+- `sim/sampler.py`: Gaussian copula over measured role-pair correlations (same team and opposing, per league), marginals from the empirical quantiles of actual over projected points (levels 0.01 to 0.99). Roles are projection rank within NFL team and position. Correlation matrices are repaired to positive definite (eigenvalue floor 1e-6).
+- `sim/winprob.py`: candidates are the max-points lineup, the lineup set in Sleeper, and every legal one-player swap of unlocked starter for unlocked bench player. The pick is made on the first half of 20,000 draws and win rates are reported on the second half, so choosing the best of about 40 candidates does not inflate the number.
+- Confidence tag uses the paired share: of games where the chosen and max-points lineups disagree on the win, how often the chosen one wins. 70% or more is clear, 55 to 70 lean, below toss-up; identical choice reads "same as max points".
+- Opponent plays the lineup set in Sleeper (current week), else their best lineup. K and DEF are league-average draws. Points already scored are not used. Injury scaling is a mean multiplier, not a play/no-play draw.
+- Live result, week 7: both leagues come out "same as max points" (Colgate 53.7%, YinzBurgh 50.0%), as the one-pager predicted for most weeks.
