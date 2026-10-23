@@ -1,3 +1,4 @@
+import polars as pl
 import streamlit as st
 from ui import league_picker, no_data_warning
 
@@ -21,7 +22,7 @@ st.caption(
 if adds.is_empty():
     st.info("No free agent adds expected points to your team.")
 else:
-    st.dataframe(
+    event = st.dataframe(
         adds.select(
             "full_name",
             "position",
@@ -30,9 +31,12 @@ else:
             "playoff_delta",
             "title_delta",
             "se_title",
+            "trending_adds",
         ),
         hide_index=True,
         width="stretch",
+        on_select="rerun",
+        selection_mode="single-row",
         column_config={
             "full_name": "Add",
             "position": "Pos",
@@ -41,8 +45,19 @@ else:
             "playoff_delta": st.column_config.NumberColumn("Playoffs", format="percent"),
             "title_delta": st.column_config.NumberColumn("Title", format="percent"),
             "se_title": st.column_config.NumberColumn("Title error", format="percent"),
+            "trending_adds": st.column_config.NumberColumn("Sleeper adds", format="%d"),
         },
     )
+    st.caption(
+        "Sleeper adds is how many users added the player in the latest trending pull, a rough "
+        "sign of who else will bid. Select a row to see the next four weeks."
+    )
+    chosen = event.selection.rows
+    if chosen:
+        pick = adds.row(chosen[0], named=True)
+        weeks = data_api.player_weeks(league_key, pick["gsis_id"])
+        st.subheader(f"{pick['full_name']}: next four weeks")
+        st.bar_chart(weeks.with_columns(pl.col("week").cast(pl.String)), x="week", y="projection")
 
 st.header("Streaming: defense and kicker")
 st.caption(

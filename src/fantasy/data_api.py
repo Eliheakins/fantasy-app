@@ -79,6 +79,7 @@ _ENGINE_STUBS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "playoff_delta": _F,
         "title_delta": _F,
         "se_title": _F,
+        "trending_adds": pl.Int64,
     },
     "season_odds": {
         "roster_id": pl.Int64,
@@ -279,6 +280,7 @@ def waivers(league_key: str, week: int = 0) -> pl.DataFrame:
     names = _names()
     adds = [w for w in moves.waiver_candidates(data, mine, top_n=15) if w.delta_mu > MIN_GAIN]
     odds = {r["gsis_id"]: r for r in moves.waiver_odds(data, mine, adds).iter_rows(named=True)}
+    trending = _trending_adds()
     rows = [
         {
             "gsis_id": w.gsis_id,
@@ -289,10 +291,34 @@ def waivers(league_key: str, week: int = 0) -> pl.DataFrame:
             "playoff_delta": odds[w.gsis_id]["playoff_delta"],
             "title_delta": odds[w.gsis_id]["title_delta"],
             "se_title": odds[w.gsis_id]["se_title"],
+            "trending_adds": trending.get(w.gsis_id),
         }
         for w in adds
     ]
     return pl.DataFrame(rows, schema=_ENGINE_STUBS["waivers"])
+
+
+def _trending_adds() -> dict[str, int]:
+    """How many Sleeper users added each player in the latest trending pull (nflverse ID)."""
+    try:
+        table = _read("trending", store.DATA_DIR).filter(pl.col("kind") == "add")
+    except FileNotFoundError:
+        return {}
+    if table.is_empty():
+        return {}
+    latest = table.filter(pl.col("fetched_at") == table["fetched_at"].max())
+    ids = _read("id_map", store.DATA_DIR, area="derived").select("sleeper_id", "gsis_id")
+    joined = latest.join(ids, on="sleeper_id").filter(pl.col("gsis_id").is_not_null())
+    return dict(zip(joined["gsis_id"], joined["count"], strict=True))
+
+
+def player_weeks(league_key: str, gsis_id: str, n: int = 4) -> pl.DataFrame:
+    """Projected points for one player in each of the next n weeks (injury-scaled)."""
+    data, _ = _league(league_key)
+    rows = data.projections.filter(
+        (pl.col("gsis_id") == gsis_id) & (pl.col("week") < data.current_week + n)
+    )
+    return rows.select("week", "projection").sort("week")
 
 
 def trade_partners(league_key: str) -> pl.DataFrame:
