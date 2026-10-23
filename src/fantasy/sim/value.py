@@ -12,6 +12,8 @@ own. Shortcut: stand-ins are assumed available and picked up in time; players a 
 not assumed available, since someone else will claim them.
 """
 
+import polars as pl
+
 from fantasy.sim.lineup import Player, auto_lineup
 
 POSITIONS = ("QB", "RB", "WR", "TE")
@@ -20,15 +22,53 @@ REPLACEMENT_DEPTH = 6  # stand-in candidates kept per position and week
 STAND_INS_PER_POSITION = 2  # used per position and week, after dropping the roster's own
 
 
-def absence_probs(p_now: float, n_weeks: int, hazard: float, stay_out: float) -> list[float]:
-    """Chance a player is out in each of the next n_weeks: week 0 from his status, then the
-    two-state chain used by the season simulation."""
-    q = 1.0 - p_now
-    out = [q]
-    for _ in range(n_weeks - 1):
+def play_curves(projections: pl.DataFrame, weeks: list[int]) -> dict[str, tuple[float, ...]]:
+    """Each flagged player's chance of playing in each of `weeks`, trimmed after his last week
+    below 1. After the curve the absence chain carries on from where it left off. Players with
+    no `play_prob` below 1 are left out: they follow the default chain. Weeks without a row (a
+    bye) count as 1.0."""
+    if "play_prob" not in projections.columns:
+        return {}
+    by_player: dict[str, dict[int, float]] = {}
+    for g, w, p in projections.select("gsis_id", "week", "play_prob").iter_rows():
+        by_player.setdefault(g, {})[w] = p
+    curves = {}
+    for g, chance in by_player.items():
+        probs = [chance.get(w, 1.0) for w in weeks]
+        last = max((i for i, p in enumerate(probs) if p < 1.0), default=-1)
+        if last >= 0:
+            curves[g] = tuple(probs[: last + 1])
+    return curves
+
+
+def absence_probs(
+    curve: tuple[float, ...], n_weeks: int, hazard: float, stay_out: float
+) -> list[float]:
+    """Chance a player is out in each of the next n_weeks: from his curve while it lasts (a
+    healthy player's curve is (1.0,)), then the two-state chain used by the season simulation."""
+    out = [1.0 - p for p in curve[:n_weeks]]
+    q = out[-1]
+    while len(out) < n_weeks:
         q = q * stay_out + (1.0 - q) * hazard
         out.append(q)
     return out
+
+
+def conditional_values(projections: pl.DataFrame) -> dict[int, dict[str, float]]:
+    """Expected points when the player plays: projection over his chance of playing (0 when he
+    cannot play), by week. Without a `play_prob` column the projection is already that."""
+    frame = projections
+    if "play_prob" in frame.columns:
+        frame = frame.with_columns(
+            pl.when(pl.col("play_prob") > 0)
+            .then(pl.col("projection") / pl.col("play_prob"))
+            .otherwise(0.0)
+            .alias("projection")
+        )
+    return {
+        week: dict(zip(g["gsis_id"], g["projection"], strict=True))
+        for (week,), g in frame.group_by("week")
+    }
 
 
 def replacement_pool(

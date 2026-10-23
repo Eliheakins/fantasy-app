@@ -145,6 +145,8 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     "sleeper_proj_snapshots": _cols(strings="fetched_at sleeper_id stats", ints="week"),
     # written by sleeper_projections (area: derived): Sleeper's projections under each league
     "proj_sleeper": _cols(strings="league_id sleeper_id", ints="week", floats="projection"),
+    # written by injuries (area: derived): chance of playing the next four games by injury report
+    "injury_effects": _cols(strings="status practice body", ints="n", floats="p0 p1 p2 p3 perf"),
     "sim_seeds": _cols(strings="league_id", ints="roster_id seed", floats="p"),
     "sim_season_history": _cols(
         strings="league_id team_name run_at",

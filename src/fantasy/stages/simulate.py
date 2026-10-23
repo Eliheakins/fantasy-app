@@ -17,10 +17,12 @@ from fantasy import store
 from fantasy.config import load_config
 from fantasy.sim.availability import kickoffs, remaining_share, scale_projections
 from fantasy.sim.blend import blend
+from fantasy.sim.injuries import Flag, InjuryModel, injury_projections
 from fantasy.sim.lineup import Player
 from fantasy.sim.odds import CurrentWeek, LeagueData, league_odds
 from fantasy.sim.schedule import pairings, standings
 from fantasy.stages.crosswalk import TEAM_MAP
+from fantasy.stages.injuries import PRACTICE
 
 SKILL = ["QB", "RB", "WR", "TE"]
 K_HISTORY_FROM = 2023
@@ -99,6 +101,33 @@ def _blend_sleeper(projections: pl.DataFrame, league_id: str, id_map: pl.DataFra
     )
 
 
+def _injury_flags(flagged: pl.DataFrame, current: int) -> dict[str, Flag]:
+    """gsis id -> (Sleeper status, body part, practice participation). Body part and practice
+    come from the latest nflverse injury report this season; practice counts only once a game
+    status has been issued, because the history is of final-day practice."""
+    reports = store.read_table("nfl_injuries", "raw").filter(
+        pl.col("season") == load_config().season
+    )
+    latest = (
+        reports.filter(pl.col("week") <= current)
+        .sort("week")
+        .group_by("gsis_id")
+        .agg(
+            pl.coalesce("report_primary_injury", "practice_primary_injury").last().alias("body"),
+            pl.col("report_status").last().alias("issued"),
+            pl.col("practice_status").last().alias("practice"),
+        )
+    )
+    detail = {
+        r["gsis_id"]: (r["body"], PRACTICE.get(r["practice"]) if r["issued"] else None)
+        for r in latest.iter_rows(named=True)
+    }
+    return {
+        g: (s, *detail.get(g, (None, None)))
+        for g, s in zip(flagged["gsis_id"], flagged["injury_status"], strict=True)
+    }
+
+
 def load_league_data(league: dict[str, Any]) -> LeagueData:
     lid, current = league["league_id"], int(league["current_week"])
     playoff_start = int(league["playoff_week_start"])
@@ -131,13 +160,18 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         .join(id_map, on="sleeper_id")
         .filter(pl.col("gsis_id").is_not_null())
     )
-    # blend first: Sleeper zeroes Out, Doubtful and IR players but does not discount Questionable
-    # ones, so the availability scaling applies to the blended number
-    projections = scale_projections(
-        _blend_sleeper(future.select("gsis_id", "week", "projection"), lid, id_map),
-        dict(zip(flagged["gsis_id"], flagged["injury_status"], strict=True)),
-        current,
-    )
+    flags = _injury_flags(flagged, current)
+    blended = _blend_sleeper(future.select("gsis_id", "week", "projection"), lid, id_map)
+    try:
+        model = InjuryModel(store.read_table("injury_effects"))
+    except FileNotFoundError:
+        model = None
+    # Sleeper zeroes Out, Doubtful and IR players but does not discount Questionable ones, so the
+    # injury scaling applies to the blended number
+    if model is None:
+        projections = scale_projections(blended, {g: f[0] for g, f in flags.items()}, current)
+    else:
+        projections = injury_projections(blended, flags, model, current)
     active = (
         store.read_table("sleeper_players", "raw")
         .filter((pl.col("status") == "Active") & pl.col("team").is_not_null())
@@ -208,6 +242,7 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         def_mean=float(def_points.mean()) if enough else DEF_MEAN,
         def_var=float(def_points.var(ddof=1)) if enough else DEF_VAR,
         current=current_state(mp, week_projection, week_pool, clock),
+        injuries=flags,
         played=frozenset(
             r["gsis_id"]
             for r in mp.iter_rows(named=True)

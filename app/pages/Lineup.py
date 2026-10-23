@@ -78,7 +78,15 @@ def table(frame: pl.DataFrame) -> pl.DataFrame:
         pl.struct(frame.columns).map_elements(change, return_dtype=pl.String).alias("change"),
         (low + " to " + high).alias("range"),
     ).select(
-        "slot", "full_name", "position", "injury", "projection", "range", "actual", "game", "change"
+        "slot",
+        "full_name",
+        "position",
+        "injury_note",
+        "projection",
+        "range",
+        "actual",
+        "game",
+        "change",
     )
 
 
@@ -86,7 +94,7 @@ config = {
     "slot": "Slot",
     "full_name": "Player",
     "position": "Pos",
-    "injury": "Status",
+    "injury_note": "Injury",
     "projection": st.column_config.NumberColumn("Proj", format="%.1f"),
     "range": "10 to 90%",
     "change": "Change",
@@ -112,8 +120,11 @@ st.caption(
     "Best lineup by projected points for skill positions; K and DEF are not handled yet, and "
     "players on bye are left out. Players whose game has started are locked in place: locked "
     "starters stay, locked bench players are not recommended. A game counts as over 200 "
-    "minutes after kickoff, and points are as fresh as the last refresh. Injury status scales the "
-    "projection (Out 0%, Doubtful 2%, Questionable 76% of normal, from past reports). The range "
+    "minutes after kickoff, and points are as fresh as the last refresh. The "
+    "injury column shows the chance of playing this game and the next, measured from 2018 to "
+    "2025 reports by injury type and practice (hamstrings and feet linger, a Questionable "
+    "player who did not practice rarely plays), and players who play through an injury are "
+    "discounted a little. The range "
     "is where about 80 percent of outcomes have landed for players like this. In the win "
     "probability, the opponent plays the lineup set in Sleeper and K and DEF are league averages. "
     + ("" if known else "Sleeper lineups are only known for the current week.")

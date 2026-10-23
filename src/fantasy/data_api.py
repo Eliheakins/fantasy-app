@@ -14,7 +14,7 @@ import polars as pl
 from fantasy import store
 from fantasy.config import load_config
 from fantasy.sim import moves
-from fantasy.sim.availability import locked_teams
+from fantasy.sim.availability import LONG_TERM, locked_teams
 from fantasy.sim.lineup import (
     Player,
     auto_lineup,
@@ -51,6 +51,7 @@ _ENGINE_STUBS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "starting_now": _B,
         "recommended": _B,
         "injury": _S,
+        "injury_note": _S,
         "locked": _B,
         "actual": _F,
         "game": _S,
@@ -242,12 +243,33 @@ def lineup(league_key: str, week: int = 0, now: datetime | None = None) -> pl.Da
                 "starting_now": p.id in starting,
                 "recommended": p.id in slot_of,
                 "injury": status.get(p.id),
+                "injury_note": _injury_note(data, p.id),
                 "locked": p.id in locked,
                 "actual": points_so_far(p.id),
                 "game": game_state(p.id),
             }
         )
     return pl.DataFrame(rows, schema=_ENGINE_STUBS["lineup"])
+
+
+def _injury_note(data: LeagueData, gsis_id: str) -> str | None:
+    """Injury, body part and the chance of playing this game and the next, for a flagged player."""
+    flag = data.injuries.get(gsis_id)
+    if flag is None:
+        return None
+    status, body, _ = flag
+    text = status + (f" ({body.lower()})" if body else "")
+    if status in LONG_TERM or "play_prob" not in data.projections.columns:
+        return text + (", out at least 4 games" if status in LONG_TERM else "")
+    rows = data.projections.filter(pl.col("gsis_id") == gsis_id).sort("week").head(2)
+    chances = rows["play_prob"].to_list()
+    if not chances:
+        return text
+    return (
+        text
+        + f": {chances[0]:.0%} to play"
+        + (f", {chances[1]:.0%} next game" if len(chances) > 1 else "")
+    )
 
 
 def _status_and_locks(

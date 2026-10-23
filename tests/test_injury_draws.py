@@ -33,11 +33,11 @@ def test_a_players_play_decision_is_the_same_in_every_scenario() -> None:
 
 
 def test_absence_path_follows_status_then_a_chain_with_the_stated_long_run_rate() -> None:
-    path = odds.absence_path("p", 0.76, 40, 40_000, 0, 0.07, 0.55)
+    path = odds.absence_path("p", (0.76,), 40, 40_000, 0, 0.07, 0.55)
     assert path[0].mean() == pytest.approx(0.24, abs=0.01)
     assert path[-1].mean() == pytest.approx(0.07 / (0.07 + 1 - 0.55), abs=0.01)
-    assert np.array_equal(path, odds.absence_path("p", 0.76, 40, 40_000, 0, 0.07, 0.55))
-    other = odds.absence_path("q", 0.76, 40, 40_000, 0, 0.07, 0.55)
+    assert np.array_equal(path, odds.absence_path("p", (0.76,), 40, 40_000, 0, 0.07, 0.55))
+    other = odds.absence_path("q", (0.76,), 40, 40_000, 0, 0.07, 0.55)
     assert not np.array_equal(path, other)
 
 

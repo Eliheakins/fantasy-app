@@ -37,10 +37,10 @@ def test_a_bye_week_hole_is_filled_by_a_stand_in_not_left_empty() -> None:
 
 
 def test_absence_probs_start_at_the_status_and_move_toward_the_long_run_rate() -> None:
-    chances = absence_probs(0.0, 30, hazard=0.07, stay_out=0.55)
+    chances = absence_probs((0.0,), 30, hazard=0.07, stay_out=0.55)
     assert chances[0] == 1.0 and chances[1] == pytest.approx(0.55)
     assert chances[-1] == pytest.approx(0.07 / (0.07 + 1 - 0.55), abs=1e-3)
-    assert absence_probs(1.0, 1, 0.07, 0.55) == [0.0]
+    assert absence_probs((1.0,), 1, 0.07, 0.55) == [0.0]
 
 
 def test_replacement_pool_skips_the_best_free_agents_who_are_adds_not_stand_ins() -> None:

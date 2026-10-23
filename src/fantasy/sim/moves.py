@@ -14,7 +14,13 @@ import polars as pl
 
 from fantasy.sim.lineup import Player, auto_lineup, lineup_slots
 from fantasy.sim.odds import HAZARD, PLAYOFF_WEEKS, STAY_OUT, LeagueData, league_odds
-from fantasy.sim.value import absence_probs, replacement_pool, season_value
+from fantasy.sim.value import (
+    absence_probs,
+    conditional_values,
+    play_curves,
+    replacement_pool,
+    season_value,
+)
 
 CANDIDATES_PER_POSITION = 8
 DROP_CANDIDATES = 8  # lowest rest-of-season players considered for a drop
@@ -90,14 +96,12 @@ class Valuer:
         self.data = data
         self.slots = lineup_slots(data.roster_positions)
         self.positions = position_of(data)
-        self.values = week_values(data)
+        # points when playing, by week; absences are weighed separately
+        self.values = conditional_values(data.projections)
         weeks = len(self.values)
-        chance: dict[str, float] = {}
-        if "play_prob" in data.projections.columns:
-            first = data.projections.filter(pl.col("week") == data.current_week)
-            chance = dict(zip(first["gsis_id"], first["play_prob"], strict=True))
+        curves = play_curves(data.projections, sorted(self.values))
         self.absence = {
-            g: absence_probs(chance.get(g, 1.0), weeks, HAZARD, STAY_OUT) for g in self.positions
+            g: absence_probs(curves.get(g, (1.0,)), weeks, HAZARD, STAY_OUT) for g in self.positions
         }
         self.replacements = replacement_pool(free_agents(data), self.positions, self.values)
 

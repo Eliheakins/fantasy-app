@@ -23,7 +23,7 @@ from fantasy.sim.lineup import (
     lineup_with_locks,
 )
 from fantasy.sim.season import SeasonInputs, SeasonResult, simulate_season
-from fantasy.sim.value import replacement_pool, stand_ins
+from fantasy.sim.value import conditional_values, play_curves, replacement_pool, stand_ins
 
 # Persistent per-player error, points a game: sd of 5-game mean error beyond what weekly noise
 # explains, from walk-forward projections 2018 to 2025, averaged over both leagues' scoring.
@@ -74,6 +74,9 @@ class LeagueData:
     league_id: str = ""
     played: frozenset[str] = frozenset()  # everyone whose game has started this week
     live: dict[str, tuple[float, float]] = field(default_factory=dict)  # id -> (points, share left)
+    injuries: dict[str, tuple[str, str | None, str | None]] = field(
+        default_factory=dict
+    )  # id -> (status, body, practice)
 
 
 def lineup_moments(
@@ -98,16 +101,25 @@ def lineup_moments(
 
 @lru_cache(maxsize=2048)
 def absence_path(
-    gsis_id: str, p_now: float, n_weeks: int, n_sims: int, seed: int, hazard: float, stay_out: float
+    gsis_id: str,
+    curve: tuple[float, ...],
+    n_weeks: int,
+    n_sims: int,
+    seed: int,
+    hazard: float,
+    stay_out: float,
 ) -> np.ndarray:
-    """(n_weeks, n_sims) True where the player is out. Week 0 comes from his chance of playing
-    now (his injury status); later weeks follow a two-state chain. The draws belong to the
+    """(n_weeks, n_sims) True where the player is out. While his injury curve lasts (the chance
+    of playing each week, rising as he recovers) one draw decides when he returns, so an
+    absence lingers; after it the weeks follow a two-state chain. The draws belong to the
     player, so his path is the same in every roster scenario and follows him in a trade."""
     u = np.random.default_rng([seed, zlib.crc32(gsis_id.encode()), 17]).random((n_weeks, n_sims))
     out = np.empty((n_weeks, n_sims), dtype=bool)
-    out[0] = u[0] >= p_now
-    for w in range(1, n_weeks):
-        out[w] = np.where(out[w - 1], u[w] < stay_out, u[w] < hazard)
+    for w in range(n_weeks):
+        if w < len(curve):
+            out[w] = u[0] >= curve[w]
+        else:
+            out[w] = np.where(out[w - 1], u[w] < stay_out, u[w] < hazard)
     out.setflags(write=False)
     return out
 
@@ -146,11 +158,9 @@ def build_inputs(
     taken = set(data.rosters["gsis_id"].to_list()) | set(rosters["gsis_id"].to_list())
     free_ids = [g for g in data.positions if g not in taken]
     replacements = replacement_pool(free_ids, data.positions, by_week)
-    p_now: dict[str, float] = {}
-    if "play_prob" in data.projections.columns:
-        first = data.projections.filter(pl.col("week") == data.current_week)
-        p_now = dict(zip(first["gsis_id"], first["play_prob"], strict=True))
-
+    curves = play_curves(data.projections, weeks)
+    healthy = (1.0,)
+    later = conditional_values(data.projections)
     for rid, t in index.items():
         team = rosters.filter(pl.col("roster_id") == rid)
         position = dict(zip(team["gsis_id"], team["position"], strict=True))
@@ -174,7 +184,8 @@ def build_inputs(
                     ]
                 offset, k_open, def_open = state.realized, state.open_k, state.open_def
             else:
-                values = by_week.get(week, {})
+                # expected points when playing: absences are drawn below, never discounted twice
+                values = (later if w >= 1 else by_week).get(week, {})
                 pool = [Player(g, position[g], values[g]) for g in position if g in values]
                 # holes (byes, absences, weak starters) fall back to stand-in free agents
                 floor = stand_ins(replacements.get(week, []), set(position))
@@ -199,7 +210,7 @@ def build_inputs(
                     rest = [q for q in pool if q.id != p.id] + floor
                     loss = full.total - auto_lineup(rest, slots).total
                     gone = absence_path(
-                        p.id, p_now.get(p.id, 1.0), n_weeks, n_sims, seed, HAZARD, STAY_OUT
+                        p.id, curves.get(p.id, healthy), n_weeks, n_sims, seed, HAZARD, STAY_OUT
                     )[w]
                     shift[t, w] -= loss * gone
 
