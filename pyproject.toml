@@ -1,0 +1,42 @@
+[project]
+name = "fantasy"
+version = "0.1.0"
+description = "Personal NFL fantasy decision tool"
+authors = [
+    { name = "Eli Heakins", email = "123508908+Eliheakins@users.noreply.github.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb>=2.0.0",
+    "httpx>=0.28.1",
+    "nflreadpy>=0.1.5",
+    "numpy>=2.5.4",
+    "polars>=2.0.0",
+    "scipy>=1.18.1",
+    "streamlit>=1.66.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.21,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "ruff>=0.17.2",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

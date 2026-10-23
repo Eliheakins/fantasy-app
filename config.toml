@@ -1,0 +1,11 @@
+# Committed on purpose: no secrets here. API keys go in environment variables.
+season = 2026
+username = "Eliheakins"
+user_id = "1385113153716641792"
+n_sims = 20000
+
+[leagues.colgate]
+id = "1394105943137992704"
+
+[leagues.yinzburgh]
+id = "1385108353306361856"
