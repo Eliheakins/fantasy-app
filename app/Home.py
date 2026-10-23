@@ -92,6 +92,7 @@ pages = [
     st.Page("pages/Waivers.py", title="Waivers"),
     st.Page("pages/Trades.py", title="Trades"),
     st.Page("pages/Outlook.py", title="Outlook"),
+    st.Page("pages/Players.py", title="Player outlook"),
 ]
 stale_banner()
 st.navigation(pages).run()

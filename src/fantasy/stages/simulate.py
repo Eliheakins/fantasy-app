@@ -20,9 +20,11 @@ from fantasy.sim.blend import blend
 from fantasy.sim.injuries import Flag, InjuryModel, injury_projections
 from fantasy.sim.lineup import Player
 from fantasy.sim.odds import CurrentWeek, LeagueData, league_odds
+from fantasy.sim.outlook import apply_outlook, effects_dict
 from fantasy.sim.schedule import pairings, standings
 from fantasy.stages.crosswalk import TEAM_MAP
 from fantasy.stages.injuries import PRACTICE
+from fantasy.stages.outlook import live_context
 
 SKILL = ["QB", "RB", "WR", "TE"]
 K_HISTORY_FROM = 2023
@@ -101,6 +103,23 @@ def _blend_sleeper(projections: pl.DataFrame, league_id: str, id_map: pl.DataFra
     )
 
 
+def _apply_outlook(projections: pl.DataFrame, current: int) -> pl.DataFrame:
+    """Return ramps and teammate vacancy, when the effects have been measured."""
+    try:
+        effects = effects_dict(store.read_table("outlook_effects"))
+    except FileNotFoundError:
+        return projections
+    context = live_context(
+        store.read_table("nfl_player_stats", "raw"),
+        store.read_table("nfl_team_stats", "raw"),
+        store.read_table("team_games"),
+        store.read_table("nfl_injuries", "raw"),
+        load_config().season,
+        current,
+    )
+    return apply_outlook(projections, context, effects, current)
+
+
 def _injury_flags(flagged: pl.DataFrame, current: int) -> dict[str, Flag]:
     """gsis id -> (Sleeper status, body part, practice participation). Body part and practice
     come from the latest nflverse injury report this season; practice counts only once a game
@@ -161,7 +180,9 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         .filter(pl.col("gsis_id").is_not_null())
     )
     flags = _injury_flags(flagged, current)
-    blended = _blend_sleeper(future.select("gsis_id", "week", "projection"), lid, id_map)
+    blended = _blend_sleeper(
+        future.select("gsis_id", "week", "position", "team", "projection"), lid, id_map
+    )
     try:
         model = InjuryModel(store.read_table("injury_effects"))
     except FileNotFoundError:
@@ -172,6 +193,7 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         projections = scale_projections(blended, {g: f[0] for g, f in flags.items()}, current)
     else:
         projections = injury_projections(blended, flags, model, current)
+    projections = _apply_outlook(projections, current)
     active = (
         store.read_table("sleeper_players", "raw")
         .filter((pl.col("status") == "Active") & pl.col("team").is_not_null())

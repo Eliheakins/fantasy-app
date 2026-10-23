@@ -255,7 +255,7 @@ def lineup(league_key: str, week: int = 0, now: datetime | None = None) -> pl.Da
 def _injury_note(data: LeagueData, gsis_id: str) -> str | None:
     """Injury, body part and the chance of playing this game and the next, for a flagged player."""
     flag = data.injuries.get(gsis_id)
-    if flag is None:
+    if flag is None or not flag[0]:
         return None
     status, body, _ = flag
     text = status + (f" ({body.lower()})" if body else "")
@@ -905,4 +905,145 @@ def position_strength(league_key: str) -> pl.DataFrame:
         .with_columns(pl.lit(len(data.roster_ids)).alias("teams"))
         .select("position", "vor_per_week", "rank", "teams")
         .sort("position")
+    )
+
+
+OUTLOOK_RECENT_GAMES = 4
+OUTLOOK_THRESHOLD = 1.5  # points a game of expected change before a player is called improving
+OUTLOOK_INJURED = 0.35  # chance to play this game at or below which a player is just Injured
+OUTLOOK_MIN_PROJECTION = 4.0  # league and free-agent views skip players projected below this
+OUTLOOK_SCHEMA: dict[str, pl.DataType | type[pl.DataType]] = {
+    "gsis_id": _S,
+    "full_name": _S,
+    "position": _S,
+    "owner": _S,
+    "recent_ppg": _F,
+    "expected_ppg": _F,
+    "next_ppg": _F,
+    "change": _F,
+    "chance_to_play": _F,
+    "label": _S,
+    "why": _S,
+}
+
+
+def player_outlook(league_key: str, scope: str = "mine") -> pl.DataFrame:
+    """Who is improving or regressing over the next four games, and why.
+
+    scope is "mine" (my roster), "league" (rostered by others) or "free" (free agents).
+    recent_ppg is points a game over the last four games played; expected_ppg is what their
+    usage was worth over the same games; next_ppg is the projection per game when he plays over
+    his next four games (return ramps, teammates out and injury discounts included); change is
+    next_ppg minus recent_ppg. The label is Improving or Regressing past OUTLOOK_THRESHOLD, or
+    Injured when he is unlikely to play this game.
+    Only three drivers are modeled (see docs/decisions.md): a return from missed games,
+    teammates who are out, and the gap between points and expected points.
+    """
+    from fantasy.stages.project import expected_frame
+
+    data, mine = _league(league_key)
+    leagues_raw = store.read_table("leagues", "raw")
+    lid = data.league_id
+    points = _read("player_points", store.DATA_DIR, area="derived").filter(
+        pl.col("league_id") == lid
+    )
+    exp = expected_frame(
+        _read("nfl_ff_opportunity", store.DATA_DIR),
+        points,
+        leagues_raw.filter(pl.col("league_id") == lid),
+    )
+    season = load_config().season
+    recent = (
+        exp.filter((pl.col("season") == season) & (pl.col("week") < data.current_week))
+        .sort("gsis_id", "week")
+        .group_by("gsis_id")
+        .agg(
+            pl.col("points").tail(OUTLOOK_RECENT_GAMES).mean().alias("recent_ppg"),
+            pl.col("exp_pts").tail(OUTLOOK_RECENT_GAMES).mean().alias("expected_ppg"),
+            pl.len().alias("games"),
+        )
+    )
+    proj = data.projections
+    columns = proj.columns
+    ahead = (
+        proj.filter(pl.col("week") >= data.current_week)
+        .sort("gsis_id", "week")
+        .group_by("gsis_id", maintain_order=True)
+        .head(OUTLOOK_RECENT_GAMES)
+    )
+    summary = ahead.group_by("gsis_id").agg(
+        (pl.col("projection").sum() / pl.col("play_prob").sum().clip(lower_bound=1e-9)).alias(
+            "next_ppg"
+        ),
+        pl.col("play_prob").first().alias("chance_to_play"),
+        pl.col("outlook_factor").first().alias("factor")
+        if "outlook_factor" in columns
+        else pl.lit(1.0).alias("factor"),
+        pl.col("vacancy_points").mean().alias("vacancy")
+        if "vacancy_points" in columns
+        else pl.lit(0.0).alias("vacancy"),
+    )
+    owner_of = dict(zip(data.rosters["gsis_id"], data.rosters["roster_id"], strict=True))
+    names = _names()
+    positions = moves.position_of(data)
+    rows = []
+    for r in summary.join(recent, on="gsis_id", how="left").iter_rows(named=True):
+        g = r["gsis_id"]
+        owner = owner_of.get(g)
+        wanted = {
+            "mine": owner == mine,
+            "league": owner is not None and owner != mine,
+            "free": owner is None,
+        }
+        if not wanted[scope] or g not in names or g not in positions:
+            continue
+        if scope != "mine" and (r["next_ppg"] or 0.0) < OUTLOOK_MIN_PROJECTION:
+            continue
+        recent_ppg, expected = r["recent_ppg"], r["expected_ppg"]
+        change = None if recent_ppg is None or (r["games"] or 0) < 2 else r["next_ppg"] - recent_ppg
+        why = []
+        if r["factor"] < 0.97:
+            why.append(f"first games back ({r['factor']:.0%} of projection)")
+        if r["vacancy"] >= 0.5:
+            why.append(f"teammates out (+{r['vacancy']:.1f} points)")
+        if recent_ppg is not None and expected is not None and (r["games"] or 0) >= 2:
+            if recent_ppg - expected >= 2.0:
+                why.append(f"scoring {recent_ppg - expected:.1f} above what usage is worth")
+            elif expected - recent_ppg >= 2.0:
+                why.append(f"scoring {expected - recent_ppg:.1f} below what usage is worth")
+        note = _injury_note(data, g)
+        if note:
+            why.append(note)
+        label = (
+            "Injured"
+            if (r["chance_to_play"] or 0.0) <= OUTLOOK_INJURED
+            else "No recent games"
+            if change is None
+            else "Improving"
+            if change >= OUTLOOK_THRESHOLD
+            else "Regressing"
+            if change <= -OUTLOOK_THRESHOLD
+            else "Steady"
+        )
+        rows.append(
+            {
+                "gsis_id": g,
+                "full_name": names[g],
+                "position": positions[g],
+                "owner": "You"
+                if owner == mine
+                else data.team_names.get(owner, "Free agent")
+                if owner
+                else "Free agent",
+                "recent_ppg": recent_ppg,
+                "expected_ppg": expected,
+                "next_ppg": r["next_ppg"],
+                "change": change,
+                "chance_to_play": r["chance_to_play"],
+                "label": label,
+                "why": "; ".join(why),
+            }
+        )
+    return pl.DataFrame(rows, schema=OUTLOOK_SCHEMA).sort(
+        "change", descending=True, nulls_last=True
     )
