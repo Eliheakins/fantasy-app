@@ -2,20 +2,22 @@
 
 One story is one working session. Engine and dashboard stories are merged per epic, so every epic ends with a usable panel. This file is canonical for story IDs and order. Story IDs in modeling.md and dashboard.md are superseded. modeling.md sections 10b and 10c override its earlier sections. Reference designs: spec/architecture.md, spec/modeling.md, spec/dashboard.md, spec/data-sources.md. Original brainstorm: archive/plan.md.
 
-## Status (2026-10-23, end of the first working session)
+## Status (2026-10-23, end of the second working session)
 
-**Done and verified on live data (21 issues closed):** E0-1 to E0-3, E1-1 to E1-4, E2-1, E3-1 to E3-5, E4-1, E4-3, E4-4, E4-6, E5-1, E5-3, E5-4 (deadline guard only), E5-D2. All 17 fast-path stories are done.
+**Done and verified on live data:** every story except E3-8 (35 of 36 issues closed). Added this session: E2-2 odds snapshots, E3-6 tau from history, E3-7 DEF scoring and K/DEF projections, E4-2 player sampler, E4-5 win-probability lineup, E4-7 locks and injuries, E5-2 waiver value by re-simulation, E5-5 K/DEF streaming, and the dashboard stories (footer, range bars, objective toggle, Home actions, Outlook seeds and schedule, waiver detail and trending).
 
-**Partial (issue open, first cut shipped):**
-- E4-D1: Lineup page (expected-points lineup, text ranges, comparison with Sleeper). No win probability, range bars or objective toggle, and it ignores games already started.
-- E4-D2: Home shows my playoff, bye and title odds. No range bars, top actions or lock state.
-- E4-D3: Outlook ranks all teams and charts saved runs. No rank histogram or schedule table.
-- E5-D1: Waivers page (top 15 adds). No row detail or trending.
-- E3-7: DEF is each league's measured starting-defense average; K is from history. No streaming rules, no DEF scoring from team stats.
+**Not done:** E3-8 (ECR rank-to-points check, blocked on the FantasyPros redistribution terms) and everything under Post-MVP below.
 
-**Not started:** E1-5, E2-2 (needs a free Odds API key), E3-6 (tau is provisional), E3-8, E4-2, E4-5, E4-7, E5-2, E5-5, E5-D3.
-
-**Known gaps:** injuries are not modeled (an Out player still projects normally); tau and the spread of season win totals are untested (no league history); DEF is an average; the highest-projected players are under-projected by about 0.3 points a game; there is no GitHub Project board (the token lacks the `project` scope).
+**Known gaps:**
+- Injuries scale the mean (Out 0, Doubtful 0.02, Questionable 0.76 of normal for the current week; IR and similar zero for 4 weeks). The simulation does not draw play or no-play per player-week.
+- Win probability ignores points already scored in games under way, and uses league-average K and DEF.
+- DEF scoring matches Sleeper exactly in 52 of 60 (Colgate) and 41 of 60 (YinzBurgh) team-weeks; the rest are off by 1 to 2 points, likely special-teams recoveries. The K projection is no better than the league average; the DEF projection is about 3% better.
+- The season simulation still uses league-average K and DEF per slot.
+- tau is now estimated from history, but the spread of season win totals is untested (no league history).
+- The playoff bracket, byes and tiebreaks are assumptions; the user confirmed 6 teams, byes for seeds 1 and 2, weeks 15 to 17.
+- Trades are never suggested automatically (partner finder is post-MVP).
+- Top-player bias (#38) was investigated and not corrected: the effect is 0.2 to 0.3% of RMSE.
+- No GitHub Project board (the token lacks the `project` scope; the user does not want one).
 
 ## E0 Foundation
 

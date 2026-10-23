@@ -1,6 +1,6 @@
 # Fantasy app one-pager (v3, 2026-10-23)
 
-**Status:** the 17-story trade fast path is done and checked on live data, plus Lineup, Waivers, Trades, Home odds and Outlook pages. 21 of 36 story issues are closed; what remains is listed at the top of `backlog.md`.
+**Status:** every story except E3-8 is done and checked on live data (35 of 36 issues closed): Home with actions and odds, Lineup with win probability and locks, Waivers with re-simulated odds and K/DEF streaming, Trades, and Outlook with seeds and schedule. Known gaps are listed at the top of `backlog.md`.
 
 **Goal:** a local dashboard that tells me each week, for Colgate and YinzBurgh (Sleeper redraft): who to start, who to add, and which trades raise my title odds.
 
