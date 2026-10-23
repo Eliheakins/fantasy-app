@@ -454,3 +454,21 @@ The FantasyData comparison used the raw rolling baseline (size-calibrated), not 
 - Decision layer: nothing found that argues against the current design; trade acceptance modeling has no published method (FantasyCalc and KeepTradeCut values exist as market values); strength of schedule from prior-year results has little predictive value (Footballguys, single source).
 
 **Suggestions (not approved or built):** see the backlog section "Modeling v2 (proposed)".
+
+## 2026-10-23: Which free datasets add accuracy (`research/data_value.py`, analysis only, nothing built)
+
+Method: the boosted model from `gbm_test.py` (lagged points, expected points, volume, snap and target share, implied total, practice flags; trained 2019 to 2023) is the base; each dataset's pre-game features are added alone and the model is scored on 2024 and 2025 (baseline projection above 3; 12,144 player-weeks). Gain is the drop in RMSE against the base model, with a paired per-week t. Base 6.4319; our rolling baseline 6.5137.
+
+| Dataset (nflreadpy) | Features | Gain | t | Weeks better |
+|---|---|---|---|---|
+| Depth charts (`load_depth_charts`) | depth rank at the position for the game (QB +0.089, RB +0.020, WR +0.017) | 0.0253 | 2.9 | 35/50 |
+| Pro-Football-Reference and Next Gen Stats (`load_pfr_advstats`, `load_nextgen_stats`) | weighted prior-game broken tackles, drop rate, separation, cushion, intended air yards, yards after catch over expected, time to throw, rush yards over expected | 0.0196 | 3.2 | 38/50 |
+| Weekly rosters (`load_rosters_weekly`) | age, years in the league, draft pick, active status, weight | 0.0194 | 4.5 | 37/50 |
+| Schedules (`load_schedules`) | temperature, wind, indoor, rest days, division game, moneyline | 0.0100 | 2.8 | 31/50 |
+| Team pace from play by play (`load_pbp`) | weighted prior plays, dropbacks, pass rate over expected, EPA per play | 0.0091 | 3.1 | 34/50 |
+| Participation (`load_participation`) | share of team pass and run plays on the field | 0.0032 | 0.6 | 29/50 |
+| All six together | | 0.0587 (RMSE 6.3732) | 6.0 | 40/50 |
+
+Reading: the free role and context data add about 0.9% RMSE to the boosted model and the combination is 2.2% better than our rolling baseline (6.373 against 6.514, with QB +0.13, RB +0.04, WR +0.05, TE +0.04). The FantasyData gap measured earlier (6.99 to 6.71, 2019 to 2021) was 0.27, so free data closes very roughly half of a gap measured in other years. Participation is redundant with snap share and target share. Depth chart helps quarterbacks most (who starts). The 2025 depth chart comes from dated snapshots matched to the game day, the earlier years from the weekly publication.
+
+Not tested: FTN charting (2022 on only, too little history to train and score), contracts, officials, combine, trades, FantasyPros weekly expert rankings (`load_ff_rankings(type="all")` holds 1.87 million rows over 370 scrape dates from late 2019, but the 2026-10-22 data policy bars FantasyPros data until its terms are read), Odds API prop history (paid), news (no free feed found).
