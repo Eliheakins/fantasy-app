@@ -149,6 +149,8 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     "injury_effects": _cols(strings="status practice body", ints="n", floats="p0 p1 p2 p3 perf"),
     # written by outlook (area: derived): return-from-absence ratios and teammate-vacancy slopes
     "outlook_effects": _cols(strings="position kind", ints="n", floats="value"),
+    # written by environment (area: derived): offense efficiency and opposing-corner effects
+    "environment_effects": _cols(strings="position kind", ints="n", floats="value t"),
     "sim_seeds": _cols(strings="league_id", ints="roster_id seed", floats="p"),
     "sim_season_history": _cols(
         strings="league_id team_name run_at",
@@ -193,6 +195,9 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "fg_made_0_19 fg_made_20_29 fg_made_30_39 fg_made_40_49 fg_made_50_59 fg_made_60_ "
         "fg_missed_0_19 fg_missed_20_29 fg_missed_30_39 fg_missed_40_49 fg_missed_50_59 "
         "fg_missed_60_ pat_made pat_att pat_missed fantasy_points fantasy_points_ppr",
+    ),
+    "nfl_team_efficiency": _cols(
+        strings="team opponent", ints="season week", floats="pass_epa sack_rate"
     ),
     "nfl_team_stats": _cols(
         strings="team season_type opponent_team",

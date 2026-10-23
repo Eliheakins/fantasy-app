@@ -11,6 +11,7 @@ refresh:
 	uv run python -m fantasy.stages.distributions
 	uv run python -m fantasy.stages.injuries
 	uv run python -m fantasy.stages.outlook
+	uv run python -m fantasy.stages.environment
 	uv run python -m fantasy.stages.simulate
 
 app:

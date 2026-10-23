@@ -1053,6 +1053,12 @@ def player_outlook(league_key: str, scope: str = "mine") -> pl.DataFrame:
         pl.col("vacancy_points").mean().alias("vacancy")
         if "vacancy_points" in columns
         else pl.lit(0.0).alias("vacancy"),
+        pl.col("offense_points").mean().alias("offense")
+        if "offense_points" in columns
+        else pl.lit(0.0).alias("offense"),
+        pl.col("matchup_points").mean().alias("matchup")
+        if "matchup_points" in columns
+        else pl.lit(0.0).alias("matchup"),
     )
     owner_of = dict(zip(data.rosters["gsis_id"], data.rosters["roster_id"], strict=True))
     names = _names()
@@ -1077,6 +1083,11 @@ def player_outlook(league_key: str, scope: str = "mine") -> pl.DataFrame:
             why.append(f"first games back ({r['factor']:.0%} of projection)")
         if r["vacancy"] >= 0.5:
             why.append(f"teammates out (+{r['vacancy']:.1f} points)")
+        if r["matchup"] >= 0.25:
+            why.append(f"opposing corner out (+{r['matchup']:.1f} points)")
+        if abs(r["offense"]) >= 0.4:
+            side = "gain" if r["offense"] > 0 else "loss"
+            why.append(f"offense efficiency regression ({side} of {abs(r['offense']):.1f} points)")
         if recent_ppg is not None and expected is not None and (r["games"] or 0) >= 2:
             if recent_ppg - expected >= 2.0:
                 why.append(f"scoring {recent_ppg - expected:.1f} above what usage is worth")

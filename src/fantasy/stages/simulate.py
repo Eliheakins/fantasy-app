@@ -17,6 +17,8 @@ from fantasy import store
 from fantasy.config import load_config
 from fantasy.sim.availability import kickoffs, remaining_share, scale_projections
 from fantasy.sim.blend import blend
+from fantasy.sim.environment import Situation, apply_environment
+from fantasy.sim.environment import effects_dict as environment_effects
 from fantasy.sim.injuries import Flag, InjuryModel, injury_projections
 from fantasy.sim.lineup import Player
 from fantasy.sim.odds import CurrentWeek, LeagueData, league_odds
@@ -24,6 +26,7 @@ from fantasy.sim.outlook import apply_outlook, effects_dict
 from fantasy.sim.schedule import pairings, standings
 from fantasy.stages.crosswalk import TEAM_MAP
 from fantasy.stages.distributions import calibrated
+from fantasy.stages.environment import live as environment_live
 from fantasy.stages.injuries import PRACTICE
 from fantasy.stages.outlook import live_context
 
@@ -121,6 +124,27 @@ def _apply_outlook(projections: pl.DataFrame, current: int) -> pl.DataFrame:
     return apply_outlook(projections, context, effects, current)
 
 
+def _apply_environment(
+    projections: pl.DataFrame, current: int, model: InjuryModel | None
+) -> pl.DataFrame:
+    """Offense efficiency and opposing-corner effects, when they have been measured."""
+    try:
+        effects = environment_effects(store.read_table("environment_effects"))
+        efficiency = store.read_table("nfl_team_efficiency", "raw")
+    except FileNotFoundError:
+        return projections
+    team_z, cb_absent, opponent = environment_live(
+        efficiency,
+        store.read_table("nfl_snaps", "raw"),
+        store.read_table("nfl_injuries", "raw"),
+        store.read_table("team_games"),
+        model,
+        load_config().season,
+        current,
+    )
+    return apply_environment(projections, Situation(team_z, cb_absent, opponent), effects, current)
+
+
 def _injury_flags(flagged: pl.DataFrame, current: int) -> dict[str, Flag]:
     """gsis id -> (Sleeper status, body part, practice participation). Body part and practice
     come from the latest nflverse injury report this season; practice counts only once a game
@@ -198,6 +222,7 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
     else:
         projections = injury_projections(blended, flags, model, current)
     projections = _apply_outlook(projections, current)
+    projections = _apply_environment(projections, current, model)
     active = (
         store.read_table("sleeper_players", "raw")
         .filter((pl.col("status") == "Active") & pl.col("team").is_not_null())
