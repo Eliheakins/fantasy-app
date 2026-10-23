@@ -108,3 +108,14 @@ def test_missing_tables_return_empty_frames_not_errors(tmp_path: Path) -> None:
     assert data_api.roster("test", tmp_path).is_empty()
     assert data_api.unmatched(tmp_path).is_empty()
     assert data_api.season_odds("test").columns[:2] == ["roster_id", "team_name"]
+
+
+def test_missing_layers_names_the_projection_layers_whose_stage_has_not_run(tmp_path):
+    assert "injury model" in data_api.missing_layers(tmp_path)
+    store.write_table(
+        "outlook_effects",
+        pl.DataFrame(schema=store.SCHEMAS["outlook_effects"]),
+        data_dir=tmp_path,
+    )
+    missing = data_api.missing_layers(tmp_path)
+    assert "outlook" not in missing and "injury model" in missing

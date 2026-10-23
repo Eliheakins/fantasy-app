@@ -38,3 +38,10 @@ def test_log_credits_writes_header_once(tmp_path):
         "s1,6,494",
         "s2,12,488",
     ]
+
+
+def test_a_failed_request_does_not_expose_the_api_key(monkeypatch):
+    monkeypatch.setattr(so.httpx, "get", lambda *a, **k: so.httpx.Response(401))
+    with pytest.raises(RuntimeError) as err:
+        so._get(f"{so.BASE}/events", {"apiKey": "SECRET"})
+    assert "SECRET" not in str(err.value) and "401" in str(err.value)

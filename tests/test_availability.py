@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 import polars as pl
+import pytest
 
 from fantasy.sim.availability import EASTERN, locked_teams, rate, scale_projections
 from fantasy.sim.lineup import Player, lineup_with_locks
@@ -61,3 +62,8 @@ def test_lineup_with_locks_matches_auto_lineup_when_nothing_is_locked():
     players = [Player("a", "RB", 9.0), Player("b", "WR", 7.0), Player("c", "WR", 6.0)]
     lineup = lineup_with_locks(players, ["RB", "WR", "FLEX"], set(), set())
     assert lineup.players == {"a", "b", "c"}
+
+
+def test_an_unrecognised_status_warns_and_counts_as_healthy():
+    with pytest.warns(UserWarning, match="COV"):
+        assert rate("COV", week=7, current_week=7) == 1.0

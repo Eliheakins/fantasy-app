@@ -24,6 +24,9 @@ def stale_banner() -> None:
     ]
     if old:
         st.warning(f"Stale data: {', '.join(old)}. Run `make refresh`.")
+    missing = data_api.missing_layers()
+    if missing:
+        st.warning(f"Running without: {', '.join(missing)}. Run `make refresh`.")
 
 
 def footer() -> None:

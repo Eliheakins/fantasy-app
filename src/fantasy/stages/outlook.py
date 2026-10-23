@@ -19,6 +19,7 @@ import polars as pl
 
 from fantasy import store
 from fantasy.sim.outlook import MIN_SHARE, Context
+from fantasy.sim.scoring_scale import reference_league
 from fantasy.stages.distributions import calibrated
 
 HALF_LIFE = 4.0  # games, for the usage averages
@@ -83,14 +84,16 @@ def build_panel(
         baseline.join(points, on=["gsis_id", "season", "week"], how="inner")
         .join(games, on=["team", "season", "week"], how="left")
         .sort("gsis_id", "season", "week")
-        .with_columns((pl.col("points") - pl.col("projection")).alias("miss"))
+        .with_columns(
+            (pl.col("points") - pl.col("projection")).alias("miss"),
+            # gaps are measured before the projection filter, or a skipped low-projection game
+            # would look like an absence
+            (pl.col("g") - pl.col("g").shift(1).over("gsis_id", "season") - 1)
+            .fill_null(0)
+            .alias("missed"),
+            pl.col("week").shift(1).over("gsis_id", "season").alias("prev_week"),
+        )
         .filter(pl.col("projection") > MIN_PROJECTION)
-    )
-    panel = panel.with_columns(
-        (pl.col("g") - pl.col("g").shift(1).over("gsis_id", "season") - 1)
-        .fill_null(0)
-        .alias("missed"),
-        pl.col("week").shift(1).over("gsis_id", "season").alias("prev_week"),
     )
     # an absence is an injury absence if the player was on the report around the games he missed
     listed = (
@@ -256,7 +259,7 @@ def live_context(
 
 def run() -> int:
     leagues = store.read_table("leagues", "raw")
-    league_id = leagues["league_id"][0]  # ratios of points to projection; any league will do
+    league_id = reference_league(leagues)  # point effects are scaled to the other league later
     season = int(leagues["season"].to_numpy().max())
     panel = build_panel(
         store.read_table("nfl_player_stats", "raw"),

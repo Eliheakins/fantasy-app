@@ -28,6 +28,7 @@ import polars as pl
 
 from fantasy import store
 from fantasy.sim.injuries import InjuryModel
+from fantasy.sim.scoring_scale import reference_league
 from fantasy.stages.crosswalk import normalize_name
 from fantasy.stages.distributions import calibrated
 from fantasy.stages.outlook import build_panel
@@ -321,7 +322,7 @@ def live(
 
 def run() -> int:
     leagues = store.read_table("leagues", "raw")
-    league_id = leagues["league_id"][0]  # point differences only; any league's scoring will do
+    league_id = reference_league(leagues)  # point effects are scaled to the other league later
     season = int(leagues["season"].to_numpy().max())
     efficiency = load_efficiency(season)
     stats = store.read_table("nfl_player_stats", "raw")

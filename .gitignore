@@ -8,3 +8,4 @@ data/
 .env
 .streamlit/secrets.toml
 .DS_Store
+.coverage

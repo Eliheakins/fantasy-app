@@ -44,6 +44,14 @@ def api_key(env_file: Path = store.ROOT / ".env") -> str:
     return key
 
 
+def _get(url: str, params: dict[str, str]) -> httpx.Response:
+    """GET that raises without the request URL, which carries the API key."""
+    resp = httpx.get(url, params=params, timeout=30)
+    if resp.is_error:
+        raise RuntimeError(f"Odds API returned {resp.status_code} for {url.removeprefix(BASE)}")
+    return resp
+
+
 def events_in_window(events: list[dict[str, Any]], now: datetime) -> list[dict[str, Any]]:
     end = now + timedelta(days=WINDOW_DAYS)
     return [
@@ -69,9 +77,10 @@ def log_credits(stamp: str, used: str | None, remaining: str | None, odds_dir: P
 def run(dry_run: bool = False, odds_dir: Path = ODDS_DIR, now: datetime | None = None) -> None:
     now = now or datetime.now(UTC)
     key = api_key()
-    listing = httpx.get(f"{BASE}/events", params={"apiKey": key}, timeout=30)  # free call
-    listing.raise_for_status()
+    listing = _get(f"{BASE}/events", {"apiKey": key})  # free call
     events = events_in_window(listing.json(), now)
+    if not all(str(e["id"]).isalnum() for e in events):
+        raise RuntimeError("Odds API returned an event id that is not alphanumeric")
     cost = snapshot_cost(len(events))
     remaining = listing.headers.get("x-requests-remaining")
     print(f"{len(events)} games in the next {WINDOW_DAYS} days, about {cost} credits")
@@ -86,17 +95,15 @@ def run(dry_run: bool = False, odds_dir: Path = ODDS_DIR, now: datetime | None =
     out.mkdir(parents=True, exist_ok=True)
     used = left = None
     for e in events:
-        resp = httpx.get(
+        resp = _get(
             f"{BASE}/events/{e['id']}/odds",
-            params={
+            {
                 "apiKey": key,
                 "regions": REGION,
                 "markets": ",".join(MARKETS),
                 "oddsFormat": "american",
             },
-            timeout=30,
         )
-        resp.raise_for_status()
         (out / f"{e['id']}.json").write_text(json.dumps(resp.json()))
         used, left = resp.headers.get("x-requests-used"), resp.headers.get("x-requests-remaining")
         time.sleep(PAUSE_SECONDS)

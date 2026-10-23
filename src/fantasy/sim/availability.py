@@ -6,6 +6,7 @@ touch or target, against 96% of players with no designation. Questionable is the
 Long-term designations sit out the 4-game minimum; after that the player is assumed back.
 """
 
+import warnings
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -18,6 +19,8 @@ EASTERN = ZoneInfo("America/New_York")
 
 
 def rate(status: str | None, week: int, current_week: int) -> float:
+    if status and status not in STATUS_RATE and status not in LONG_TERM and status != "Probable":
+        warnings.warn(f"unrecognised injury status {status!r}, treated as healthy", stacklevel=2)
     if status in LONG_TERM:
         return 0.0 if week < current_week + LONG_TERM_WEEKS else 1.0
     if week == current_week:

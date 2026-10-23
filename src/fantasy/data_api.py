@@ -884,6 +884,25 @@ def freshness(now: datetime | None = None) -> pl.DataFrame:
     return frame if rows else pl.DataFrame(schema=_FRESHNESS_SCHEMA)
 
 
+# projection layers that the simulation skips, without error, when their table is missing
+OPTIONAL_LAYERS = (
+    ("injury model", "injury_effects", "derived"),
+    ("outlook", "outlook_effects", "derived"),
+    ("matchup and offense effects", "environment_effects", "derived"),
+    ("size calibration", "projection_calibration", "derived"),
+    ("Sleeper projections", "proj_sleeper", "derived"),
+)
+
+
+def missing_layers(data_dir: Path = store.DATA_DIR) -> list[str]:
+    """Names of projection layers the simulation is running without because a stage did not run."""
+    return [
+        label
+        for label, table, area in OPTIONAL_LAYERS
+        if not store.table_path(table, area, data_dir).exists()
+    ]
+
+
 def find_trades(league_key: str) -> pl.DataFrame:
     """Trades (1 for 1, 1 for 2, 2 for 1, 2 for 2) that raise both teams' odds. May raise
     ValueError after the deadline.

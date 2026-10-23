@@ -24,6 +24,7 @@ from fantasy.sim.lineup import Player
 from fantasy.sim.odds import CurrentWeek, LeagueData, league_odds
 from fantasy.sim.outlook import apply_outlook, effects_dict
 from fantasy.sim.schedule import pairings, standings
+from fantasy.sim.scoring_scale import position_scale, reference_league, scale_points
 from fantasy.stages.crosswalk import TEAM_MAP
 from fantasy.stages.distributions import calibrated
 from fantasy.stages.environment import live as environment_live
@@ -107,12 +108,27 @@ def _blend_sleeper(projections: pl.DataFrame, league_id: str, id_map: pl.DataFra
     )
 
 
-def _apply_outlook(projections: pl.DataFrame, current: int) -> pl.DataFrame:
+# effects measured in points, so they scale with a league's scoring; the rest are ratios
+OUTLOOK_POINT_KINDS = frozenset({"vac_target", "vac_carry"})
+ENVIRONMENT_POINT_KINDS = frozenset({"opp_cb_out", "team_pass_epa", "team_sack_rate"})
+
+
+def _scale_to_league(league_id: str) -> dict[str, float]:
+    """Each position's mean projection here over the league the effects were measured in."""
+    reference = reference_league(store.read_table("leagues", "raw"))
+    history = store.read_table("proj_baseline").filter(~pl.col("is_future") & pl.col("has_history"))
+    return position_scale(history, league_id, reference)
+
+
+def _apply_outlook(
+    projections: pl.DataFrame, current: int, scale: dict[str, float]
+) -> pl.DataFrame:
     """Return ramps and teammate vacancy, when the effects have been measured."""
     try:
         effects = effects_dict(store.read_table("outlook_effects"))
     except FileNotFoundError:
         return projections
+    effects = scale_points(effects, scale, OUTLOOK_POINT_KINDS)
     context = live_context(
         store.read_table("nfl_player_stats", "raw"),
         store.read_table("nfl_team_stats", "raw"),
@@ -125,7 +141,7 @@ def _apply_outlook(projections: pl.DataFrame, current: int) -> pl.DataFrame:
 
 
 def _apply_environment(
-    projections: pl.DataFrame, current: int, model: InjuryModel | None
+    projections: pl.DataFrame, current: int, model: InjuryModel | None, scale: dict[str, float]
 ) -> pl.DataFrame:
     """Offense efficiency and opposing-corner effects, when they have been measured."""
     try:
@@ -133,6 +149,7 @@ def _apply_environment(
         efficiency = store.read_table("nfl_team_efficiency", "raw")
     except FileNotFoundError:
         return projections
+    effects = scale_points(effects, scale, ENVIRONMENT_POINT_KINDS)
     team_z, cb_absent, opponent = environment_live(
         efficiency,
         store.read_table("nfl_snaps", "raw"),
@@ -221,8 +238,9 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         projections = scale_projections(blended, {g: f[0] for g, f in flags.items()}, current)
     else:
         projections = injury_projections(blended, flags, model, current)
-    projections = _apply_outlook(projections, current)
-    projections = _apply_environment(projections, current, model)
+    scale = _scale_to_league(lid)
+    projections = _apply_outlook(projections, current, scale)
+    projections = _apply_environment(projections, current, model, scale)
     active = (
         store.read_table("sleeper_players", "raw")
         .filter((pl.col("status") == "Active") & pl.col("team").is_not_null())
