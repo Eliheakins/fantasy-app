@@ -1,0 +1,10 @@
+# Neutral accent so color is reserved for signed changes (green/red) and warnings (amber).
+# The base theme follows the system setting.
+[theme]
+primaryColor = "#475569"
+
+[browser]
+gatherUsageStats = false
+
+[server]
+headless = true

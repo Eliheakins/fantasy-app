@@ -1,4 +1,11 @@
-.PHONY: setup test lint fmt check
+.PHONY: setup test lint fmt check refresh app
+
+refresh:
+	uv run python -m fantasy.stages.sync_sleeper
+	uv run python -m fantasy.stages.crosswalk
+
+app:
+	uv run streamlit run app/Home.py
 
 setup:
 	uv sync
