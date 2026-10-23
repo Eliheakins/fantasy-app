@@ -1,8 +1,8 @@
 """Estimate how far actual points scatter around the baseline projection, and how that scatter
 moves together across players.
 
-marginals          coefficient of variation per league and position, from walk-forward residuals
-                   (a Gamma with mean = projection and this CV is the marginal for one player-game)
+marginals          quantiles of actual / projected points per league and position, from
+                   walk-forward residuals (projection * ratio quantile = a player-game's outcome)
 correlation_pairs  Gaussian-copula correlation between roles (QB1, RB1, WR1, ...), for teammates
                    and for opposing players in the same game, from Spearman rank correlation of
                    residuals: rho = 2 sin(pi * rho_spearman / 6)
@@ -12,10 +12,13 @@ Run: uv run python -m fantasy.stages.distributions
 
 import math
 
+import numpy as np
 import polars as pl
 
 from fantasy import store
 
+LEVELS = np.arange(1, 100) / 100
+MIN_PROJECTION = 0.5
 ROLES = ["QB1", "RB1", "RB2", "WR1", "WR2", "WR3", "TE1"]
 MIN_PAIR_ROWS = 200
 TEAM_WEEK = ["league_id", "season", "week", "team"]
@@ -35,16 +38,28 @@ def residual_frame(proj: pl.DataFrame, points: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def estimate_cv(res: pl.DataFrame) -> pl.DataFrame:
-    """cv^2 = sum of squared residuals / sum of squared projections (a ratio estimator)."""
-    return (
-        res.filter(pl.col("projection") > 0)
-        .group_by("league_id", "position")
-        .agg(
-            ((pl.col("resid") ** 2).sum() / (pl.col("projection") ** 2).sum()).sqrt().alias("cv"),
-            pl.len().cast(pl.Int64).alias("n"),
-        )
-        .sort("league_id", "position")
+def estimate_marginals(res: pl.DataFrame) -> pl.DataFrame:
+    """Quantiles of actual / projection per league and position (the shape around the mean).
+
+    A Gamma with constant CV was tried first and covered only 66 to 74 percent of outcomes with
+    its 80 percent interval: real games have more near-zero outcomes than a Gamma allows.
+    """
+    rows = []
+    usable = res.filter(pl.col("projection") > MIN_PROJECTION)
+    for (league_id, position), g in usable.group_by("league_id", "position"):
+        ratio = (g["points"] / g["projection"]).to_numpy()
+        for tau, value in zip(LEVELS, np.quantile(ratio, LEVELS), strict=True):
+            rows.append(
+                {
+                    "league_id": league_id,
+                    "position": position,
+                    "tau": float(tau),
+                    "ratio": float(value),
+                    "n": len(ratio),
+                }
+            )
+    return pl.DataFrame(rows, schema=store.SCHEMAS["marginals"]).sort(
+        "league_id", "position", "tau"
     )
 
 
@@ -96,7 +111,7 @@ def estimate_pairs(roled: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
 
 def run() -> dict[str, int]:
     res = residual_frame(store.read_table("proj_baseline"), store.read_table("player_points"))
-    marginals = estimate_cv(res).select(*store.SCHEMAS["marginals"])
+    marginals = estimate_marginals(res)
     pairs = estimate_pairs(with_roles(res), store.read_table("team_games"))
     store.write_table("marginals", marginals)
     store.write_table("correlation_pairs", pairs)

@@ -1,8 +1,10 @@
 import math
 
+import numpy as np
 import polars as pl
 import pytest
 
+from fantasy import store
 from fantasy.stages import distributions as d
 
 RES_SCHEMA = {
@@ -13,12 +15,15 @@ RES_SCHEMA = {
     "position": pl.String,
     "team": pl.String,
     "projection": pl.Float64,
+    "points": pl.Float64,
     "resid": pl.Float64,
 }
 
 
 def res(rows: list[tuple[str, str, int, int, str, str, float, float]]) -> pl.DataFrame:
-    return pl.DataFrame(rows, schema=RES_SCHEMA, orient="row")
+    """rows: league, player, season, week, position, team, projection, resid."""
+    data = [(*r[:7], r[6] + r[7], r[7]) for r in rows]
+    return pl.DataFrame(data, schema=RES_SCHEMA, orient="row")
 
 
 def test_gaussian_rho_endpoints_and_middle() -> None:
@@ -27,16 +32,26 @@ def test_gaussian_rho_endpoints_and_middle() -> None:
     assert d.gaussian_rho(0.5) == pytest.approx(2 * math.sin(math.pi / 12))
 
 
-def test_cv_is_root_of_squared_residuals_over_squared_projections() -> None:
-    # projections 10 and 20, residuals +5 and -10: sqrt((25 + 100) / (100 + 400)) = 0.5
-    frame = res(
-        [
-            ("L", "a", 2025, 1, "WR", "KC", 10.0, 5.0),
-            ("L", "b", 2025, 1, "WR", "KC", 20.0, -10.0),
-        ]
-    )
-    out = d.estimate_cv(frame)
-    assert out["cv"].item() == pytest.approx(0.5) and out["n"].item() == 2
+def test_marginals_are_quantiles_of_actual_over_projection() -> None:
+    # actual = 1.5 x projection for every row, so every ratio quantile is 1.5
+    rows = [("L", f"p{i}", 2025, 1, "WR", "KC", 10.0, 5.0) for i in range(50)]
+    out = d.estimate_marginals(res(rows))
+    store.check_schema("marginals", out)
+    assert out.height == 99
+    assert out["ratio"].to_list() == pytest.approx([1.5] * 99)
+    assert out["n"].unique().to_list() == [50]
+
+
+def test_marginals_capture_a_heavy_lower_tail() -> None:
+    rng = np.random.default_rng(0)
+    actual = np.where(rng.random(2000) < 0.2, 0.05, 1.2)  # one game in five is a dud
+    rows = [
+        ("L", f"p{i}", 2025, 1, "RB", "KC", 10.0, a * 10.0 - 10.0) for i, a in enumerate(actual)
+    ]
+    out = d.estimate_marginals(res(rows))
+    low = out.filter(pl.col("tau") == 0.1)["ratio"].item()
+    high = out.filter(pl.col("tau") == 0.9)["ratio"].item()
+    assert low < 0.1 and high == pytest.approx(1.2)
 
 
 def test_roles_rank_by_projection_within_team_and_position() -> None:

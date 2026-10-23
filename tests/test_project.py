@@ -70,6 +70,17 @@ def test_a_game_never_informs_its_own_projection() -> None:
     assert projection(world(week3_exp=100.0), target("A", 3)) == pytest.approx(55 / 7)
 
 
+def test_longer_horizon_ignores_recent_games_and_context() -> None:
+    exp = world()
+    prior = p.position_prior(exp)
+    form = p.build_form(exp, prior)
+    g = games([(2025, 3, "KC", 30.0), (2025, 3, "BUF", 10.0)])
+    five = p.project_targets(target("A", 3), form, prior, g, horizon=5)
+    # only the two 2024 games count: (2*10 + 3*5) / 5 = 7, and the context is neutral
+    assert five["projection"].item() == pytest.approx(7.0)
+    assert five["context"].item() == 1.0
+
+
 def test_debut_player_gets_the_position_prior() -> None:
     exp = world()
     prior = p.position_prior(exp)

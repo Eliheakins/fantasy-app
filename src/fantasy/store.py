@@ -126,8 +126,14 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         floats="points team_implied opp_implied total_line temp wind",
     )
     | {"is_home": _B},
-    # written by distributions (area: derived)
-    "marginals": _cols(strings="league_id position", ints="n", floats="cv"),
+    # written by backtest (area: derived)
+    "backtest_metrics": _cols(
+        strings="league_id position forecaster",
+        ints="horizon n",
+        floats="rmse mae pinball coverage80",
+    ),
+    # written by distributions (area: derived). ratio = quantile tau of actual / projected points.
+    "marginals": _cols(strings="league_id position", ints="n", floats="tau ratio"),
     "correlation_pairs": _cols(
         strings="league_id relation role_a role_b", ints="n", floats="rho_spearman rho"
     ),

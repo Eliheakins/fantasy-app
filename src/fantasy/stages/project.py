@@ -87,21 +87,30 @@ def build_form(exp: pl.DataFrame, prior: pl.DataFrame) -> pl.DataFrame:
 
 
 def project_targets(
-    targets: pl.DataFrame, form: pl.DataFrame, prior: pl.DataFrame, games: pl.DataFrame
+    targets: pl.DataFrame,
+    form: pl.DataFrame,
+    prior: pl.DataFrame,
+    games: pl.DataFrame,
+    horizon: int = 1,
 ) -> pl.DataFrame:
-    """targets: league_id, gsis_id, season, week, position, team. Uses only earlier games."""
-    t = (pl.col("season") * 100 + pl.col("week")).alias("t")
+    """targets: league_id, gsis_id, season, week, position, team. Uses only earlier games.
+
+    horizon 1 projects from games before the target. A larger horizon uses only games at least
+    that many weeks earlier and a neutral context, because lines do not exist that far ahead.
+    """
+    index = pl.col("season") * 100 + pl.col("week")
     latest = form.select(
         *GROUP,
-        t,
+        index.alias("t"),
         pl.col("season").alias("as_of_season"),
         pl.col("week").alias("as_of_week"),
         "form",
+        "ewma_actual",
     ).sort("t")
     avg_implied = games.group_by("season").agg(pl.col("team_implied").mean().alias("avg_implied"))
     context = games.select("season", "week", "team", "team_implied")
     joined = (
-        targets.with_columns(t)
+        targets.with_columns((index - (horizon - 1)).alias("t"))
         .sort("t")
         .join_asof(latest, on="t", by=GROUP, strategy="backward", allow_exact_matches=False)
         .join(prior, on=["league_id", "position", "season"], how="left")
@@ -109,6 +118,8 @@ def project_targets(
         .join(avg_implied, on="season", how="left")
     )
     ctx = ((pl.col("team_implied") / pl.col("avg_implied")) ** CONTEXT_EXPONENT).fill_null(1.0)
+    if horizon > 1:
+        ctx = pl.lit(1.0)
     return joined.with_columns(
         has_history=pl.col("form").is_not_null(),
         context=ctx,
