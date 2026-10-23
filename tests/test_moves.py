@@ -5,6 +5,7 @@ import pytest
 from test_odds import WEEKS, toy_league
 
 from fantasy.sim import moves
+from fantasy.sim.lineup import Player
 from fantasy.sim.odds import LeagueData
 
 
@@ -74,6 +75,19 @@ def test_getting_the_better_player_helps_me_and_hurts_them() -> None:
     assert me["title_after"] > me["title_before"]
     assert them["title_after"] < them["title_before"]
     assert me["wins_after"] > me["wins_before"]
+
+
+def test_a_traded_away_starter_leaves_the_week_in_progress() -> None:
+    from fantasy.sim import odds
+
+    starters = (Player("t1_wr1", "WR", 13.0), Player("t1_rb1", "RB", 14.0))
+    state = odds.CurrentWeek(realized=0.0, open_players=starters, open_k=0, open_def=0)
+    data = replace(league_with([]), current={1: state})
+    before = odds.build_inputs(data, None, n_sims=50, seed=0)
+    after_rosters = moves.apply_trade(data, 1, 2, give=["t1_rb1"], get=["t2_rb1"])
+    after = odds.build_inputs(data, after_rosters, n_sims=50, seed=0)  # used to raise KeyError
+    assert before.mean[0, 0] == pytest.approx(27.0)
+    assert after.mean[0, 0] == pytest.approx(13.0)  # the traded RB's 14 points are gone
 
 
 def test_trades_are_refused_after_the_deadline() -> None:

@@ -105,7 +105,8 @@ def build_inputs(
         for w, week in enumerate(weeks):
             state = data.current.get(rid) if week == data.current_week else None
             if state is not None:
-                lineup = list(state.open_players)
+                # a player traded away this week leaves the lineup; acquired players start benched
+                lineup = [p for p in state.open_players if p.id in position]
                 offset, k_open, def_open = state.realized, state.open_k, state.open_def
             else:
                 values = by_week.get(week, {})

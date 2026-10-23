@@ -161,6 +161,14 @@ Per-league scoring from nflverse stats matches Sleeper's reported player points 
 - **Trade evaluator:** applies the swap, keeps each team's roster size (a team that receives more players than it gives drops its lowest-value players; one that receives fewer picks up the best free agents, an assumption), then runs the season simulation before and after with the same random draws, so differences are stable. Refuses after the trade deadline (a deadline guard from E5-4 is included). Sample on real data: giving my lowest-value Colgate player for the partner's best moves my title odds from 8.6% to 15.3% and theirs from 13.3% to 6.9%.
 - **Limits:** the evaluator values a trade only through projected points and the simulation; it does not model whether the partner would accept, positional scarcity beyond lineups, or injuries. K and DEF are not traded.
 
+## E5-D2 trade builder and waivers page (2026-10-23)
+
+- **Trades page:** pick a partner, choose players on each side, click Evaluate (an explicit button, since each run simulates). Shows both teams' playoff odds, title odds and expected wins, before and after, with signed deltas (green and red only on deltas), and lists any automatic roster moves that keep sizes equal. Refuses after the trade deadline with a message. Results are cached for 5 minutes.
+- **Waivers page:** top 15 free-agent adds by extra projected points over the rest of the season (shortcut, no playoff or title odds per add yet; E5-2).
+- **Bug found by running it on real data and fixed:** a trade involving a starter already set for the week in progress crashed the simulator, because the lineup kept the traded-away player. Now a traded-away starter leaves the week's lineup and acquired players start benched (regression test added). Also, the free-agent pool had included players Sleeper does not list as active.
+- **Sample on real data (Colgate):** trading DJ Moore for Matthew Stafford moves my title odds from 8.6% to 13.9% and the partner's from 9.5% to 3.0% (a superflex league, so a starting QB matters a lot).
+- **Test gap:** Streamlit's headless test runner crashes on multiselect widgets that use display labels (a runner bug), so the Evaluate click path is covered by calling the functions behind it, and the pages are checked to render without errors.
+
 ## GitHub issues (2026-10-23)
 
 Created in `Eliheakins/fantasy-app` from `docs/backlog.md`: 36 story issues (#1 to #36) plus a Post-MVP tracking issue (#37). Labels: epic (E0 to E5), engine or dashboard, fast-path, optional, spike, post-mvp. Milestones: one per epic. E0-3 (#3) is closed. No Project board: it needs the `project` token scope, which the personal token lacks (`gh auth refresh -s project` is interactive). The repo itself has no commits pushed yet, so the doc paths in issue bodies are plain text, not links.

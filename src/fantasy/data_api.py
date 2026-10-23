@@ -10,6 +10,8 @@ from pathlib import Path
 import polars as pl
 
 from fantasy import store
+from fantasy.sim import moves
+from fantasy.sim.odds import LeagueData
 
 POSITION_ORDER = {"QB": 0, "RB": 1, "WR": 2, "TE": 3, "K": 4, "DEF": 5}
 ROSTER_COLUMNS = [
@@ -26,10 +28,15 @@ _S, _F, _B = pl.String, pl.Float64, pl.Boolean
 # Shapes of engine outputs, filled in by later stories (E4, E5).
 _ENGINE_STUBS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     "lineup": {"slot": _S, "sleeper_id": _S, "full_name": _S, "p10": _F, "p50": _F, "p90": _F},
-    "waivers": {"sleeper_id": _S, "full_name": _S, "delta_win": _F, "delta_title": _F},
+    "waivers": {
+        "gsis_id": _S,
+        "full_name": _S,
+        "position": _S,
+        "drop_name": _S,
+        "delta_points": _F,
+    },
     "season_odds": {"roster_id": _S, "team_name": _S, "p_playoffs": _F, "p_title": _F},
     "kdef": {"team": _S, "position": _S, "week": _S, "projection": _F},
-    "trade_eval": {"side": _S, "playoff_before": _F, "playoff_after": _F, "title_after": _F},
 }
 
 
@@ -119,8 +126,87 @@ def lineup(league_key: str, week: int, objective: str = "win") -> pl.DataFrame:
     return pl.DataFrame(schema=_ENGINE_STUBS["lineup"])
 
 
-def waivers(league_key: str, week: int) -> pl.DataFrame:
-    return pl.DataFrame(schema=_ENGINE_STUBS["waivers"])
+def _names() -> dict[str, str]:
+    """nflverse ID -> player name."""
+    ids = _read("id_map", store.DATA_DIR, area="derived").select("sleeper_id", "gsis_id")
+    players = _read("sleeper_players", store.DATA_DIR).select("sleeper_id", "full_name")
+    joined = ids.join(players, on="sleeper_id").filter(pl.col("gsis_id").is_not_null())
+    return dict(zip(joined["gsis_id"], joined["full_name"], strict=True))
+
+
+def _league(league_key: str) -> tuple[LeagueData, int]:
+    """Simulation inputs for one league and my roster id."""
+    from fantasy.stages.simulate import load_league_data  # heavy imports, only when asked
+
+    row = store.read_table("leagues", "raw").filter(pl.col("league_key") == league_key)
+    if row.is_empty():
+        raise ValueError(f"unknown league {league_key!r}")
+    league = row.row(0, named=True)
+    teams = store.read_table("league_teams", "raw")
+    mine = teams.filter((pl.col("league_id") == league["league_id"]) & pl.col("is_me"))
+    return load_league_data(league), int(mine["roster_id"][0])
+
+
+def waivers(league_key: str, week: int = 0) -> pl.DataFrame:
+    """Best adds for my team by extra points over the rest of the season (a shortcut)."""
+    data, mine = _league(league_key)
+    names = _names()
+    rows = [
+        {
+            "gsis_id": w.gsis_id,
+            "full_name": names.get(w.gsis_id, w.gsis_id),
+            "position": w.position,
+            "drop_name": names.get(w.drop_id, w.drop_id),
+            "delta_points": w.delta_mu,
+        }
+        for w in moves.waiver_candidates(data, mine, top_n=15)
+    ]
+    return pl.DataFrame(rows, schema=_ENGINE_STUBS["waivers"])
+
+
+def trade_partners(league_key: str) -> pl.DataFrame:
+    data, mine = _league(league_key)
+    rows = [(r, data.team_names[r]) for r in data.roster_ids if r != mine]
+    return pl.DataFrame(rows, schema=["roster_id", "team_name"], orient="row")
+
+
+def trade_assets(league_key: str, roster_id: int | None = None) -> pl.DataFrame:
+    """A roster's skill players with projected points over the rest of the season."""
+    data, mine = _league(league_key)
+    ids = moves.team_ids(data, mine if roster_id is None else roster_id)
+    names, positions, values = _names(), moves.position_of(data), moves.ros_value(data, ids)
+    rows = [(i, names.get(i, i), positions[i], values[i]) for i in ids]
+    schema = ["gsis_id", "full_name", "position", "ros_points"]
+    return pl.DataFrame(rows, schema=schema, orient="row").sort("ros_points", descending=True)
+
+
+def evaluate_trade(
+    league_key: str, partner_roster_id: int, give_ids: list[str], get_ids: list[str]
+) -> pl.DataFrame:
+    """Playoff and title odds before and after, for me and the partner. May raise ValueError."""
+    data, mine = _league(league_key)
+    return moves.evaluate_trade(data, mine, partner_roster_id, list(give_ids), list(get_ids))
+
+
+def trade_roster_changes(
+    league_key: str, partner_roster_id: int, give_ids: list[str], get_ids: list[str]
+) -> pl.DataFrame:
+    """Players dropped or picked up automatically to keep each roster's size."""
+    data, mine = _league(league_key)
+    after = moves.apply_trade(data, mine, partner_roster_id, list(give_ids), list(get_ids))
+    names, positions = _names(), moves.position_of(data)
+    rows = []
+    sides = ((mine, give_ids, get_ids), (partner_roster_id, get_ids, give_ids))
+    for roster_id, sent, received in sides:
+        team = data.team_names[roster_id]
+        before_ids = set(moves.team_ids(data, roster_id))
+        after_ids = set(moves.team_ids(data, roster_id, after))
+        for gid in sorted(before_ids - after_ids - set(sent)):
+            rows.append((team, "dropped", names.get(gid, gid), positions[gid]))
+        for gid in sorted(after_ids - before_ids - set(received)):
+            rows.append((team, "picked up", names.get(gid, gid), positions[gid]))
+    schema = ["team_name", "action", "full_name", "position"]
+    return pl.DataFrame(rows, schema=schema, orient="row")
 
 
 def season_odds(league_key: str) -> pl.DataFrame:
@@ -129,7 +215,3 @@ def season_odds(league_key: str) -> pl.DataFrame:
 
 def kdef(league_key: str, week: int) -> pl.DataFrame:
     return pl.DataFrame(schema=_ENGINE_STUBS["kdef"])
-
-
-def evaluate_trade(league_key: str, give_ids: list[str], get_ids: list[str]) -> pl.DataFrame:
-    return pl.DataFrame(schema=_ENGINE_STUBS["trade_eval"])
