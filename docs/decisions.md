@@ -261,3 +261,9 @@ Backlog and story IDs: `docs/backlog.md`. `docs/spec/modeling.md` sections 10b a
 - Weeks 1 to 6 of 2026, scored with each league's rules, against actual points (3,586 player-weeks, offense only): RMSE 6.01 Sleeper vs 6.26 ours (blend 5.94), MAE 4.43 vs 4.81. Correlation 0.86. Better in every position except TE (tied).
 - NOT a clean test: past weeks are re-stamped the Tuesday after the games, and Sleeper's projection averaged 1.3 points for players who scored 0 versus 8.2 for those who played, which looks like inactive-player knowledge that may be after the fact. Part of the gain may be legitimate injury information, part leakage; cannot tell.
 - Action: `make refresh` now archives the current week and next three (`sleeper_projections` stage, table `sleeper_proj_snapshots`, append only). After about four weeks of clean pre-game snapshots, rerun the comparison. Until then nothing uses them. Risk: undocumented endpoint, could change or disappear.
+
+## 2026-10-23: Sleeper projections are now blended in
+
+- The user chose to use Sleeper's projections. `sleeper_projections` also writes `proj_sleeper` (the latest snapshot scored under each league's rules; K long field goals and misses mapped from Sleeper's coarser buckets). `sim/blend.py` averages ours and Sleeper's 50/50 for the current week and the next three, for skill players (in `load_league_data`, after injury scaling, so a Questionable discount applies to our half only) and for DEF and K streaming. Later weeks stay ours.
+- Equal weights are a simple choice backed by the weeks 1 to 6 comparison (blend RMSE 5.94 vs 6.01 and 6.26), which is not a clean test. #40 reruns it on pre-game snapshots; adjust the weight there.
+- Effect: Colgate title odds 8.8% to 9.2%.

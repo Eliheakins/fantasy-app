@@ -16,6 +16,7 @@ import polars as pl
 from fantasy import store
 from fantasy.config import load_config
 from fantasy.sim.availability import scale_projections
+from fantasy.sim.blend import blend
 from fantasy.sim.lineup import Player
 from fantasy.sim.odds import CurrentWeek, LeagueData, league_odds
 from fantasy.sim.schedule import pairings, standings
@@ -50,6 +51,18 @@ def current_state(
             open_def=waiting.filter(pl.col("position") == "DEF").height,
         )
     return out
+
+
+def _blend_sleeper(projections: pl.DataFrame, league_id: str, id_map: pl.DataFrame) -> pl.DataFrame:
+    """Mix in Sleeper's projections for the weeks it has them (the next few)."""
+    try:
+        theirs = store.read_table("proj_sleeper").filter(pl.col("league_id") == league_id)
+    except FileNotFoundError:
+        return projections
+    mapped = theirs.join(id_map, on="sleeper_id").drop_nulls("gsis_id")
+    return blend(
+        projections, mapped.select("gsis_id", "week", other=pl.col("projection")), "gsis_id"
+    )
 
 
 def load_league_data(league: dict[str, Any]) -> LeagueData:
@@ -89,6 +102,7 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         dict(zip(flagged["gsis_id"], flagged["injury_status"], strict=True)),
         current,
     )
+    projections = _blend_sleeper(projections, lid, id_map)
     active = (
         store.read_table("sleeper_players", "raw")
         .filter((pl.col("status") == "Active") & pl.col("team").is_not_null())

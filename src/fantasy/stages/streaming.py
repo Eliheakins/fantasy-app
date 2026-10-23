@@ -20,6 +20,8 @@ import numpy as np
 import polars as pl
 
 from fantasy import store
+from fantasy.sim.blend import blend
+from fantasy.stages.crosswalk import TEAM_MAP
 
 HALF_LIFE = 4.0  # games
 SHRINK_K = 3.0  # pseudo-games of league average
@@ -172,6 +174,23 @@ def backtest(history: pl.DataFrame, unit: str, implied: str, use_dome: bool) -> 
     )
 
 
+def sleeper_by_unit(league_id: str, id_map: pl.DataFrame) -> pl.DataFrame:
+    """Sleeper's projections keyed like ours: nflverse team code for DEF, gsis id for K."""
+    try:
+        theirs = store.read_table("proj_sleeper").filter(pl.col("league_id") == league_id)
+    except FileNotFoundError:
+        return pl.DataFrame(schema={"unit": pl.String, "week": pl.Int64, "other": pl.Float64})
+    teams = theirs.filter(pl.col("sleeper_id").str.contains(r"^[A-Z]{2,3}$")).select(
+        pl.col("sleeper_id").replace_strict(TEAM_MAP, default=pl.col("sleeper_id")).alias("unit"),
+        "week",
+        other=pl.col("projection"),
+    )
+    kickers = theirs.join(id_map.select("sleeper_id", "gsis_id"), on="sleeper_id").select(
+        pl.col("gsis_id").alias("unit"), "week", other=pl.col("projection")
+    )
+    return pl.concat([teams, kickers])
+
+
 def run() -> dict[str, tuple[float, float]]:
     games = store.read_table("team_games")
     stats = store.read_table("nfl_team_stats", "raw")
@@ -201,6 +220,7 @@ def run() -> dict[str, tuple[float, float]]:
         )
         d_hist = past.rename({"team": "unit", "opp_implied": "implied"})
         d_proj = project_units(d_hist, ahead, "unit", "implied", use_dome=False)
+        d_proj = blend(d_proj, sleeper_by_unit(lid, id_map), "unit")
         projections.append(
             d_proj.with_columns(pl.lit(lid).alias("league_id"), pl.lit("DEF").alias("kind"))
         )
@@ -229,6 +249,7 @@ def run() -> dict[str, tuple[float, float]]:
             "roof",
         )
         k_proj = project_units(k_hist, k_ahead, "unit", "implied", use_dome=True)
+        k_proj = blend(k_proj, sleeper_by_unit(lid, id_map), "unit")
         projections.append(
             k_proj.with_columns(pl.lit(lid).alias("league_id"), pl.lit("K").alias("kind"))
         )
