@@ -29,6 +29,7 @@ dev = [
 
 [tool.ruff]
 line-length = 100
+extend-exclude = ["research"]  # one-off analysis scripts, not maintained code
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]

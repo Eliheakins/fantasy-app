@@ -9,3 +9,4 @@ data/
 .streamlit/secrets.toml
 .DS_Store
 .coverage
+research/scratch/

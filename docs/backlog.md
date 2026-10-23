@@ -4,6 +4,8 @@ One story is one working session. Engine and dashboard stories are merged per ep
 
 ## Status (2026-10-23, end of the second working session)
 
+**Dates:** trade deadline is week 11; issue #40 (retest the Sleeper blend weight on clean snapshots) is due around then. Open work is #40, #37 (post-MVP) and the cleanup follow-ups issue.
+
 **Done and verified on live data:** every story except E3-8 (35 of 36 issues closed). Added this session: E2-2 odds snapshots, E3-6 tau from history, E3-7 DEF scoring and K/DEF projections, E4-2 player sampler, E4-5 win-probability lineup, E4-7 locks and injuries, E5-2 waiver value by re-simulation, E5-5 K/DEF streaming, and the dashboard stories (footer, range bars, objective toggle, Home actions, Outlook seeds and schedule, waiver detail and trending).
 
 **Not done:** E3-8 (ECR rank-to-points check, blocked on the FantasyPros redistribution terms) and everything under Post-MVP below.
