@@ -70,7 +70,6 @@ Each stage runs as `uv run python -m fantasy.stages.X --season S --week W`. It r
 
 ## Expansion points
 
-- **FAAB and CHOPPA:** sync_sleeper adds transactions (bid history), decide adds bid sizing. lineup.py already takes an objective function. CHOPPA adds "P(not lowest of 16)" and a `format` key in config.
 - **Dynasty:** models/aging.py, an asset_values table (DynastyProcess, FantasyCalc) keyed by sleeper_id, and a multi-season horizon in decide.
 - **Props:** sources/odds.py and a snapshot_props stage writing archive/props (game_id, player, market, line, price, snapshot_at). Names are matched into id_map. project uses the data once enough history exists. The API key comes from an environment variable.
 - **News LLM:** a news stage writes news_events (sleeper_id, ts, role_change, games_out), which project applies as adjustments.

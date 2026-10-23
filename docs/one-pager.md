@@ -21,7 +21,7 @@ Sleeper (read-only) and nflverse feed parquet files, with DuckDB as in-memory vi
 | E4 | Lineup fill, schedule and playoffs, season simulator, win-probability lineup, calibration, locks | Lineup, Home cards, Outlook |
 | E5 | Waiver ranking, trade evaluator, deadline guards | Waivers, Trades, Home actions |
 | **MVP line** | | |
-| After | Partner finder, Players search, own model, FAAB and CHOPPA, dynasty, news LLM, React UI, draft assistant | |
+| After | Partner finder, Players search, own model, dynasty, news LLM, React UI, draft assistant | |
 
 **Fast path to a working trade evaluator** (week 11 deadline, no value after it), 17 stories: E0-1, E0-2, E1-1, E1-2, E1-3, E2-1, E3-1 to E3-5, E4-1, E4-3, E4-4, E5-1, E5-3, E5-D2. Whether it fits before week 11 is not estimated. Cut order is in `backlog.md`.
 

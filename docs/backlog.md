@@ -116,10 +116,6 @@ Not in the first build. Plan each after the redraft version works.
 - Time-discounted asset values (win-now versus rebuild).
 - Multi-year roster planning.
 
-**FAAB expansion.** Waiver priority is the first version. FAAB adds a clearing-price model from past transactions in the league, bid sizing by dynamic programming over the remaining budget, and player value as the gain in win probability net of the opportunity cost of budget.
-
-**CHOPPA league (16 teams, FAAB 1000).** The format is probably Chopped/guillotine (not verified), where the lowest scorer is cut each week. That changes the objective from winning matchups to surviving the cut, so it needs its own lineup optimizer. It also adds FAAB, so build it together with the FAAB expansion.
-
 **Other**
 - Partner finder (trades that help both teams) and Players search.
 - Own projection model (E6): quantile gradient boosting or a hierarchical Bayesian model, shipped only if it beats the baseline and is calibrated.
