@@ -35,3 +35,13 @@ def test_blend_averages_where_sleeper_has_a_projection_and_keeps_ours_elsewhere(
     theirs = pl.DataFrame({"gsis_id": ["a"], "week": [7], "other": [14.0]})
     out = blend(ours, theirs, "gsis_id")
     assert out["projection"].to_list() == [12.0, 8.0]
+
+
+def test_blend_does_not_duplicate_rows_when_sleeper_has_two_rows_for_one_player_week() -> None:
+    import polars as pl
+
+    from fantasy.sim.blend import blend
+
+    ours = pl.DataFrame({"gsis_id": ["a"], "week": [7], "projection": [10.0]})
+    theirs = pl.DataFrame({"gsis_id": ["a", "a"], "week": [7, 7], "other": [14.0, 20.0]})
+    assert blend(ours, theirs, "gsis_id").height == 1

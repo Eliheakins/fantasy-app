@@ -225,8 +225,8 @@ def build_inputs(
             for wk, pairs in data.pairings.items()
             if data.current_week <= wk < data.playoff_start
         },
-        wins0=np.array([data.wins0[r] for r in data.roster_ids], dtype=float),
-        points0=np.array([data.points0[r] for r in data.roster_ids], dtype=float),
+        wins0=np.array([data.wins0.get(r, 0.0) for r in data.roster_ids], dtype=float),
+        points0=np.array([data.points0.get(r, 0.0) for r in data.roster_ids], dtype=float),
         playoff_start=data.playoff_start,
         seed=seed,
     )

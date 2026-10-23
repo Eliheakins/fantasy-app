@@ -366,3 +366,30 @@ User asked whether we use a player's history against a particular team, expectin
 - **Team-level version** (how this offense did against this defense, averaged over its skill players, to cut noise and capture scheme and coaching): test correlation 0.00 to 0.04 and RMSE 0.01% to 0.10% worse.
 - **Why:** past games against one opponent are a handful of noisy outcomes with different personnel, coaches and game scripts each time, and the baseline already weighs the player's recent games. This agrees with the one public analysis found (Harvard Sports Analysis on quarterbacks in division games 2013 to 2014, 154 pairs, which also regressed on season average and found little).
 - Kept out of the model. If wanted, the head-to-head record could be shown as information on the Players page without adjusting any projection.
+
+## Cleanup and verification pass (2026-10-23)
+
+Ran eight reviews (ML pipeline, silent failures, test gaps with coverage, security, Python, dead code, comments, app smoke test). Every claim was checked against the code or data before acting.
+
+**Fixed**
+- Outlook and environment effects in points were measured under whichever league Sleeper listed first and applied to both. YinzBurgh (0.5 PPR) mean projections run 10% to 20% below Colgate's, so its vacancy and corner effects were overstated. Now measured in the reference league (lowest league id) and scaled per position by mean-projection ratio (`sim/scoring_scale.py`). Ratio effects are not scaled. Re-estimating moved the WR vacancy slope from 4.1 to 3.3; QB pass-efficiency crossed |t| of 2 (-1.8 to -2.07) and is now applied.
+- Outlook gaps (`missed`) were computed after the projection filter, so a skipped low-projection game looked like an absence and mislabeled the next game as a return. Now computed before the filter.
+- `future_targets` projected 81 players with no current team (free agents, cut) on their old team's games. They are dropped.
+- Schedule page win chance added the persistent variance twice (`lineup_moments` variance is already total) and left out `DRIFT_SD`. Fixed.
+- A started player's remaining points used his injury-discounted projection even though he is playing. Now the full-game points times the share left.
+- Blend could duplicate rows if Sleeper had two rows for a player-week; it dedupes. Week 1 no longer raises on missing standings.
+- Streamlit bound to all interfaces with no login; now 127.0.0.1. Odds API errors carried the key in the URL; now status only. Event ids are checked before becoming file names.
+- Stale banner now names projection layers whose stage has not run (`data_api.missing_layers`). Unknown injury statuses warn.
+- Removed unused `kdef`, `moves.remaining_weeks`, `ui.coming_soon`; fixed stale story IDs and "provisional" comments (only DRIFT_SD and the 50% blend weight are assumptions).
+- Tests: 179 to 206, covering `load_league_data`, trade and waiver evaluators, the validate stages, kickoff time zones and tier edges. Coverage was 66% before (data_api 22%); `app/` is smoke-tested by hand with Streamlit's AppTest.
+
+**Checked, not changed**
+- Simulated means sit 0.5% to 2% below projection (quantile grid stops at 1% and 99%). Renormalizing would move odds by under 1%.
+- Per-player normal draws change when the slate changes, so common random numbers hold only for an identical player set. Comparisons inside one call use one slate, so they are unaffected.
+- The effect threshold (|t| of 2) is chosen on the estimation sample, so survivors carry some winner's-curse bias; no holdout exists.
+- Calibration check scores the raw baseline, not the production stack, and includes this season's early weeks in its fit.
+- Performance (pages recompute the league on each widget click, trade finder rebuilds every team per scenario, 2048-entry absence cache) was read, not profiled; pages load in about a second. Revisit if the app feels slow.
+- `data_api.py` is 1150 lines (soft ceiling 800). A split into lineup, moves and league modules behind a facade was proposed but deferred: tests patch `data_api.leagues` and `data_api._read`, which a split would silently bypass.
+- Not fixed: the partner's auto-drop is not shown when it falls on a player they just received; locked and bye players are not filtered from waivers (locks only affect the lineup); `Any` types in `moves.py`; Trades page results vanish on rerun.
+
+**Correction:** my YinzBurgh team is LaPorta Potty (roster 7, from Sleeper). The team I had earlier tracked there, skenerwiener, is the league's strongest. Current odds for LaPorta Potty: 61% playoffs, 7% title.

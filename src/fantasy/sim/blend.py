@@ -12,7 +12,13 @@ SLEEPER_WEIGHT = 0.5
 def blend(ours: pl.DataFrame, theirs: pl.DataFrame, key: str) -> pl.DataFrame:
     """`ours` has key, week, projection (more columns are kept); `theirs` has key, week, other.
     Rows without a Sleeper projection keep ours."""
-    joined = ours.join(theirs.select(key, "week", "other"), on=[key, "week"], how="left")
+    joined = ours.join(
+        theirs.select(key, "week", "other").unique(
+            [key, "week"], keep="first", maintain_order=True
+        ),
+        on=[key, "week"],
+        how="left",
+    )
     mixed = (1 - SLEEPER_WEIGHT) * pl.col("projection") + SLEEPER_WEIGHT * pl.col("other")
     return joined.with_columns(
         pl.when(pl.col("other").is_not_null())

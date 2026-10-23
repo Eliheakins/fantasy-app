@@ -495,10 +495,14 @@ def win_probability(
     actual = np.array(
         [live.get(i, (0.0, 1.0))[0] if share[k] < 1.0 else 0.0 for k, i in enumerate(ids)]
     )
-    scaled = {i: values.get(i, 0.0) * share[k] for k, i in enumerate(ids)}
     chance = _play_probs(data, week)
     plays = {i: (1.0 if share[k] < 1.0 else chance.get(i, 1.0)) for k, i in enumerate(ids)}
     tier_means = {i: values.get(i, 0.0) / max(chance.get(i, 1.0), 1e-9) for i in ids}
+    # a player whose game has started is playing, so what is left is his full-game points
+    scaled = {
+        i: (tier_means[i] if share[k] < 1.0 else values.get(i, 0.0)) * share[k]
+        for k, i in enumerate(ids)
+    }
     points = _draw_points(data, ids, positions, scaled, plays, tier_means, week, n_sims) + actual
     column = {i: j for j, i in enumerate(ids)}
     current = week == data.current_week
@@ -762,7 +766,7 @@ def schedule(league_key: str) -> pl.DataFrame:
     """
     from scipy.stats import norm
 
-    from fantasy.sim.odds import lineup_moments
+    from fantasy.sim.odds import DRIFT_SD, lineup_moments
 
     data, mine = _league(league_key)
     positions, by_week = moves.position_of(data), moves.week_values(data)
@@ -780,8 +784,8 @@ def schedule(league_key: str) -> pl.DataFrame:
         ]
         best = auto_lineup(pool, slots)
         chosen = [p for p in pool if p.id in best.players]
-        mean, var, persistent = lineup_moments(chosen, data.cv, data.pair_rho)
-        return mean + kd_mean, var + persistent + kd_var
+        mean, var, _ = lineup_moments(chosen, data.cv, data.pair_rho)  # var is already total
+        return mean + kd_mean, var + kd_var + DRIFT_SD**2
 
     rows = []
     for week in range(data.current_week, data.playoff_start):
