@@ -18,8 +18,88 @@ DATA_DIR = ROOT / "data"
 AREAS = ("raw", "derived", "archive")
 _NAME = re.compile(r"^[a-z][a-z0-9_]*$")
 
+_S, _I, _F, _B = pl.String, pl.Int64, pl.Float64, pl.Boolean
+
 # table name -> {column: dtype}. Stages add their tables here as they are built.
-SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {}
+SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
+    # written by sync_sleeper (area: raw)
+    "sleeper_players": {
+        "sleeper_id": _S,
+        "full_name": _S,
+        "position": _S,
+        "team": _S,
+        "status": _S,
+        "injury_status": _S,
+        "age": _I,
+        "years_exp": _I,
+        "gsis_id": _S,
+        "fantasy_positions": pl.List(_S),
+    },
+    "leagues": {
+        "league_key": _S,
+        "league_id": _S,
+        "name": _S,
+        "season": _I,
+        "status": _S,
+        "num_teams": _I,
+        "current_week": _I,
+        "playoff_week_start": _I,
+        "playoff_teams": _I,
+        "playoff_seed_type": _I,
+        "trade_deadline": _I,
+        "waiver_type": _I,
+        "roster_positions": pl.List(_S),
+        "scoring_settings": _S,  # JSON
+        "settings": _S,  # JSON
+    },
+    "league_teams": {
+        "league_id": _S,
+        "roster_id": _I,
+        "owner_id": _S,
+        "team_name": _S,
+        "is_me": _B,
+        "wins": _I,
+        "losses": _I,
+        "ties": _I,
+        "points_for": _F,
+        "points_against": _F,
+    },
+    "rosters": {
+        "league_id": _S,
+        "roster_id": _I,
+        "sleeper_id": _S,
+        "is_starter": _B,
+        "is_ir": _B,
+    },
+    "matchups": {
+        "league_id": _S,
+        "week": _I,
+        "roster_id": _I,
+        "matchup_id": _I,
+        "points": _F,
+    },
+    "matchup_players": {
+        "league_id": _S,
+        "week": _I,
+        "roster_id": _I,
+        "sleeper_id": _S,
+        "points": _F,
+        "is_starter": _B,
+    },
+    "transactions": {
+        "league_id": _S,
+        "week": _I,
+        "transaction_id": _S,
+        "type": _S,
+        "status": _S,
+        "created": _I,
+        "roster_id": _I,
+        "sleeper_id": _S,
+        "action": _S,
+        "waiver_bid": _I,
+    },
+    "trending": {"fetched_at": _S, "kind": _S, "sleeper_id": _S, "count": _I},
+}
 
 
 def table_path(name: str, area: str = "derived", data_dir: Path = DATA_DIR) -> Path:
