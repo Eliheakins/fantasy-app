@@ -122,7 +122,7 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "sacks_suffered sack_fumbles_lost passing_2pt_conversions carries rushing_yards "
         "rushing_tds rushing_fumbles_lost rushing_2pt_conversions receptions targets "
         "receiving_yards receiving_tds receiving_fumbles_lost receiving_2pt_conversions "
-        "target_share air_yards_share special_teams_tds fg_made fg_att fg_missed "
+        "target_share air_yards_share special_teams_tds fg_made fg_att fg_missed fg_blocked "
         "fg_made_0_19 fg_made_20_29 fg_made_30_39 fg_made_40_49 fg_made_50_59 fg_made_60_ "
         "fg_missed_0_19 fg_missed_20_29 fg_missed_30_39 fg_missed_40_49 fg_missed_50_59 "
         "fg_missed_60_ pat_made pat_att pat_missed fantasy_points fantasy_points_ppr",
