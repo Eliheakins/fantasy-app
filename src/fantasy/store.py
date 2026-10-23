@@ -99,6 +99,8 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "waiver_bid": _I,
     },
     "trending": {"fetched_at": _S, "kind": _S, "sleeper_id": _S, "count": _I},
+    # written by crosswalk (area: derived)
+    "id_map": {"sleeper_id": _S, "gsis_id": _S, "nfl_team": _S, "match_method": _S},
 }
 
 
