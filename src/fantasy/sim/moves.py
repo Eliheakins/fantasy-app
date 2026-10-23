@@ -6,22 +6,27 @@ team that receives more players than it gives drops its lowest-value players, an
 receives fewer picks up the best free agents (an assumption, stated in decisions.md).
 """
 
+from itertools import combinations
 from typing import Any, NamedTuple
 
 import numpy as np
 import polars as pl
 
 from fantasy.sim.lineup import Player, auto_lineup, lineup_slots
-from fantasy.sim.odds import PLAYOFF_WEEKS, LeagueData, league_odds
+from fantasy.sim.odds import HAZARD, PLAYOFF_WEEKS, STAY_OUT, LeagueData, league_odds
+from fantasy.sim.value import absence_probs, replacement_pool, season_value
 
-CANDIDATES_PER_POSITION = 10
+CANDIDATES_PER_POSITION = 8
+DROP_CANDIDATES = 8  # lowest rest-of-season players considered for a drop
 
 
 class Waiver(NamedTuple):
     gsis_id: str
     position: str
     drop_id: str
-    delta_mu: float  # extra expected points over the rest of the season
+    delta_mu: (
+        float  # extra expected points over the rest of the season, depth and replacement counted
+    )
 
 
 def remaining_weeks(data: LeagueData) -> list[int]:
@@ -77,26 +82,62 @@ def team_ids(data: LeagueData, roster_id: int, rosters: pl.DataFrame | None = No
     return frame.filter(pl.col("roster_id") == roster_id)["gsis_id"].to_list()
 
 
-def waiver_candidates(data: LeagueData, roster_id: int, top_n: int = 25) -> list[Waiver]:
-    """Free agents ranked by the extra points they add if the lowest-value player is dropped."""
+class Valuer:
+    """Expected points over the rest of the season for a set of players, counting absences and
+    free-agent stand-ins (see sim/value.py). Build once per league and reuse."""
+
+    def __init__(self, data: LeagueData) -> None:
+        self.data = data
+        self.slots = lineup_slots(data.roster_positions)
+        self.positions = position_of(data)
+        self.values = week_values(data)
+        weeks = len(self.values)
+        chance: dict[str, float] = {}
+        if "play_prob" in data.projections.columns:
+            first = data.projections.filter(pl.col("week") == data.current_week)
+            chance = dict(zip(first["gsis_id"], first["play_prob"], strict=True))
+        self.absence = {
+            g: absence_probs(chance.get(g, 1.0), weeks, HAZARD, STAY_OUT) for g in self.positions
+        }
+        self.replacements = replacement_pool(free_agents(data), self.positions, self.values)
+
+    def __call__(self, ids: list[str]) -> float:
+        return season_value(
+            self.slots, self.positions, self.values, ids, self.absence, self.replacements
+        )
+
+
+def waiver_candidates(
+    data: LeagueData, roster_id: int, top_n: int = 25, valuer: Valuer | None = None
+) -> list[Waiver]:
+    """Free agents ranked by the expected points they add over the rest of the season, each
+    with the drop that costs least. Depth and free-agent stand-ins count, so a backup at a
+    position with plenty of free agents adds little."""
     ids = team_ids(data, roster_id)
     if not ids:
         return []
+    valuer = valuer or Valuer(data)
     positions = position_of(data)
-    base = team_total(data, ids)
+    base = valuer(ids)
     pool = free_agents(data)
     pool_value = ros_value(data, pool)
     shortlist: list[str] = []
     for position in ("QB", "RB", "WR", "TE"):
         of_position = [p for p in pool if positions.get(p) == position]
         shortlist += sorted(of_position, key=lambda p: -pool_value[p])[:CANDIDATES_PER_POSITION]
-    ranked = [best_swap(data, ids, c, base) for c in shortlist]
+    ranked = [best_swap(data, ids, c, base, valuer) for c in shortlist]
     return sorted(ranked, key=lambda w: -w.delta_mu)[:top_n]
 
 
-def best_swap(data: LeagueData, ids: list[str], add: str, base: float) -> Waiver:
-    """Add `add` and drop whoever costs the least expected points (bye weeks included)."""
-    tries = [(team_total(data, [i for i in ids if i != drop] + [add]) - base, drop) for drop in ids]
+def best_swap(
+    data: LeagueData, ids: list[str], add: str, base: float, valuer: Valuer | None = None
+) -> Waiver:
+    """Add `add` and drop whoever costs the least expected points. Only the lowest-value
+    players are considered for the drop, which keeps this fast."""
+    valuer = valuer or Valuer(data)
+    ros = ros_value(data, ids)
+    drops = sorted(ids, key=lambda i: (ros[i], i))[:DROP_CANDIDATES]
+    tries = [(valuer([i for i in ids if i != drop] + [add]) - base, drop) for drop in drops]
     gain, drop = max(tries, key=lambda t: (t[0], t[1]))
     return Waiver(add, position_of(data)[add], drop, gain)
 
@@ -217,13 +258,15 @@ def evaluate_trade(
 
 
 POOL_SIZE = 6  # each team's most valuable players considered for a swap
+SIZES = ((1, 1), (1, 2), (2, 1), (2, 2))  # (players I give, players I get)
 SCREEN_TOL = 2.0  # rest-of-season points either side may lose in the cheap screen
-SHORTLIST = 8  # swaps per partner that get a full re-simulation
+SCREEN_KEEP = 24  # per partner, after the points screen, for the depth-aware ranking
+SHORTLIST = 6  # per partner, after the depth-aware ranking, for a full re-simulation
 CONFIRM = 10  # best swaps re-checked on fresh random draws
-FINDER_COLUMNS = {
+FINDER_COLUMNS: dict[str, pl.DataType | type[pl.DataType]] = {
     "partner_id": pl.Int64,
-    "give_id": pl.String,
-    "get_id": pl.String,
+    "give_ids": pl.List(pl.String),
+    "get_ids": pl.List(pl.String),
     "my_playoff": pl.Float64,
     "my_title": pl.Float64,
     "their_playoff": pl.Float64,
@@ -246,32 +289,31 @@ def paired_se(before: np.ndarray, after: np.ndarray) -> float:
     return float(diff.std() / np.sqrt(diff.size))
 
 
-def _rerun(
-    data: LeagueData, my_id: int, swaps: list[tuple[int, str, str]], n_sims: int, seed: int
-) -> list[dict[str, float]]:
-    """Both teams' odds change for each (partner, give, get), against one unchanged baseline."""
-    before, _ = league_odds(data, None, n_sims, seed, reoptimize=True)
-    me = data.roster_ids.index(my_id)
-    out = []
-    for partner_id, give, get in swaps:
-        after, _ = league_odds(
-            data,
-            apply_trade(data, my_id, partner_id, [give], [get]),
-            n_sims,
-            seed,
-            reoptimize=True,
-        )
-        them = data.roster_ids.index(partner_id)
-        out.append(
-            {
-                "my_playoff": float(after.p_playoffs[me] - before.p_playoffs[me]),
-                "my_title": float(after.p_title[me] - before.p_title[me]),
-                "their_playoff": float(after.p_playoffs[them] - before.p_playoffs[them]),
-                "their_title": float(after.p_title[them] - before.p_title[them]),
-                "se_title": paired_se(before.champion == me, after.champion == me),
-            }
-        )
-    return out
+def _fit(
+    ids: list[str], target: int, taken: set[str], ros: dict[str, float], free: list[str]
+) -> list[str]:
+    """Drop the lowest rest-of-season players, or add the best free agents, to reach `target`.
+    Same rule as fit_size, on precomputed values so thousands of candidates stay cheap."""
+    ids = list(ids)
+    while len(ids) > target:
+        ids.remove(min(ids, key=lambda i: (ros.get(i, 0.0), i)))
+    for candidate in free:
+        if len(ids) >= target:
+            break
+        if candidate not in taken and candidate not in ids:
+            ids.append(candidate)
+    return ids
+
+
+def _pickup(ids: list[str], taken: set[str], ros: dict[str, float], free: list[str]) -> list[str]:
+    """A roster after its own best waiver move: drop the lowest player, add the best free agent."""
+    worst = min(ids, key=lambda i: (ros.get(i, 0.0), i))
+    return _fit([i for i in ids if i != worst], len(ids), taken, ros, free)
+
+
+def _ros_all(data: LeagueData) -> dict[str, float]:
+    sums = data.projections.group_by("gsis_id").agg(pl.col("projection").sum()).iter_rows()
+    return {g: float(v) for g, v in sums}
 
 
 def _both_gain(result: dict[str, float]) -> bool:
@@ -283,46 +325,161 @@ def _both_gain(result: dict[str, float]) -> bool:
     )
 
 
-def find_trades(data: LeagueData, my_id: int, n_sims: int = 20000, seed: int = 0) -> pl.DataFrame:
-    """One-for-one trades that raise both teams' odds, best for me first.
+Swap = tuple[int, tuple[str, ...], tuple[str, ...]]  # partner roster id, I give, I get
 
-    Stage 1 screens every swap of two teams' top players by rest-of-season points; stage 2
-    re-simulates the best few per partner and keeps those where both teams' playoff plus title odds
-    rise; stage 3 re-checks the leaders on fresh draws and reports those
-    numbers, so the winner of many candidates is not flattered by its own draws.
+
+def _rerun(
+    data: LeagueData, my_id: int, swaps: list[Swap], n_sims: int, seed: int
+) -> list[dict[str, float]]:
+    """Both teams' odds change for each swap, on shared random draws.
+
+    A team that ends up with an open roster spot is compared with itself after its own best
+    waiver move, so a free pickup it could make anyway is not credited to the trade."""
+    ros, free, taken = _ros_all(data), sorted(free_agents(data)), rostered(data)
+    free.sort(key=lambda i: (-ros.get(i, 0.0), i))
+    base, _ = league_odds(data, None, n_sims, seed, reoptimize=True)
+    pickup_worlds: dict[int, Any] = {}
+
+    def world_with_pickup(roster_id: int) -> Any:
+        if roster_id not in pickup_worlds:
+            ids = team_ids(data, roster_id)
+            kept = data.rosters.filter(pl.col("roster_id") != roster_id)
+            positions = position_of(data)
+            rows = [(roster_id, i, positions[i]) for i in _pickup(ids, taken, ros, free)]
+            mine = pl.DataFrame(rows, schema=kept.schema, orient="row")
+            pickup_worlds[roster_id] = league_odds(
+                data, pl.concat([kept, mine]), n_sims, seed, reoptimize=True
+            )[0]
+        return pickup_worlds[roster_id]
+
+    me = data.roster_ids.index(my_id)
+    out = []
+    for partner_id, give, get in swaps:
+        my_before = world_with_pickup(my_id) if len(give) > len(get) else base
+        their_before = world_with_pickup(partner_id) if len(get) > len(give) else base
+        rosters = apply_trade(data, my_id, partner_id, list(give), list(get))
+        after, _ = league_odds(data, rosters, n_sims, seed, reoptimize=True)
+        them = data.roster_ids.index(partner_id)
+        out.append(
+            {
+                "my_playoff": float(after.p_playoffs[me] - my_before.p_playoffs[me]),
+                "my_title": float(after.p_title[me] - my_before.p_title[me]),
+                "their_playoff": float(after.p_playoffs[them] - their_before.p_playoffs[them]),
+                "their_title": float(after.p_title[them] - their_before.p_title[them]),
+                "se_title": paired_se(my_before.champion == me, after.champion == me),
+            }
+        )
+    return out
+
+
+def find_trades(data: LeagueData, my_id: int, n_sims: int = 20000, seed: int = 0) -> pl.DataFrame:
+    """Trades (1 for 1, 1 for 2, 2 for 1, 2 for 2) that raise both teams' odds, best for me first.
+
+    Stage 1 screens every swap of two teams' top players by change in rest-of-season points;
+    stage 2 ranks the survivors by depth-aware value; stage 3 re-simulates the best few per
+    partner and keeps those where both teams' playoff plus title odds rise; stage 4 re-checks the
+    leaders on fresh draws and reports those numbers, so the winner of many candidates is not
+    flattered by its own draws. A side with an open roster spot is compared with itself after
+    its own waiver move.
     """
     if data.current_week > data.trade_deadline:
         raise ValueError(f"the trade deadline (week {data.trade_deadline}) has passed")
-    values = week_values(data)
+    values, valuer = week_values(data), Valuer(data)
+    ros, taken = _ros_all(data), rostered(data)
+    free = sorted(free_agents(data), key=lambda i: (-ros.get(i, 0.0), i))
     mine = team_ids(data, my_id)
-    base_mine = team_total(data, mine, values)
-    screened: list[tuple[float, int, str, str]] = []
+    pool_me = trade_pool(data, my_id)
+
+    def reference(ids: list[str], opens_a_spot: bool) -> tuple[float, float]:
+        ref = _pickup(ids, taken, ros, free) if opens_a_spot else ids
+        return team_total(data, ref, values), valuer(ref)
+
+    ranked: list[tuple[float, int, tuple[str, ...], tuple[str, ...]]] = []
     for partner_id in data.roster_ids:
         if partner_id == my_id:
             continue
         theirs = team_ids(data, partner_id)
-        base_theirs = team_total(data, theirs, values)
+        refs = {
+            (me_open, them_open): (reference(mine, me_open), reference(theirs, them_open))
+            for me_open, them_open in ((False, False), (True, False), (False, True))
+        }
         local = []
-        for give in trade_pool(data, my_id):
-            for get in trade_pool(data, partner_id):
-                d_me = team_total(data, [i for i in mine if i != give] + [get], values) - base_mine
-                d_them = (
-                    team_total(data, [i for i in theirs if i != get] + [give], values) - base_theirs
-                )
-                if min(d_me, d_them) >= -SCREEN_TOL:
-                    local.append((min(d_me, d_them), partner_id, give, get))
-        screened += sorted(local, key=lambda t: -t[0])[:SHORTLIST]
+        pool_them = trade_pool(data, partner_id)
+        for gives, gets in SIZES:
+            for give in combinations(pool_me, gives):
+                for get in combinations(pool_them, gets):
+                    new_me = _fit(
+                        [i for i in mine if i not in give] + list(get), len(mine), taken, ros, free
+                    )
+                    new_them = _fit(
+                        [i for i in theirs if i not in get] + list(give),
+                        len(theirs),
+                        taken | set(new_me),
+                        ros,
+                        free,
+                    )
+                    (ref_me, vref_me), (ref_them, vref_them) = refs[(gives > gets, gets > gives)]
+                    d_me = team_total(data, new_me, values) - ref_me
+                    d_them = team_total(data, new_them, values) - ref_them
+                    if min(d_me, d_them) >= -SCREEN_TOL:
+                        local.append(
+                            (min(d_me, d_them), give, get, new_me, new_them, vref_me, vref_them)
+                        )
+        local.sort(key=lambda t: -t[0])
+        scored = []
+        for _, give, get, new_me, new_them, vref_me, vref_them in local[:SCREEN_KEEP]:
+            gain = min(valuer(new_me) - vref_me, valuer(new_them) - vref_them)
+            scored.append((gain, partner_id, give, get))
+        ranked += sorted(scored, key=lambda t: -t[0])[:SHORTLIST]
 
-    swaps = [(p, g, r) for _, p, g, r in screened]
+    swaps: list[Swap] = [(p, g, r) for _, p, g, r in ranked]
     first = _rerun(data, my_id, swaps, n_sims, seed)
     kept = [(s, r) for s, r in zip(swaps, first, strict=True) if _both_gain(r)]
     kept.sort(key=lambda sr: (-sr[1]["my_title"], -sr[1]["my_playoff"]))
     leaders = [s for s, _ in kept[:CONFIRM]]
     second = _rerun(data, my_id, leaders, n_sims, seed + 1)
     rows: list[dict[str, Any]] = [
-        {"partner_id": p, "give_id": g, "get_id": r, **res}
+        {"partner_id": p, "give_ids": list(g), "get_ids": list(r), **res}
         for (p, g, r), res in zip(leaders, second, strict=True)
         if _both_gain(res)
     ]
     rows.sort(key=lambda r: (-r["my_title"], -r["my_playoff"]))
     return pl.DataFrame(rows, schema=FINDER_COLUMNS)
+
+
+def position_strength(data: LeagueData, valuer: Valuer | None = None) -> pl.DataFrame:
+    """Each team's value over replacement by position: roster_id, position, vor_per_week, rank.
+
+    For every remaining week a team's best lineup is scored against the replacement level at
+    each starter's position (the best stand-in free agent that week); the average per week is
+    summed by position. Rank 1 is the strongest team at that position."""
+    valuer = valuer or Valuer(data)
+    rows: list[tuple[int, str, float]] = []
+    floor = {
+        week: {p.position: p.value for p in reversed(valuer.replacements.get(week, []))}
+        for week in valuer.values
+    }
+    for roster_id in data.roster_ids:
+        ids = team_ids(data, roster_id)
+        totals = dict.fromkeys(("QB", "RB", "WR", "TE"), 0.0)
+        for week, values in valuer.values.items():
+            pool = [
+                Player(i, valuer.positions[i], values[i])
+                for i in ids
+                if i in values and i in valuer.positions
+            ]
+            for pid in auto_lineup(pool, valuer.slots).players:
+                player = next(p for p in pool if p.id == pid)
+                totals[player.position] += max(
+                    0.0, player.value - floor[week].get(player.position, 0.0)
+                )
+        weeks = max(len(valuer.values), 1)
+        rows += [(roster_id, pos, total / weeks) for pos, total in totals.items()]
+    frame = pl.DataFrame(rows, schema=["roster_id", "position", "vor_per_week"], orient="row")
+    return frame.with_columns(
+        pl.col("vor_per_week")
+        .rank("min", descending=True)
+        .over("position")
+        .cast(pl.Int64)
+        .alias("rank")
+    )

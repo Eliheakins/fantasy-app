@@ -50,12 +50,30 @@ except FileNotFoundError:
     no_data_warning()
     st.stop()
 
+st.subheader("Where your roster is strong or thin")
+st.dataframe(
+    data_api.position_strength(league_key),
+    hide_index=True,
+    width="stretch",
+    column_config={
+        "position": "Position",
+        "vor_per_week": st.column_config.NumberColumn(
+            "Points a week over replacement", format="%.1f"
+        ),
+        "rank": "League rank",
+        "teams": "Teams",
+    },
+)
+st.caption("Deep positions (rank near 1) are where a trade can come from; thin ones are the needs.")
+
 st.subheader("Find trades")
 st.caption(
-    "One-for-one swaps of each team's top six players that raise both teams' playoff plus "
-    "title odds, best for you first. Managers accept trades based on how they value players, "
-    "which is not modeled. Changes are in percentage points; error is the Monte Carlo error "
-    "of your title change."
+    "Trades of one or two players each way (1 for 1, 1 for 2, 2 for 1, 2 for 2) between each "
+    "team's top six players that raise both teams' playoff plus title odds, best for you first. "
+    "A side left with an open roster spot is compared with itself after its own best waiver "
+    "move, so a free pickup is not credited to the trade. Managers accept trades based on how "
+    "they value players, which is not modeled. Changes are in percentage points; error is the "
+    "Monte Carlo error of your title change."
 )
 if st.button("Find trades"):
     try:
@@ -64,7 +82,7 @@ if st.button("Find trades"):
         st.warning(str(err))
     else:
         if found.is_empty():
-            st.info("No one-for-one swap helps both teams right now.")
+            st.info("No trade helps both teams right now.")
         else:
             percent = ["my_playoff", "my_title", "their_playoff", "their_title", "se_title"]
             st.dataframe(

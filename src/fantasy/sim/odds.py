@@ -23,6 +23,7 @@ from fantasy.sim.lineup import (
     lineup_with_locks,
 )
 from fantasy.sim.season import SeasonInputs, SeasonResult, simulate_season
+from fantasy.sim.value import replacement_pool, stand_ins
 
 # Persistent per-player error, points a game: sd of 5-game mean error beyond what weekly noise
 # explains, from walk-forward projections 2018 to 2025, averaged over both leagues' scoring.
@@ -140,6 +141,11 @@ def build_inputs(
         w: dict(zip(g["gsis_id"], g["projection"], strict=True))
         for (w,), g in data.projections.group_by("week")
     }
+    # stand-ins for absent starters: the best free agents, not counting anyone rostered before
+    # or after this scenario (a player dropped in it is assumed claimed by someone else)
+    taken = set(data.rosters["gsis_id"].to_list()) | set(rosters["gsis_id"].to_list())
+    free_ids = [g for g in data.positions if g not in taken]
+    replacements = replacement_pool(free_ids, data.positions, by_week)
     p_now: dict[str, float] = {}
     if "play_prob" in data.projections.columns:
         first = data.projections.filter(pl.col("week") == data.current_week)
@@ -170,10 +176,11 @@ def build_inputs(
             else:
                 values = by_week.get(week, {})
                 pool = [Player(g, position[g], values[g]) for g in position if g in values]
-                lineup = [
-                    Player(pid, position[pid], values[pid])
-                    for _, pid in auto_lineup(pool, slots).slots
-                ]
+                # holes (byes, absences, weak starters) fall back to stand-in free agents
+                floor = stand_ins(replacements.get(week, []), set(position))
+                full = auto_lineup(pool + floor, slots)
+                known = {p.id: p for p in pool + floor}
+                lineup = [known[pid] for _, pid in full.slots]
                 offset, k_open, def_open = 0.0, constants.get("K", 0), constants.get("DEF", 0)
             m, var, persistent = lineup_moments(lineup, data.cv, data.pair_rho)
             weekly = max(var - persistent, 0.5 * var)
@@ -181,13 +188,16 @@ def build_inputs(
             mean[t, w] = offset + m + k_open * data.k_mean + def_open * data.def_mean
             noise_sd[t, w] = np.sqrt(weekly + fixed_var + DRIFT_SD**2)
             for p in lineup:
+                if p.id not in errors:  # a stand-in free agent
+                    errors[p.id] = TAU[p.position] * player_error(p.id, n_sims, seed)
                 shift[t, w] += errors[p.id]
             if w >= 1 and HAZARD > 0 and state is None:
-                # a starter who is out is replaced from the bench: lose the lineup's drop
-                total = sum(p.value for p in lineup)
+                # a starter who is out falls back to the bench or a stand-in
                 for p in lineup:
-                    rest = [q for q in pool if q.id != p.id]
-                    loss = total - auto_lineup(rest, slots).total
+                    if p.id not in position:
+                        continue
+                    rest = [q for q in pool if q.id != p.id] + floor
+                    loss = full.total - auto_lineup(rest, slots).total
                     gone = absence_path(
                         p.id, p_now.get(p.id, 1.0), n_weeks, n_sims, seed, HAZARD, STAY_OUT
                     )[w]

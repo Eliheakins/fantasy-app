@@ -12,9 +12,33 @@ except FileNotFoundError:
     no_data_warning()
     st.stop()
 
+st.subheader("Where your roster is strong or thin")
+strength = data_api.position_strength(league_key)
+st.dataframe(
+    strength,
+    hide_index=True,
+    width="stretch",
+    column_config={
+        "position": "Position",
+        "vor_per_week": st.column_config.NumberColumn(
+            "Points a week over replacement", format="%.1f"
+        ),
+        "rank": "League rank",
+        "teams": "Teams",
+    },
+)
 st.caption(
-    "Free agents ranked by extra projected points over the rest of the season, each paired with "
-    "the drop that costs the least (bye weeks included). Playoff and title changes re-run the "
+    "Your best lineup each week against the stand-in free agent at each position (the third-best "
+    "or so on the wire, since the top ones are the adds). Rank 1 is the strongest team. Thin "
+    "positions are where an add helps; deep ones are where a trade can come from."
+)
+
+st.subheader("Adds")
+st.caption(
+    "Free agents ranked by expected points over the rest of the season above what you would "
+    "have anyway. Every slot can always be filled by a stand-in free agent (bye weeks, injuries "
+    "and weak starters included), so a backup at a position with plenty of free agents adds "
+    "almost nothing, and the drop is whoever costs least. Playoff and title changes re-run the "
     "season simulation with the move made, on the same random draws as the unchanged roster. "
     "The title change carries a Monte Carlo error of up to the value in the last column, so "
     "title changes smaller than that are noise. Injured players are scaled by their status."

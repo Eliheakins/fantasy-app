@@ -80,11 +80,12 @@ def test_getting_the_better_player_helps_me_and_hurts_them() -> None:
 def test_best_swap_never_does_worse_than_dropping_the_lowest_value_player() -> None:
     data = league_with([("fa_wr", "WR", 15.0)])
     ids = moves.team_ids(data, 1)
-    base = moves.team_total(data, ids)
-    swap = moves.best_swap(data, ids, "fa_wr", base)
+    valuer = moves.Valuer(data)
+    base = valuer(ids)
+    swap = moves.best_swap(data, ids, "fa_wr", base, valuer)
     values = moves.ros_value(data, ids)
     lowest = min(ids, key=lambda i: (values[i], i))
-    naive = moves.team_total(data, [i for i in ids if i != lowest] + ["fa_wr"]) - base
+    naive = valuer([i for i in ids if i != lowest] + ["fa_wr"]) - base
     assert swap.drop_id in ids
     assert swap.delta_mu >= naive
 
@@ -92,8 +93,9 @@ def test_best_swap_never_does_worse_than_dropping_the_lowest_value_player() -> N
 def test_a_much_better_free_agent_raises_title_odds_and_a_scrub_does_not() -> None:
     data = league_with([("fa_great", "WR", 30.0), ("fa_scrub", "WR", 0.5)])
     ids = moves.team_ids(data, 1)
-    base = moves.team_total(data, ids)
-    adds = [moves.best_swap(data, ids, c, base) for c in ("fa_great", "fa_scrub")]
+    valuer = moves.Valuer(data)
+    base = valuer(ids)
+    adds = [moves.best_swap(data, ids, c, base, valuer) for c in ("fa_great", "fa_scrub")]
     odds = moves.waiver_odds(data, 1, adds, n_sims=8000)
     out = {r["gsis_id"]: r for r in odds.iter_rows(named=True)}
     assert out["fa_great"]["title_delta"] > 0
@@ -163,3 +165,37 @@ def test_paired_se_is_zero_for_identical_runs_and_below_the_independent_bound() 
     after[:200] = ~after[:200]  # a small change made on the same draws
     independent = (0.2 * 0.8 / 20000 * 2) ** 0.5
     assert 0 < moves.paired_se(before, after) < independent
+
+
+def test_fit_reaches_the_target_by_dropping_the_lowest_or_adding_the_best_free_agent() -> None:
+    ros = {"a": 50.0, "b": 10.0, "c": 30.0, "fa1": 40.0, "fa2": 20.0}
+    free = ["fa1", "fa2"]
+    assert sorted(moves._fit(["a", "b", "c"], 2, set(), ros, free)) == ["a", "c"]
+    assert sorted(moves._fit(["a", "c"], 3, set(), ros, free)) == ["a", "c", "fa1"]
+    assert sorted(moves._fit(["a", "c"], 3, {"fa1"}, ros, free)) == ["a", "c", "fa2"]
+
+
+def test_pickup_swaps_the_lowest_player_for_the_best_free_agent() -> None:
+    ros = {"a": 50.0, "b": 10.0, "fa1": 40.0}
+    assert sorted(moves._pickup(["a", "b"], set(), ros, ["fa1"])) == ["a", "fa1"]
+
+
+def test_finder_only_returns_the_four_trade_shapes_with_both_teams_gaining() -> None:
+    data = league_with([], boost={"t2_wr1": 8.0, "t3_qb1": 6.0})
+    found = moves.find_trades(data, 1, n_sims=4000)
+    shapes = {(len(g), len(r)) for g, r in zip(found["give_ids"], found["get_ids"], strict=True)}
+    assert shapes <= set(moves.SIZES)
+    for row in found.iter_rows(named=True):
+        assert set(row["give_ids"]) <= set(moves.team_ids(data, 1))
+        assert set(row["get_ids"]) <= set(moves.team_ids(data, row["partner_id"]))
+        assert moves._both_gain(row)
+
+
+def test_position_strength_ranks_the_team_with_the_best_receivers_first_at_wr() -> None:
+    data = league_with(
+        [("fa_wr1", "WR", 6.0), ("fa_wr2", "WR", 6.0), ("fa_wr3", "WR", 6.0)],
+        boost={"t4_wr1": 10.0, "t4_wr2": 10.0},
+    )
+    table = moves.position_strength(data)
+    wr = table.filter(pl.col("position") == "WR").sort("rank")
+    assert wr["roster_id"][0] == 4 and wr["rank"][0] == 1

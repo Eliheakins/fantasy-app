@@ -792,23 +792,25 @@ def freshness(now: datetime | None = None) -> pl.DataFrame:
 
 
 def find_trades(league_key: str) -> pl.DataFrame:
-    """One-for-one trades that raise both teams' odds. May raise ValueError after the deadline.
+    """Trades (1 for 1, 1 for 2, 2 for 1, 2 for 2) that raise both teams' odds. May raise
+    ValueError after the deadline.
 
-    Columns: partner, give, get (names with position), my_playoff, my_title, their_playoff,
-    their_title (changes in probability) and se_title (paired Monte Carlo error of my_title).
+    Columns: partner, give, get (names with position, joined with " + "), my_playoff, my_title,
+    their_playoff, their_title (changes in probability) and se_title (paired Monte Carlo error
+    of my_title).
     """
     data, mine = _league(league_key)
     found = moves.find_trades(data, mine)
     names, positions = _names(), moves.position_of(data)
 
-    def label(gid: str) -> str:
-        return f"{names.get(gid, gid)} ({positions[gid]})"
+    def label(ids: list[str]) -> str:
+        return " + ".join(f"{names.get(g, g)} ({positions[g]})" for g in ids)
 
     rows = [
         {
             "partner": data.team_names[r["partner_id"]],
-            "give": label(r["give_id"]),
-            "get": label(r["get_id"]),
+            "give": label(r["give_ids"]),
+            "get": label(r["get_ids"]),
             **{
                 k: r[k]
                 for k in ("my_playoff", "my_title", "their_playoff", "their_title", "se_title")
@@ -866,4 +868,19 @@ def live_score(league_key: str) -> pl.DataFrame:
         rows.append((side, data.team_names[rid], state.realized, state.realized + left))
     return pl.DataFrame(
         rows, schema=["side", "team_name", "points", "projected_final"], orient="row"
+    )
+
+
+def position_strength(league_key: str) -> pl.DataFrame:
+    """My value over replacement by position, with the league rank (1 is strongest).
+
+    Columns: position, vor_per_week (points a week above the stand-in free agent at that
+    position, from my best lineup), rank, teams."""
+    data, mine = _league(league_key)
+    table = moves.position_strength(data)
+    return (
+        table.filter(pl.col("roster_id") == mine)
+        .with_columns(pl.lit(len(data.roster_ids)).alias("teams"))
+        .select("position", "vor_per_week", "rank", "teams")
+        .sort("position")
     )
