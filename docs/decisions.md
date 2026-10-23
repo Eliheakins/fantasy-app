@@ -200,3 +200,9 @@ Created in `Eliheakins/fantasy-app` from `docs/backlog.md`: 36 story issues (#1 
 
 Backlog and story IDs: `docs/backlog.md`. `docs/spec/modeling.md` sections 10b and 10c are later revisions that override its earlier sections. The original brainstorm is `docs/archive/plan.md`. The cleanup on 2026-10-23 merged the old `backlog.md` and `backlog.md`, archived `plan.md`, and corrected stale lines in `dashboard.md` and `architecture.md`.
 - **Repo:** private `fantasy-app` under `Eliheakins`.
+
+## 2026-10-23: Odds snapshots (E2-2)
+
+- `make odds` archives raw prop-line JSON per game under `data/archive/odds/<timestamp>/`, logging credits in `credit_log.csv`. Six markets, one region (us), next 7 days of games, refuses below 100 credits left.
+- Key lives in gitignored `.env` (`ODDS_API_KEY`), read by `snapshot_odds.api_key`. The user said sharing it in chat was fine.
+- First snapshot: 14 games, 78 credits used, 422 left. Nothing downstream reads the files yet; the point is to build history for a later backtest.

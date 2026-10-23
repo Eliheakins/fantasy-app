@@ -30,3 +30,6 @@ fmt:
 check: lint
 	uv run ruff format --check .
 	uv run pytest -q
+
+odds:
+	uv run python -m fantasy.stages.snapshot_odds

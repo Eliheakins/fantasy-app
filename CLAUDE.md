@@ -12,6 +12,7 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 
 - `make refresh`: pull Sleeper and nflverse and rebuild every table (needs the network)
 - `make app`: open the dashboard
+- `make odds`: archive one week of prop lines (needs `ODDS_API_KEY` in env or `.env`, gitignored; free tier is 500 credits a month, a snapshot costs about 80)
 - Checks against real data: `uv run python -m fantasy.stages.validate_scoring`, `validate_standings`, `backtest`, `calibration`
 - Never pipe `make check` into `tail` before committing: the pipe hides a failing exit code
 
