@@ -238,3 +238,10 @@ Backlog and story IDs: `docs/backlog.md`. `docs/spec/modeling.md` sections 10b a
 - Walk-forward test on 2024 to 2025, RMSE against the plain league average: Colgate DEF 5.60 vs 5.74, YinzBurgh DEF 5.91 vs 6.20 (small edge); K 5.21 vs 5.24 and 4.40 vs 4.40 (no edge). The Waivers page says so.
 - The season simulation still uses league-average K and DEF per slot. Per-team DEF means would only move title odds slightly; not worth the plumbing yet.
 - Weather is not used (nflverse has it for weeks 1 to 4 only).
+
+## 2026-10-23: Persistent player error (tau, E3-6) and the top-player bias (#38)
+
+- tau estimated from walk-forward residuals 2018 to 2025 with each league's scoring: variance of non-overlapping 5-game mean errors minus weekly variance over 5, floored at 0. Per league (Colgate, YinzBurgh): QB 1.41, 1.51; RB 1.62, 1.74; TE 0.45, 0.64; WR 0.63, 0.94. `TAU` is now QB 1.5, RB 1.7, WR 0.8, TE 0.55 (was 2.0, 2.0, 2.0, 1.5). Longer windows give lower values (8 games: QB 0, RB about 1, TE 0.2 to 0.6, WR 0.8 to 1.0), so persistence does not grow with horizon and 5 games is a fair middle.
+- Effect on odds is small: Colgate 76.0% playoffs, 8.8% title (was 75.5%, 9.0%).
+- Not tested: season win-total spread against real seasons (these leagues have no past seasons), and the estimates exclude injury-driven role changes beyond what the sample contains.
+- #38: the top-8-per-position-week bias is real in direction (QB over-projected about 1 point, RB under about 0.9, TE under about 0.5, same sign in nearly every season) but pooled across positions it is +0.08 a game (2019 to 2025) and 2026's +1.17 is under 2 standard errors. Subtracting or adding the position-by-tier mean from earlier seasons cuts out-of-sample RMSE by 0.2 to 0.3% (14 of 16 cells better). Not worth the extra code; not shipped.

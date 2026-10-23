@@ -17,7 +17,9 @@ import polars as pl
 from fantasy.sim.lineup import Player, auto_lineup, constant_slot_count, lineup_slots
 from fantasy.sim.season import SeasonInputs, SeasonResult, simulate_season
 
-TAU = {"QB": 2.0, "RB": 2.0, "WR": 2.0, "TE": 1.5}  # provisional persistent error, points a game
+# Persistent per-player error, points a game: sd of 5-game mean error beyond what weekly noise
+# explains, from walk-forward projections 2018 to 2025, averaged over both leagues' scoring.
+TAU = {"QB": 1.5, "RB": 1.7, "WR": 0.8, "TE": 0.55}
 DRIFT_SD = 2.0  # provisional weekly roster drift per team
 PLAYOFF_WEEKS = 3
 
