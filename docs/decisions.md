@@ -128,6 +128,12 @@ Per-league scoring from nflverse stats matches Sleeper's reported player points 
 - **Coverage:** every QB, RB, WR and TE on both of the user's rosters has a projection for every remaining game; bye weeks have no row (Buffalo and the Chargers are on bye in week 7). Kickers and defenses are E3-7. Projections for weeks beyond the next one use a neutral context because spread and total lines only exist for the next week or two.
 - **Tables:** `player_form` (per player-game), `proj_baseline` (walk-forward history from 2019 plus future games). Projections are recomputable, so no archive yet.
 
+## E3-4 distributions (2026-10-23)
+
+- **Marginals:** a Gamma with mean = projection and a per-position coefficient of variation from walk-forward residuals (2019 to 2025): QB about 0.48 to 0.50, RB 0.67 to 0.70, WR 0.70 to 0.75, TE 0.75 to 0.81 (the lower values are the 1.0 PPR league). Estimated as sqrt(sum of squared residuals / sum of squared projections).
+- **Correlations measured** (Spearman of walk-forward residuals, converted with rho = 2 sin(pi * rho_s / 6), about 4,000 team-weeks per pair, 1.0 PPR league): same team QB1 with WR1 0.35, WR2 0.31, TE1 0.27, RB1 0.08, RB2 0.03; WR with WR and WR with TE about 0 (0.00 to 0.03). Opposing teams in the same game: QB1 with QB1 0.21, QB1 with opposing WR1 0.10, WR2 0.09, TE1 0.07, RB1 0.04. These replace the modeler's provisional values (which had opposing QB-QB at 0.10). K and DEF correlations are not measured.
+- **Tables:** `marginals`, `correlation_pairs` (derived). The pair table is data now, so E4-2 reads it instead of constants. Bootstrap intervals are not computed (post-MVP).
+
 ## GitHub issues (2026-10-23)
 
 Created in `Eliheakins/fantasy-app` from `docs/backlog.md`: 36 story issues (#1 to #36) plus a Post-MVP tracking issue (#37). Labels: epic (E0 to E5), engine or dashboard, fast-path, optional, spike, post-mvp. Milestones: one per epic. E0-3 (#3) is closed. No Project board: it needs the `project` token scope, which the personal token lacks (`gh auth refresh -s project` is interactive). The repo itself has no commits pushed yet, so the doc paths in issue bodies are plain text, not links.

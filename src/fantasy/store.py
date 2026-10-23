@@ -126,6 +126,11 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         floats="points team_implied opp_implied total_line temp wind",
     )
     | {"is_home": _B},
+    # written by distributions (area: derived)
+    "marginals": _cols(strings="league_id position", ints="n", floats="cv"),
+    "correlation_pairs": _cols(
+        strings="league_id relation role_a role_b", ints="n", floats="rho_spearman rho"
+    ),
     # written by project (area: derived)
     "player_form": _cols(
         strings="league_id gsis_id position team",
