@@ -222,6 +222,8 @@ class WinProbabilityData(Row):
 class ActionRow(Row):
     kind: str
     text: str
+    delta_points: float | None = None
+    share_better: float | None = None
 
 
 class WaiverRow(Row):

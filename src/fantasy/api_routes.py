@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from fantasy import _view as view
 from fantasy import data_api, store
 from fantasy._engine import _clear_league_cache, data_version, pinned_version
-from fantasy.api_envelope import NO_DATA_MESSAGE, fail, guarded, ok, rows, running
+from fantasy.api_envelope import NO_DATA_MESSAGE, clean, fail, guarded, ok, rows, running
 from fantasy.api_jobs import Busy, JobKey, JobRunner
 from fantasy.api_models import (
     ActionRow,
@@ -247,7 +247,14 @@ def win_probability(league: str, runner: Runner, week: Week = 0) -> Any:
     "/leagues/{league}/actions", response_model=Envelope[list[ActionRow]], responses=JOB_RESPONSES
 )
 def actions(league: str, runner: Runner) -> Any:
-    return run_job(runner, "actions", (league,), lambda: rows(data_api.actions(league)))
+    return run_job(runner, "actions", (league,), lambda: actions_data(league))
+
+
+def actions_data(league: str) -> list[dict[str, Any]]:
+    found = data_api.actions(league)
+    needs_odds = "Win probability" in found["kind"].to_list()
+    odds = data_api.win_probability(league) if needs_odds else None
+    return clean(view.action_fields(found, odds))
 
 
 @router.get(

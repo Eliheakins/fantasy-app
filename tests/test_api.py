@@ -212,7 +212,9 @@ def test_a_job_route_goes_running_then_ok_and_runs_once(
     gate.set()
     wait_until(lambda: client.get("/api/leagues/t/actions").status_code == 200)
     done = client.get("/api/leagues/t/actions").json()
-    assert done["status"] == "ok" and done["data"] == [{"kind": "Lineup", "text": "x"}]
+    assert done["status"] == "ok" and done["data"] == [
+        {"kind": "Lineup", "text": "x", "delta_points": None, "share_better": None}
+    ]
     assert runs == ["t"]
 
 
@@ -410,6 +412,7 @@ def test_actions_and_waivers_jobs_return_rows(client: TestClient, store_dir: Pat
     write_rows(store_dir, "trending")
     actions = wait_ok(client, lambda: client.get("/api/leagues/t/actions"))
     assert actions["status"] == "ok" and isinstance(actions["data"], list)
+    assert all({"delta_points", "share_better"} <= r.keys() for r in actions["data"])
     waivers = wait_ok(client, lambda: client.get("/api/leagues/t/waivers"))
     assert waivers["status"] == "ok"
     assert isinstance(waivers["data"], list)  # the fixture's free agent adds nothing

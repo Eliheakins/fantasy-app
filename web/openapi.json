@@ -910,6 +910,28 @@
           "text": {
             "type": "string",
             "title": "Text"
+          },
+          "delta_points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Points"
+          },
+          "share_better": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Better"
           }
         },
         "additionalProperties": false,

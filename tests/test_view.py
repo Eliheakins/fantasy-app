@@ -231,3 +231,31 @@ def test_trade_deadline_reads_the_leagues_table(
     assert view.trade_deadline("other", tmp_path) is None
     write_rows(tmp_path, "leagues", [{"league_key": "t", "trade_deadline": None}])
     assert view.trade_deadline("t", tmp_path) is None
+
+
+def test_action_fields_parse_points_and_take_share_better_from_the_win_prob_row() -> None:
+    actions = pl.DataFrame(
+        {
+            "kind": ["Lineup", "Win probability", "Injury", "Waiver"],
+            "text": [
+                "Start A over B (+2.5 points)",
+                "Boost: start C over D (55.0% vs 50.0% to win)",
+                "E is Out and in your lineup",
+                "Add F, drop G: +1.0% playoff odds, -0.4 points",
+            ],
+        }
+    )
+    odds = pl.DataFrame(
+        {"option": ["max_points", "win_prob"], "share_better": [0.5, 0.8]},
+    )
+
+    out = view.action_fields(actions, odds)
+
+    assert [r["delta_points"] for r in out] == [2.5, None, None, -0.4]
+    assert [r["share_better"] for r in out] == [None, 0.8, None, None]
+    assert [r["text"] for r in out] == actions["text"].to_list()
+
+
+def test_action_fields_without_odds_leave_share_better_null() -> None:
+    actions = pl.DataFrame({"kind": ["Win probability"], "text": ["x"]})
+    assert view.action_fields(actions, None)[0]["share_better"] is None

@@ -4,6 +4,7 @@ Pure functions over the frames `data_api` returns (nothing here mutates its inpu
 stay 0 to 1; scaling to percent is a display concern.
 """
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -162,3 +163,25 @@ def trade_deadline(league_key: str, data_dir: Path) -> int | None:
     if rows.is_empty() or rows["trade_deadline"][0] is None:
         return None
     return int(rows["trade_deadline"][0])
+
+
+_POINTS_IN_TEXT = re.compile(r"([+-]\d+(?:\.\d+)?) points")
+
+
+def action_fields(actions: pl.DataFrame, odds: pl.DataFrame | None) -> list[dict[str, object]]:
+    """Action rows plus delta_points (parsed from the text's "+N points", else None) and
+    share_better (the win_prob option's, only on the Win probability action)."""
+    share = None
+    if odds is not None and not odds.is_empty():
+        share = odds.filter(pl.col("option") == "win_prob")["share_better"][0]
+    out = []
+    for r in actions.iter_rows(named=True):
+        m = _POINTS_IN_TEXT.search(r["text"])
+        out.append(
+            {
+                **r,
+                "delta_points": float(m[1]) if m else None,
+                "share_better": share if r["kind"] == "Win probability" else None,
+            }
+        )
+    return out
