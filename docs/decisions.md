@@ -472,3 +472,16 @@ Method: the boosted model from `gbm_test.py` (lagged points, expected points, vo
 Reading: the free role and context data add about 0.9% RMSE to the boosted model and the combination is 2.2% better than our rolling baseline (6.373 against 6.514, with QB +0.13, RB +0.04, WR +0.05, TE +0.04). The FantasyData gap measured earlier (6.99 to 6.71, 2019 to 2021) was 0.27, so free data closes very roughly half of a gap measured in other years. Participation is redundant with snap share and target share. Depth chart helps quarterbacks most (who starts). The 2025 depth chart comes from dated snapshots matched to the game day, the earlier years from the weekly publication.
 
 Not tested: FTN charting (2022 on only, too little history to train and score), contracts, officials, combine, trades, FantasyPros weekly expert rankings (`load_ff_rankings(type="all")` holds 1.87 million rows over 370 scrape dates from late 2019, but the 2026-10-22 data policy bars FantasyPros data until its terms are read), Odds API prop history (paid), news (no free feed found).
+
+## 2026-10-23: Data policy changed for FantasyPros rankings; no paid data
+
+User decisions: (1) FantasyPros expert rankings through nflverse (`load_ff_rankings`) may be used, for this private local tool only, superseding the 2026-10-22 and E3-8 entries that dropped them over unread terms. The data still belongs to FantasyPros and the terms were not read; it is not to be redistributed or committed (it lives under the gitignored `data/`). (2) No paid data for now, so the Odds API historical plan is off the table; the free-tier weekly prop snapshots continue. Next: the modeling v2 build (plan in `docs/backlog.md`, section "Modeling v2").
+
+## 2026-10-23: FantasyPros weekly rankings as a feature (`research/ecr_value.py`)
+
+`load_ff_rankings(type="all")` keeps about one weekly position ranking a week from 2020 on (type `wp`: average expert rank at the position with spread, best and worst; type `wo`: overall). Each scrape is matched to the next game week (within 9 days of its first game) and the last scrape before that week's first game is used. Coverage of 2024 to 2025 rows: 71.8%. Training 2020 to 2023, scoring 2024 to 2025, same method as `data_value.py`:
+
+- Base learned model on those rows: RMSE 6.4221 (our rolling baseline 6.5137). Adding the rankings: 6.4021 (gain 0.0200, paired t 2.9, better in 32 of 50 weeks; QB +0.077, TE +0.029, WR +0.008, RB -0.001).
+- On top of all free datasets (depth chart, rosters, advanced stats, weather, pace): 6.3878 to 6.3637 (gain 0.0242, t 3.8, 36 of 50 weeks; QB +0.063, TE +0.044, RB +0.006, WR +0.013).
+- A rank alone is no better than our projection at ordering players by points (Spearman 2024 to 2025: QB 0.43 against 0.44, RB 0.62 against 0.62, WR 0.54 against 0.53, TE 0.55 against 0.55). The value is that it carries information the lagged stats do not, mainly for quarterbacks and tight ends.
+- Use: private local feature only. The archive is current (scrapes to 2026-10-23), so a live weekly ranking exists for serving. The terms are still unread; do not commit or redistribute the data.
