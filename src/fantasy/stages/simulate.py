@@ -246,17 +246,20 @@ def _injury_flags(flagged: pl.DataFrame, current: int) -> dict[str, Flag]:
     }
 
 
-def _report(problem: str, names: list[str], limit: int, lid: str) -> None:
-    """Print what was dropped for `lid`; stop the stage when more than `limit` were."""
+def _report(problem: str, names: list[str], limit: int, lid: str, strict: bool = True) -> None:
+    """Warn about what was dropped for `lid`; stop the stage when more than `limit` were. The
+    dashboard passes strict=False: a few unprojected rookies should not blank a league's page."""
     if not names:
         return
     message = f"league {lid}: {len(names)} {problem}: {sorted(names)}"
-    if len(names) > limit:
+    if strict and len(names) > limit:
         raise RuntimeError(f"{message} (limit {limit})")
     warnings.warn(message, stacklevel=3)
 
 
-def _load_rosters(lid: str, id_map: pl.DataFrame, players: pl.DataFrame) -> pl.DataFrame:
+def _load_rosters(
+    lid: str, id_map: pl.DataFrame, players: pl.DataFrame, strict: bool = True
+) -> pl.DataFrame:
     """Skill players on this league's rosters with their nflverse id. Players that cannot be
     mapped drop out of every odds calculation, so they are counted and listed."""
     joined = (
@@ -273,6 +276,7 @@ def _load_rosters(lid: str, id_map: pl.DataFrame, players: pl.DataFrame) -> pl.D
         .to_list(),
         MAX_UNMAPPED,
         lid,
+        strict,
     )
     _report(
         "rostered players missing from the players file",
@@ -281,6 +285,7 @@ def _load_rosters(lid: str, id_map: pl.DataFrame, players: pl.DataFrame) -> pl.D
         .to_list(),
         MAX_UNMAPPED,
         lid,
+        strict,
     )
     return (
         skill.filter(pl.col("gsis_id").is_not_null())
@@ -289,12 +294,14 @@ def _load_rosters(lid: str, id_map: pl.DataFrame, players: pl.DataFrame) -> pl.D
     )
 
 
-def _check_projected(rosters: pl.DataFrame, projections: pl.DataFrame, lid: str) -> None:
+def _check_projected(
+    rosters: pl.DataFrame, projections: pl.DataFrame, lid: str, strict: bool = True
+) -> None:
     """Rostered players with no projection in any remaining week are left out of their team's
     lineup and replaced by a free agent, which silently weakens the team."""
     projected = set(projections["gsis_id"].to_list())
     missing = [g for g in rosters["gsis_id"].unique(maintain_order=True) if g not in projected]
-    _report("rostered skill players with no projection", missing, MAX_NO_PROJECTION, lid)
+    _report("rostered skill players with no projection", missing, MAX_NO_PROJECTION, lid, strict)
 
 
 def _check_standings(base: pl.DataFrame, teams: pl.DataFrame, lid: str) -> None:
@@ -435,7 +442,7 @@ def _layered_projections(
     return projections, flags
 
 
-def load_league_data(league: dict[str, Any]) -> LeagueData:
+def load_league_data(league: dict[str, Any], strict: bool = True) -> LeagueData:
     _check_league_shape(league)
     cfg = load_config()
     lid, current = league["league_id"], int(league["current_week"])
@@ -454,11 +461,11 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
     points0 = dict(zip(base["roster_id"], base["points_for"], strict=True))
     roster_ids = sorted(teams["roster_id"].to_list())
 
-    rosters = _load_rosters(lid, id_map, players)
+    rosters = _load_rosters(lid, id_map, players, strict)
     projections, flags = _layered_projections(
         lid, current, id_map, sleeper_players, projection_table
     )
-    _check_projected(rosters, projections, lid)
+    _check_projected(rosters, projections, lid, strict)
     active = (
         sleeper_players.filter((pl.col("status") == "Active") & pl.col("team").is_not_null())
         .filter(pl.col("position").is_in(SKILL))

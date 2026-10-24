@@ -33,6 +33,7 @@ def test_trade_result_stays_after_another_widget_changes(
     app.run()
     next(b for b in app.button if b.label == "Evaluate").click().run()
     assert len(app.metric) == 6  # three metrics for each side
-    app.sidebar.selectbox[0].set_value(1).run()  # a rerun that does not press the button
+    league = app.sidebar.radio[0]
+    league.set_value(league.value).run()  # a widget rerun that does not press the button
     assert len(app.metric) == 6
     assert not app.exception

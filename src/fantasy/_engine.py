@@ -50,7 +50,7 @@ def _league(league_key: str) -> tuple[LeagueData, int]:
             f"no team is marked is_me in league {league_key!r}; set user_id in config.toml "
             "and run `make refresh`"
         )
-    return load_league_data(league), int(mine["roster_id"][0])
+    return load_league_data(league, strict=False), int(mine["roster_id"][0])
 
 
 def _id_map(*extra: str) -> pl.DataFrame:

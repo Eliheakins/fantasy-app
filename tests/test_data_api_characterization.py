@@ -188,3 +188,16 @@ def test_outlook_label_and_reasons_follow_their_thresholds() -> None:
         "No recent games",
     ]
     assert _label({**row, "chance_to_play": 0.35}, 5.0) == "Injured"
+
+
+def test_a_player_who_is_out_has_a_zero_range_and_questionable_players_keep_theirs() -> None:
+    from types import SimpleNamespace
+
+    from fantasy import _lineup
+    from fantasy.sim.lineup import Player
+
+    flags = {"a": ("Out", None, None), "b": ("Questionable", None, None), "c": ("IR", None, None)}
+    data = SimpleNamespace(injuries=flags)
+    assert [_lineup._is_out(data, g) for g in "abcd"] == [True, False, True, False]  # type: ignore[arg-type]
+    player = Player("a", "WR", 5.0)
+    assert _lineup._spread(player, 0.9, {}, {}, {}, out=True) == 0.0

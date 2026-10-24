@@ -45,7 +45,7 @@ def _record(row: dict) -> str:
 
 
 def home() -> None:
-    league_key, _week = league_picker()
+    league_key, _week = league_picker(show_week=False)
     st.title("Home")
     leagues = data_api.leagues()
     if leagues.is_empty():

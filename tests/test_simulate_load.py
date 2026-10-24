@@ -5,6 +5,7 @@ import pytest
 from store_fixture import use_store, write_rows
 
 from fantasy import data_api
+from fantasy.stages import simulate as sim
 from fantasy.stages.simulate import load_league_data
 
 LEAGUE = {
@@ -217,3 +218,11 @@ def test_league_data_fields_for_the_fixture_league(
         (1, "G_DL", "WR"), (1, "G_QB", "QB"), (1, "G_RB", "RB"),
         (1, "G_TE", "TE"), (1, "G_WR", "WR"), (2, "G_OPP", "WR"),
     ]  # fmt: skip
+
+
+def test_report_raises_over_the_limit_for_the_stage_but_only_warns_for_the_dashboard() -> None:
+    names = ["a", "b", "c"]
+    with pytest.raises(RuntimeError, match="limit 2"):
+        sim._report("players with no projection", names, 2, "L")
+    with pytest.warns(UserWarning, match="3 players with no projection"):
+        sim._report("players with no projection", names, 2, "L", strict=False)

@@ -90,8 +90,9 @@ def footer() -> None:
     st.sidebar.caption("Data from Sleeper and nflverse.")
 
 
-def league_picker() -> tuple[str, int]:
-    """Sidebar league and week selectors. Returns (league_key, week)."""
+def league_picker(show_week: bool = True) -> tuple[str, int]:
+    """Sidebar league and week selectors. Returns (league_key, week); pages that ignore the week
+    pass show_week=False, and get the league's current week back."""
     leagues = data_api.leagues()
     if leagues.is_empty():
         no_data_warning()
@@ -102,5 +103,7 @@ def league_picker() -> tuple[str, int]:
     if current_week is None:
         st.sidebar.warning("Current week unknown; showing week 1. Run `make refresh`.")
     current = int(current_week or 1)
+    if not show_week:
+        return str(league_key), current
     week = st.sidebar.selectbox("Week", range(1, MAX_WEEK + 1), index=current - 1, key="week")
     return str(league_key), int(week)

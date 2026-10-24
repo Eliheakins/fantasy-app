@@ -9,7 +9,7 @@ from ui import (
     waivers,
 )
 
-league_key, _week = league_picker()
+league_key, _week = league_picker(show_week=False)
 st.title("Waivers")
 try:
     adds = waivers(league_key)

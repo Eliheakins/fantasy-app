@@ -1,7 +1,7 @@
 import streamlit as st
 from ui import league_picker, no_data_warning, player_outlook
 
-league_key, _week = league_picker()
+league_key, _week = league_picker(show_week=False)
 st.title("Player outlook")
 scope = st.radio(
     "Players", ["My roster", "Other rosters", "Free agents"], horizontal=True, key="outlook_scope"

@@ -27,6 +27,7 @@ from fantasy._engine import (
 )
 from fantasy._schemas import ENGINE_SCHEMAS
 from fantasy.sim import moves
+from fantasy.sim.availability import LONG_TERM
 from fantasy.sim.lineup import Player, lineup_slots, lineup_with_locks
 from fantasy.sim.odds import LeagueData
 from fantasy.sim.winprob import choose, pick_by_quantile, search, swap_candidates
@@ -48,14 +49,23 @@ def _game_state(live: dict[str, tuple[float, float]], gsis_id: str) -> str:
     return "Final" if share <= 0.0 else f"Live, {share:.0%} left"
 
 
+def _is_out(data: LeagueData, gsis_id: str) -> bool:
+    flag = data.injuries.get(gsis_id)
+    return flag is not None and (flag[0] == "Out" or flag[0] in LONG_TERM)
+
+
 def _spread(
     p: Player,
     level: float,
     chance: dict[str, float],
     ratio: dict[tuple[str, int, float], float],
     edges: dict[str, list[float]],
+    out: bool = False,
 ) -> float | None:
-    """The player's full-game projection scaled to the `level` quantile, or None if unmeasured."""
+    """The player's full-game projection scaled to the `level` quantile, or None if unmeasured.
+    A player who is out has no range: 0, not what he would score if he played."""
+    if out:
+        return 0.0
     full = Player(p.id, p.position, p.value / max(chance.get(p.id, 1.0), PLAY_PROB_FLOOR))
     ratio_at = ratio.get((p.position, _tier(edges, full), level))
     return None if ratio_at is None else full.value * ratio_at
@@ -102,8 +112,8 @@ def lineup(
             "full_name": names.get(p.id, p.id),
             "position": p.position,
             "projection": p.value,
-            "p10": _spread(p, 0.1, chance, ratio, edges),
-            "p90": _spread(p, 0.9, chance, ratio, edges),
+            "p10": _spread(p, 0.1, chance, ratio, edges, _is_out(data, p.id)),
+            "p90": _spread(p, 0.9, chance, ratio, edges, _is_out(data, p.id)),
             "starting_now": p.id in starting,
             "recommended": p.id in slot_of,
             "injury": status.get(p.id),

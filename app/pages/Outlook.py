@@ -9,7 +9,7 @@ from ui import (
     seed_distribution,
 )
 
-league_key, _week = league_picker()
+league_key, _week = league_picker(show_week=False)
 st.title("Outlook")
 odds = season_odds(league_key)
 if odds.is_empty():
