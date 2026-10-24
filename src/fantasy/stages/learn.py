@@ -189,10 +189,16 @@ def _index() -> pl.Expr:
 
 
 def lag_asof(
-    target: pl.DataFrame, table: pl.DataFrame, by: str, cols: list[str], prefix: str
+    target: pl.DataFrame,
+    table: pl.DataFrame,
+    by: str,
+    cols: list[str],
+    prefix: str,
+    shift: int = 0,
 ) -> pl.DataFrame:
-    """Each column's weighted average over the rows of `table` strictly before the target game,
-    as `<prefix>_<column>`. A value missing in the latest row carries the earlier one forward."""
+    """Each column's weighted average over the rows of `table` strictly before the target game
+    (`shift` weeks earlier, for a forecast made further ahead), as `<prefix>_<column>`. A value
+    missing in the latest row carries the earlier one forward."""
     lagged = [f"{prefix}_{c}" for c in cols]
     state = (
         table.sort(by, "season", "week")
@@ -210,7 +216,7 @@ def lag_asof(
         .select(by, "t", *lagged)
         .sort("t")
     )
-    left = target.with_columns(_index().alias("t")).sort("t")
+    left = target.with_columns((_index() - shift).alias("t")).sort("t")
     return left.join_asof(
         state, on="t", by=by, strategy="backward", allow_exact_matches=False
     ).drop("t")
@@ -254,8 +260,10 @@ def attach_extras(
         out = latest_asof(out, extras.depth.unique(KEY), "gsis_id", DEPTH_COLUMNS, horizon - 1)
         out = out.with_columns([pl.lit(None, dtype=pl.Float64).alias(c) for c in ECR_COLUMNS])
     out = latest_asof(out, extras.roster.unique(KEY), "gsis_id", ROLE_COLUMNS)
-    out = lag_asof(out, extras.pace, "team", PACE_COLUMNS, "pace")
-    return lag_asof(out, extras.advanced.unique(KEY), "gsis_id", ADVANCED_COLUMNS, "adv")
+    out = lag_asof(out, extras.pace, "team", PACE_COLUMNS, "pace", horizon - 1)
+    return lag_asof(
+        out, extras.advanced.unique(KEY), "gsis_id", ADVANCED_COLUMNS, "adv", horizon - 1
+    )
 
 
 def build_features(

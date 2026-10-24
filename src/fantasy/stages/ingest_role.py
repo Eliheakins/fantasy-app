@@ -54,6 +54,9 @@ def new_depth(snapshots: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
     picked = kicks.join_asof(
         taken, left_on="kick", right_on="taken", by="team", strategy="backward"
     )
+    unmatched = picked.filter(pl.col("taken").is_null())["team"].unique().sort().to_list()
+    if unmatched:  # most likely a team abbreviation that differs between the two sources
+        raise ValueError(f"no depth chart snapshot before the game for teams {unmatched}")
     ranks = snaps.select(
         "team", "taken", "gsis_id", pl.col("pos_rank").cast(pl.Float64).alias("depth_rank")
     )
@@ -92,7 +95,11 @@ def matched_rankings(rankings: pl.DataFrame, calendar: pl.DataFrame) -> pl.DataF
     scrapes = ranked.select("scraped").unique().sort("scraped")
     matched = scrapes.join_asof(
         calendar.sort("first_game"), left_on="scraped", right_on="first_game", strategy="forward"
-    ).filter((pl.col("first_game") - pl.col("scraped")).dt.total_days() <= RANKING_MAX_GAP_DAYS)
+    ).filter(
+        (pl.col("first_game") - pl.col("scraped"))
+        .dt.total_days()
+        .is_between(1, RANKING_MAX_GAP_DAYS)
+    )  # a scrape on game day may follow kickoff, so it does not count
     latest = matched.group_by("season", "week").agg(pl.col("scraped").last())
     keep = latest.join(matched, on=["season", "week", "scraped"])
     return (
@@ -177,7 +184,8 @@ def load_pace() -> pl.DataFrame:
     for season in SEASONS:
         try:
             pbp = nfl.load_pbp([season])
-        except Exception:  # a season nflverse has not published yet
+        except Exception as error:  # nflverse may not have published the season yet
+            print(f"team pace: skipping {season}: {type(error).__name__}: {str(error)[:80]}")
             continue
         plays = pbp.filter(
             (pl.col("season_type") == "REG")
@@ -194,6 +202,8 @@ def load_pace() -> pl.DataFrame:
             )
             .rename({"posteam": "team"})
         )
+    if not rows:
+        raise RuntimeError("no play-by-play season could be loaded")
     return pl.concat(rows).with_columns(
         pl.col("season").cast(pl.Int64), pl.col("week").cast(pl.Int64)
     )

@@ -84,3 +84,33 @@ def test_a_ranking_counts_for_the_next_game_week_and_the_last_scrape_before_it_w
     assert out["week"].to_list() == [1, 2]
     assert out["ecr"].to_list() == [10.0, 8.0]
     assert out["range"].to_list() == [7.0, 4.0]
+
+
+def test_a_scrape_taken_on_game_day_does_not_count_for_that_game() -> None:
+    cal = pl.DataFrame({"season": [2025], "week": [1], "first_game": [dt.date(2025, 9, 4)]})
+    rankings = pl.DataFrame(
+        {
+            "id": ["1", "1"],
+            "scrape_date": ["2025-09-03", "2025-09-04"],
+            "ecr": [10.0, 99.0],
+            "sd": [1.0, 1.0],
+            "best": [5.0, 5.0],
+            "worst": [15.0, 15.0],
+        }
+    )
+    assert r.matched_rankings(rankings, cal)["ecr"].to_list() == [10.0]
+
+
+def test_a_team_with_no_depth_snapshot_is_an_error_not_a_silent_drop() -> None:
+    snaps = pl.DataFrame(
+        {
+            "team": ["LAR"],  # the schedule says LA
+            "dt": ["2025-09-01T10:00:00Z"],
+            "gsis_id": ["A"],
+            "pos_abb": ["WR"],
+            "pos_rank": [1],
+        }
+    )
+    games = pl.DataFrame({"season": [2025], "week": [1], "team": ["LA"], "gameday": ["2025-09-07"]})
+    with pytest.raises(ValueError, match="LA"):
+        r.new_depth(snaps, games)

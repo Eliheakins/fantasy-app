@@ -163,3 +163,19 @@ def test_a_column_that_is_empty_or_constant_in_training_does_not_break_the_fit()
     y = 2.0 * x[:, 0] + rng.normal(scale=0.3, size=3000)
     pred = learn.fit_predict(x[:2500], y[:2500], x[2500:])
     assert np.corrcoef(pred, y[2500:])[0, 1] > 0.9
+
+
+def test_a_forecast_made_further_ahead_cannot_see_games_after_its_origin() -> None:
+    table = pl.DataFrame(
+        {
+            "team": ["KC"] * 4,
+            "season": [2025] * 4,
+            "week": [1, 2, 3, 4],
+            "plays": [60.0, 70.0, 100.0, 10.0],
+        }
+    )
+    target = pl.DataFrame({"team": ["KC"], "season": [2025], "week": [5]})
+    ahead = learn.lag_asof(target, table, "team", ["plays"], "pace", shift=2)
+    assert 60.0 < ahead["pace_plays"].item() < 70.0  # weeks 1 and 2 only, as at the origin
+    now = learn.lag_asof(target, table, "team", ["plays"], "pace")
+    assert now["pace_plays"].item() < 60.0  # one game ahead sees week 4's 10 as well
