@@ -23,7 +23,7 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 
 ## Conventions
 
-- Parquet under `data/` (gitignored) is the source of truth. DuckDB is only in-memory views.
+- Parquet under `data/` (gitignored) is the source of truth. Stages and `data_api.py` read it with polars; DuckDB is not a dependency (add it back only if a query needs it).
 - The dashboard imports only `fantasy.data_api`.
 - No secrets in the repo. API keys come from environment variables.
 - Lean MVP: simplest method that works, tests only for math and config, no CI.
@@ -48,7 +48,7 @@ A missing table for a layer in step 4, or for calibration or the Sleeper blend, 
 - `data/archive/` cannot be regenerated: our own weekly projections for the next game (`proj_snapshots`, the clean test of the learned model), Sleeper projection snapshots (re-stamped by the endpoint after games, so only our own snapshots are clean), odds snapshots, season-odds history. Back it up before wiping `data/`. Issue #40 depends on it.
 - Point-valued effects are measured in the reference league (lowest league id) and scaled per league (`sim/scoring_scale.py`). Add a new point-valued effect to the `*_POINT_KINDS` sets in `stages/simulate.py`, or YinzBurgh (0.5 PPR) will be overstated.
 - My teams: Colgate "Lisan Al-Caleb", YinzBurgh "LaPorta Potty" (Sleeper's `is_me` flag, not the league's top team).
-- `data_api.py` is 1150 lines. Splitting it would bypass tests that patch `data_api.leagues` and `data_api._read`; fix those patches first.
+- `data_api.py` (370 lines) re-exports entry points that live in private sibling modules (`_engine`, `_lineup`, `_market`, `_outlook`, `_schemas`). Tests patch only `data_api.leagues` (`tests/test_app_pages.py`, `tests/test_data_api_engine.py`), so keep any function that calls `leagues` in `data_api.py`, and never call it from a `_`-module.
 - The learned model's past-game projections for 2019 and 2020 come from models that saw later seasons, so `store.projection_table()` drops them; never fit residual sizes or effects on them. Model features must use only games before the target game: pass a horizon shift to every lagged join (`learn.lag_asof`, `latest_asof`), and add a test.
 - FantasyPros weekly rankings (`nfl_ecr`) are private-use only: keep them under the gitignored `data/` and never commit or share them. No paid data (user decision, 2026-10-23).
 - `environment_layer = false` in `config.toml`: the corner and offense-efficiency adjustments had no held-out gain on the learned projections. The stage and code remain.

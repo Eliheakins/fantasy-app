@@ -25,7 +25,7 @@ One story is one working session. Engine and dashboard stories are merged per ep
 - Live scoring uses a 200-minute game clock and the last refresh; nothing polls, and season odds on Home only update on `simulate`.
 - The trade finder searches each team's top 6 players only.
 - Win probability uses league-average K and DEF for what is left to play.
-- The Sleeper blend weight (50%) is untested on clean data: #40, around week 11.
+- The Sleeper blend weight (50%) is untested on clean data: #40, around week 11. Also test the rule that a Sleeper 0 counts as missing for Questionable and Doubtful players (unvalidated, see decisions.md): score both rules on clean snapshots from week 8.
 - DEF scoring matches Sleeper exactly in 52 of 60 (Colgate) and 41 of 60 (YinzBurgh) team-weeks; the rest are off by 1 to 2 points, likely special-teams recoveries. The K projection is no better than the league average; the DEF projection is about 3% better.
 - The season simulation still uses league-average K and DEF per slot (accepted).
 - tau is now estimated from history, but the spread of season win totals is untested (no league history).
