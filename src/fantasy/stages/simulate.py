@@ -176,6 +176,16 @@ def _apply_environment(
     return apply_environment(projections, Situation(team_z, cb_absent, opponent), effects, current)
 
 
+def _first_game_chance(current: int) -> dict[str, float]:
+    """gsis id -> classifier chance of playing this week's game, when the stage has run."""
+    try:
+        table = store.read_table("availability")
+    except FileNotFoundError:
+        return {}
+    now = table.filter((pl.col("season") == load_config().season) & (pl.col("week") == current))
+    return dict(zip(now["gsis_id"], now["p_play"], strict=True))
+
+
 def _injury_flags(flagged: pl.DataFrame, current: int) -> dict[str, Flag]:
     """gsis id -> (Sleeper status, body part, practice participation). Body part and practice
     come from the latest nflverse injury report this season; practice counts only once a game
@@ -251,7 +261,9 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
     if model is None:
         projections = scale_projections(blended, {g: f[0] for g, f in flags.items()}, current)
     else:
-        projections = injury_projections(blended, flags, model, current)
+        projections = injury_projections(
+            blended, flags, model, current, _first_game_chance(current)
+        )
     scale = _scale_to_league(lid)
     projections = _apply_outlook(projections, current, scale)
     projections = _apply_environment(projections, current, model, scale)

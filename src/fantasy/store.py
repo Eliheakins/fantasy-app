@@ -169,6 +169,8 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     "proj_sleeper": _cols(strings="league_id sleeper_id", ints="week", floats="projection"),
     # written by injuries (area: derived): chance of playing the next four games by injury report
     "injury_effects": _cols(strings="status practice body", ints="n", floats="p0 p1 p2 p3 perf"),
+    # written by availability (area: derived): chance of playing the current week
+    "availability": _cols(strings="gsis_id", ints="season week", floats="p_play"),
     # written by outlook (area: derived): return-from-absence ratios and teammate-vacancy slopes
     "outlook_effects": _cols(strings="position kind", ints="n", floats="value"),
     # written by environment (area: derived): offense efficiency and opposing-corner effects
