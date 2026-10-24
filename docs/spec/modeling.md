@@ -444,7 +444,7 @@ Each story is sized for one working session. Done-when is one line.
 ### E3 Scoring engine, baseline projections, backtest, K/DEF streaming
 
 1. **E3-1 Scoring engine.** Map Sleeper stat keys to nflverse columns; `score(stat_lines, scoring_settings)`. Done when: 5 completed player-weeks per league match Sleeper `players_points` exactly.
-2. **E3-2 Historical weekly table.** Player-week and team-week table in DuckDB with league-scored points for both leagues (2018+ or what loads), joined to schedule (spread, total, roof, weather). Done when: any player-week is queryable with both leagues' points.
+2. **E3-2 Historical weekly table.** Player-week and team-week table in parquet with league-scored points for both leagues (2018+ or what loads), joined to schedule (spread, total, roof, weather). Done when: any player-week is queryable with both leagues' points.
 3. **E3-3 Rolling expected-points baseline.** Usage-based fallback model (section 2.3) producing stat-line projections per player-week with walk-forward safety. Done when: it emits a projection for every active player for a past week without using future data (leak test passes).
 4. **E3-4 Source check and consensus ingestion.** Load `load_ff_rankings` and decide the baseline source (the spike another agent is running); convert to league scoring or rank-to-points curve. Done when: baseline source for backtests is chosen and documented in decisions.md.
 5. **E3-5 Distribution and correlation estimation.** Gamma marginals with seed CVs refit by position; correlation pair table estimation (section 4.4) written to parquet with bootstrap intervals. Done when: `correlation_pairs.parquet` exists and QB-WR is within 0.05 of the measured seed table.

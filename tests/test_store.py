@@ -50,7 +50,18 @@ def test_bad_table_name_rejected(tmp_path: Path) -> None:
         store.table_path("../x", data_dir=tmp_path)
 
 
-def test_duckdb_views_read_the_files(tmp_path: Path) -> None:
-    store.write_table("demo", demo_frame(), data_dir=tmp_path)
-    con = store.connect(tmp_path)
-    assert con.execute("SELECT sum(points) FROM demo").fetchone() == (4.0,)
+def test_write_tables_replaces_nothing_when_one_table_fails_its_schema(
+    tmp_path,
+    monkeypatch,  # type: ignore[no-untyped-def]
+) -> None:
+    monkeypatch.setattr(
+        store,
+        "table_path",
+        lambda name, area="derived", data_dir=None: tmp_path / f"{name}.parquet",
+    )
+    good = pl.DataFrame({"x": [1]})
+    monkeypatch.setitem(store.SCHEMAS, "t_good", {"x": pl.Int64})
+    monkeypatch.setitem(store.SCHEMAS, "t_bad", {"y": pl.Int64})
+    with pytest.raises(ValueError):
+        store.write_tables({"t_good": good, "t_bad": good})
+    assert list(tmp_path.iterdir()) == []

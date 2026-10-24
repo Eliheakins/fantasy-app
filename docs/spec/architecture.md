@@ -7,7 +7,7 @@ Status: merged into the plan on 2026-10-23. The "Problems the agent found" list 
 ```
 pyproject.toml  uv.lock  Makefile  config.toml
 src/fantasy/
-  config.py   store.py (paths, atomic parquet write, column schemas, DuckDB views)
+  config.py   store.py (paths, atomic parquet write, column schemas)
   sources/    sleeper.py  nfl.py
   scoring.py  (pure: stats x league settings -> points)
   models/     baseline.py  kdef.py
@@ -21,7 +21,7 @@ data/         gitignored: raw/ derived/ archive/
 
 ## Storage
 
-Parquet is the source of truth. DuckDB runs in memory as views over the files. No persistent .duckdb file, so Streamlit reads never fight a refresh over DuckDB's single-writer lock.
+Parquet is the source of truth.
 
 | Table | Key | Writer | Readers |
 |---|---|---|---|
@@ -83,6 +83,6 @@ Each stage runs as `uv run python -m fantasy.stages.X --season S --week W`. It r
 4. Title odds need rest-of-season projections for every rostered player in both leagues, plus an assumed opponent behavior (start the highest-mean lineup, make no adds). E3 must project the rest of the season, not one week.
 5. Future-week matchup pairings from Sleeper are unverified. Spike in E4.
 6. Over-built for the MVP: Gaussian copula (a shared team-game shock does the job), Kalman and changepoint breakout detection, conformal calibration, Weibull return times, and 50k sims inside an interactive partner finder (use about 5k with common random numbers).
-7. "DuckDB plus parquet" is two stores. Keep parquet.
+7. A second store beside parquet (for example DuckDB) is not needed. Keep parquet.
 
 Risk to watch: if the ID crosswalk or future matchup pairings fail, E1 and E4 lose their foundations.

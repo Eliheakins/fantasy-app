@@ -1,4 +1,4 @@
-"""Parquet store: atomic writes, schema checks, in-memory DuckDB views.
+"""Parquet store: atomic writes, schema checks.
 
 Parquet files under data/ are the source of truth. Each table has one file at
 data/<area>/<name>.parquet, where area is raw, derived or archive. Stages register their
@@ -9,13 +9,14 @@ import os
 import re
 from pathlib import Path
 
-import duckdb
 import polars as pl
 
 from fantasy.config import ROOT, load_config
 
 DATA_DIR = ROOT / "data"
 AREAS = ("raw", "derived", "archive")
+SKILL = ["QB", "RB", "WR", "TE"]  # positions the projection and simulation layers cover
+WEEK_STRIDE = 25  # weeks per season in the running index; playoffs reach week 22
 _NAME = re.compile(r"^[a-z][a-z0-9_]*$")
 
 _S, _I, _F, _B = pl.String, pl.Int64, pl.Float64, pl.Boolean
@@ -306,20 +307,59 @@ def check_schema(name: str, df: pl.DataFrame) -> None:
         raise ValueError(f"{name}: wrong dtypes {wrong} (actual, expected)")
 
 
+def week_index() -> pl.Expr:
+    """A running week count: shifting it back by k weeks crosses season boundaries correctly."""
+    return pl.col("season") * WEEK_STRIDE + pl.col("week")
+
+
+def team_game_index(team_games: pl.DataFrame) -> pl.DataFrame:
+    """Each team's regular-season games as (team, season, week, g), g counting from 0 within the
+    team's season."""
+    return (
+        team_games.filter(pl.col("game_type") == "REG")
+        .select("team", "season", "week")
+        .sort("team", "season", "week")
+        .with_columns(pl.int_range(pl.len()).over("team", "season").alias("g"))
+    )
+
+
+def write_tables(
+    tables: dict[str, pl.DataFrame], area: str = "derived", data_dir: Path = DATA_DIR
+) -> None:
+    """Write several tables so that a failure leaves none of them replaced: every table is
+    checked and written to a temp file first, and the files are moved into place at the end."""
+    for name, df in tables.items():
+        check_schema(name, df)
+    staged: dict[Path, Path] = {}
+    try:
+        for name, df in tables.items():
+            path = table_path(name, area, data_dir)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(".parquet.tmp")
+            staged[tmp] = path
+            df.write_parquet(tmp)
+        for tmp, path in staged.items():
+            os.replace(tmp, path)
+    finally:
+        for tmp in staged:
+            tmp.unlink(missing_ok=True)
+
+
 def write_table(
     name: str, df: pl.DataFrame, area: str = "derived", data_dir: Path = DATA_DIR
 ) -> Path:
-    check_schema(name, df)
-    path = table_path(name, area, data_dir)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".parquet.tmp")
+    write_tables({name: df}, area, data_dir)
+    return table_path(name, area, data_dir)
+
+
+def with_archive(name: str, new: pl.DataFrame, data_dir: Path = DATA_DIR) -> pl.DataFrame:
+    """The archive table with `new` appended, or `new` alone when no archive exists yet.
+    Reads only; the caller writes."""
     try:
-        df.write_parquet(tmp)
-        os.replace(tmp, path)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
-    return path
+        old = read_table(name, "archive", data_dir)
+    except FileNotFoundError:
+        return new
+    return pl.concat([old, new])
 
 
 def read_table(name: str, area: str = "derived", data_dir: Path = DATA_DIR) -> pl.DataFrame:
@@ -329,20 +369,6 @@ def read_table(name: str, area: str = "derived", data_dir: Path = DATA_DIR) -> p
     df = pl.read_parquet(path)
     check_schema(name, df)
     return df
-
-
-def connect(data_dir: Path = DATA_DIR) -> duckdb.DuckDBPyConnection:
-    """In-memory DuckDB with one view per parquet file, named after the table."""
-    con = duckdb.connect(":memory:")
-    seen: dict[str, Path] = {}
-    for area in AREAS:
-        for path in sorted((data_dir / area).glob("*.parquet")):
-            if path.stem in seen:
-                raise ValueError(f"table {path.stem!r} is in two areas: {seen[path.stem]}, {path}")
-            seen[path.stem] = path
-            escaped = str(path).replace("'", "''")
-            con.execute(f"CREATE VIEW \"{path.stem}\" AS SELECT * FROM read_parquet('{escaped}')")
-    return con
 
 
 # proj_learned seasons scored by models trained on later seasons (see stages/learn.py): fine for

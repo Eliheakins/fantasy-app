@@ -72,7 +72,7 @@ During the season, run `make refresh` after games and before setting a lineup. T
 config.toml            leagues and user (no secrets)
 src/fantasy/
   data_api.py          the only module the dashboard imports: reads over the parquet store
-  store.py             parquet store: atomic writes, schema checks, in-memory DuckDB views
+  store.py             parquet store: atomic writes, schema checks
   scoring.py           Sleeper scoring settings applied to nflverse stat lines
   sources/             Sleeper client
   stages/              pipeline stages, each run as python -m fantasy.stages.<name>

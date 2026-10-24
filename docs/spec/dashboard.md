@@ -275,7 +275,7 @@ Data: `player_card` with `player_id`, `player_name`, `pos`, `team`, `owner_roste
 |---|---|---|
 | Multipage | `st.navigation([st.Page(...)])` with `st.set_page_config(layout="wide")` in the entrypoint `app.py`; pages in `pages/` or defined in code | Position `"sidebar"` or `"top"`. League selector and week selector go in the entrypoint above the navigation so they persist. |
 | Shared state | `st.session_state` keys `league_id`, `week`, plus per-view keys | Set defaults once in `app.py` |
-| Caching | `@st.cache_data(ttl=...)` for data-layer reads, keyed by (league, week, file mtime). `@st.cache_resource` for the DuckDB connection | Pass the parquet `mtime` as an argument so a refresh busts the cache. Engine output is precomputed, so reads are cheap and `ttl` is only a safety net. |
+| Caching | `@st.cache_data(ttl=...)` for data-layer reads, keyed by (league, week, file mtime). `@st.cache_resource` for any long-lived resource | Pass the parquet `mtime` as an argument so a refresh busts the cache. Engine output is precomputed, so reads are cheap and `ttl` is only a safety net. |
 | Range bar | `st.column_config.ImageColumn` with a base64 SVG data URI | Checked in the prototype: renders in `st.dataframe`. Helper function builds the SVG from `p10, p50, p90` and the shared axis. |
 | Sparkline | `st.column_config.LineChartColumn`, `BarChartColumn` | Checked. Takes a list column. |
 | Progress and win% | `st.column_config.ProgressColumn(format="percent")` | Checked. Set neutral `primaryColor`. |
@@ -316,7 +316,7 @@ The data layer in section 4 is the migration seam: the React app would call the 
 
 ## 4. Data layer interface
 
-Module `fantasy.data_api` (`src/fantasy/data_api.py`). Rules: pure read functions, no Streamlit imports, no mutation, return `polars.DataFrame` for tables or plain dataclasses/dicts for single records. The UI never touches DuckDB or parquet directly. Each function reads engine output (parquet or DuckDB views) for the given `league_id` and `week`. If output is missing, return an empty frame with the correct columns (never raise for "not computed yet"). Raise only for programmer errors.
+Module `fantasy.data_api` (`src/fantasy/data_api.py`). Rules: pure read functions, no Streamlit imports, no mutation, return `polars.DataFrame` for tables or plain dataclasses/dicts for single records. The UI never touches parquet directly. Each function reads engine output (parquet) for the given `league_id` and `week`. If output is missing, return an empty frame with the correct columns (never raise for "not computed yet"). Raise only for programmer errors.
 
 ```python
 # Common

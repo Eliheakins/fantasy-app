@@ -1,6 +1,6 @@
 # Data source spikes (measured 2026-10-22)
 
-Every number below was measured by running real calls. Scratch scripts and cached responses live in `/private/tmp/claude-501/-Users-eliheakins/f1c4f309-1847-4dfc-9529-f4531042b485/scratchpad/spikes`. Environment: Python 3.12 (uv), nflreadpy, polars, duckdb, requests. At the time of the run the real calendar was NFL week 7, regular season, and week 7 Thursday night (NE at CHI) was final.
+Every number below was measured by running real calls. Scratch scripts and cached responses live in `/private/tmp/claude-501/-Users-eliheakins/f1c4f309-1847-4dfc-9529-f4531042b485/scratchpad/spikes`. Environment: Python 3.12 (uv), nflreadpy, polars, requests. At the time of the run the real calendar was NFL week 7, regular season, and week 7 Thursday night (NE at CHI) was final.
 
 Sleeper usage: 35 GET calls total, players file fetched once (12,229 entries, 0.5 s), no auth, no errors, no rate-limit signals.
 
