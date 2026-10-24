@@ -177,17 +177,8 @@ def future_targets(
     )
 
 
-def run() -> dict[str, int]:
-    leagues = store.read_table("leagues", "raw")
-    exp = expected_frame(
-        store.read_table("nfl_ff_opportunity", "raw"), store.read_table("player_points"), leagues
-    )
-    prior = position_prior(exp)
-    form = build_form(exp, prior)
-    games = store.read_table("team_games")
-    store.write_table("player_form", form)
-
-    history = project_targets(history_targets(exp), form, prior, games)
+def current_and_rostered() -> tuple[pl.DataFrame, pl.DataFrame]:
+    """Each player's current team and position, and the players on my rosters."""
     id_map = store.read_table("id_map")
     positions = store.read_table("sleeper_players", "raw").select("sleeper_id", "position")
     current = (
@@ -209,6 +200,21 @@ def run() -> dict[str, int]:
         .select("league_id", "gsis_id")
         .unique()
     )
+    return current, rostered
+
+
+def run() -> dict[str, int]:
+    leagues = store.read_table("leagues", "raw")
+    exp = expected_frame(
+        store.read_table("nfl_ff_opportunity", "raw"), store.read_table("player_points"), leagues
+    )
+    prior = position_prior(exp)
+    form = build_form(exp, prior)
+    games = store.read_table("team_games")
+    store.write_table("player_form", form)
+
+    history = project_targets(history_targets(exp), form, prior, games)
+    current, rostered = current_and_rostered()
     future = project_targets(future_targets(form, current, rostered, games), form, prior, games)
     both = [
         history.with_columns(is_future=pl.lit(False)),

@@ -12,6 +12,7 @@ dependencies = [
     "nflreadpy>=0.1.5",
     "numpy>=2.5.4",
     "polars>=2.0.0",
+    "scikit-learn>=1.9.1",
     "scipy>=1.18.1",
     "streamlit>=1.66.1",
 ]

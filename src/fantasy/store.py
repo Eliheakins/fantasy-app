@@ -182,6 +182,13 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         floats="projection context",
     )
     | {"has_history": _B, "is_future": _B},
+    # written by learn: the same columns as proj_baseline, so every consumer reads either one
+    "proj_learned": _cols(
+        strings="league_id gsis_id position team",
+        ints="season week as_of_season as_of_week",
+        floats="projection context",
+    )
+    | {"has_history": _B, "is_future": _B},
     # written by ingest_nfl (area: raw). Only the columns later stages use.
     "nfl_player_stats": _cols(
         strings="player_id player_display_name position season_type team opponent_team "

@@ -127,14 +127,17 @@ Not in the first build. Plan each after the redraft version works.
 - Defender injury curves: measure the chance of playing for corners and other defenders instead of reusing the skill-player curves (the injury data covers every position). It only touches the corner-out effect, so it is low priority.
 - News LLM, React front end (revisit if phone access matters), draft assistant, lineup what-if.
 
-## Modeling v2 (proposed, not approved)
+## Modeling v2 (approved 2026-10-23; no paid data)
 
-From the 2026-10-23 research and tests in `decisions.md`. In order:
+Plan from the `ecc:planner` agent, adjusted for the FantasyPros rankings now allowed (private use). Baseline stays as the fallback behind a config switch (`projection_model = "learned" | "baseline"`). The switch defaults to `learned` only after M2 passes.
 
-1. **Learned player model.** Replace the rolling baseline as the model-based component with a gradient-boosted model on lagged features (1.3% lower RMSE out of sample, better in 2024, 2025 and 2026). Re-estimate calibration, marginals and correlations from its residuals. Ships only if it keeps beating the baseline on weeks as they arrive.
-2. **Weight on an outside projection.** The prior from FantasyData is about 0.8 on the outside source; #40 sets the Sleeper weight around week 11. Consider moving the default above 50% if the first snapshots agree.
-3. **Market data test.** One month of the Odds API $30 plan to backfill 2023 to 2025 prop closing lines (about 5K credits, estimated), de-vig and convert to means, compare held-out RMSE of the market mean, the learned model and FantasyData on covered players. Meanwhile keep the weekly free-tier snapshots running.
-4. **Full-stack evaluation.** Backfill the injury, return and environment layers historically so the production stack, not only the baseline, can be scored against an outside source.
-5. **Role data.** Load depth charts, participation (routes, personnel), weekly rosters, draft picks and combine data; draft capital as the prior for players with no history (FantasyData is 20% better on them).
-6. **Availability.** A separate chance-of-playing model from practice status, depth chart and game context, scored on all listed players rather than played-only rows.
-7. **Player-level checks.** Pinball loss and coverage by size tier on held-out player-weeks, beside the team-score check.
+| ID | Story | Done when |
+|---|---|---|
+| M1 | `stages/learn.py`: histogram gradient boosting on lagged features, walk-forward (season s scored by a model trained on earlier seasons from 2021; 2019 to 2020 leave-one-season-out, never used in an acceptance test); writes `proj_learned` with the schema of `proj_baseline`. Same feature code for history and future rows (state after game t joined strictly before the target). Features that differ between train and serve are left out (practice flags, weekly roster status, schedule temperature and wind). Retrain in the stage, no pickled models. | Held-out RMSE on 2024 to 2026 at least 1% below the size-calibrated baseline in both leagues, paired per-week t of 2 or more; no-lookahead and same-features tests pass |
+| M2 | Player-level pinball and coverage by size tier in `stages/backtest.py` for baseline, learned and trailing mean at +1 and +5 | Learned has lower pinball than baseline in at least 6 of 8 league-positions at both horizons; 80% coverage between 75% and 85% in every tier |
+| M3 | Switch and re-estimate: `config` key, `store.projection_table()`, the 10 `read_table("proj_baseline")` call sites, then rerun distributions, injuries, outlook, environment, simulate on the learned residuals | 2026 team-score z sd between 0.85 and 1.0 with 80% coverage 75% to 85%; surviving effects logged |
+| M4 | Role and context data: depth charts, weekly rosters (age, years, draft pick), PFR and NGS advanced stats, schedule rest and moneyline, team pace from play by play, FantasyPros weekly rankings; loaders in `ingest_nfl.py` and schemas in `store` | Each dataset ships only with held-out gain t of 2 or more; combined RMSE at or below 6.39 on 2024 to 2025 |
+| M5 | `stages/stack_history.py`: the injury, return and environment layers applied to past weeks, scored against the FantasyData panel | Each layer worsens held-out RMSE by at most 0.1% or is switched off; the stack-vs-FantasyData gap recorded |
+| M6 | `stages/availability.py`: chance of playing from status, practice, depth rank, snap trend, games missed and position, scored on all listed players | Brier on 2024 to 2025 below the current injury curves and below the flat miss rate for unflagged players |
+
+Order: M1 (with the M4 features that passed testing), M2, M3, then M4 loaders for the live path, M5, M6. Cut first if short: M6, M5, then pace and advanced stats within M4. Participation data is skipped (no gain).
