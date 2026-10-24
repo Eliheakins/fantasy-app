@@ -99,8 +99,10 @@ def state_frame(games: pl.DataFrame) -> pl.DataFrame:
     lag = []
     for column in LAG_COLUMNS:
         for half_life in HALF_LIVES:
+            # a value missing in the latest game carries the earlier one forward
             lag.append(
                 pl.col(column)
+                .forward_fill()
                 .ewm_mean(half_life=half_life)
                 .over(GROUP)
                 .alias(f"{column}_hl{half_life}")
@@ -178,7 +180,7 @@ def fit_predict(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray) ->
     return np.clip(model.predict(x_test), 0.0, None)
 
 
-def walk_forward(history: pl.DataFrame) -> pl.DataFrame:
+def walk_forward(history: pl.DataFrame, lines: bool = True) -> pl.DataFrame:
     """history: feature rows with `points`. A projection for every row from a model that did not
     see that row's season."""
     seasons = sorted(history["season"].unique().to_list())
@@ -186,7 +188,7 @@ def walk_forward(history: pl.DataFrame) -> pl.DataFrame:
     for season in seasons:
         train = history.filter(pl.col("season").is_in(train_seasons(season, seasons)))
         test = history.filter(pl.col("season") == season)
-        pred = fit_predict(design(train, True), train["points"].to_numpy(), design(test, True))
+        pred = fit_predict(design(train, lines), train["points"].to_numpy(), design(test, lines))
         parts.append(test.with_columns(pl.Series("projection", pred)))
     return pl.concat(parts)
 
@@ -204,6 +206,35 @@ def predict_future(history: pl.DataFrame, future: pl.DataFrame) -> pl.DataFrame:
         )
         parts.append(rows.with_columns(pl.Series("projection", pred)))
     return pl.concat(parts) if parts else future.with_columns(pl.lit(0.0).alias("projection"))
+
+
+def history_forecasts(horizon: int = 1) -> pl.DataFrame:
+    """Walk-forward projections for past games made `horizon` games ahead. One game ahead uses the
+    game's lines; further ahead no lines exist, so none are used (the future path in `run`)."""
+    leagues = store.read_table("leagues", "raw")
+    opp = store.read_table("nfl_ff_opportunity", "raw")
+    exp = expected_frame(opp, store.read_table("player_points"), leagues)
+    games_all = games_frame(
+        exp,
+        opp,
+        store.read_table("nfl_snaps", "raw"),
+        store.read_table("nfl_player_stats", "raw"),
+    )
+    lines = store.read_table("team_games")
+    parts = []
+    for lid in leagues["league_id"].to_list():
+        games = games_all.filter(pl.col("league_id") == lid)
+        targets = history_targets(exp.filter(pl.col("league_id") == lid))
+        features = feature_frame(targets, state_frame(games), horizon)
+        if horizon == 1:
+            features = with_lines(features, lines)
+        history = features.join(
+            games.select(*GROUP, "season", "week", "points"), on=[*GROUP, "season", "week"]
+        )
+        parts.append(
+            walk_forward(history, lines=horizon == 1).select(*GROUP, "season", "week", "projection")
+        )
+    return pl.concat(parts)
 
 
 def run() -> dict[str, int]:

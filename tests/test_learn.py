@@ -114,3 +114,13 @@ def test_predictions_never_go_below_zero() -> None:
     x = np.array([[0.0], [1.0], [2.0], [3.0]] * 30)
     y = np.array([0.0, 0.0, 1.0, 2.0] * 30)
     assert (learn.fit_predict(x, y, np.array([[-5.0]])) >= 0).all()
+
+
+def test_a_missing_value_in_the_latest_game_keeps_the_earlier_weighted_average() -> None:
+    g = games([10.0, 12.0, 8.0]).with_columns(
+        pl.when(pl.col("week") == 3).then(None).otherwise(pl.col("snap")).alias("snap")
+    )
+    state = learn.state_frame(g)
+    last = state.filter(pl.col("as_of_week") == 3)
+    assert last["snap_hl4"].item() == pytest.approx(70.0)  # carried forward, not blanked
+    assert last["snap_last"].item() is None  # the last value itself stays missing

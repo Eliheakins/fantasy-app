@@ -160,7 +160,7 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     # written by backtest (area: derived)
     "backtest_metrics": _cols(
         strings="league_id position forecaster",
-        ints="horizon n",
+        ints="horizon n tier",
         floats="rmse mae pinball coverage80",
     ),
     # written by distributions (area: derived). ratio = quantile tau of actual / projected points.
