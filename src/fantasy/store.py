@@ -12,7 +12,7 @@ from pathlib import Path
 import duckdb
 import polars as pl
 
-from fantasy.config import ROOT
+from fantasy.config import ROOT, load_config
 
 DATA_DIR = ROOT / "data"
 AREAS = ("raw", "derived", "archive")
@@ -300,3 +300,31 @@ def connect(data_dir: Path = DATA_DIR) -> duckdb.DuckDBPyConnection:
             escaped = str(path).replace("'", "''")
             con.execute(f"CREATE VIEW \"{path.stem}\" AS SELECT * FROM read_parquet('{escaped}')")
     return con
+
+
+# proj_learned seasons scored by models trained on later seasons (see stages/learn.py): fine for
+# the held-out checks that start in 2024, but not for fits of residual sizes or effects
+LEARNED_FIRST_CLEAN_SEASON = 2021
+
+
+def projection_name(data_dir: Path | None = None) -> str:
+    """proj_learned when config.toml says so and the table exists, else proj_baseline."""
+    root = DATA_DIR if data_dir is None else data_dir
+    if (
+        load_config().projection_model == "learned"
+        and table_path("proj_learned", "derived", root).exists()
+    ):
+        return "proj_learned"
+    return "proj_baseline"
+
+
+def projection_table(data_dir: Path | None = None) -> pl.DataFrame:
+    """The projections the simulation and its fits use. The learned table leaves out past games
+    from the seasons before LEARNED_FIRST_CLEAN_SEASON, which its walk-forward could not score
+    cleanly; future rows are kept."""
+    root = DATA_DIR if data_dir is None else data_dir
+    name = projection_name(root)
+    table = read_table(name, "derived", root)
+    if name == "proj_learned":
+        table = table.filter(pl.col("is_future") | (pl.col("season") >= LEARNED_FIRST_CLEAN_SEASON))
+    return table

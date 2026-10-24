@@ -130,7 +130,7 @@ ENVIRONMENT_POINT_KINDS = frozenset({"opp_cb_out", "team_pass_epa", "team_sack_r
 def _scale_to_league(league_id: str) -> dict[str, float]:
     """Each position's mean projection here over the league the effects were measured in."""
     reference = reference_league(store.read_table("leagues", "raw"))
-    history = store.read_table("proj_baseline").filter(~pl.col("is_future") & pl.col("has_history"))
+    history = store.projection_table().filter(~pl.col("is_future") & pl.col("has_history"))
     return position_scale(history, league_id, reference)
 
 
@@ -225,7 +225,7 @@ def load_league_data(league: dict[str, Any]) -> LeagueData:
         .select("roster_id", "gsis_id", "position")
         .unique()
     )
-    future = store.read_table("proj_baseline").filter(
+    future = store.projection_table().filter(
         (pl.col("league_id") == lid) & pl.col("is_future") & (pl.col("week") >= current)
     )
     flagged = (

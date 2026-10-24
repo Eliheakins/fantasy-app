@@ -225,7 +225,7 @@ def run() -> int:
         .filter(pl.col("league_id") == league_id)
         .select("gsis_id", "season", "week", "points"),
         calibrated(
-            store.read_table("proj_baseline").filter(
+            store.projection_table().filter(
                 (pl.col("league_id") == league_id) & ~pl.col("is_future") & pl.col("has_history")
             )
         ).select("gsis_id", "season", "week", pl.col("projection").alias("proj")),

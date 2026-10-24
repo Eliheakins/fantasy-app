@@ -624,7 +624,7 @@ def _draw_points(
     """Joint draws for `ids` this week: marginals and correlations measured in this league.
     `values` are expected points, `plays` each player's chance of playing, and `tier_means` his
     full-game points when he plays, which picks the floor-and-ceiling shape his size has."""
-    base = _read("proj_baseline", store.DATA_DIR, area="derived").filter(
+    base = _read(store.projection_name(), store.DATA_DIR, area="derived").filter(
         (pl.col("league_id") == data.league_id) & (pl.col("week") == week) & pl.col("is_future")
     )
     base = base.with_columns(
@@ -897,9 +897,12 @@ OPTIONAL_LAYERS = (
 
 def missing_layers(data_dir: Path = store.DATA_DIR) -> list[str]:
     """Names of projection layers the simulation is running without because a stage did not run."""
+    layers = list(OPTIONAL_LAYERS)
+    if load_config().projection_model == "learned":
+        layers.append(("learned projections", "proj_learned", "derived"))
     return [
         label
-        for label, table, area in OPTIONAL_LAYERS
+        for label, table, area in layers
         if not store.table_path(table, area, data_dir).exists()
     ]
 

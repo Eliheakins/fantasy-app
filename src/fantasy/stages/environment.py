@@ -331,7 +331,7 @@ def history_panel(league_id: str, season: int) -> pl.DataFrame:
         pl.col("player_id").alias("gsis_id"), "season", "week", "opponent_team"
     )
     baseline = calibrated(
-        store.read_table("proj_baseline").filter(
+        store.projection_table().filter(
             (pl.col("league_id") == league_id)
             & ~pl.col("is_future")
             & pl.col("has_history")

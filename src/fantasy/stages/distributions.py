@@ -177,7 +177,7 @@ def estimate_pairs(roled: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
 
 
 def run() -> dict[str, int]:
-    res = residual_frame(store.read_table("proj_baseline"), store.read_table("player_points"))
+    res = residual_frame(store.projection_table(), store.read_table("player_points"))
     curves = estimate_curves(res)
     calibrated = apply_curves(res, curves).with_columns(
         (pl.col("points") - pl.col("projection")).alias("resid")

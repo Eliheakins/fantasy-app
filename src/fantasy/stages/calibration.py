@@ -90,7 +90,7 @@ def run() -> pl.DataFrame:
     id_map = store.read_table("id_map").select("sleeper_id", "gsis_id")
     players = store.read_table("sleeper_players", "raw").select("sleeper_id", "position")
     out = []
-    history = residual_frame(store.read_table("proj_baseline"), store.read_table("player_points"))
+    history = residual_frame(store.projection_table(), store.read_table("player_points"))
     for league in store.read_table("leagues", "raw").iter_rows(named=True):
         lid, season = league["league_id"], int(league["season"])
         last = int(league["current_week"]) - 1
@@ -102,7 +102,7 @@ def run() -> pl.DataFrame:
             .join(id_map, on="sleeper_id", how="left")
             .select("roster_id", "week", "gsis_id", "position")
         )
-        hist = store.read_table("proj_baseline").filter(
+        hist = store.projection_table().filter(
             (pl.col("league_id") == lid) & ~pl.col("is_future") & (pl.col("season") == season)
         )
         hist = apply_curves(hist, estimate_curves(history.filter(pl.col("season") < season)))
