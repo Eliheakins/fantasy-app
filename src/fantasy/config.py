@@ -15,6 +15,7 @@ class Config:
     n_sims: int
     leagues: dict[str, str]  # league name -> Sleeper league id
     projection_model: str = "baseline"  # "learned" or "baseline"; learned falls back if missing
+    environment_layer: bool = True  # opposing-corner and offense-efficiency adjustments
 
 
 def load_config(path: Path = ROOT / "config.toml") -> Config:
@@ -31,6 +32,7 @@ def load_config(path: Path = ROOT / "config.toml") -> Config:
             n_sims=raw["n_sims"],
             leagues={name: league["id"] for name, league in raw["leagues"].items()},
             projection_model=model,
+            environment_layer=bool(raw.get("environment_layer", True)),
         )
     except KeyError as missing:
         raise ValueError(f"{path} is missing {missing}") from missing

@@ -157,7 +157,10 @@ def _apply_outlook(
 def _apply_environment(
     projections: pl.DataFrame, current: int, model: InjuryModel | None, scale: dict[str, float]
 ) -> pl.DataFrame:
-    """Offense efficiency and opposing-corner effects, when they have been measured."""
+    """Offense efficiency and opposing-corner effects, when they have been measured and the
+    config has the layer on."""
+    if not load_config().environment_layer:
+        return projections
     try:
         effects = environment_effects(store.read_table("environment_effects"))
         efficiency = store.read_table("nfl_team_efficiency", "raw")

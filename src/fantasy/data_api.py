@@ -897,8 +897,13 @@ OPTIONAL_LAYERS = (
 
 def missing_layers(data_dir: Path = store.DATA_DIR) -> list[str]:
     """Names of projection layers the simulation is running without because a stage did not run."""
-    layers = list(OPTIONAL_LAYERS)
-    if load_config().projection_model == "learned":
+    config = load_config()
+    layers = [
+        layer
+        for layer in OPTIONAL_LAYERS
+        if config.environment_layer or layer[1] != "environment_effects"
+    ]
+    if config.projection_model == "learned":
         layers.append(("learned projections", "proj_learned", "derived"))
     return [
         label

@@ -81,3 +81,28 @@ def test_config_defaults_to_the_baseline_and_rejects_an_unknown_model(tmp_path: 
 
 def test_the_shipped_config_uses_the_learned_model() -> None:
     assert load_config().projection_model == "learned"
+
+
+def test_the_environment_layer_can_be_switched_off_and_is_on_by_default(tmp_path: Path) -> None:
+    text = (Path(__file__).parent.parent / "config.toml").read_text()
+    without = tmp_path / "a.toml"
+    without.write_text(
+        "\n".join(x for x in text.splitlines() if "environment_layer" not in x) + "\n"
+    )
+    assert load_config(without).environment_layer is True
+    assert load_config().environment_layer is False  # the shipped config turns it off
+
+
+def test_a_switched_off_environment_layer_returns_the_projections_untouched(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import polars as pl
+
+    from fantasy.stages import simulate
+
+    config = load_config()
+    off = Config(**{**config.__dict__, "environment_layer": False})
+    monkeypatch.setattr(simulate, "load_config", lambda: off)
+    projections = pl.DataFrame({"gsis_id": ["A"], "week": [7], "projection": [10.0]})
+    out = simulate._apply_environment(projections, 7, None, {})
+    assert out.equals(projections)

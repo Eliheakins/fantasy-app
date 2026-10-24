@@ -160,7 +160,8 @@ def test_missing_effect_tables_do_not_stop_the_load(
 ) -> None:
     build_store(tmp_path, monkeypatch, [(100.0, 90.0)])
     missing = data_api.missing_layers(tmp_path)
-    assert {"injury model", "outlook", "matchup and offense effects"} <= set(missing)
+    assert {"injury model", "outlook"} <= set(missing)
+    assert "matchup and offense effects" not in missing  # the shipped config has that layer off
     data = load_league_data(LEAGUE)
     assert data.trade_deadline == 99 and data.roster_ids == [1, 2, 3, 4, 5, 6]
     assert data.injuries["G_RB"][0] == "Out"
