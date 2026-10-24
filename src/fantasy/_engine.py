@@ -4,9 +4,14 @@ Nothing here calls `data_api.leagues`, so the patch seams tests use on `data_api
 Tables read here are required: a missing one raises FileNotFoundError.
 """
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import replace
 from datetime import UTC, datetime
+from functools import lru_cache
 from pathlib import Path
+from threading import Lock
 
 import numpy as np
 import polars as pl
@@ -35,8 +40,59 @@ def _read(name: str, data_dir: Path, area: str = "raw") -> pl.DataFrame:
         return pl.DataFrame(schema=store.SCHEMAS[name])
 
 
+LEAGUE_CACHE_SIZE = 4
+
+
+def data_version() -> str:
+    """Latest mtime (ns) and total size of the parquet files under data/raw and data/derived,
+    read through `store.DATA_DIR` now. Changes whenever a stage rewrites a table."""
+    stats = [
+        p.stat() for area in ("raw", "derived") for p in (store.DATA_DIR / area).glob("*.parquet")
+    ]
+    if not stats:
+        return "0-0"
+    return f"{max(s.st_mtime_ns for s in stats)}-{sum(s.st_size for s in stats)}"
+
+
+_PINNED_VERSION: ContextVar[str | None] = ContextVar("pinned_version", default=None)
+_BUILD_LOCKS: dict[tuple[str, str], Lock] = {}  # one per (league, data dir): bounded by leagues
+_BUILD_LOCKS_GUARD = Lock()
+
+
+@contextmanager
+def pinned_version(version: str) -> Iterator[None]:
+    """Make `_league` use this data version (the one a job was keyed with) in this context."""
+    token = _PINNED_VERSION.set(version)
+    try:
+        yield
+    finally:
+        _PINNED_VERSION.reset(token)
+
+
 def _league(league_key: str) -> tuple[LeagueData, int]:
-    """Simulation inputs for one league and my roster id."""
+    """Simulation inputs for one league and my roster id, built once per data version.
+
+    Shared across threads: treat it as read-only (nothing in the engine mutates it)."""
+    version = _PINNED_VERSION.get() or data_version()
+    return _league_cached(league_key, version, str(store.DATA_DIR))
+
+
+# used by the API refresh route and tests
+def _clear_league_cache() -> None:
+    _build_league.cache_clear()
+
+
+def _league_cached(league_key: str, version: str, data_dir: str) -> tuple[LeagueData, int]:
+    """Single-flight: concurrent misses for one league wait for one build."""
+    with _BUILD_LOCKS_GUARD:
+        lock = _BUILD_LOCKS.setdefault((league_key, data_dir), Lock())
+    with lock:
+        return _build_league(league_key, version, data_dir)
+
+
+@lru_cache(maxsize=LEAGUE_CACHE_SIZE)
+def _build_league(league_key: str, version: str, data_dir: str) -> tuple[LeagueData, int]:
+    """Build the league; `version` and `data_dir` are only cache key parts."""
     from fantasy.stages.simulate import load_league_data  # heavy imports, only when asked
 
     row = store.read_table("leagues", "raw").filter(pl.col("league_key") == league_key)

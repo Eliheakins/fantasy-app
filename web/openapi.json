@@ -1,0 +1,3727 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Fantasy API",
+    "version": "1"
+  },
+  "paths": {
+    "/api/status": {
+      "get": {
+        "summary": "Status",
+        "operationId": "status_api_status_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_StatusData_"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues": {
+      "get": {
+        "summary": "Leagues",
+        "operationId": "leagues_api_leagues_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_LeagueRow__"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/roster": {
+      "get": {
+        "summary": "Roster",
+        "operationId": "roster_api_leagues__league__roster_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_RosterRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/unmatched": {
+      "get": {
+        "summary": "Unmatched",
+        "operationId": "unmatched_api_unmatched_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_UnmatchedData_"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/season-odds": {
+      "get": {
+        "summary": "Season Odds",
+        "operationId": "season_odds_api_leagues__league__season_odds_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_SeasonOddsRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/seeds": {
+      "get": {
+        "summary": "Seeds",
+        "operationId": "seeds_api_leagues__league__seeds_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_SeedRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/odds-history": {
+      "get": {
+        "summary": "Odds History",
+        "description": "Every team's saved runs, oldest first.",
+        "operationId": "odds_history_api_leagues__league__odds_history_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_OddsHistoryRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/streamers": {
+      "get": {
+        "summary": "Streamers",
+        "operationId": "streamers_api_leagues__league__streamers_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "K",
+                "DEF"
+              ],
+              "type": "string",
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_StreamerRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/lineup": {
+      "get": {
+        "summary": "Lineup",
+        "operationId": "lineup_api_leagues__league__lineup_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "week",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 22,
+              "minimum": 0,
+              "description": "0 means the current week",
+              "default": 0,
+              "title": "Week"
+            },
+            "description": "0 means the current week"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_LineupRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/schedule": {
+      "get": {
+        "summary": "Schedule",
+        "operationId": "schedule_api_leagues__league__schedule_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_ScheduleRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/strength": {
+      "get": {
+        "summary": "Strength",
+        "operationId": "strength_api_leagues__league__strength_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_StrengthRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/live-score": {
+      "get": {
+        "summary": "Live Score",
+        "operationId": "live_score_api_leagues__league__live_score_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_LiveScoreRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/trade-partners": {
+      "get": {
+        "summary": "Trade Partners",
+        "operationId": "trade_partners_api_leagues__league__trade_partners_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_PartnerRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/trade-assets": {
+      "get": {
+        "summary": "Trade Assets",
+        "operationId": "trade_assets_api_leagues__league__trade_assets_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "roster_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Roster Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_AssetRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/player-weeks": {
+      "get": {
+        "summary": "Player Weeks",
+        "operationId": "player_weeks_api_leagues__league__player_weeks_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "gsis_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Gsis Id"
+            }
+          },
+          {
+            "name": "n",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 18,
+              "minimum": 1,
+              "default": 4,
+              "title": "N"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_PlayerWeekRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/outlook": {
+      "get": {
+        "summary": "Outlook",
+        "operationId": "outlook_api_leagues__league__outlook_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "mine",
+                "league",
+                "free"
+              ],
+              "type": "string",
+              "default": "mine",
+              "title": "Scope"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_OutlookRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/win-probability": {
+      "get": {
+        "summary": "Win Probability",
+        "operationId": "win_probability_api_leagues__league__win_probability_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "week",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 22,
+              "minimum": 0,
+              "description": "0 means the current week",
+              "default": 0,
+              "title": "Week"
+            },
+            "description": "0 means the current week"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_WinProbabilityData_"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "The job is running: envelope with status running and started_at"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/actions": {
+      "get": {
+        "summary": "Actions",
+        "operationId": "actions_api_leagues__league__actions_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_ActionRow__"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "The job is running: envelope with status running and started_at"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/waivers": {
+      "get": {
+        "summary": "Waivers",
+        "operationId": "waivers_api_leagues__league__waivers_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_WaiverRow__"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "The job is running: envelope with status running and started_at"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/trades/evaluate": {
+      "post": {
+        "summary": "Evaluate Trade",
+        "description": "Odds before and after plus the automatic roster moves, in one response.",
+        "operationId": "evaluate_trade_api_leagues__league__trades_evaluate_post",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TradeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_TradeEvaluation_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/trades/find": {
+      "post": {
+        "summary": "Find Trades",
+        "description": "A long job (minutes): POST again to poll, same as the GET jobs.",
+        "operationId": "find_trades_api_leagues__league__trades_find_post",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_FoundTradeRow__"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "The job is running: envelope with status running and started_at"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/live/refresh": {
+      "post": {
+        "summary": "Refresh Live",
+        "description": "Pull this week's matchups from Sleeper, then drop every cache.",
+        "operationId": "refresh_live_api_live_refresh_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_RefreshData_"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActionRow": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "text"
+        ],
+        "title": "ActionRow"
+      },
+      "ApiError": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "no_data",
+              "invalid",
+              "busy",
+              "server"
+            ],
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ApiError"
+      },
+      "AssetRow": {
+        "properties": {
+          "gsis_id": {
+            "type": "string",
+            "title": "Gsis Id"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "ros_points": {
+            "type": "number",
+            "title": "Ros Points"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gsis_id",
+          "full_name",
+          "position",
+          "ros_points",
+          "label"
+        ],
+        "title": "AssetRow"
+      },
+      "ComparisonRow": {
+        "properties": {
+          "option": {
+            "type": "string",
+            "title": "Option"
+          },
+          "win_prob": {
+            "type": "number",
+            "title": "Win Prob"
+          },
+          "expected_points": {
+            "type": "number",
+            "title": "Expected Points"
+          },
+          "floor": {
+            "type": "number",
+            "title": "Floor"
+          },
+          "median": {
+            "type": "number",
+            "title": "Median"
+          },
+          "ceiling": {
+            "type": "number",
+            "title": "Ceiling"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "option",
+          "win_prob",
+          "expected_points",
+          "floor",
+          "median",
+          "ceiling"
+        ],
+        "title": "ComparisonRow"
+      },
+      "Envelope_RefreshData_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RefreshData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[RefreshData]"
+      },
+      "Envelope_StatusData_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StatusData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[StatusData]"
+      },
+      "Envelope_TradeEvaluation_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TradeEvaluation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[TradeEvaluation]"
+      },
+      "Envelope_UnmatchedData_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UnmatchedData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[UnmatchedData]"
+      },
+      "Envelope_WinProbabilityData_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WinProbabilityData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[WinProbabilityData]"
+      },
+      "Envelope_list_ActionRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ActionRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[ActionRow]]"
+      },
+      "Envelope_list_AssetRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AssetRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[AssetRow]]"
+      },
+      "Envelope_list_FoundTradeRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FoundTradeRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[FoundTradeRow]]"
+      },
+      "Envelope_list_LeagueRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/LeagueRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[LeagueRow]]"
+      },
+      "Envelope_list_LineupRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/LineupRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[LineupRow]]"
+      },
+      "Envelope_list_LiveScoreRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/LiveScoreRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[LiveScoreRow]]"
+      },
+      "Envelope_list_OddsHistoryRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/OddsHistoryRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[OddsHistoryRow]]"
+      },
+      "Envelope_list_OutlookRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/OutlookRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[OutlookRow]]"
+      },
+      "Envelope_list_PartnerRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PartnerRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[PartnerRow]]"
+      },
+      "Envelope_list_PlayerWeekRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PlayerWeekRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[PlayerWeekRow]]"
+      },
+      "Envelope_list_RosterRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RosterRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[RosterRow]]"
+      },
+      "Envelope_list_ScheduleRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ScheduleRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[ScheduleRow]]"
+      },
+      "Envelope_list_SeasonOddsRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SeasonOddsRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[SeasonOddsRow]]"
+      },
+      "Envelope_list_SeedRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SeedRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[SeedRow]]"
+      },
+      "Envelope_list_StreamerRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StreamerRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[StreamerRow]]"
+      },
+      "Envelope_list_StrengthRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StrengthRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[StrengthRow]]"
+      },
+      "Envelope_list_WaiverRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/WaiverRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[WaiverRow]]"
+      },
+      "FoundTradeRow": {
+        "properties": {
+          "partner": {
+            "type": "string",
+            "title": "Partner"
+          },
+          "give": {
+            "type": "string",
+            "title": "Give"
+          },
+          "get": {
+            "type": "string",
+            "title": "Get"
+          },
+          "my_playoff": {
+            "type": "number",
+            "title": "My Playoff"
+          },
+          "my_title": {
+            "type": "number",
+            "title": "My Title"
+          },
+          "their_playoff": {
+            "type": "number",
+            "title": "Their Playoff"
+          },
+          "their_title": {
+            "type": "number",
+            "title": "Their Title"
+          },
+          "se_title": {
+            "type": "number",
+            "title": "Se Title"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "partner",
+          "give",
+          "get",
+          "my_playoff",
+          "my_title",
+          "their_playoff",
+          "their_title",
+          "se_title"
+        ],
+        "title": "FoundTradeRow"
+      },
+      "FreshnessRow": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "age_hours": {
+            "type": "number",
+            "title": "Age Hours"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source",
+          "updated_at",
+          "age_hours"
+        ],
+        "title": "FreshnessRow"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LeagueRow": {
+        "properties": {
+          "league_key": {
+            "type": "string",
+            "title": "League Key"
+          },
+          "league_id": {
+            "type": "string",
+            "title": "League Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "current_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Week"
+          },
+          "num_teams": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Num Teams"
+          },
+          "roster_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roster Id"
+          },
+          "team_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Name"
+          },
+          "wins": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wins"
+          },
+          "losses": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Losses"
+          },
+          "ties": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ties"
+          },
+          "points_for": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points For"
+          },
+          "scoring_labels": {
+            "type": "string",
+            "title": "Scoring Labels"
+          },
+          "record": {
+            "type": "string",
+            "title": "Record"
+          },
+          "trade_deadline": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trade Deadline"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "league_key",
+          "league_id",
+          "name",
+          "current_week",
+          "num_teams",
+          "roster_id",
+          "team_name",
+          "wins",
+          "losses",
+          "ties",
+          "points_for",
+          "scoring_labels",
+          "record",
+          "trade_deadline"
+        ],
+        "title": "LeagueRow"
+      },
+      "LineupRow": {
+        "properties": {
+          "slot": {
+            "type": "string",
+            "title": "Slot"
+          },
+          "gsis_id": {
+            "type": "string",
+            "title": "Gsis Id"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "projection": {
+            "type": "number",
+            "title": "Projection"
+          },
+          "p10": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P10"
+          },
+          "p90": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P90"
+          },
+          "starting_now": {
+            "type": "boolean",
+            "title": "Starting Now"
+          },
+          "recommended": {
+            "type": "boolean",
+            "title": "Recommended"
+          },
+          "injury": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Injury"
+          },
+          "injury_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Injury Note"
+          },
+          "locked": {
+            "type": "boolean",
+            "title": "Locked"
+          },
+          "actual": {
+            "type": "number",
+            "title": "Actual"
+          },
+          "game": {
+            "type": "string",
+            "title": "Game"
+          },
+          "change": {
+            "type": "string",
+            "title": "Change"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "slot",
+          "gsis_id",
+          "full_name",
+          "position",
+          "projection",
+          "p10",
+          "p90",
+          "starting_now",
+          "recommended",
+          "injury",
+          "injury_note",
+          "locked",
+          "actual",
+          "game",
+          "change"
+        ],
+        "title": "LineupRow"
+      },
+      "LiveScoreRow": {
+        "properties": {
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "points": {
+            "type": "number",
+            "title": "Points"
+          },
+          "projected_final": {
+            "type": "number",
+            "title": "Projected Final"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "side",
+          "team_name",
+          "points",
+          "projected_final"
+        ],
+        "title": "LiveScoreRow"
+      },
+      "OddsHistoryRow": {
+        "properties": {
+          "run_at": {
+            "type": "string",
+            "title": "Run At"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          },
+          "p_playoffs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Playoffs"
+          },
+          "p_title": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Title"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_at",
+          "team_name",
+          "roster_id",
+          "p_playoffs",
+          "p_title"
+        ],
+        "title": "OddsHistoryRow"
+      },
+      "OptionRow": {
+        "properties": {
+          "option": {
+            "type": "string",
+            "title": "Option"
+          },
+          "win_prob": {
+            "type": "number",
+            "title": "Win Prob"
+          },
+          "expected_points": {
+            "type": "number",
+            "title": "Expected Points"
+          },
+          "gsis_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Gsis Ids"
+          },
+          "slots": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Slots"
+          },
+          "share_better": {
+            "type": "number",
+            "title": "Share Better"
+          },
+          "tag": {
+            "type": "string",
+            "title": "Tag"
+          },
+          "floor": {
+            "type": "number",
+            "title": "Floor"
+          },
+          "median": {
+            "type": "number",
+            "title": "Median"
+          },
+          "ceiling": {
+            "type": "number",
+            "title": "Ceiling"
+          },
+          "script": {
+            "type": "string",
+            "title": "Script"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "option",
+          "win_prob",
+          "expected_points",
+          "gsis_ids",
+          "slots",
+          "share_better",
+          "tag",
+          "floor",
+          "median",
+          "ceiling",
+          "script"
+        ],
+        "title": "OptionRow"
+      },
+      "OutlookRow": {
+        "properties": {
+          "gsis_id": {
+            "type": "string",
+            "title": "Gsis Id"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "owner": {
+            "type": "string",
+            "title": "Owner"
+          },
+          "recent_ppg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recent Ppg"
+          },
+          "expected_ppg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Ppg"
+          },
+          "next_ppg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Ppg"
+          },
+          "change": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change"
+          },
+          "chance_to_play": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chance To Play"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "why": {
+            "type": "string",
+            "title": "Why"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gsis_id",
+          "full_name",
+          "position",
+          "owner",
+          "recent_ppg",
+          "expected_ppg",
+          "next_ppg",
+          "change",
+          "chance_to_play",
+          "label",
+          "why"
+        ],
+        "title": "OutlookRow"
+      },
+      "PartnerRow": {
+        "properties": {
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "roster_id",
+          "team_name"
+        ],
+        "title": "PartnerRow"
+      },
+      "PlayerWeekRow": {
+        "properties": {
+          "week": {
+            "type": "integer",
+            "title": "Week"
+          },
+          "projection": {
+            "type": "number",
+            "title": "Projection"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "week",
+          "projection"
+        ],
+        "title": "PlayerWeekRow"
+      },
+      "RefreshData": {
+        "properties": {
+          "player_rows": {
+            "type": "integer",
+            "title": "Player Rows"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "player_rows"
+        ],
+        "title": "RefreshData"
+      },
+      "RosterChangeRow": {
+        "properties": {
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "team_name",
+          "action",
+          "full_name",
+          "position"
+        ],
+        "title": "RosterChangeRow"
+      },
+      "RosterRow": {
+        "properties": {
+          "sleeper_id": {
+            "type": "string",
+            "title": "Sleeper Id"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          },
+          "injury_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Injury Status"
+          },
+          "is_starter": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Starter"
+          },
+          "is_ir": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Ir"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sleeper_id",
+          "full_name",
+          "position",
+          "team",
+          "injury_status",
+          "is_starter",
+          "is_ir"
+        ],
+        "title": "RosterRow"
+      },
+      "ScheduleRow": {
+        "properties": {
+          "week": {
+            "type": "integer",
+            "title": "Week"
+          },
+          "opponent": {
+            "type": "string",
+            "title": "Opponent"
+          },
+          "my_points": {
+            "type": "number",
+            "title": "My Points"
+          },
+          "their_points": {
+            "type": "number",
+            "title": "Their Points"
+          },
+          "win_chance": {
+            "type": "number",
+            "title": "Win Chance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "week",
+          "opponent",
+          "my_points",
+          "their_points",
+          "win_chance"
+        ],
+        "title": "ScheduleRow"
+      },
+      "SeasonOddsRow": {
+        "properties": {
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "p_playoffs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Playoffs"
+          },
+          "p_bye": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Bye"
+          },
+          "p_title": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Title"
+          },
+          "exp_wins": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exp Wins"
+          },
+          "is_me": {
+            "type": "boolean",
+            "title": "Is Me"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "roster_id",
+          "team_name",
+          "p_playoffs",
+          "p_bye",
+          "p_title",
+          "exp_wins",
+          "is_me"
+        ],
+        "title": "SeasonOddsRow"
+      },
+      "SeedRow": {
+        "properties": {
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
+          },
+          "p": {
+            "type": "number",
+            "title": "P"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seed",
+          "p"
+        ],
+        "title": "SeedRow"
+      },
+      "StatusData": {
+        "properties": {
+          "freshness": {
+            "items": {
+              "$ref": "#/components/schemas/FreshnessRow"
+            },
+            "type": "array",
+            "title": "Freshness"
+          },
+          "missing_layers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing Layers"
+          },
+          "simulation_behind_inputs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Simulation Behind Inputs"
+          },
+          "data_version": {
+            "type": "string",
+            "title": "Data Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "freshness",
+          "missing_layers",
+          "simulation_behind_inputs",
+          "data_version"
+        ],
+        "title": "StatusData"
+      },
+      "StreamerRow": {
+        "properties": {
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          },
+          "is_mine": {
+            "type": "boolean",
+            "title": "Is Mine"
+          },
+          "this_week": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "This Week"
+          },
+          "next_three": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Three"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "unit",
+          "name",
+          "team",
+          "is_mine",
+          "this_week",
+          "next_three"
+        ],
+        "title": "StreamerRow"
+      },
+      "StrengthRow": {
+        "properties": {
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "vor_per_week": {
+            "type": "number",
+            "title": "Vor Per Week"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "teams": {
+            "type": "integer",
+            "title": "Teams"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "position",
+          "vor_per_week",
+          "rank",
+          "teams"
+        ],
+        "title": "StrengthRow"
+      },
+      "SummaryModel": {
+        "properties": {
+          "objective": {
+            "type": "string",
+            "title": "Objective"
+          },
+          "shown_points": {
+            "type": "number",
+            "title": "Shown Points"
+          },
+          "sleeper_points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleeper Points"
+          },
+          "gap": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gap"
+          },
+          "win_prob": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Win Prob"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "objective",
+          "shown_points",
+          "sleeper_points",
+          "gap",
+          "win_prob"
+        ],
+        "title": "SummaryModel"
+      },
+      "SwapNoteModel": {
+        "properties": {
+          "differs": {
+            "type": "boolean",
+            "title": "Differs"
+          },
+          "players_in": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Players In"
+          },
+          "players_out": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Players Out"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "differs",
+          "players_in",
+          "players_out",
+          "text"
+        ],
+        "title": "SwapNoteModel"
+      },
+      "TradeEvaluation": {
+        "properties": {
+          "odds": {
+            "items": {
+              "$ref": "#/components/schemas/TradeSideRow"
+            },
+            "type": "array",
+            "title": "Odds"
+          },
+          "roster_changes": {
+            "items": {
+              "$ref": "#/components/schemas/RosterChangeRow"
+            },
+            "type": "array",
+            "title": "Roster Changes"
+          },
+          "warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warning"
+          },
+          "trade_deadline": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trade Deadline"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "odds",
+          "roster_changes",
+          "warning",
+          "trade_deadline"
+        ],
+        "title": "TradeEvaluation"
+      },
+      "TradeRequest": {
+        "properties": {
+          "partner_roster_id": {
+            "type": "integer",
+            "title": "Partner Roster Id"
+          },
+          "give_ids": {
+            "items": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Give Ids"
+          },
+          "get_ids": {
+            "items": {
+              "type": "string",
+              "maxLength": 64
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Get Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "partner_roster_id",
+          "give_ids",
+          "get_ids"
+        ],
+        "title": "TradeRequest"
+      },
+      "TradeSideRow": {
+        "properties": {
+          "side": {
+            "type": "string",
+            "title": "Side"
+          },
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "playoff_before": {
+            "type": "number",
+            "title": "Playoff Before"
+          },
+          "playoff_after": {
+            "type": "number",
+            "title": "Playoff After"
+          },
+          "title_before": {
+            "type": "number",
+            "title": "Title Before"
+          },
+          "title_after": {
+            "type": "number",
+            "title": "Title After"
+          },
+          "wins_before": {
+            "type": "number",
+            "title": "Wins Before"
+          },
+          "wins_after": {
+            "type": "number",
+            "title": "Wins After"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "side",
+          "roster_id",
+          "team_name",
+          "playoff_before",
+          "playoff_after",
+          "title_before",
+          "title_after",
+          "wins_before",
+          "wins_after"
+        ],
+        "title": "TradeSideRow"
+      },
+      "UnmatchedData": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Names"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "count",
+          "names"
+        ],
+        "title": "UnmatchedData"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WaiverRow": {
+        "properties": {
+          "gsis_id": {
+            "type": "string",
+            "title": "Gsis Id"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "drop_name": {
+            "type": "string",
+            "title": "Drop Name"
+          },
+          "delta_points": {
+            "type": "number",
+            "title": "Delta Points"
+          },
+          "playoff_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Delta"
+          },
+          "title_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Delta"
+          },
+          "se_title": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Se Title"
+          },
+          "trending_adds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trending Adds"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gsis_id",
+          "full_name",
+          "position",
+          "drop_name",
+          "delta_points",
+          "playoff_delta",
+          "title_delta",
+          "se_title",
+          "trending_adds"
+        ],
+        "title": "WaiverRow"
+      },
+      "WinProbabilityData": {
+        "properties": {
+          "script": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Script"
+          },
+          "swap": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SwapNoteModel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comparison": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonRow"
+            },
+            "type": "array",
+            "title": "Comparison"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/OptionRow"
+            },
+            "type": "array",
+            "title": "Options"
+          },
+          "lineups": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/LineupRow"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Lineups"
+          },
+          "summaries": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SummaryModel"
+            },
+            "type": "object",
+            "title": "Summaries"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "script",
+          "swap",
+          "comparison",
+          "options",
+          "lineups",
+          "summaries"
+        ],
+        "title": "WinProbabilityData"
+      }
+    }
+  }
+}
