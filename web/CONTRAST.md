@@ -1,46 +1,83 @@
 # Contrast of the design tokens
 
-WCAG 2.x ratios computed from the hex values in `src/index.css`. Targets: text 4.5:1, marks 3:1.
+WCAG 2.x ratios (relative luminance formula) computed from the hex values in `src/index.css`. Targets: text 4.5:1, marks 3:1. Borders are decoration only; no meaning rides on them.
 
-Adjusted from the spec after measuring:
-- light `--mark-muted` `#6e7781` -> `#636c76` (was 4.27:1 on the surface, under 4.5:1 for the noise-delta text)
-- light `--range` `#9aa5b1` -> `#848f9b` (was 2.50:1 on the page, under 3:1 for the bar fill)
+Three dark directions are being compared (temporary ThemeSwitcher). The `.theme-light` set used only by /dev/viz keeps the earlier measured values (text 15.80, muted 6.11, range/page 3.29, range/surface 3.09).
 
-Everything else passes as specified. Borders (about 1.5:1) are decoration only; no meaning rides on them.
+Failures found and fixed while choosing the sets:
+- A `--range` `#5d6471` was 2.80:1 on the surface (< 3:1) -> `#656d7b`
+- B `--range` `#6e6357` was 2.94:1 on the surface (< 3:1) -> `#756a5e`
+- Semantic colours were checked on both page and surface (cards), not only the page.
 
+## A Graphite
 
-## Light
+| Pair | Ratio | Need |
+|---|---|---|
+| text/page | 15.62:1 | 4.5:1 |
+| text/surface | 14.14:1 | 4.5:1 |
+| muted text/page | 7.04:1 | 4.5:1 |
+| muted text/surface | 6.38:1 | 4.5:1 |
+| mark-muted (noise delta)/surface | 6.38:1 | 4.5:1 |
+| accent/page | 8.74:1 | 4.5:1 |
+| accent/surface | 7.91:1 | 4.5:1 |
+| accent-fg on accent button | 8.91:1 | 4.5:1 |
+| positive/page | 8.32:1 | 4.5:1 |
+| positive/surface | 7.53:1 | 4.5:1 |
+| negative/page | 6.46:1 | 4.5:1 |
+| negative/surface | 5.84:1 | 4.5:1 |
+| warning/page | 8.63:1 | 4.5:1 |
+| warning/surface | 7.81:1 | 4.5:1 |
+| warning/warning-bg | 7.28:1 | 4.5:1 |
+| range fill/page (mark) | 3.53:1 | 3:1 |
+| range fill/surface (mark) | 3.20:1 | 3:1 |
+| tick/range fill (mark) | 4.75:1 | 3:1 |
+| border/surface (decoration) | 1.24:1 | - |
 
-| Pair | Ratio |
-|---|---|
-| text/page | 15.80:1 |
-| muted text/page | 6.11:1 |
-| muted text/surface | 5.74:1 |
-| mark-muted (noise delta text)/page | 5.33:1 |
-| mark-muted/surface | 5.01:1 |
-| accent/page | 9.08:1 |
-| positive/page | 5.08:1 |
-| negative/page | 5.36:1 |
-| warning/warning-bg | 4.52:1 |
-| range fill/page (mark 3:1) | 3.29:1 |
-| range fill/surface (mark 3:1) | 3.09:1 |
-| tick/range fill | 4.80:1 |
-| border/page (non-essential) | 1.45:1 |
+## B Copper
 
-## Dark
+| Pair | Ratio | Need |
+|---|---|---|
+| text/page | 15.22:1 | 4.5:1 |
+| text/surface | 14.06:1 | 4.5:1 |
+| muted text/page | 7.09:1 | 4.5:1 |
+| muted text/surface | 6.56:1 | 4.5:1 |
+| mark-muted (noise delta)/surface | 6.56:1 | 4.5:1 |
+| accent/page | 6.92:1 | 4.5:1 |
+| accent/surface | 6.39:1 | 4.5:1 |
+| accent-fg on accent button | 6.90:1 | 4.5:1 |
+| positive/page | 8.88:1 | 4.5:1 |
+| positive/surface | 8.21:1 | 4.5:1 |
+| negative/page | 6.65:1 | 4.5:1 |
+| negative/surface | 6.15:1 | 4.5:1 |
+| warning/page | 9.34:1 | 4.5:1 |
+| warning/surface | 8.63:1 | 4.5:1 |
+| warning/warning-bg | 8.04:1 | 4.5:1 |
+| range fill/page (mark) | 3.53:1 | 3:1 |
+| range fill/surface (mark) | 3.27:1 | 3:1 |
+| tick/range fill (mark) | 4.58:1 | 3:1 |
+| border/surface (decoration) | 1.37:1 | - |
 
-| Pair | Ratio |
-|---|---|
-| text/page | 16.02:1 |
-| muted text/page | 6.15:1 |
-| muted text/surface | 5.62:1 |
-| mark-muted (noise delta text)/page | 6.15:1 |
-| mark-muted/surface | 5.62:1 |
-| accent/page | 8.79:1 |
-| positive/page | 7.45:1 |
-| negative/page | 5.65:1 |
-| warning/warning-bg | 6.21:1 |
-| range fill/page (mark 3:1) | 4.16:1 |
-| range fill/surface (mark 3:1) | 3.80:1 |
-| tick/range fill | 3.85:1 |
-| border/page (non-essential) | 1.55:1 |
+## C Terminal
+
+| Pair | Ratio | Need |
+|---|---|---|
+| text/page | 14.83:1 | 4.5:1 |
+| text/surface | 13.93:1 | 4.5:1 |
+| muted text/page | 6.40:1 | 4.5:1 |
+| muted text/surface | 6.01:1 | 4.5:1 |
+| mark-muted (noise delta)/surface | 6.01:1 | 4.5:1 |
+| accent/page | 8.98:1 | 4.5:1 |
+| accent/surface | 8.44:1 | 4.5:1 |
+| accent-fg on accent button | 8.88:1 | 4.5:1 |
+| positive/page | 10.10:1 | 4.5:1 |
+| positive/surface | 9.49:1 | 4.5:1 |
+| negative/page | 7.02:1 | 4.5:1 |
+| negative/surface | 6.59:1 | 4.5:1 |
+| warning/page | 10.00:1 | 4.5:1 |
+| warning/surface | 9.40:1 | 4.5:1 |
+| warning/warning-bg | 8.68:1 | 4.5:1 |
+| range fill/page (mark) | 3.32:1 | 3:1 |
+| range fill/surface (mark) | 3.12:1 | 3:1 |
+| tick/range fill (mark) | 5.23:1 | 3:1 |
+| border/surface (decoration) | 1.45:1 | - |
+
