@@ -11,3 +11,4 @@ data/
 .coverage
 research/scratch/
 .simplify-audit/
+.playwright-mcp/

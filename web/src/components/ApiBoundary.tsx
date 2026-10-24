@@ -1,8 +1,8 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { type ApiState, elapsedSeconds } from "@/api/envelope";
 
-function Message({ children }: { children: ReactNode }) {
-  return <p className="py-6 text-body text-muted">{children}</p>;
+function Message({ children, role }: { children: ReactNode; role?: "status" | "alert" }) {
+  return <p role={role} className="py-6 text-body text-muted">{children}</p>;
 }
 
 /** The no-data copy, with the command set in code. */
@@ -23,10 +23,8 @@ function Running({ startedAt }: { startedAt: string | null }) {
   }, []);
   const seconds = elapsedSeconds(startedAt, now);
   return (
-    <Message>
-      <span role="status">
-        Working{seconds === null ? "" : `, ${seconds} s so far`}. This page updates when it finishes.
-      </span>
+    <Message role="status">
+      Working{seconds === null ? "" : `, ${seconds} s so far`}. This page updates when it finishes.
     </Message>
   );
 }
@@ -37,13 +35,13 @@ type ApiBoundaryProps<T> = { state: ApiState<T>; children: (data: T) => ReactNod
 export function ApiBoundary<T>({ state, children }: ApiBoundaryProps<T>) {
   switch (state.kind) {
     case "loading":
-      return <Message>Loading…</Message>;
+      return <Message role="status">Loading…</Message>;
     case "running":
       return <Running startedAt={state.startedAt} />;
     case "no_data":
-      return <NoData />;
+      return <NoData message={state.message} />;
     case "error":
-      return <Message>Something went wrong: {state.error.message}</Message>;
+      return <Message role="alert">Something went wrong: {state.error.message}</Message>;
     case "ready":
       return <>{children(state.data)}</>;
   }

@@ -1,5 +1,10 @@
-import { ComingSoon } from "@/components/ComingSoon";
+import { OutlookView } from "@/features/outlook/OutlookView";
 
 export default function Outlook() {
-  return <ComingSoon title="Outlook" />;
+  return (
+    <section>
+      <h1 className="text-display font-semibold">Outlook</h1>
+      <OutlookView />
+    </section>
+  );
 }

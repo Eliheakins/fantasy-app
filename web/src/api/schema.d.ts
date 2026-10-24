@@ -400,6 +400,10 @@ export interface components {
             kind: string;
             /** Text */
             text: string;
+            /** Delta Points */
+            delta_points?: number | null;
+            /** Share Better */
+            share_better?: number | null;
         };
         /** ApiError */
         ApiError: {

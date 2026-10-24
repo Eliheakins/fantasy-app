@@ -20,7 +20,7 @@ export function AppShell() {
           {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
             return (
               <li key={path}>
-                <NavLink to={path} end={path === "/"} className={(s) => cn(linkClass(s), "min-h-9 px-2")}>
+                <NavLink to={path} end={path === "/"} className={(s) => cn(linkClass(s), "min-h-[44px] px-2")}>
                   <Icon size={16} aria-hidden /> {label}
                 </NavLink>
               </li>
@@ -46,7 +46,7 @@ export function AppShell() {
               key={path}
               to={path}
               end={path === "/"}
-              className={(s) => cn(linkClass(s), "min-h-14 flex-1 flex-col justify-center gap-0 text-caption")}
+              className={(s) => cn(linkClass(s), "min-h-[56px] flex-1 flex-col justify-center gap-0 text-caption")}
             >
               <Icon size={20} aria-hidden />
               {label}

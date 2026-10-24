@@ -12,7 +12,7 @@ export function TopBar() {
   return (
     <header className="flex min-h-14 items-center justify-between gap-2 border-b border-border px-4">
       <Select value={league ?? undefined} onValueChange={setLeague} disabled={list.length === 0}>
-        <SelectTrigger aria-label="League" className="min-h-11 min-w-40">
+        <SelectTrigger aria-label="League" className="min-h-[44px] min-w-40">
           <SelectValue placeholder="No leagues" />
         </SelectTrigger>
         <SelectContent>

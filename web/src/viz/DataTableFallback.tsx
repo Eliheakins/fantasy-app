@@ -20,10 +20,10 @@ export function DataTableFallback({ summary = "Show data", columns, rows }: Data
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
-            <tr key={i}>
+          {rows.map((row) => (
+            <tr key={row.join("|")}>
               {row.map((cell, j) => (
-                <td key={j} className="pr-2">
+                <td key={columns[j]} className="pr-2">
                   {cell}
                 </td>
               ))}
