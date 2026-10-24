@@ -36,9 +36,9 @@ Stages (`src/fantasy/stages/`, run by `make refresh` in this order) read and wri
 
 1. `sync_sleeper`, `sleeper_projections`, `ingest_nfl`, `crosswalk`: raw data and the Sleeper to nflverse ID map.
 2. `score`, `streaming`: points per league's scoring; K and DEF.
-3. `project`: baseline projection. `distributions`: size calibration, per-tier marginals, correlations.
+3. `project`: rolling baseline (`proj_baseline`). `learn`: gradient-boosted model on lagged stats plus role data (`proj_learned`, same schema; `projection_model` in `config.toml` picks which one every later stage reads, through `store.projection_table()`). `availability`: chance of playing this week (`availability`). `distributions`: size calibration, per-tier marginals and spreads, correlations, fit on the chosen projections.
 4. `injuries`, `outlook`, `environment`: measured effects (tables `injury_effects`, `outlook_effects`, `environment_effects`).
-5. `simulate`: applies calibration, the Sleeper blend (`sim/blend.py`), injury, outlook and environment layers, then season odds.
+5. `simulate`: applies calibration, the Sleeper blend (`sim/blend.py`), injury (with the availability model for a flagged player's next game), outlook and, if `environment_layer` is on, environment layers, then season odds.
 
 A missing table for a layer in step 4, or for calibration or the Sleeper blend, is skipped without error; the stale banner lists what is missing (`data_api.missing_layers`).
 
@@ -49,6 +49,10 @@ A missing table for a layer in step 4, or for calibration or the Sleeper blend, 
 - Point-valued effects are measured in the reference league (lowest league id) and scaled per league (`sim/scoring_scale.py`). Add a new point-valued effect to the `*_POINT_KINDS` sets in `stages/simulate.py`, or YinzBurgh (0.5 PPR) will be overstated.
 - My teams: Colgate "Lisan Al-Caleb", YinzBurgh "LaPorta Potty" (Sleeper's `is_me` flag, not the league's top team).
 - `data_api.py` is 1150 lines. Splitting it would bypass tests that patch `data_api.leagues` and `data_api._read`; fix those patches first.
+- The learned model's past-game projections for 2019 and 2020 come from models that saw later seasons, so `store.projection_table()` drops them; never fit residual sizes or effects on them. Model features must use only games before the target game: pass a horizon shift to every lagged join (`learn.lag_asof`, `latest_asof`), and add a test.
+- FantasyPros weekly rankings (`nfl_ecr`) are private-use only: keep them under the gitignored `data/` and never commit or share them. No paid data (user decision, 2026-10-23).
+- `environment_layer = false` in `config.toml`: the corner and offense-efficiency adjustments had no held-out gain on the learned projections. The stage and code remain.
+- Held-out checks: `learn` prints the learned model against the size-calibrated baseline; `backtest` adds pinball and coverage by size tier; `research/ros_check.py` (rest-of-season sums), `layers_check.py`, `availability_check.py`. Run `uv run python -m fantasy.stages.learn`, `availability` and `backtest` after changing a feature.
 
 ## Standard for model changes
 
