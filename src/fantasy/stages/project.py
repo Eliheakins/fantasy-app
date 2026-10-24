@@ -19,6 +19,7 @@ import polars as pl
 
 from fantasy import store
 from fantasy.scoring import expected_points_expr
+from fantasy.store import SKILL, week_index
 
 HALF_LIFE = 4.0  # games
 SHRINK_K = 3.0  # games of prior weight
@@ -27,8 +28,9 @@ N_CAP = 10
 CONTEXT_EXPONENT = 0.25  # 0.5 over-reacts to the implied total; see docs/decisions.md
 FIRST_PROJECTED_SEASON = 2019  # the first season with a prior season to lean on
 LAST_WEEK = 17
-POSITIONS = ["QB", "RB", "WR", "TE"]
+POSITIONS = SKILL
 GROUP = ["league_id", "gsis_id"]
+MAX_UNSCORED_SHARE = 0.05  # expected-points rows with no scored row (a position label differs)
 
 
 def expected_frame(
@@ -41,7 +43,7 @@ def expected_frame(
             "gsis_id", "season", "week", "points"
         )
         scoring = json.loads(lg["scoring_settings"])
-        frames.append(
+        expected = (
             opp.filter(pl.col("position").is_in(POSITIONS))
             .select(
                 pl.col("player_id").alias("gsis_id"),
@@ -51,13 +53,17 @@ def expected_frame(
                 pl.col("posteam").alias("team"),
                 expected_points_expr(scoring).alias("exp_pts"),
             )
-            .unique(subset=["gsis_id", "season", "week"], keep="first")
-            .join(actual, on=["gsis_id", "season", "week"], how="left")
-            .with_columns(
-                pl.col("points").fill_null(0.0),
-                pl.lit(lg["league_id"]).alias("league_id"),
-            )
+            .unique(subset=["gsis_id", "season", "week"], keep="first", maintain_order=True)
         )
+        # an expected-points row with no scored row (nflverse labels the position differently in
+        # the two sources, e.g. a CB who plays WR) has no actual points: drop it, not score it 0
+        matched = expected.join(actual, on=["gsis_id", "season", "week"], how="inner")
+        dropped = expected.height - matched.height
+        if dropped:
+            print(f"expected_frame: league {lg['league_id']}: {dropped} unscored rows dropped")
+        if dropped > MAX_UNSCORED_SHARE * expected.height:
+            raise ValueError(f"{dropped} of {expected.height} expected-points rows have no points")
+        frames.append(matched.with_columns(pl.lit(lg["league_id"]).alias("league_id")))
     return pl.concat(frames)
 
 
@@ -98,7 +104,7 @@ def project_targets(
     horizon 1 projects from games before the target. A larger horizon uses only games at least
     that many weeks earlier and a neutral context, because lines do not exist that far ahead.
     """
-    index = pl.col("season") * 100 + pl.col("week")
+    index = week_index()
     latest = form.select(
         *GROUP,
         index.alias("t"),
@@ -139,7 +145,8 @@ def future_targets(
     """Remaining regular-season games for active players. Bye weeks have no game row.
 
     current_teams: gsis_id, team, position (from Sleeper). rostered: league_id, gsis_id, the
-    players on your rosters, who get the position prior if they have no history.
+    players on every team's roster in each league (rivals' rookies and new signings too), who get
+    the position prior if they have no history.
     """
     ordered = form.sort("season", "week")
     season, week = ordered.select("season", "week").tail(1).row(0)
@@ -156,6 +163,7 @@ def future_targets(
     extra = (
         rostered.join(last.select(GROUP), on=GROUP, how="anti")
         .join(current_teams.select("gsis_id", "position"), on="gsis_id")
+        .filter(pl.col("position").is_in(POSITIONS))  # K and DEF are projected in streaming.py
         .with_columns(team=pl.lit(None, dtype=pl.String))
         .select(*GROUP, "position", "team")
     )
@@ -184,23 +192,39 @@ def current_and_rostered() -> tuple[pl.DataFrame, pl.DataFrame]:
     current = (
         id_map.filter(pl.col("gsis_id").is_not_null())
         .join(positions, on="sleeper_id")
-        .select("gsis_id", pl.col("nfl_team").alias("team"), "position")
-        .unique(subset="gsis_id")
+        .select("sleeper_id", "gsis_id", pl.col("nfl_team").alias("team"), "position")
+        .sort("gsis_id", "sleeper_id")
+        .unique(subset="gsis_id", keep="first", maintain_order=True)
+        .drop("sleeper_id")
     )
-    mine = (
-        store.read_table("league_teams", "raw")
-        .filter(pl.col("is_me"))
-        .select("league_id", "roster_id")
+    on_rosters = store.read_table("rosters", "raw").join(
+        id_map.select("sleeper_id", "gsis_id"), on="sleeper_id", how="left"
     )
+    for league_id, n in (
+        on_rosters.filter(pl.col("gsis_id").is_null()).group_by("league_id").len().iter_rows()
+    ):
+        print(f"league {league_id}: {n} rostered players have no nflverse id, so no projection")
     rostered = (
-        store.read_table("rosters", "raw")
-        .join(mine, on=["league_id", "roster_id"])
-        .join(id_map.select("sleeper_id", "gsis_id"), on="sleeper_id")
-        .filter(pl.col("gsis_id").is_not_null())
+        on_rosters.filter(pl.col("gsis_id").is_not_null())
         .select("league_id", "gsis_id")
-        .unique()
+        .unique(maintain_order=True)
     )
     return current, rostered
+
+
+def unprojected_rostered(
+    rostered: pl.DataFrame, current: pl.DataFrame, future: pl.DataFrame
+) -> pl.DataFrame:
+    """Per league, rostered skill players with a current team but no future projection row."""
+    skill = current.filter(pl.col("position").is_in(POSITIONS) & pl.col("team").is_not_null())
+    have = future.select(GROUP).unique()
+    return (
+        rostered.join(skill.select("gsis_id"), on="gsis_id")
+        .join(have, on=GROUP, how="anti")
+        .group_by("league_id")
+        .len()
+        .sort("league_id")
+    )
 
 
 def run() -> dict[str, int]:
@@ -211,17 +235,19 @@ def run() -> dict[str, int]:
     prior = position_prior(exp)
     form = build_form(exp, prior)
     games = store.read_table("team_games")
-    store.write_table("player_form", form)
 
     history = project_targets(history_targets(exp), form, prior, games)
     current, rostered = current_and_rostered()
-    future = project_targets(future_targets(form, current, rostered, games), form, prior, games)
+    future_rows = future_targets(form, current, rostered, games)
+    future = project_targets(future_rows, form, prior, games)
+    for league_id, n in unprojected_rostered(rostered, current, future_rows).iter_rows():
+        print(f"league {league_id}: {n} rostered skill players have no future projection")
     both = [
         history.with_columns(is_future=pl.lit(False)),
         future.with_columns(is_future=pl.lit(True)),
     ]
     out = pl.concat(both).select(*store.SCHEMAS["proj_baseline"])
-    store.write_table("proj_baseline", out)
+    store.write_tables({"player_form": form, "proj_baseline": out})
     return {"player_form": form.height, "history": history.height, "future": future.height}
 
 

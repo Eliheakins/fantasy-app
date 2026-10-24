@@ -28,6 +28,7 @@ SHRINK_K = 3.0  # pseudo-games of league average
 DOMES = ("dome", "closed")
 SCORED_FROM = 2018
 BACKTEST_FROM = 2024
+MIN_CONTEXT_ROWS = 50  # fewer rows than this and the context fit is skipped
 KINDS = ("DEF", "K")
 
 
@@ -71,13 +72,17 @@ def defense_points_frame(
     games = team_games.select(
         "season", "week", "team", "points_against", "team_implied", "opp_implied", "roof"
     )
-    rows = (
-        stats.join(games, on=["season", "week", "team"])
-        .join(opponent, on=["season", "week", "opponent_team"])
-        .filter(pl.col("points_against").is_not_null())
-        .with_columns(
-            allowed=pl.col("points_against") - 6 * pl.col("opp_def_tds") - 6 * pl.col("opp_st_tds")
-        )
+    joined = stats.join(games, on=["season", "week", "team"]).join(
+        opponent, on=["season", "week", "opponent_team"]
+    )
+    played = joined.filter(pl.col("points_against").is_not_null())
+    # an inner join drops a team-game whose team code differs between the sources; the rest of the
+    # gap is games not yet played
+    lost = stats.height - joined.height
+    if lost:
+        print(f"streaming: league {league_id}: {lost} DEF team-games lost to team code mismatches")
+    rows = played.with_columns(
+        allowed=pl.col("points_against") - 6 * pl.col("opp_def_tds") - 6 * pl.col("opp_st_tds")
     )
     plays = (
         pl.col("def_sacks") * scoring.get("sack", 0.0)
@@ -118,7 +123,8 @@ def shrunk_form(prior: np.ndarray, league_mean: float) -> float:
 def fit_context(history: pl.DataFrame, implied: str) -> tuple[float, float]:
     """(slope on the implied total, extra points in a dome) by least squares on history."""
     rows = history.filter(pl.col(implied).is_not_null()).select("points", implied, "roof")
-    if rows.height < 50:
+    if rows.height < MIN_CONTEXT_ROWS:
+        print(f"streaming: WARNING only {rows.height} rows for {implied}; no context adjustment")
         return 0.0, 0.0
     x = rows[implied].to_numpy() - rows[implied].mean()
     dome = rows["roof"].is_in(DOMES).cast(pl.Float64).to_numpy()
@@ -136,9 +142,12 @@ def project_units(
 ) -> pl.DataFrame:
     """Projection for each upcoming (unit, week). `history` has unit, season, week, points,
     <implied>, roof. `upcoming` has unit, team, week, <implied>, roof."""
+    if history.is_empty():
+        raise ValueError(f"no history to project {unit} from")
     league_mean = float(np.mean(history["points"].to_numpy()))
     slope, dome_bonus = fit_context(history, implied)
-    centre = float(np.mean(history[implied].drop_nulls().to_numpy()))
+    implied_values = history[implied].drop_nulls().to_numpy()
+    centre = float(np.mean(implied_values)) if implied_values.size else 0.0
     ordered = history.sort(unit, "season", "week")
     form = {
         key: shrunk_form(g["points"].to_numpy(), league_mean)
@@ -163,12 +172,16 @@ def backtest(history: pl.DataFrame, unit: str, implied: str, use_dome: bool) -> 
         past = history.filter(
             (pl.col("season") < season) | ((pl.col("season") == season) & (pl.col("week") < week))
         )
+        if past.is_empty():
+            continue
         upcoming = games.select(unit, pl.col(unit).alias("team"), "week", implied, "roof")
         proj = project_units(past, upcoming, unit, implied, use_dome)
         joined = games.join(proj.select(unit, "projection"), on=unit)
         mean = float(np.mean(past["points"].to_numpy()))
         errs_model += list((joined["points"] - joined["projection"]).to_numpy())
         errs_mean += list((joined["points"] - mean).to_numpy())
+    if not errs_model:
+        raise ValueError(f"no {unit} games from {BACKTEST_FROM} to score")
     return float(np.sqrt(np.mean(np.square(errs_model)))), float(
         np.sqrt(np.mean(np.square(errs_mean)))
     )
@@ -189,6 +202,22 @@ def sleeper_by_unit(league_id: str, id_map: pl.DataFrame) -> pl.DataFrame:
         pl.col("gsis_id").alias("unit"), "week", other=pl.col("projection")
     )
     return pl.concat([teams, kickers])
+
+
+def _unit_projection(
+    hist: pl.DataFrame,
+    ahead: pl.DataFrame,
+    use_dome: bool,
+    kind: str,
+    league_id: str,
+    id_map: pl.DataFrame,
+) -> tuple[pl.DataFrame, tuple[float, float]]:
+    """One league's projections for DEF or K, blended with Sleeper's and tagged, and the
+    walk-forward RMSE (model, league mean) from the same history."""
+    proj = project_units(hist, ahead, "unit", "implied", use_dome=use_dome)
+    proj = blend(proj, sleeper_by_unit(league_id, id_map), "unit")
+    tagged = proj.with_columns(pl.lit(league_id).alias("league_id"), pl.lit(kind).alias("kind"))
+    return tagged, backtest(hist, "unit", "implied", use_dome=use_dome)
 
 
 def run() -> dict[str, tuple[float, float]]:
@@ -219,14 +248,9 @@ def run() -> dict[str, tuple[float, float]]:
             "roof",
         )
         d_hist = past.rename({"team": "unit", "opp_implied": "implied"})
-        d_proj = project_units(d_hist, ahead, "unit", "implied", use_dome=False)
-        d_proj = blend(d_proj, sleeper_by_unit(lid, id_map), "unit")
-        projections.append(
-            d_proj.with_columns(pl.lit(lid).alias("league_id"), pl.lit("DEF").alias("kind"))
-        )
-        report[f"{lg['league_key']} DEF rmse (model, mean)"] = backtest(
-            d_hist, "unit", "implied", use_dome=False
-        )
+        d_proj, d_rmse = _unit_projection(d_hist, ahead, False, "DEF", lid, id_map)
+        projections.append(d_proj)
+        report[f"{lg['league_key']} DEF rmse (model, mean)"] = d_rmse
 
         k_hist = kickers.filter((pl.col("league_id") == lid) & (pl.col("season") >= SCORED_FROM))
         k_hist = k_hist.select(
@@ -248,14 +272,9 @@ def run() -> dict[str, tuple[float, float]]:
             pl.col("team_implied").alias("implied"),
             "roof",
         )
-        k_proj = project_units(k_hist, k_ahead, "unit", "implied", use_dome=True)
-        k_proj = blend(k_proj, sleeper_by_unit(lid, id_map), "unit")
-        projections.append(
-            k_proj.with_columns(pl.lit(lid).alias("league_id"), pl.lit("K").alias("kind"))
-        )
-        report[f"{lg['league_key']} K rmse (model, mean)"] = backtest(
-            k_hist, "unit", "implied", use_dome=True
-        )
+        k_proj, k_rmse = _unit_projection(k_hist, k_ahead, True, "K", lid, id_map)
+        projections.append(k_proj)
+        report[f"{lg['league_key']} K rmse (model, mean)"] = k_rmse
     store.write_table("defense_points", pl.concat(defense_frames))
     out = pl.concat(projections).select("league_id", "kind", "unit", "team", "week", "projection")
     store.write_table("streaming_projection", out)

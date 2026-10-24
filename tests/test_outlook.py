@@ -108,7 +108,7 @@ def test_estimate_recovers_return_ratios_and_the_vacancy_slope() -> None:
     assert effects[("WR", "first_back_injury")] == pytest.approx(0.8)
     assert effects[("WR", "first_back_other")] == pytest.approx(0.6)
     assert effects[("WR", "vac_target")] == pytest.approx(15.0, rel=0.05)  # 3 points per 0.2
-    assert effects[("QB", "first_back_injury")] == 1.0  # no data: no adjustment
+    assert ("QB", "first_back_injury") not in effects  # no games: no row, not a ratio of 1.0
 
 
 def test_live_context_finds_returners_and_tells_injury_from_benching() -> None:

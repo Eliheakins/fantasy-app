@@ -20,8 +20,8 @@ from sklearn.ensemble import HistGradientBoostingClassifier
 from fantasy import store
 from fantasy.config import load_config
 from fantasy.stages.learn import KEY, lag_asof, latest_asof
+from fantasy.store import SKILL, WEEK_STRIDE, week_index
 
-SKILL = ["QB", "RB", "WR", "TE"]
 STATUSES = ["none", "Questionable", "Doubtful", "Out"]
 PRACTICES = ["full", "limited", "dnp"]
 NUMERIC = ["depth_rank", "av_snap", "weeks_since", "age"]
@@ -35,11 +35,11 @@ MIN_P, MAX_P = 1e-4, 1 - 1e-4
 def build_rows() -> pl.DataFrame:
     """One row per regular on the depth chart and game week, with the label `played`. The rows of
     the current week (not yet played) are included, with the label 0."""
-    depth = store.read_table("nfl_depth", "raw").unique(KEY)
+    depth = store.read_table("nfl_depth", "raw").unique(KEY, keep="first", maintain_order=True)
     snaps = (
         store.read_table("nfl_snaps", "raw")
         .filter(pl.col("gsis_id").is_not_null())
-        .unique(KEY)
+        .unique(KEY, keep="first", maintain_order=True)
         .select(
             *KEY,
             "position",
@@ -50,7 +50,7 @@ def build_rows() -> pl.DataFrame:
     inj = (
         store.read_table("nfl_injuries", "raw")
         .filter(pl.col("game_type") == "REG")
-        .unique(KEY, keep="first")
+        .unique(KEY, keep="first", maintain_order=True)
         .select(
             *KEY,
             pl.col("report_status").fill_null("none").alias("status"),
@@ -78,7 +78,11 @@ def build_rows() -> pl.DataFrame:
     rows = latest_asof(
         rows, played.select("gsis_id", "season", "week", "when"), "gsis_id", ["when"], shift=1
     )
-    roster = store.read_table("nfl_rosters_weekly", "raw").unique(KEY).select(*KEY, "age")
+    roster = (
+        store.read_table("nfl_rosters_weekly", "raw")
+        .unique(KEY, keep="first", maintain_order=True)
+        .select(*KEY, "age")
+    )
     rows = latest_asof(rows, roster, "gsis_id", ["age"])
     rows = rows.join(played.select(*KEY, "played_row"), on=KEY, how="left").with_columns(
         pl.col("played_row").fill_null(0).alias("played"),
@@ -117,15 +121,32 @@ def fit_predict(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray) ->
     return np.clip(model.predict_proba(x_test)[:, 1], MIN_P, MAX_P)
 
 
+def has_injury_report(season: int, week: int) -> bool:
+    """Whether nflverse has any injury report rows for the week (absent means not yet published,
+    not that everyone is healthy)."""
+    injuries = store.read_table("nfl_injuries", "raw")
+    return injuries.filter((pl.col("season") == season) & (pl.col("week") == week)).height > 0
+
+
 def run() -> int:
     leagues = store.read_table("leagues", "raw")
     season, week = load_config().season, int(leagues["current_week"].max())  # type: ignore[arg-type]
     rows = build_rows()
     is_now = (pl.col("season") == season) & (pl.col("week") == week)
     train, now = (
-        rows.filter(~is_now & (pl.col("season") * 100 + pl.col("week") < season * 100 + week)),
+        rows.filter(~is_now & (week_index() < season * WEEK_STRIDE + week)),
         rows.filter(is_now),
     )
+    if now.is_empty():
+        print(
+            f"availability: WARNING no depth chart rows for {season} week {week}; the table is "
+            "empty and the simulation falls back to the injury table's curve for every player"
+        )
+    elif not has_injury_report(season, week):
+        print(
+            f"availability: WARNING no injury report rows for {season} week {week} yet; every "
+            "player is scored as status none and full practice, so all look healthy"
+        )
     pred = fit_predict(design(train), train["played"].to_numpy(), design(now))
     out = now.select(*KEY).with_columns(pl.Series("p_play", pred))
     store.write_table("availability", out)

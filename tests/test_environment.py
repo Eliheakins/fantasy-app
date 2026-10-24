@@ -103,7 +103,7 @@ def test_estimate_recovers_a_corner_effect_and_finds_nothing_in_pure_noise() -> 
     assert abs(got[("WR", "opp_cb_out")]["t"]) > 2.0
     noise = got[("WR", "team_pass_epa")]  # no effect planted
     assert abs(noise["t"]) < 3.0 and abs(noise["value"]) < 0.25
-    assert got[("QB", "opp_cb_out")]["value"] == 0.0 and got[("QB", "opp_cb_out")]["n"] == 0
+    assert ("QB", "opp_cb_out") not in got  # an empty panel stores no row, not a measured zero
     store.check_schema("environment_effects", table)
 
 
@@ -184,3 +184,17 @@ def test_an_effect_that_vanishes_or_flips_in_either_half_is_switched_off() -> No
     t = dict(zip(out["kind"], out["t"], strict=True))
     assert t["opp_cb_out"] == 3.6 and t["team_sack_rate"] == 0.0 and t["team_pass_epa"] == 0.0
     assert set(out.columns) == set(full.columns)
+
+
+def test_the_vectorized_name_matches_normalize_name() -> None:
+    from fantasy.stages.crosswalk import normalize_name
+
+    names = [
+        "Odell Beckham Jr.",
+        "Marvin Harrison III",
+        "D'Andre  Swift",
+        "AJ Brown",
+        "Ray-Ray McCloud",
+    ]
+    got = pl.DataFrame({"n": names}).select(env._name("n"))["nm"].to_list()
+    assert got == [normalize_name(n) for n in names]

@@ -31,6 +31,7 @@ ALL_TIERS = -1  # the tier value for the whole sample
 N_TIERS = 3  # projection thirds, by the training seasons' baseline projections
 FORECASTERS = {"baseline": "projection", "trailing_mean": "ewma_actual", "learned": "learned"}
 MIN_LEARNED_WINS = 6  # of 8 league-positions, one game ahead
+MAX_UNMATCHED = 0.02  # share of baseline rows that may lack a learned forecast
 COVERAGE_GAP = 0.02  # the learned model's 80% coverage may differ from the baseline's by this
 
 
@@ -80,6 +81,10 @@ def metrics(rows: pl.DataFrame, horizon: int) -> pl.DataFrame:
             keep_train = np.ones(train.height, bool) if tier == ALL_TIERS else train_tier == tier
             keep_test = np.ones(test.height, bool) if tier == ALL_TIERS else test_tier == tier
             if not keep_train.any() or not keep_test.any():
+                print(
+                    f"backtest: horizon {horizon} {league_id} {position} tier {tier}: "
+                    f"no rows in {'train' if not keep_train.any() else 'test'}, skipped"
+                )
                 continue
             y_train = train["points"].to_numpy()[keep_train]
             y = test["points"].to_numpy()[keep_test]
@@ -136,11 +141,17 @@ def run() -> pl.DataFrame:
     parts = []
     for horizon in HORIZONS:
         learned = history_forecasts(horizon).rename({"projection": "learned"})
-        rows = (
-            project_targets(targets, form, prior, games, horizon)
-            .filter(pl.col("has_history") & pl.col("ewma_actual").is_not_null())
-            .join(learned, on=[*GROUP, "season", "week"], how="inner")
+        scored = project_targets(targets, form, prior, games, horizon).filter(
+            pl.col("has_history") & pl.col("ewma_actual").is_not_null()
         )
+        rows = scored.join(learned, on=[*GROUP, "season", "week"], how="inner")
+        lost = 1 - rows.height / scored.height
+        print(
+            f"backtest: horizon {horizon}: {rows.height} of {scored.height} rows "
+            "have a learned forecast"
+        )
+        if lost > MAX_UNMATCHED:
+            raise ValueError(f"horizon {horizon}: {lost:.1%} of rows have no learned forecast")
         parts.append(metrics(rows, horizon))
     result = pl.concat(parts)
     store.write_table("backtest_metrics", result)
@@ -163,8 +174,10 @@ def main() -> None:
             "league-positions"
         )
         wins = int((learned < base).sum())
-        need = f", need {MIN_LEARNED_WINS}" if horizon == 1 else ", reported only"
-        verdict_text = "PASS" if horizon > 1 or wins >= MIN_LEARNED_WINS else "FAIL"
+        need = f", need {MIN_LEARNED_WINS}" if horizon == 1 else ""
+        verdict_text = (
+            "reported only" if horizon > 1 else ("PASS" if wins >= MIN_LEARNED_WINS else "FAIL")
+        )
         print(
             f"horizon {horizon}: learned beats baseline in {wins} of {len(base)} "
             f"league-positions ({verdict_text}{need})"

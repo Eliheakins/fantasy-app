@@ -20,6 +20,7 @@ Run: uv run python -m fantasy.stages.learn
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import polars as pl
@@ -35,6 +36,7 @@ from fantasy.stages.project import (
     future_targets,
     history_targets,
 )
+from fantasy.store import week_index
 
 LAG_COLUMNS = (
     "points",
@@ -73,6 +75,8 @@ FIRST_ACCEPTANCE_SEASON = 2024
 MIN_GAIN = 0.01  # the learned model must beat the calibrated baseline by this share of RMSE
 MIN_T = 2.0
 MIN_PROJECTION = 3.0  # as in the other held-out checks
+NULL_WARN = 0.10  # next-game rows may lack depth or ranking this much more often than history
+NULL_FAIL = 0.30  # beyond this the model would be scoring features it was not trained on
 
 
 def games_frame(
@@ -88,11 +92,11 @@ def games_frame(
         pl.col("pass_attempt").cast(pl.Float64).alias("att"),
         pl.col("rec_touchdown_exp").cast(pl.Float64).alias("rec_td_exp"),
         pl.col("rush_touchdown_exp").cast(pl.Float64).alias("rush_td_exp"),
-    ).unique(KEY)
+    ).unique(KEY, keep="first", maintain_order=True)
     snap = (
         snaps.filter(pl.col("gsis_id").is_not_null())
         .select(*KEY, pl.col("offense_pct").cast(pl.Float64).alias("snap"))
-        .unique(KEY)
+        .unique(KEY, keep="first", maintain_order=True)
     )
     share = (
         stats.filter(pl.col("season_type") == "REG")
@@ -102,7 +106,7 @@ def games_frame(
             "week",
             pl.col("target_share").cast(pl.Float64).alias("tshare"),
         )
-        .unique(KEY)
+        .unique(KEY, keep="first", maintain_order=True)
     )
     return (
         exp.join(volume, on=KEY, how="left")
@@ -132,7 +136,7 @@ def state_frame(games: pl.DataFrame) -> pl.DataFrame:
         pl.col("points").rolling_std(8, min_samples=3).over(GROUP).alias("pts_sd8"),
     ).select(
         *GROUP,
-        (pl.col("season") * 100 + pl.col("week")).alias("t"),
+        week_index().alias("t"),
         pl.col("season").alias("as_of_season"),
         pl.col("week").alias("as_of_week"),
         *STATE_FEATURES,
@@ -142,9 +146,8 @@ def state_frame(games: pl.DataFrame) -> pl.DataFrame:
 def feature_frame(targets: pl.DataFrame, state: pl.DataFrame, horizon: int = 1) -> pl.DataFrame:
     """targets: league_id, gsis_id, season, week, position, team. Joins the state from the last
     game strictly before the target (a larger horizon looks that many weeks further back)."""
-    index = pl.col("season") * 100 + pl.col("week")
     joined = (
-        targets.with_columns((index - (horizon - 1)).alias("t"))
+        targets.with_columns((week_index() - (horizon - 1)).alias("t"))
         .sort("t")
         .join_asof(
             state.sort("t"), on="t", by=GROUP, strategy="backward", allow_exact_matches=False
@@ -156,7 +159,7 @@ def feature_frame(targets: pl.DataFrame, state: pl.DataFrame, horizon: int = 1) 
 def with_lines(frame: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
     """Adds the game's Vegas lines where they exist (later weeks have none)."""
     lines = games.select("season", "week", "team", *LINE_FEATURES).unique(
-        ["season", "week", "team"]
+        ["season", "week", "team"], keep="first", maintain_order=True
     )
     return frame.join(lines, on=["season", "week", "team"], how="left")
 
@@ -185,10 +188,6 @@ def load_extras() -> Extras:
     )
 
 
-def _index() -> pl.Expr:
-    return pl.col("season") * 100 + pl.col("week")
-
-
 def lag_asof(
     target: pl.DataFrame,
     table: pl.DataFrame,
@@ -212,12 +211,12 @@ def lag_asof(
                 .alias(f"{prefix}_{c}")
                 for c in cols
             ],
-            _index().alias("t"),
+            week_index().alias("t"),
         )
         .select(by, "t", *lagged)
         .sort("t")
     )
-    left = target.with_columns((_index() - shift).alias("t")).sort("t")
+    left = target.with_columns((week_index() - shift).alias("t")).sort("t")
     return left.join_asof(
         state, on="t", by=by, strategy="backward", allow_exact_matches=False
     ).drop("t")
@@ -229,8 +228,8 @@ def latest_asof(
     """For attributes that hold until they change (age, draft pick, a depth chart): the latest
     row of `table` at or before the target game, `shift` weeks earlier. A game beyond the
     table's last week keeps the last known value."""
-    right = table.select(by, _index().alias("t"), *cols).sort("t")
-    left = target.with_columns((_index() - shift).alias("t")).sort("t")
+    right = table.select(by, week_index().alias("t"), *cols).sort("t")
+    left = target.with_columns((week_index() - shift).alias("t")).sort("t")
     return left.join_asof(right, on="t", by=by, strategy="backward").drop("t")
 
 
@@ -242,7 +241,7 @@ def with_schedule(frame: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
         "team",
         pl.col("rest").cast(pl.Float64),
         pl.col("roof").is_in(["dome", "closed"]).cast(pl.Float64).alias("indoor"),
-    ).unique(["season", "week", "team"])
+    ).unique(["season", "week", "team"], keep="first", maintain_order=True)
     return frame.join(sched, on=["season", "week", "team"], how="left")
 
 
@@ -254,16 +253,29 @@ def attach_extras(
     later weeks of a live projection."""
     out = with_schedule(frame, games)
     if horizon == 1:
-        out = out.join(extras.depth.unique(KEY), on=KEY, how="left").join(
-            extras.ecr.unique(KEY), on=KEY, how="left"
-        )
+        out = out.join(
+            extras.depth.unique(KEY, keep="first", maintain_order=True), on=KEY, how="left"
+        ).join(extras.ecr.unique(KEY, keep="first", maintain_order=True), on=KEY, how="left")
     else:
-        out = latest_asof(out, extras.depth.unique(KEY), "gsis_id", DEPTH_COLUMNS, horizon - 1)
+        out = latest_asof(
+            out,
+            extras.depth.unique(KEY, keep="first", maintain_order=True),
+            "gsis_id",
+            DEPTH_COLUMNS,
+            horizon - 1,
+        )
         out = out.with_columns([pl.lit(None, dtype=pl.Float64).alias(c) for c in ECR_COLUMNS])
-    out = latest_asof(out, extras.roster.unique(KEY), "gsis_id", ROLE_COLUMNS)
+    out = latest_asof(
+        out, extras.roster.unique(KEY, keep="first", maintain_order=True), "gsis_id", ROLE_COLUMNS
+    )
     out = lag_asof(out, extras.pace, "team", PACE_COLUMNS, "pace", horizon - 1)
     return lag_asof(
-        out, extras.advanced.unique(KEY), "gsis_id", ADVANCED_COLUMNS, "adv", horizon - 1
+        out,
+        extras.advanced.unique(KEY, keep="first", maintain_order=True),
+        "gsis_id",
+        ADVANCED_COLUMNS,
+        "adv",
+        horizon - 1,
     )
 
 
@@ -381,6 +393,40 @@ def history_forecasts(horizon: int = 1) -> pl.DataFrame:
     return pl.concat(parts)
 
 
+def null_share_excess(history: pl.DataFrame, nxt: pl.DataFrame) -> dict[str, float]:
+    """Per depth and ranking column, the share of next-game rows that are null minus the share in
+    history. The columns are joined on the exact week, so a chart or ranking not yet published
+    leaves nulls the model was trained to see only as often as history had them."""
+    columns = [*DEPTH_COLUMNS, *ECR_COLUMNS]
+    return {
+        c: nxt[c].null_count() / nxt.height - history[c].null_count() / history.height
+        for c in columns
+    }
+
+
+def check_next_game_nulls(history: pl.DataFrame, future: pl.DataFrame) -> None:
+    """Warn, or raise before anything is written, when next-game rows are missing depth or
+    ranking features far more often than the training rows."""
+    if future.is_empty():
+        print("learn: WARNING no future rows to check for missing depth or ranking")
+        return
+    # the next week with rows, which is not Sleeper's current week once that week has been played
+    nxt = future.filter(pl.col("week") == future["week"].min())
+    excess = null_share_excess(history, nxt)
+    print(
+        "learn: next-game null share above history: "
+        + ", ".join(f"{c} {v:+.0%}" for c, v in excess.items())
+    )
+    worst_column, worst = max(excess.items(), key=lambda kv: kv[1])
+    if worst > NULL_FAIL:
+        raise ValueError(
+            f"{worst:.0%} more next-game rows than history lack {worst_column}: "
+            "the depth chart or ranking for the week is missing"
+        )
+    if worst > NULL_WARN:
+        print(f"learn: WARNING next-game rows lack {worst_column} {worst:.0%} more than history")
+
+
 def run() -> dict[str, int]:
     leagues = store.read_table("leagues", "raw")
     opp = store.read_table("nfl_ff_opportunity", "raw")
@@ -398,6 +444,7 @@ def run() -> dict[str, int]:
     context = store.read_table("proj_baseline").select(*GROUP, "season", "week", "context")
     keep = [*GROUP, "season", "week", "position", "team", "as_of_season", "as_of_week"]
     keep += ["has_history", "is_future", "projection"]
+    current_week = int(leagues["current_week"].max())  # type: ignore[arg-type]
     out = []
     for lid in leagues["league_id"].to_list():
         games = games_all.filter(pl.col("league_id") == lid)
@@ -410,15 +457,16 @@ def run() -> dict[str, int]:
         future_features = build_features(
             future_all.filter(pl.col("league_id") == lid), state, lines, extras
         )
+        check_next_game_nulls(history, future_features)
         future = predict_future(history, future_features).with_columns(is_future=pl.lit(True))
         out += [past.select(keep), future.select(keep)]
-    final = (
-        pl.concat(out)
-        .join(context, on=[*GROUP, "season", "week"], how="left")
-        .with_columns(pl.col("context").fill_null(1.0))
-    )
+    joined = pl.concat(out).join(context, on=[*GROUP, "season", "week"], how="left")
+    unmatched = int(joined["context"].is_null().sum())
+    if unmatched:
+        print(f"learn: {unmatched} projection rows have no proj_baseline row; context set to 1.0")
+    final = joined.with_columns(pl.col("context").fill_null(1.0))
     store.write_table("proj_learned", final.select(*store.SCHEMAS["proj_learned"]))
-    archive_snapshot(final, int(leagues["current_week"].max()))  # type: ignore[arg-type]
+    archive_snapshot(final, current_week, lines)
     return {
         "history": final.filter(~pl.col("is_future")).height,
         "future": final.filter(pl.col("is_future")).height,
@@ -443,17 +491,37 @@ def snapshot_frame(
     )
 
 
-def archive_snapshot(final: pl.DataFrame, current_week: int) -> None:
+def unplayed(final: pl.DataFrame, games: pl.DataFrame, today: str) -> pl.DataFrame:
+    """Rows of `final` whose game has no score yet and is not dated before `today` (YYYY-MM-DD).
+    The archive cannot be regenerated, so a game already played or started is never snapshotted:
+    its projection would have seen the result or been made after kickoff."""
+    open_games = games.filter(pl.col("points_for").is_null() & (pl.col("gameday") >= today)).select(
+        "season", "week", "team"
+    )
+    return final.join(open_games, on=["season", "week", "team"], how="semi")
+
+
+def archive_snapshot(final: pl.DataFrame, current_week: int, games: pl.DataFrame) -> None:
     """Append this refresh's projections for the next game to the archive. Scored after the games,
     they are the one clean test of the learned model: nothing was chosen with them in view."""
-    fetched_at = datetime.now(UTC).isoformat(timespec="seconds")
-    new = snapshot_frame(final, store.read_table("proj_baseline"), fetched_at, current_week)
+    now = datetime.now(UTC)
+    fetched_at = now.isoformat(timespec="seconds")
+    # gamedays are US dates, so compare with the Eastern date: after 8pm ET the UTC date has rolled
+    # over while a night game is still open
+    eastern_today = now.astimezone(ZoneInfo("America/New_York")).date().isoformat()
+    eligible = unplayed(final, games, eastern_today)
+    next_rows = final.filter(pl.col("is_future") & (pl.col("week") == current_week)).height
+    if eligible.filter(pl.col("is_future") & (pl.col("week") == current_week)).height < next_rows:
+        print("learn: WARNING some next games are played or past kickoff; not archived")
+    new = snapshot_frame(eligible, store.read_table("proj_baseline"), fetched_at, current_week)
+    if new.is_empty():
+        print(f"learn: WARNING no unplayed week {current_week} games; archive left unchanged")
+        return
+    missing = int(new["baseline"].is_null().sum())
+    if missing:
+        print(f"learn: WARNING {missing} archived rows have no baseline projection")
     new = new.select(*store.SCHEMAS["proj_snapshots"])
-    try:
-        new = pl.concat([store.read_table("proj_snapshots", "archive"), new])
-    except FileNotFoundError:
-        pass
-    store.write_table("proj_snapshots", new, "archive")
+    store.write_table("proj_snapshots", store.with_archive("proj_snapshots", new), "archive")
 
 
 def compare_to_baseline() -> pl.DataFrame:

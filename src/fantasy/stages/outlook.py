@@ -21,11 +21,11 @@ from fantasy import store
 from fantasy.sim.outlook import MIN_SHARE, Context
 from fantasy.sim.scoring_scale import reference_league
 from fantasy.stages.distributions import calibrated
+from fantasy.store import SKILL, week_index
 
 HALF_LIFE = 4.0  # games, for the usage averages
 RIDGE = 1.0
 MIN_PROJECTION = 2.0  # below this a projection is a depth player and the ratios are unstable
-SKILL = ["QB", "RB", "WR", "TE"]
 
 
 def usage_table(stats: pl.DataFrame, team_stats: pl.DataFrame) -> pl.DataFrame:
@@ -74,12 +74,7 @@ def build_panel(
     """One row per projected player-game with the miss (points minus projection), whether it was
     a first or second game back, and the target and carry share vacated by absent teammates."""
     usage = usage_table(stats, team_stats)
-    games = (
-        team_games.filter(pl.col("game_type") == "REG")
-        .select("team", "season", "week")
-        .sort("team", "season", "week")
-        .with_columns(pl.int_range(pl.len()).over("team", "season").alias("g"))
-    )
+    games = store.team_game_index(team_games)
     panel = (
         baseline.join(points, on=["gsis_id", "season", "week"], how="inner")
         .join(games, on=["team", "season", "week"], how="left")
@@ -133,12 +128,12 @@ def build_panel(
             & pl.col("report_status").is_in(["Out", "Doubtful"])
         )
         .select("gsis_id", "team", "season", "week")
-        .with_columns((pl.col("season") * 100 + pl.col("week")).alias("t"))
+        .with_columns(week_index().alias("t"))
         .sort("t")
     )
     latest = usage.select(
         "gsis_id",
-        (pl.col("season") * 100 + pl.col("week") + 1).alias("t"),
+        (week_index() + 1).alias("t"),
         "target_ewma",
         "carry_ewma",
     ).sort("t")
@@ -157,9 +152,10 @@ def build_panel(
     )
 
 
-def _ridge(design: np.ndarray, y: np.ndarray) -> np.ndarray:
+def _ridge(design: np.ndarray, y: np.ndarray) -> np.ndarray | None:
+    """Ridge coefficients, or None when there are too few rows to estimate anything."""
     if design.shape[0] < design.shape[1]:
-        return np.zeros(design.shape[1])  # too little data to estimate anything: no adjustment
+        return None
     penalty = RIDGE * np.eye(design.shape[1])
     penalty[-1, -1] = 0.0  # leave the intercept alone
     return np.linalg.solve(design.T @ design + penalty, design.T @ y)
@@ -179,7 +175,10 @@ def estimate(panel: pl.DataFrame) -> pl.DataFrame:
         ):
             hit = rows.filter(mask)
             projected = float(hit["projection"].to_numpy().sum()) if hit.height else 0.0
-            ratio = float(hit["points"].to_numpy().sum()) / projected if projected else 1.0
+            if not projected:  # no row rather than a ratio of 1.0: an empty cell is not measured
+                print(f"outlook: {position} {kind} has no games; no effect stored")
+                continue
+            ratio = float(hit["points"].to_numpy().sum()) / projected
             records.append({"position": position, "kind": kind, "value": ratio, "n": hit.height})
         # vacancy slopes on games that are not a return, so the two effects stay separate
         base = rows.filter(~pl.col("first_back") & ~pl.col("second_back"))
@@ -187,6 +186,9 @@ def estimate(panel: pl.DataFrame) -> pl.DataFrame:
             [base["vac_target"].to_numpy(), base["vac_carry"].to_numpy(), np.ones(base.height)]
         )
         beta = _ridge(design, base["miss"].to_numpy())
+        if beta is None:
+            print(f"outlook: {position} has {base.height} rows, too few; no vacancy effects stored")
+            continue
         for kind, value in (("vac_target", beta[0]), ("vac_carry", beta[1])):
             records.append(
                 {"position": position, "kind": kind, "value": float(value), "n": base.height}

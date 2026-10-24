@@ -64,6 +64,6 @@ def test_lineup_with_locks_matches_auto_lineup_when_nothing_is_locked():
     assert lineup.players == {"a", "b", "c"}
 
 
-def test_an_unrecognised_status_warns_and_counts_as_healthy():
+def test_an_unrecognised_status_warns_and_counts_as_questionable():
     with pytest.warns(UserWarning, match="COV"):
-        assert rate("COV", week=7, current_week=7) == 1.0
+        assert rate("COV", week=7, current_week=7) == 0.76

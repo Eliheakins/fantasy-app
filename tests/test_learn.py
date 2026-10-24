@@ -205,3 +205,49 @@ def test_the_weekly_snapshot_keeps_only_the_next_game_with_both_projections() ->
             "baseline": 10.0,
         }
     ]
+
+
+def test_a_lagged_join_across_a_season_boundary_does_not_see_the_current_season() -> None:
+    table = pl.DataFrame(
+        {
+            "team": ["KC"] * 4,
+            "season": [2024, 2024, 2025, 2025],
+            "week": [17, 18, 1, 2],
+            "plays": [60.0, 62.0, 100.0, 100.0],
+        }
+    )
+    target = pl.DataFrame({"team": ["KC"], "season": [2025], "week": [3]})
+    ahead = learn.lag_asof(target, table, "team", ["plays"], "pace", shift=4)  # horizon 5
+    assert ahead["pace_plays"].item() < 63.0  # only 2024's games, none of 2025's 100s
+
+
+def test_next_game_nulls_warn_then_fail_against_the_history_share(capsys) -> None:  # type: ignore[no-untyped-def]
+    cols = [*learn.DEPTH_COLUMNS, *learn.ECR_COLUMNS]
+    history = pl.DataFrame({c: [1.0] * 10 for c in cols})
+    future = pl.DataFrame({"week": [7] * 10, **{c: [1.0] * 8 + [None, None] for c in cols}})
+    learn.check_next_game_nulls(history, future)  # 20% more nulls: a warning
+    assert "WARNING" in capsys.readouterr().out
+    broken = pl.DataFrame(
+        {"week": [7] * 10, **{c: [None] * 10 for c in cols}},
+        schema={"week": pl.Int64, **{c: pl.Float64 for c in cols}},
+    )
+    with pytest.raises(ValueError, match="missing"):
+        learn.check_next_game_nulls(history, broken)
+
+
+def test_a_played_or_started_game_is_never_archived() -> None:
+    final = pl.DataFrame(
+        {"season": [2026] * 3, "week": [7] * 3, "team": ["A", "B", "C"], "projection": [1.0] * 3}
+    )
+    games = pl.DataFrame(
+        {
+            "season": [2026] * 3,
+            "week": [7] * 3,
+            "team": ["A", "B", "C"],
+            "points_for": [None, 21, None],
+            "gameday": ["2026-10-25", "2026-10-22", "2026-10-20"],
+        },
+        schema_overrides={"points_for": pl.Int64},
+    )
+    out = learn.unplayed(final, games, "2026-10-23")
+    assert out["team"].to_list() == ["A"]

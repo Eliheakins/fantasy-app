@@ -26,12 +26,6 @@ def res(rows: list[tuple[str, str, int, int, str, str, float, float]]) -> pl.Dat
     return pl.DataFrame(data, schema=RES_SCHEMA, orient="row")
 
 
-def test_gaussian_rho_endpoints_and_middle() -> None:
-    assert d.gaussian_rho(0.0) == 0.0
-    assert d.gaussian_rho(1.0) == pytest.approx(1.0)
-    assert d.gaussian_rho(0.5) == pytest.approx(2 * math.sin(math.pi / 12))
-
-
 def test_marginals_are_quantiles_of_actual_over_projection() -> None:
     # actual = 1.5 x projection for every row, so every ratio quantile is 1.5
     rows = [("L", f"p{i}", 2025, 1, "WR", "KC", 10.0, 5.0) for i in range(50)]
@@ -156,3 +150,19 @@ def test_each_size_tier_carries_its_own_spread_and_the_pooled_one_sits_between()
     cv = {r["tier"]: r["cv"] for r in out.iter_rows(named=True)}
     assert cv[2] < 0.15 < cv[0]  # steady big projections, erratic small ones
     assert cv[2] < cv[-1] < cv[0]
+
+
+def test_correlate_maps_spearman_to_the_gaussian_rho() -> None:
+    n = d.MIN_PAIR_ROWS
+    perfect = pl.DataFrame(
+        {
+            "league_id": ["L"] * n,
+            "role": ["QB1"] * n,
+            "role_b": ["WR1"] * n,
+            "resid": [float(i) for i in range(n)],
+            "resid_b": [float(i) for i in range(n)],
+        }
+    )
+    out = d._correlate(perfect, "same_team").row(0, named=True)
+    assert out["rho_spearman"] == pytest.approx(1.0)
+    assert out["rho"] == pytest.approx(2 * math.sin(math.pi / 6))

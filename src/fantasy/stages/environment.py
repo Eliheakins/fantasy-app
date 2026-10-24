@@ -29,9 +29,10 @@ import polars as pl
 from fantasy import store
 from fantasy.sim.injuries import InjuryModel
 from fantasy.sim.scoring_scale import reference_league
-from fantasy.stages.crosswalk import normalize_name
+from fantasy.stages.crosswalk import SUFFIXES
 from fantasy.stages.distributions import calibrated
 from fantasy.stages.outlook import build_panel
+from fantasy.store import SKILL
 
 HALF_LIFE = 6.0  # games
 WINDOW = 17  # games
@@ -43,7 +44,6 @@ REPLICATE_T = 1.0  # each half of the history must show the same sign with at le
 SPLIT_SEASON = 2024  # the halves are before this season and from it on
 TTL_HOURS = 12.0
 RIDGE = 1.0
-SKILL = ["QB", "RB", "WR", "TE"]
 CONTROLS = ["first_back", "second_back", "vac_target", "vac_carry", "log_context"]
 FEATURES = ["pass_epa", "sack_rate", "cb_out"]
 KINDS = {"pass_epa": "team_pass_epa", "sack_rate": "team_sack_rate", "cb_out": "opp_cb_out"}
@@ -128,7 +128,16 @@ def ratings(table: pl.DataFrame) -> pl.DataFrame:
 
 
 def _name(column: str) -> pl.Expr:
-    return pl.col(column).map_elements(normalize_name, return_dtype=pl.String).alias("nm")
+    """Vectorized `normalize_name`: lowercase letters and spaces only, no name suffixes."""
+    return (
+        pl.col(column)
+        .str.to_lowercase()
+        .str.replace_all(r"[^a-z ]", "")
+        .str.split(" ")
+        .list.eval(pl.element().filter((pl.element() != "") & ~pl.element().is_in(list(SUFFIXES))))
+        .list.join(" ")
+        .alias("nm")
+    )
 
 
 def _leading_cbs(snaps: pl.DataFrame, injuries: pl.DataFrame) -> pl.DataFrame:
@@ -213,10 +222,9 @@ def estimate(panel: pl.DataFrame) -> pl.DataFrame:
     for position in SKILL:
         rows = panel.filter(pl.col("position") == position)
         if rows.height < len(cols) + 31:
-            records += [
-                {"position": position, "kind": KINDS[k], "value": 0.0, "t": 0.0, "n": rows.height}
-                for k in FEATURES
-            ]
+            # no row, not a measured zero: the simulation then applies no effect, and a thin or
+            # broken panel is told apart from a real null effect
+            print(f"environment: {position} has {rows.height} rows, too few; no effects stored")
             continue
         x = np.column_stack(
             [rows[c].to_numpy().astype(float) for c in cols] + [np.ones(rows.height)]

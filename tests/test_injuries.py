@@ -125,3 +125,24 @@ def test_shrink_pulls_a_thin_cell_to_its_parent_and_a_thick_one_stays() -> None:
     assert stage.shrink(thin, parent).p[0] == pytest.approx(0.5 + 0.5 * 2 / 32)
     assert stage.shrink(thick, parent).p[0] > 0.98
     assert np.isclose(stage.shrink(thin, None).p[0], 1.0)
+
+
+def test_an_unknown_status_is_treated_as_questionable_with_a_warning() -> None:
+    frame = pl.DataFrame(
+        [("p", 7, 10.0), ("p", 8, 10.0)], schema=["gsis_id", "week", "projection"], orient="row"
+    )
+    with pytest.warns(UserWarning, match="Healthy-ish"):
+        out = injury_projections(
+            frame, {"p": ("Healthy-ish", "Hamstring", None)}, InjuryModel(_effects()), 7
+        )
+    assert out["play_prob"][0] == 0.55  # the Questionable hamstring curve
+
+
+def test_a_status_with_no_rows_stores_no_cells_instead_of_never_plays() -> None:
+    table = stage.estimate(_panel())  # the panel has only Out rows
+    assert set(table["status"]) == {"Out"}
+
+
+def test_a_root_cell_with_no_games_at_a_horizon_takes_the_previous_rate() -> None:
+    cell = stage.Cell(10, (10, 10, 0, 0), (0.8, 0.6, 0.0, 0.0), 0, 0.0, 0.0)
+    assert stage.shrink(cell, None).p == (0.8, 0.6, 0.6, 0.6)

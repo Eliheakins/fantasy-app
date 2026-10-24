@@ -15,13 +15,14 @@ from typing import NamedTuple
 import polars as pl
 
 from fantasy import store
+from fantasy.sim.scoring_scale import reference_league
 from fantasy.stages.distributions import calibrated
+from fantasy.store import SKILL
 
 HORIZON = 4
 SHRINK = 30.0  # pseudo-observations pulling a cell toward its parent
 PERF_SHRINK = 40.0  # pseudo-games at a ratio of 1.0 for the play-through discount
 MIN_PROJECTION = 3.0  # baseline projections below this give unstable point ratios
-SKILL = ["QB", "RB", "WR", "TE"]
 STATUSES = ("Out", "Doubtful", "Questionable")
 BODIES = (
     "Hamstring",
@@ -65,10 +66,6 @@ class Effect(NamedTuple):
     perf: float
 
 
-def body_group(body: str | None) -> str:
-    return body if body in BODIES else OTHER
-
-
 def build_panel(
     injuries: pl.DataFrame,
     stats: pl.DataFrame,
@@ -86,12 +83,7 @@ def build_panel(
     played = stats.filter(pl.col("season_type") == "REG").select(
         pl.col("player_id").alias("gsis_id"), "season", "week", touches.alias("opp")
     )
-    games = (
-        team_games.filter(pl.col("game_type") == "REG")
-        .select("season", "week", "team")
-        .sort("team", "season", "week")
-        .with_columns(pl.int_range(pl.len()).over("team", "season").alias("g"))
-    )
+    games = store.team_game_index(team_games)
     rows = (
         injuries.filter(
             pl.col("position").is_in(SKILL)
@@ -131,7 +123,10 @@ def build_panel(
         .join(baseline.rename({"week": "wk0"}), on=["gsis_id", "season", "wk0"], how="left")
         .with_columns(
             pl.col("practice_status").replace_strict(PRACTICE, default=None).alias("practice"),
-            pl.col("body").map_elements(body_group, return_dtype=pl.String).alias("body"),
+            pl.when(pl.col("body").is_in(BODIES))
+            .then(pl.col("body"))
+            .otherwise(pl.lit(OTHER))
+            .alias("body"),
         )
     )
 
@@ -141,6 +136,7 @@ def _cell(panel: pl.DataFrame) -> Cell:
     for k in range(HORIZON):
         known = panel.filter(pl.col(f"p{k}").is_not_null())
         seen.append(known.height)
+        # an empty cell's 0.0 has zero weight in shrink(); a root cell is fixed by its seen count
         rate.append(
             float(known[f"p{k}"].cast(pl.Float64).to_numpy().mean()) if known.height else 0.0
         )
@@ -159,10 +155,21 @@ def _cell(panel: pl.DataFrame) -> Cell:
     )
 
 
+def _fill_empty_horizons(cell: Cell) -> tuple[float, ...]:
+    """A root cell with no rows at a horizon takes the previous horizon's rate (a game that
+    exists for nobody carries no information); no rows at game 0 is a broken panel."""
+    if cell.seen[0] == 0:
+        raise ValueError("injury panel has no rows for a status: the panel is broken")
+    out: list[float] = []
+    for seen, rate in zip(cell.seen, cell.rate, strict=True):
+        out.append(rate if seen else out[-1])
+    return tuple(out)
+
+
 def shrink(cell: Cell, parent: Effect | None) -> Effect:
     """A cell pulled toward its parent in proportion to how thin it is; the root keeps its own."""
     if parent is None:
-        p = cell.rate
+        p = _fill_empty_horizons(cell)
     else:
         p = tuple(
             (seen * rate + SHRINK * up) / (seen + SHRINK)
@@ -197,6 +204,9 @@ def estimate(panel: pl.DataFrame) -> pl.DataFrame:
 
     for status in STATUSES:
         in_status = panel.filter(pl.col("report_status") == status)
+        if in_status.is_empty():  # no rows is no information, not "never plays": store no cells
+            print(f"injuries: WARNING no panel rows for status {status}; no effects stored")
+            continue
         status_effect = shrink(_cell(in_status), None)
         add(status, ANY, ANY, status_effect)
         practices = PRACTICE.values() if status == "Questionable" else ()
@@ -215,7 +225,7 @@ def estimate(panel: pl.DataFrame) -> pl.DataFrame:
 
 def run() -> int:
     leagues = store.read_table("leagues", "raw")
-    league_id = leagues["league_id"][0]  # point ratios only; any league's scoring will do
+    league_id = reference_league(leagues)  # point ratios only; the rest of the code uses this one
     season = int(leagues["season"].to_numpy().max())
     panel = build_panel(
         store.read_table("nfl_injuries", "raw").filter(pl.col("season") < season),

@@ -33,10 +33,6 @@ MIN_PAIR_ROWS = 200
 TEAM_WEEK = ["league_id", "season", "week", "team"]
 
 
-def gaussian_rho(rho_spearman: float) -> float:
-    return 2 * math.sin(math.pi * rho_spearman / 6)
-
-
 def residual_frame(proj: pl.DataFrame, points: pl.DataFrame) -> pl.DataFrame:
     """Actual minus projection, for games whose projection used earlier games."""
     actual = points.select("league_id", "gsis_id", "season", "week", "points")
@@ -184,9 +180,9 @@ def run() -> dict[str, int]:
     )
     marginals = estimate_marginals(calibrated)
     pairs = estimate_pairs(with_roles(calibrated), store.read_table("team_games"))
-    store.write_table("projection_calibration", curves)
-    store.write_table("marginals", marginals)
-    store.write_table("correlation_pairs", pairs)
+    store.write_tables(
+        {"projection_calibration": curves, "marginals": marginals, "correlation_pairs": pairs}
+    )
     return {
         "projection_calibration": curves.height,
         "marginals": marginals.height,

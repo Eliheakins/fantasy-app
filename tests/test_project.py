@@ -117,3 +117,53 @@ def test_future_targets_drop_a_player_with_no_current_team() -> None:
     none = pl.DataFrame(schema={"league_id": pl.String, "gsis_id": pl.String})
     plays = games([(2025, 4, "KC", None)])
     assert p.future_targets(form, current, none, plays).filter(pl.col("gsis_id") == "A").is_empty()
+
+
+def test_a_horizon_shift_across_a_season_boundary_uses_the_previous_seasons_games() -> None:
+    exp = world()  # A has 2024 weeks 1-2 and 2025 weeks 1-3
+    prior = p.position_prior(exp)
+    form = p.build_form(exp, prior)
+    out = p.project_targets(target("A", 3), form, prior, NO_LINES, horizon=5)
+    # five weeks ahead of week 3 is before the season began: the latest allowed game is 2024 week 2
+    assert (out["as_of_season"].item(), out["as_of_week"].item()) == (2024, 2)
+    nearer = p.project_targets(target("A", 6), form, prior, NO_LINES, horizon=5)
+    assert (nearer["as_of_season"].item(), nearer["as_of_week"].item()) == (2025, 1)  # origin: wk 2
+
+
+def test_week_index_is_monotone_across_seasons() -> None:
+    frame = pl.DataFrame({"season": [2024, 2024, 2025], "week": [1, 22, 1]})
+    idx = frame.select(p.week_index())["season"].to_list()
+    assert idx == sorted(idx) and len(set(idx)) == 3
+
+
+def _opp(players: list[str]) -> pl.DataFrame:
+    return pl.DataFrame(
+        {"player_id": players, "season": [2025] * len(players), "week": [1] * len(players)}
+    )
+
+
+def test_expected_points_with_no_scored_row_are_dropped_not_scored_as_zero(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr(p, "expected_points_expr", lambda scoring: pl.lit(5.0))
+    opp = _opp(["A", "B"]).with_columns(position=pl.lit("WR"), posteam=pl.lit("KC"))
+    points = pl.DataFrame(
+        {"league_id": ["L1"], "gsis_id": ["A"], "season": [2025], "week": [1], "points": [9.0]}
+    )
+    leagues = pl.DataFrame({"league_id": ["L1"], "scoring_settings": ["{}"]})
+    monkeypatch.setattr(p, "MAX_UNSCORED_SHARE", 0.6)
+    out = p.expected_frame(opp, points, leagues)
+    assert out["gsis_id"].to_list() == ["A"]
+    monkeypatch.setattr(p, "MAX_UNSCORED_SHARE", 0.1)
+    with pytest.raises(ValueError, match="no points"):
+        p.expected_frame(opp, points, leagues)
+
+
+def test_rostered_players_with_no_history_on_any_team_get_the_position_prior() -> None:
+    exp = world()
+    form = p.build_form(exp, p.position_prior(exp))
+    current = pl.DataFrame({"gsis_id": ["A", "R"], "team": ["KC", "KC"], "position": ["QB", "QB"]})
+    rostered = pl.DataFrame({"league_id": ["L2"], "gsis_id": ["R"]})  # a rival's rookie
+    plays = games([(2025, 4, "KC", None)])
+    out = p.future_targets(form, current, rostered, plays)
+    assert out.filter(pl.col("gsis_id") == "R")["league_id"].to_list() == ["L2"]
+    left_out = p.unprojected_rostered(rostered, current, out.filter(pl.col("gsis_id") == "A"))
+    assert left_out["len"].to_list() == [1]

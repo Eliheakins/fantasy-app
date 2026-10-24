@@ -63,14 +63,13 @@ def run() -> dict[str, int]:
     games = team_games_frame(store.read_table("nfl_schedules", "raw")).select(
         *store.SCHEMAS["team_games"]
     )
-    store.write_table("team_games", games)
     stats = store.read_table("nfl_player_stats", "raw")
     frames = [
         player_points_frame(stats, games, json.loads(r["scoring_settings"]), r["league_id"])
         for r in store.read_table("leagues", "raw").iter_rows(named=True)
     ]
     points = pl.concat(frames)
-    store.write_table("player_points", points)
+    store.write_tables({"team_games": games, "player_points": points})
     return {"team_games": games.height, "player_points": points.height}
 
 
