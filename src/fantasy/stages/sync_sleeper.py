@@ -4,7 +4,6 @@ Run: uv run python -m fantasy.stages.sync_sleeper
 """
 
 import json
-import os
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -21,6 +20,7 @@ PLAYERS_TTL_SECONDS = 24 * 3600  # Sleeper asks for at most one players pull a d
 FANTASY_POSITIONS = {"QB", "RB", "WR", "TE", "K", "DEF"}
 LAST_WEEK = 17
 EMPTY_SLOT = "0"
+MIN_PLAYERS = 1000  # the real file has about 11,000 entries
 
 
 def _int(value: Any) -> int | None:
@@ -34,6 +34,18 @@ def _frame(name: str, rows: list[dict[str, Any]]) -> pl.DataFrame:
     return pl.DataFrame(rows, schema=store.SCHEMAS[name])
 
 
+def check_players(data: Any) -> None:
+    """Raise before an empty, truncated or error-object response is cached for a day."""
+    if not isinstance(data, dict) or len(data) < MIN_PLAYERS:
+        size = len(data) if hasattr(data, "__len__") else "?"
+        raise RuntimeError(
+            f"Sleeper players file looks wrong: {type(data).__name__}, {size} entries"
+        )
+    sample = next(iter(data.values()))
+    if not isinstance(sample, dict) or "position" not in sample:
+        raise RuntimeError("Sleeper players file entries do not have the expected shape")
+
+
 def load_players(
     cache: Path = PLAYERS_CACHE, now: float | None = None
 ) -> dict[str, dict[str, Any]]:
@@ -41,10 +53,11 @@ def load_players(
     if cache.exists() and now - cache.stat().st_mtime < PLAYERS_TTL_SECONDS:
         return json.loads(cache.read_text())
     data: dict[str, dict[str, Any]] = fetch("/players/nfl")
+    check_players(data)
     cache.parent.mkdir(parents=True, exist_ok=True)
     tmp = cache.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(data))
-    os.replace(tmp, cache)
+    tmp.replace(cache)
     return data
 
 
@@ -219,8 +232,13 @@ def run(cfg: Config) -> dict[str, int]:
         lg = fetch(f"/league/{league_id}")
         rosters = fetch(f"/league/{league_id}/rosters")
         users = fetch(f"/league/{league_id}/users")
+        teams = teams_frame(league_id, rosters, users, cfg.user_id)
+        if not rosters:
+            raise RuntimeError(f"Sleeper returned no rosters for league {key} ({league_id})")
+        if not teams["is_me"].any():
+            raise RuntimeError(f"no roster in league {key} belongs to user_id {cfg.user_id}")
         out["leagues"].append(league_frame(key, lg))
-        out["league_teams"].append(teams_frame(league_id, rosters, users, cfg.user_id))
+        out["league_teams"].append(teams)
         out["rosters"].append(rosters_frame(league_id, rosters))
         for week in range(1, LAST_WEEK + 1):
             raw_matchups = fetch(f"/league/{league_id}/matchups/{week}")
@@ -254,10 +272,14 @@ def sync_week(week: int, data_dir: Path = store.DATA_DIR) -> int:
     fetched = [
         matchups_frames(lid, week, fetch(f"/league/{lid}/matchups/{week}")) for lid in league_ids
     ]
+    # build both replacements before writing either, so a failure cannot leave one updated
+    merged = {}
     for name, index in (("matchups", 0), ("matchup_players", 1)):
         old = store.read_table(name, "raw", data_dir)
         kept = old.filter(~((pl.col("week") == week) & pl.col("league_id").is_in(league_ids)))
-        store.write_table(name, pl.concat([kept, *(f[index] for f in fetched)]), "raw", data_dir)
+        merged[name] = pl.concat([kept, *(f[index] for f in fetched)])
+    for name, df in merged.items():
+        store.write_table(name, df, "raw", data_dir)
     return sum(f[1].height for f in fetched)
 
 

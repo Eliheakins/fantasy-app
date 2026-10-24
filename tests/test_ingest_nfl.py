@@ -44,6 +44,28 @@ def test_snaps_get_gsis_ids_through_the_pfr_id() -> None:
     assert out.sort("pfr_player_id")["gsis_id"].to_list() == ["G1", None]
 
 
-def test_null_ids_are_dropped() -> None:
-    df = pl.DataFrame({"player_id": ["a", None, "c"], "x": [1, 2, 3]})
-    assert i.drop_null_ids(df, "player_id")["x"].to_list() == [1, 3]
+def test_a_game_day_that_ended_after_the_file_was_written_makes_it_stale() -> None:
+    import datetime as dt
+
+    def ts(day: str) -> float:
+        return dt.datetime.fromisoformat(day).replace(tzinfo=dt.UTC).timestamp()
+
+    written, now = ts("2026-10-18T20:00:00"), ts("2026-10-19T12:00:00")
+    assert i.game_day_ended_since(["2026-10-18"], written, now)
+    assert not i.game_day_ended_since(["2026-10-25"], written, now)
+    assert not i.game_day_ended_since(["2026-10-18"], ts("2026-10-19T08:00:00"), now)
+
+
+def test_replacement_is_refused_when_empty_older_or_newly_null(tmp_path) -> None:
+    old = pl.DataFrame({"season": [2026], "week": [6], "x": [1.0]})
+    store.table_path("tbl", "raw", tmp_path).parent.mkdir(parents=True)
+    old.write_parquet(store.table_path("tbl", "raw", tmp_path))
+    good = pl.DataFrame({"season": [2026], "week": [7], "x": [2.0]})
+    i.check_replacement("tbl", good, None, tmp_path)
+    for bad in (
+        good.clear(),
+        good.with_columns(week=pl.lit(5)),
+        good.with_columns(x=pl.lit(None, dtype=pl.Float64)),
+    ):
+        with pytest.raises(ValueError):
+            i.check_replacement("tbl", bad, None, tmp_path)

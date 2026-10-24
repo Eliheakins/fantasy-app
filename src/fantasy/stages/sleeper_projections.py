@@ -8,22 +8,26 @@ Run: uv run python -m fantasy.stages.sleeper_projections
 """
 
 import json
-import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import httpx
 import polars as pl
 
 from fantasy import store
 from fantasy.config import load_config
+from fantasy.sources.sleeper import fetch
 
-URL = "https://api.sleeper.com/projections/nfl/{season}/{week}"
+PROJECTIONS_BASE = "https://api.sleeper.com"
 POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"]
 WEEKS_AHEAD = 4
 LAST_WEEK = 18
-PAUSE_SECONDS = 0.3
+# Sleeper stat keys no league scores: projection totals, ADP and volume stats
+IGNORED_KEYS = {
+    "adp_dd_ppr", "cmp_pct", "def_fum_td", "def_kr_td", "def_pr_td", "fga", "gp",
+    "pos_adp_dd_ppr", "pr", "pr_td", "pts_half_ppr", "pts_idp", "pts_ppr", "pts_std",
+    "rec_tgt", "xpa",
+}  # fmt: skip
 
 
 def snapshot_frame(week: int, fetched_at: str, items: list[dict[str, Any]]) -> pl.DataFrame:
@@ -38,6 +42,12 @@ def snapshot_frame(week: int, fetched_at: str, items: list[dict[str, Any]]) -> p
         if d.get("stats")
     ]
     return pl.DataFrame(rows, schema=store.SCHEMAS["sleeper_proj_snapshots"])
+
+
+def unknown_keys(snapshots: pl.DataFrame, scoring: dict[str, float]) -> list[str]:
+    """Projected stat keys that neither the league scoring lists nor IGNORED_KEYS covers."""
+    seen = {key for s in snapshots["stats"].unique() for key in json.loads(s)}
+    return sorted(seen - scoring.keys() - IGNORED_KEYS)
 
 
 def score_stats(stats: dict[str, float], scoring: dict[str, float]) -> float:
@@ -64,33 +74,45 @@ def score_stats(stats: dict[str, float], scoring: dict[str, float]) -> float:
 def scored_latest(snapshots: pl.DataFrame, scoring: dict[str, float]) -> pl.DataFrame:
     """Latest snapshot per week, scored: sleeper_id, week, projection."""
     latest = snapshots.filter(pl.col("fetched_at") == pl.col("fetched_at").max().over("week"))
+    unknown = unknown_keys(latest, scoring)
+    if unknown:  # these are scored as zero
+        print(f"warning: Sleeper projection keys not in the league scoring: {unknown}")
     scores = [score_stats(json.loads(s), scoring) for s in latest["stats"]]
     return latest.select("sleeper_id", "week").with_columns(
         pl.Series("projection", scores, dtype=pl.Float64)
     )
 
 
+def fetch_week(season: int, week: int) -> list[dict[str, Any]]:
+    items = fetch(
+        f"/projections/nfl/{season}/{week}",
+        {"season_type": "regular", "position[]": POSITIONS},
+        base=PROJECTIONS_BASE,
+    )
+    if not isinstance(items, list):
+        raise RuntimeError(
+            f"Sleeper projections for week {week} came back as {type(items).__name__}"
+        )
+    return items
+
+
 def run(data_dir: Path = store.DATA_DIR) -> int:
     season = load_config().season
-    current = int(store.read_table("leagues", "raw", data_dir)["current_week"].to_numpy().max())
-    fetched_at = datetime.now(UTC).isoformat(timespec="seconds")
-    frames = []
-    for week in range(current, min(current + WEEKS_AHEAD, LAST_WEEK + 1)):
-        resp = httpx.get(
-            URL.format(season=season, week=week),
-            params={"season_type": "regular", "position[]": POSITIONS},
-            timeout=60,
-        )
-        resp.raise_for_status()
-        frames.append(snapshot_frame(week, fetched_at, resp.json()))
-        time.sleep(PAUSE_SECONDS)
-    new = pl.concat(frames)
-    try:
-        new = pl.concat([store.read_table("sleeper_proj_snapshots", "archive", data_dir), new])
-    except FileNotFoundError:
-        pass
-    store.write_table("sleeper_proj_snapshots", new, "archive", data_dir)
     leagues = store.read_table("leagues", "raw", data_dir)
+    current = int(leagues["current_week"].to_numpy().max())
+    weeks = range(current, min(current + WEEKS_AHEAD, LAST_WEEK + 1))
+    if not weeks:
+        print(f"week {current} is past the last projected week; nothing to snapshot")
+        return 0
+    fetched_at = datetime.now(UTC).isoformat(timespec="seconds")
+    frames = [snapshot_frame(w, fetched_at, fetch_week(season, w)) for w in weeks]
+    if frames[0].height == 0:  # latest-per-week scoring would silently reuse an old snapshot
+        raise RuntimeError(f"Sleeper returned no projections for week {current}")
+    for week, frame in zip(weeks, frames, strict=True):
+        if frame.height == 0 and week != current:
+            print(f"warning: no projections yet for week {week} (keeping any earlier snapshot)")
+    new = pl.concat(frames)
+    new = store.with_archive("sleeper_proj_snapshots", new, data_dir)
     scored = [
         scored_latest(new, json.loads(lg["scoring_settings"])).with_columns(
             pl.lit(lg["league_id"]).alias("league_id")
@@ -98,6 +120,8 @@ def run(data_dir: Path = store.DATA_DIR) -> int:
         for lg in leagues.iter_rows(named=True)
     ]
     out = pl.concat(scored).select(*store.SCHEMAS["proj_sleeper"])
+    # everything is computed before the first write; the derived table is rebuilt from the archive
+    store.write_table("sleeper_proj_snapshots", new, "archive", data_dir)
     store.write_table("proj_sleeper", out, "derived", data_dir)
     return new.height
 

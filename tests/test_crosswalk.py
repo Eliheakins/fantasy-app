@@ -114,3 +114,11 @@ def test_only_my_unmapped_non_defense_players_are_flagged() -> None:
     )
     bad = c.unmapped_on_my_rosters(id_map, rosters, teams, pl_)
     assert sorted(bad["sleeper_id"].to_list()) == ["2", "99"]
+
+
+def test_duplicate_gsis_lists_sleeper_ids_sharing_one_nflverse_id() -> None:
+    id_map = pl.DataFrame(
+        {"sleeper_id": ["1", "2", "3", "4"], "gsis_id": ["G", "G", "H", None]},
+        schema={"sleeper_id": pl.String, "gsis_id": pl.String},
+    )
+    assert c.duplicate_gsis(id_map).to_dicts() == [{"gsis_id": "G", "sleeper_ids": ["1", "2"]}]

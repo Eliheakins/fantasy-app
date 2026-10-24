@@ -45,3 +45,12 @@ def test_a_failed_request_does_not_expose_the_api_key(monkeypatch):
     with pytest.raises(RuntimeError) as err:
         so._get(f"{so.BASE}/events", {"apiKey": "SECRET"})
     assert "SECRET" not in str(err.value) and "401" in str(err.value)
+
+
+def test_env_parser_handles_quotes_export_and_comments(tmp_path, monkeypatch):
+    monkeypatch.delenv("ODDS_API_KEY", raising=False)
+    env = tmp_path / ".env"
+    env.write_text("# ODDS_API_KEY=old\nOTHER=1\nexport ODDS_API_KEY='abc 123'\n")
+    assert so.api_key(env) == "abc 123"
+    env.write_text('ODDS_API_KEY="k#1"\n')
+    assert so.api_key(env) == "k#1"

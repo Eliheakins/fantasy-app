@@ -6,6 +6,7 @@ Needs ODDS_API_KEY in the environment or in .env. Raw JSON only, nothing downstr
 
 import json
 import os
+import re
 import sys
 import time
 from datetime import UTC, datetime, timedelta
@@ -29,16 +30,33 @@ REGION = "us"
 WINDOW_DAYS = 7  # one week of games per snapshot
 CREDIT_FLOOR = 100  # stop before the monthly allowance runs out
 PAUSE_SECONDS = 0.5
+EVENT_ID = re.compile(r"[A-Za-z0-9]+", re.ASCII)  # becomes a file name
 ODDS_DIR = store.DATA_DIR / "archive" / "odds"
+
+
+def parse_env_line(line: str) -> tuple[str, str] | None:
+    """One `.env` line as (name, value): comments and blanks are skipped, an `export ` prefix and
+    one pair of surrounding quotes are dropped."""
+    line = line.strip()
+    if not line or line.startswith("#"):
+        return None
+    line = line.removeprefix("export ").lstrip()
+    name, sep, value = line.partition("=")
+    if not sep:
+        return None
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+        value = value[1:-1]
+    return name.strip(), value
 
 
 def api_key(env_file: Path = store.ROOT / ".env") -> str:
     key = os.environ.get("ODDS_API_KEY")
     if not key and env_file.exists():
         for line in env_file.read_text().splitlines():
-            name, _, value = line.partition("=")
-            if name.strip() == "ODDS_API_KEY":
-                key = value.strip()
+            parsed = parse_env_line(line)
+            if parsed and parsed[0] == "ODDS_API_KEY":
+                key = parsed[1]
     if not key:
         raise RuntimeError("ODDS_API_KEY is not set: export it or put it in .env")
     return key
@@ -54,11 +72,7 @@ def _get(url: str, params: dict[str, str]) -> httpx.Response:
 
 def events_in_window(events: list[dict[str, Any]], now: datetime) -> list[dict[str, Any]]:
     end = now + timedelta(days=WINDOW_DAYS)
-    return [
-        e
-        for e in events
-        if now <= datetime.fromisoformat(e["commence_time"].replace("Z", "+00:00")) <= end
-    ]
+    return [e for e in events if now <= datetime.fromisoformat(e["commence_time"]) <= end]
 
 
 def snapshot_cost(n_events: int) -> int:
@@ -79,7 +93,7 @@ def run(dry_run: bool = False, odds_dir: Path = ODDS_DIR, now: datetime | None =
     key = api_key()
     listing = _get(f"{BASE}/events", {"apiKey": key})  # free call
     events = events_in_window(listing.json(), now)
-    if not all(str(e["id"]).isalnum() for e in events):
+    if not all(EVENT_ID.fullmatch(str(e["id"])) for e in events):
         raise RuntimeError("Odds API returned an event id that is not alphanumeric")
     cost = snapshot_cost(len(events))
     remaining = listing.headers.get("x-requests-remaining")
@@ -91,23 +105,29 @@ def run(dry_run: bool = False, odds_dir: Path = ODDS_DIR, now: datetime | None =
         sys.exit(f"refusing: {remaining} credits left, floor is {CREDIT_FLOOR}")
 
     stamp = now.strftime("%Y%m%dT%H%M%SZ")
-    out = odds_dir / stamp
-    out.mkdir(parents=True, exist_ok=True)
+    partial = odds_dir / f"{stamp}.partial"  # only a finished snapshot gets the plain name
+    partial.mkdir(parents=True, exist_ok=True)
     used = left = None
-    for e in events:
-        resp = _get(
-            f"{BASE}/events/{e['id']}/odds",
-            {
-                "apiKey": key,
-                "regions": REGION,
-                "markets": ",".join(MARKETS),
-                "oddsFormat": "american",
-            },
-        )
-        (out / f"{e['id']}.json").write_text(json.dumps(resp.json()))
-        used, left = resp.headers.get("x-requests-used"), resp.headers.get("x-requests-remaining")
-        time.sleep(PAUSE_SECONDS)
-    log_credits(stamp, used, left, odds_dir)
+    try:
+        for e in events:
+            resp = _get(
+                f"{BASE}/events/{e['id']}/odds",
+                {
+                    "apiKey": key,
+                    "regions": REGION,
+                    "markets": ",".join(MARKETS),
+                    "oddsFormat": "american",
+                },
+            )
+            (partial / f"{e['id']}.json").write_text(json.dumps(resp.json()))
+            used = resp.headers.get("x-requests-used")
+            left = resp.headers.get("x-requests-remaining")
+            time.sleep(PAUSE_SECONDS)
+    finally:
+        if used is not None:  # credits were spent even if a later call failed
+            log_credits(stamp, used, left, odds_dir)
+    out = odds_dir / stamp
+    partial.rename(out)
     print(f"saved {len(events)} files to {out}; credits remaining: {left}")
 
 

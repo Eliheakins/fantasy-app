@@ -31,6 +31,7 @@ TEAM_MAP = {
     "JAC": "JAX",
     "WSH": "WAS",
 }
+TOP_NAMES = 5
 SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
 
 
@@ -96,6 +97,48 @@ def unmapped_on_my_rosters(
     )
 
 
+def duplicate_gsis(id_map: pl.DataFrame) -> pl.DataFrame:
+    """gsis_id shared by more than one Sleeper ID: gsis_id, sleeper_ids (sorted list)."""
+    return (
+        id_map.drop_nulls("gsis_id")
+        .group_by("gsis_id")
+        .agg(pl.col("sleeper_id").sort())
+        .filter(pl.col("sleeper_id").list.len() > 1)
+        .rename({"sleeper_id": "sleeper_ids"})
+        .sort("gsis_id")
+    )
+
+
+def unmapped_summary(label: str, unmapped: pl.DataFrame, top: int = TOP_NAMES) -> str:
+    """One line: the count of unmapped players in a group and a few names."""
+    names = [f"{n} ({p})" for n, p in unmapped.sort("full_name").head(top).iter_rows()]
+    return f"unmapped {label}: {unmapped.height}" + (f", e.g. {', '.join(names)}" if names else "")
+
+
+def report_unmapped(
+    id_map: pl.DataFrame, rosters: pl.DataFrame, teams: pl.DataFrame, players: pl.DataFrame
+) -> None:
+    """Print unmapped players on rival rosters and among active free agents. These do not stop the
+    run: only my own players matter for decisions, but a growing count flags a broken ID source."""
+    rostered = rosters.select("sleeper_id").unique()
+    mine = teams.filter(pl.col("is_me")).select("league_id", "roster_id")
+    rivals = rosters.join(mine, on=["league_id", "roster_id"], how="anti").select("sleeper_id")
+    unmapped = (
+        players.filter(pl.col("position") != "DEF")
+        .join(id_map.select("sleeper_id", "gsis_id"), on="sleeper_id", how="left")
+        .filter(pl.col("gsis_id").is_null())
+    )
+    cols = ["full_name", "position"]
+    rival = unmapped.join(rivals.unique(), on="sleeper_id").select(cols)
+    free = (
+        unmapped.filter((pl.col("status") == "Active") & pl.col("team").is_not_null())
+        .join(rostered, on="sleeper_id", how="anti")
+        .select(cols)
+    )
+    print(unmapped_summary("on rival rosters", rival))
+    print(unmapped_summary("active free agents", free))
+
+
 def run() -> dict[str, int]:
     players = store.read_table("sleeper_players", "raw")
     overrides = pl.read_csv(
@@ -114,12 +157,14 @@ def run() -> dict[str, int]:
     counts["active_total"] = active.height
     counts["active_unmapped"] = active["gsis_id"].null_count()
 
-    bad = unmapped_on_my_rosters(
-        id_map,
-        store.read_table("rosters", "raw"),
-        store.read_table("league_teams", "raw"),
-        players,
-    )
+    rosters = store.read_table("rosters", "raw")
+    teams = store.read_table("league_teams", "raw")
+    report_unmapped(id_map, rosters, teams, players)
+    dupes = duplicate_gsis(id_map)
+    counts["duplicate_gsis"] = dupes.height
+    if dupes.height:
+        print(f"warning: {dupes.height} nflverse IDs map from more than one Sleeper ID:\n{dupes}")
+    bad = unmapped_on_my_rosters(id_map, rosters, teams, players)
     if bad.height:
         raise RuntimeError(
             f"{bad.height} players on your rosters have no nflverse ID. "
