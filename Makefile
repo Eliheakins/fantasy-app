@@ -1,4 +1,4 @@
-.PHONY: setup test lint fmt check refresh app
+.PHONY: setup test lint fmt check refresh app serve dev web-build
 
 refresh:
 	uv run python -m fantasy.stages.sync_sleeper
@@ -19,8 +19,18 @@ refresh:
 app:
 	uv run streamlit run app/Home.py
 
+web-build:
+	cd web && npm run build
+
+serve: web-build
+	uv run python -m fantasy.api
+
+dev:
+	uv run uvicorn --factory fantasy.api:create_app --reload --port 8000 & cd web && npm run dev
+
 setup:
 	uv sync
+	cd web && npm ci --ignore-scripts
 	git config core.hooksPath .githooks
 
 test:
@@ -37,6 +47,7 @@ fmt:
 check: lint
 	uv run ruff format --check .
 	uv run pytest -q
+	cd web && npm run typecheck && npm test
 
 odds:
 	uv run python -m fantasy.stages.snapshot_odds
