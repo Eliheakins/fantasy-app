@@ -124,7 +124,9 @@ def report_unmapped(
     mine = teams.filter(pl.col("is_me")).select("league_id", "roster_id")
     rivals = rosters.join(mine, on=["league_id", "roster_id"], how="anti").select("sleeper_id")
     unmapped = (
+        # the players file has its own gsis_id column, mostly empty: only id_map's counts
         players.filter(pl.col("position") != "DEF")
+        .drop("gsis_id", strict=False)
         .join(id_map.select("sleeper_id", "gsis_id"), on="sleeper_id", how="left")
         .filter(pl.col("gsis_id").is_null())
     )

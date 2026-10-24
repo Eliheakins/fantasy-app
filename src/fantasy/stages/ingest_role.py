@@ -19,7 +19,7 @@ from fantasy.store import SKILL
 
 FIRST_SEASON = 2018
 MAX_UNMATCHED_SHARE = 0.05  # rows lost to an ID join before the stage fails
-MAX_UNMATCHED_SHARE_ECR = 0.30  # FantasyPros ranks players the ID table may not cover; unverified
+MAX_UNMATCHED_SHARE_ECR = 0.15  # rankings cover players the ID table lacks; 4 to 6% on 2026-10-23
 OLD_DEPTH_LAST_SEASON = 2024  # the weekly depth chart; later seasons are dated snapshots
 UNDRAFTED_PICK = 300.0
 RANKING_MAX_GAP_DAYS = 9  # a scrape counts for a week only this close before its first game

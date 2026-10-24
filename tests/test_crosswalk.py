@@ -122,3 +122,23 @@ def test_duplicate_gsis_lists_sleeper_ids_sharing_one_nflverse_id() -> None:
         schema={"sleeper_id": pl.String, "gsis_id": pl.String},
     )
     assert c.duplicate_gsis(id_map).to_dicts() == [{"gsis_id": "G", "sleeper_ids": ["1", "2"]}]
+
+
+def test_rival_report_ignores_the_players_file_gsis_id_and_uses_the_map(capsys) -> None:
+    id_map = pl.DataFrame(
+        {
+            "sleeper_id": ["1", "3"],
+            "gsis_id": ["G1", None],
+            "nfl_team": ["KC", None],
+            "match_method": ["ffplayerids", "none"],
+        }
+    )
+    rosters = pl.DataFrame({"league_id": ["L", "L"], "roster_id": [2, 2], "sleeper_id": ["1", "3"]})
+    teams = pl.DataFrame({"league_id": ["L", "L"], "roster_id": [1, 2], "is_me": [True, False]})
+    # the Sleeper players file carries its own gsis_id, empty for player 1
+    pl_ = players([("1", "A", "QB", "KC", None), ("3", "C", "RB", None, None)]).with_columns(
+        status=pl.lit("Active")
+    )
+    c.report_unmapped(id_map, rosters, teams, pl_)
+    out = capsys.readouterr().out
+    assert "unmapped on rival rosters: 1, e.g. C (RB)" in out
