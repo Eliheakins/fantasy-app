@@ -20,6 +20,7 @@ GAME_SCHEMA = {
     "team": pl.String,
     "team_implied": pl.Float64,
     "game_type": pl.String,
+    "points_for": pl.Int64,
 }
 
 
@@ -32,8 +33,14 @@ def exp_rows(rows: list[tuple[str, int, int, float]], team: str = "KC") -> pl.Da
     return pl.DataFrame(data, schema=EXP_SCHEMA, orient="row")
 
 
-def games(rows: list[tuple[int, int, str, float | None]]) -> pl.DataFrame:
-    data = [(s, w, team, implied, "REG") for s, w, team, implied in rows]
+def games(
+    rows: list[tuple[int, int, str, float | None]], final: tuple[tuple[int, str], ...] = ()
+) -> pl.DataFrame:
+    """final: (week, team) games that have a score, i.e. are over."""
+    data = [
+        (s, w, team, implied, "REG", 20 if (w, team) in final else None)
+        for s, w, team, implied in rows
+    ]
     return pl.DataFrame(data, schema=GAME_SCHEMA, orient="row")
 
 
@@ -105,6 +112,29 @@ def test_future_targets_skip_bye_weeks() -> None:
     plays = games([(2025, 4, "KC", None), (2025, 6, "KC", None), (2025, 5, "BUF", None)])
     out = p.future_targets(form, current, none, plays)
     assert sorted(out.filter(pl.col("gsis_id") == "A")["week"].to_list()) == [4, 6]
+
+
+def test_future_targets_start_at_the_current_week_and_keep_only_games_still_ahead() -> None:
+    # week 3: KC's game is final (A played, C was inactive), BUF's (Monday night) is still ahead
+    exp = pl.concat(
+        [
+            world(),
+            exp_rows([("C", 2025, 1, 10.0), ("C", 2025, 2, 10.0)]),
+            exp_rows([("D", 2025, 1, 10.0), ("D", 2025, 2, 10.0)], team="BUF"),
+        ]
+    )
+    form = p.build_form(exp, p.position_prior(exp))
+    current = pl.DataFrame(
+        {"gsis_id": ["A", "C", "D"], "team": ["KC", "KC", "BUF"], "position": ["QB"] * 3},
+        schema={"gsis_id": pl.String, "team": pl.String, "position": pl.String},
+    )
+    none = pl.DataFrame(schema={"league_id": pl.String, "gsis_id": pl.String})
+    plays = games(
+        [(2025, w, team, None) for w in (3, 4) for team in ("KC", "BUF")], final=((3, "KC"),)
+    )
+    out = p.future_targets(form, current, none, plays, first_week=3)
+    weeks = {pid: sorted(out.filter(pl.col("gsis_id") == pid)["week"].to_list()) for pid in "ACD"}
+    assert weeks == {"A": [4], "C": [4], "D": [3, 4]}
 
 
 def test_future_targets_drop_a_player_with_no_current_team() -> None:

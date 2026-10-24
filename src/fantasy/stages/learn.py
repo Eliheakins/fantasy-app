@@ -440,11 +440,13 @@ def run() -> dict[str, int]:
     lines = store.read_table("team_games")
     extras = load_extras()
     current, rostered = current_and_rostered()
-    future_all = future_targets(store.read_table("player_form"), current, rostered, lines)
+    current_week = int(leagues["current_week"].max())  # type: ignore[arg-type]
+    future_all = future_targets(
+        store.read_table("player_form"), current, rostered, lines, first_week=current_week
+    )
     context = store.read_table("proj_baseline").select(*GROUP, "season", "week", "context")
     keep = [*GROUP, "season", "week", "position", "team", "as_of_season", "as_of_week"]
     keep += ["has_history", "is_future", "projection"]
-    current_week = int(leagues["current_week"].max())  # type: ignore[arg-type]
     out = []
     for lid in leagues["league_id"].to_list():
         games = games_all.filter(pl.col("league_id") == lid)

@@ -140,13 +140,19 @@ def history_targets(exp: pl.DataFrame) -> pl.DataFrame:
 
 
 def future_targets(
-    form: pl.DataFrame, current_teams: pl.DataFrame, rostered: pl.DataFrame, games: pl.DataFrame
+    form: pl.DataFrame,
+    current_teams: pl.DataFrame,
+    rostered: pl.DataFrame,
+    games: pl.DataFrame,
+    first_week: int | None = None,
 ) -> pl.DataFrame:
     """Remaining regular-season games for active players. Bye weeks have no game row.
 
     current_teams: gsis_id, team, position (from Sleeper). rostered: league_id, gsis_id, the
     players on every team's roster in each league (rivals' rookies and new signings too), who get
-    the position prior if they have no history.
+    the position prior if they have no history. first_week is the league's current week: a
+    Thursday game puts it in the data before the other teams have played, so the latest week with
+    any game is not a safe start. Games that are already final (they have a score) are dropped.
     """
     ordered = form.sort("season", "week")
     season, week = ordered.select("season", "week").tail(1).row(0)
@@ -175,12 +181,15 @@ def future_targets(
         .drop("team")
         .rename({"now": "team"})
     )
-    weeks = pl.DataFrame({"week": list(range(week + 1, LAST_WEEK + 1))}, schema={"week": pl.Int64})
-    played = games.filter(pl.col("game_type") == "REG").select("season", "week", "team")
+    start = week + 1 if first_week is None else first_week
+    weeks = pl.DataFrame({"week": list(range(start, LAST_WEEK + 1))}, schema={"week": pl.Int64})
+    # a game has a score only once it is final, so Sunday's finished games drop out while Monday
+    # night's stays, and an inactive player (no form row) does not get a game that is over
+    unplayed = games.filter((pl.col("game_type") == "REG") & pl.col("points_for").is_null())
     return (
         players.join(weeks, how="cross")
         .with_columns(season=pl.lit(season, dtype=pl.Int64))
-        .join(played, on=["season", "week", "team"])
+        .join(unplayed.select("season", "week", "team"), on=["season", "week", "team"])
         .select(*GROUP, "season", "week", "position", "team")
     )
 
@@ -238,7 +247,8 @@ def run() -> dict[str, int]:
 
     history = project_targets(history_targets(exp), form, prior, games)
     current, rostered = current_and_rostered()
-    future_rows = future_targets(form, current, rostered, games)
+    current_week = int(leagues["current_week"].max())  # type: ignore[arg-type]
+    future_rows = future_targets(form, current, rostered, games, first_week=current_week)
     future = project_targets(future_rows, form, prior, games)
     for league_id, n in unprojected_rostered(rostered, current, future_rows).iter_rows():
         print(f"league {league_id}: {n} rostered skill players have no future projection")
