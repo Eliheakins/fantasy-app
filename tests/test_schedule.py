@@ -1,5 +1,4 @@
 import polars as pl
-import pytest
 
 from fantasy.sim import schedule as s
 
@@ -57,20 +56,3 @@ def test_standings_count_wins_losses_ties_and_points() -> None:
 def test_standings_ignore_weeks_after_the_cutoff() -> None:
     table = s.standings(GAMES, through_week=1)
     assert table["wins"].sum() == 2 and table["ties"].sum() == 0
-
-
-def test_seed_order_is_wins_then_points_then_roster_id() -> None:
-    table = pl.DataFrame(
-        {
-            "roster_id": [1, 2, 3, 4],
-            "wins": [3, 3, 4, 3],
-            "points_for": [500.0, 520.0, 400.0, 520.0],
-        }
-    )
-    assert s.seed_order(table, 3) == [3, 2, 4]  # 2 and 4 tie on points, lower id first
-
-
-def test_only_the_six_team_bracket_is_supported() -> None:
-    assert s.bracket_rounds(6) == [[(3, 6), (4, 5)]]
-    with pytest.raises(ValueError, match="6-team"):
-        s.bracket_rounds(4)

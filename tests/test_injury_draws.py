@@ -57,7 +57,7 @@ def test_no_hazard_leaves_the_season_inputs_unchanged_and_hazard_only_lowers_lat
 
 
 def test_playoff_and_title_odds_still_sum_to_six_and_one_with_absences() -> None:
-    result, _ = odds.league_odds(toy_league(), n_sims=2000)
+    result = odds.league_odds(toy_league(), n_sims=2000)
     assert result.p_playoffs.sum() == pytest.approx(6.0)
     assert result.p_title.sum() == pytest.approx(1.0)
 

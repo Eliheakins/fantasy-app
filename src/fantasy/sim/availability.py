@@ -15,12 +15,16 @@ import polars as pl
 STATUS_RATE = {"Out": 0.0, "Doubtful": 0.02, "Questionable": 0.76}
 LONG_TERM = frozenset({"IR", "PUP", "NFI", "Sus", "DNR"})
 LONG_TERM_WEEKS = 4
+HEALTHY_STATUSES = frozenset({"", "NA", "Probable"})  # no designation, or one that plays
 EASTERN = ZoneInfo("America/New_York")
 
 
 def rate(status: str | None, week: int, current_week: int) -> float:
-    if status and status not in STATUS_RATE and status not in LONG_TERM and status != "Probable":
-        warnings.warn(f"unrecognised injury status {status!r}, treated as healthy", stacklevel=2)
+    if status and status not in STATUS_RATE and status not in LONG_TERM | HEALTHY_STATUSES:
+        warnings.warn(
+            f"unrecognised injury status {status!r}, treated as Questionable", stacklevel=2
+        )
+        status = "Questionable"
     if status in LONG_TERM:
         return 0.0 if week < current_week + LONG_TERM_WEEKS else 1.0
     if week == current_week:
@@ -50,17 +54,38 @@ GAME_MINUTES = (
 )
 
 
-def kickoffs(schedules: pl.DataFrame, season: int, week: int) -> dict[str, datetime]:
-    """Kickoff time of each team's game this week. Schedule times are US Eastern."""
+def _games(schedules: pl.DataFrame, season: int, week: int) -> list[tuple]:
     games = schedules.filter((pl.col("season") == season) & (pl.col("week") == week))
+    return list(games.select("gameday", "gametime", "away_team", "home_team").iter_rows())
+
+
+def missing_kickoffs(schedules: pl.DataFrame, season: int, week: int) -> set[str]:
+    """Teams that have a game this week but no kickoff time on the schedule. For these a caller
+    cannot tell an unplayed game from a finished one, so it must not default to "not started"."""
+    return {
+        t
+        for day, time, away, home in _games(schedules, season, week)
+        if day is None or time is None
+        for t in (away, home)
+    }
+
+
+def kickoffs(schedules: pl.DataFrame, season: int, week: int) -> dict[str, datetime]:
+    """Kickoff time of each team's game this week. Schedule times are US Eastern. Warns about
+    teams with a game but no kickoff time (they are left out; see `missing_kickoffs`)."""
     out: dict[str, datetime] = {}
-    for day, time, away, home in games.select(
-        "gameday", "gametime", "away_team", "home_team"
-    ).iter_rows():
+    for day, time, away, home in _games(schedules, season, week):
         if day is None or time is None:
             continue
         kickoff = datetime.fromisoformat(f"{day}T{time}").replace(tzinfo=EASTERN)
         out[away] = out[home] = kickoff
+    missing = missing_kickoffs(schedules, season, week) - set(out)
+    if missing:
+        warnings.warn(
+            f"no kickoff time for {sorted(missing)} in week {week}: their games read as not "
+            "started, so live odds and locked lineups may be wrong",
+            stacklevel=2,
+        )
     return out
 
 

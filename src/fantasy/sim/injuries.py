@@ -6,13 +6,16 @@ healthy. Hamstrings, feet and ankles come back slower than groins and shoulders,
 Questionable player who did not practice plays far less often than one who practiced in full.
 While he plays through it his projection is discounted by a ratio that halves each week.
 
-Long-term designations (IR, PUP and so on) keep the four-game minimum. A status the table does
-not cover leaves the player healthy.
+Long-term designations (IR, PUP and so on) keep the four-game minimum. Probable (and no
+designation) counts as healthy. A status the table does not cover is treated as
+Questionable, with a warning.
 """
+
+import warnings
 
 import polars as pl
 
-from fantasy.sim.availability import LONG_TERM, LONG_TERM_WEEKS
+from fantasy.sim.availability import HEALTHY_STATUSES, LONG_TERM, LONG_TERM_WEEKS
 
 Flag = tuple[str, str | None, str | None]  # report status, body part, practice participation
 DECAY = 0.5  # the play-through discount keeps this share of itself each week
@@ -50,6 +53,18 @@ class InjuryModel:
         return None
 
 
+def _curve_or_questionable(
+    model: InjuryModel, flag: Flag
+) -> tuple[tuple[float, ...], float] | None:
+    """The model's curve; a status it does not cover counts as Questionable (warned), except
+    Probable, which is healthy (None)."""
+    curve = model.curve(flag)
+    if curve is not None or flag[0] in HEALTHY_STATUSES:
+        return curve
+    warnings.warn(f"unrecognised injury status {flag[0]!r}, treated as Questionable", stacklevel=2)
+    return model.curve(("Questionable", flag[1], flag[2]))
+
+
 def injury_projections(
     projections: pl.DataFrame,
     flagged: dict[str, Flag],
@@ -66,7 +81,7 @@ def injury_projections(
     `projection` becomes the expected points counting the chance of not playing; dividing by
     `play_prob` gives his points when he plays. A player's k-th game counts only his team's games,
     so a bye week does not use up a step of the curve."""
-    curves = {g: model.curve(f) for g, f in flagged.items()}
+    curves = {g: _curve_or_questionable(model, f) for g, f in flagged.items()}
     override = first_game_chance or {}
     rows = projections.sort("gsis_id", "week").with_columns(
         pl.col("week").rank("ordinal").over("gsis_id").alias("_game")

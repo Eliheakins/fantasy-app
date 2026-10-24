@@ -46,12 +46,22 @@ def absence_probs(
 ) -> list[float]:
     """Chance a player is out in each of the next n_weeks: from his curve while it lasts (a
     healthy player's curve is (1.0,)), then the two-state chain used by the season simulation."""
+    if n_weeks <= 0 or not curve:
+        return []
     out = [1.0 - p for p in curve[:n_weeks]]
     q = out[-1]
     while len(out) < n_weeks:
         q = q * stay_out + (1.0 - q) * hazard
         out.append(q)
     return out
+
+
+def values_by_week(frame: pl.DataFrame) -> dict[int, dict[str, float]]:
+    """`frame` (gsis_id, week, projection) as {week: {gsis_id: projection}}."""
+    return {
+        week: dict(zip(g["gsis_id"], g["projection"], strict=True))
+        for (week,), g in frame.group_by("week")
+    }
 
 
 def conditional_values(projections: pl.DataFrame) -> dict[int, dict[str, float]]:
@@ -65,10 +75,7 @@ def conditional_values(projections: pl.DataFrame) -> dict[int, dict[str, float]]
             .otherwise(0.0)
             .alias("projection")
         )
-    return {
-        week: dict(zip(g["gsis_id"], g["projection"], strict=True))
-        for (week,), g in frame.group_by("week")
-    }
+    return values_by_week(frame)
 
 
 def replacement_pool(

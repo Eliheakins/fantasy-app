@@ -18,11 +18,6 @@ import polars as pl
 CALIBRATION_BINS = 8
 
 
-def factor(centers: np.ndarray, factors: np.ndarray, projection: np.ndarray) -> np.ndarray:
-    """Points over projection expected at each projection."""
-    return np.interp(projection, centers, factors)
-
-
 def apply_curves(frame: pl.DataFrame, curves: pl.DataFrame) -> pl.DataFrame:
     """`frame` (league_id, position, projection) with `projection` multiplied by the factor for
     its league and position. A league and position without a curve is left alone. Other columns
@@ -37,8 +32,9 @@ def apply_curves(frame: pl.DataFrame, curves: pl.DataFrame) -> pl.DataFrame:
             out.append(group)
             continue
         rows = rows.sort("center")
-        scale = factor(
-            rows["center"].to_numpy(), rows["factor"].to_numpy(), group["projection"].to_numpy()
+        # points over projection expected at each projection
+        scale = np.interp(
+            group["projection"].to_numpy(), rows["center"].to_numpy(), rows["factor"].to_numpy()
         )
         out.append(
             group.with_columns((pl.col("projection") * pl.Series(scale)).alias("projection"))

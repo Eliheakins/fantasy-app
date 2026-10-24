@@ -108,3 +108,16 @@ def test_sync_week_replaces_only_that_weeks_rows(tmp_path: Path) -> None:
     p = store.read_table("matchup_players", "raw", tmp_path).sort("week")
     assert m["points"].to_list() == [90.0, 33.0]
     assert p["points"].to_list() == [5.0, 9.0]
+
+
+def test_missing_kickoffs_names_teams_with_a_game_but_no_time() -> None:
+    import polars as pl
+
+    from fantasy.sim.availability import missing_kickoffs
+
+    schedule = pl.DataFrame(
+        [(2026, 7, None, "13:00", "A", "B"), (2026, 7, "2026-10-25", "13:00", "C", "D")],
+        schema=["season", "week", "gameday", "gametime", "away_team", "home_team"],
+        orient="row",
+    )
+    assert missing_kickoffs(schedule, 2026, 7) == {"A", "B"}

@@ -55,3 +55,8 @@ def test_stand_ins_exclude_players_the_roster_holds_and_keep_the_next_ones() -> 
     candidates = [Player(i, "TE", v) for i, v in (("x", 9.0), ("y", 8.0), ("z", 7.0))]
     chosen = stand_ins(candidates, {"x"})
     assert [p.id for p in chosen] == ["y", "z"]
+
+
+def test_absence_probs_is_empty_without_weeks_or_a_curve() -> None:
+    assert absence_probs((0.5,), 0, 0.07, 0.55) == []
+    assert absence_probs((), 3, 0.07, 0.55) == []

@@ -80,7 +80,8 @@ def sample_points(
     for j, (pid, position, mean, p, tier) in enumerate(
         zip(slate.ids, slate.positions, slate.means, probs, tiers, strict=True)
     ):
-        shape = ratios.get(f"{position}:{tier}", ratios[position])
+        key = f"{position}:{tier}"
+        shape = ratios[key] if key in ratios else ratios[position]
         if p <= 0.0:
             out[:, j] = 0.0
             continue

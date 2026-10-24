@@ -23,7 +23,13 @@ from fantasy.sim.lineup import (
     lineup_with_locks,
 )
 from fantasy.sim.season import SeasonInputs, SeasonResult, simulate_season
-from fantasy.sim.value import conditional_values, play_curves, replacement_pool, stand_ins
+from fantasy.sim.value import (
+    conditional_values,
+    play_curves,
+    replacement_pool,
+    stand_ins,
+    values_by_week,
+)
 
 # Persistent per-player error, points a game: sd of 5-game mean error beyond what weekly noise
 # explains, from walk-forward projections 2018 to 2025, averaged over both leagues' scoring.
@@ -100,8 +106,12 @@ def lineup_moments(
     cv: dict[str, float],
     rho: dict[tuple[str, str], float],
     tiers: dict[str, tuple[tuple[float, float], ...]] | None = None,
+    shares: dict[str, float] | None = None,
 ) -> tuple[float, float, float]:
-    """(mean, total variance, persistent variance) of a lineup's points in one week."""
+    """(mean, total variance, persistent variance) of a lineup's points in one week.
+
+    `shares` maps a player id to the share of his game still to play (default 1): his value is
+    already scaled by it, so his persistent error is too."""
     ordered = sorted(players, key=lambda p: (-p.value, p.id))
     seen: dict[str, int] = {}
     roles, sds = [], []
@@ -114,7 +124,8 @@ def lineup_moments(
         for j in range(i + 1, len(ordered)):
             var += 2 * rho.get((roles[i], roles[j]), 0.0) * sds[i] * sds[j]
     mean = sum(p.value for p in ordered)
-    persistent = sum(TAU[p.position] ** 2 for p in ordered)
+    left = shares or {}
+    persistent = sum((TAU[p.position] * left.get(p.id, 1.0)) ** 2 for p in ordered)
     return mean, var, persistent
 
 
@@ -145,8 +156,51 @@ def absence_path(
 
 def player_error(gsis_id: str, n_sims: int, seed: int) -> np.ndarray:
     """A player's persistent error draws, the same in every scenario for the same seed."""
-    z = np.random.default_rng([seed, zlib.crc32(gsis_id.encode())]).standard_normal(n_sims)
-    return z
+    return np.random.default_rng([seed, zlib.crc32(gsis_id.encode())]).standard_normal(n_sims)
+
+
+def _current_lineup(
+    data: LeagueData,
+    state: CurrentWeek,
+    position: dict[str, str],
+    values: dict[str, float],
+    slots: list[str],
+    reoptimize: bool,
+) -> list[Player]:
+    """This week's open lineup. A player traded away leaves it; acquired players start benched
+    unless `reoptimize` refills the unplayed slots with the best available."""
+    lineup = [p for p in state.open_players if p.id in position]
+    if not reoptimize:
+        return lineup
+    pool = [Player(g, position[g], values.get(g, 0.0)) for g in position]
+    best = lineup_with_locks(
+        pool, slots, set(data.played) & set(position), set(state.locked_starters)
+    )
+    in_progress = [p for p in state.open_players if p.id in data.played and p.id in position]
+    return in_progress + [p for p in pool if p.id in best.players and p.id not in data.played]
+
+
+def _subtract_absences(
+    shift_row: np.ndarray,
+    lineup: list[Player],
+    own: set[str],
+    available: list[Player],
+    full_total: float,
+    slots: list[str],
+    draws: tuple[dict[str, tuple[float, ...]], int, int, int, int],
+) -> None:
+    """Lower `shift_row` (this team and week, over sims) in the runs where a starter is out: he
+    falls back to the bench or a stand-in. `draws` is (curves, week index, weeks, sims, seed)."""
+    curves, w, n_weeks, n_sims, seed = draws
+    for p in lineup:
+        if p.id not in own:
+            continue
+        rest = [q for q in available if q.id != p.id]
+        loss = full_total - auto_lineup(rest, slots).total
+        gone = absence_path(
+            p.id, curves.get(p.id, (1.0,)), n_weeks, n_sims, seed, HAZARD, STAY_OUT
+        )[w]
+        shift_row -= loss * gone
 
 
 def build_inputs(
@@ -168,17 +222,13 @@ def build_inputs(
     mean = np.zeros((n_teams, n_weeks))
     noise_sd = np.zeros((n_teams, n_weeks))
     shift = np.zeros((n_teams, n_weeks, n_sims))
-    by_week = {
-        w: dict(zip(g["gsis_id"], g["projection"], strict=True))
-        for (w,), g in data.projections.group_by("week")
-    }
+    by_week = values_by_week(data.projections)
     # stand-ins for absent starters: the best free agents, not counting anyone rostered before
     # or after this scenario (a player dropped in it is assumed claimed by someone else)
     taken = set(data.rosters["gsis_id"].to_list()) | set(rosters["gsis_id"].to_list())
     free_ids = [g for g in data.positions if g not in taken]
     replacements = replacement_pool(free_ids, data.positions, by_week)
     curves = play_curves(data.projections, weeks)
-    healthy = (1.0,)
     later = conditional_values(data.projections)
     for rid, t in index.items():
         team = rosters.filter(pl.col("roster_id") == rid)
@@ -188,19 +238,9 @@ def build_inputs(
             state = data.current.get(rid) if week == data.current_week else None
             if state is not None:
                 # a player traded away this week leaves the lineup; acquired players start benched
-                lineup = [p for p in state.open_players if p.id in position]
-                if reoptimize:
-                    values = by_week.get(week, {})
-                    pool = [Player(g, position[g], values.get(g, 0.0)) for g in position]
-                    best = lineup_with_locks(
-                        pool, slots, set(data.played) & set(position), set(state.locked_starters)
-                    )
-                    in_progress = [
-                        p for p in state.open_players if p.id in data.played and p.id in position
-                    ]
-                    lineup = in_progress + [
-                        p for p in pool if p.id in best.players and p.id not in data.played
-                    ]
+                lineup = _current_lineup(
+                    data, state, position, by_week.get(week, {}), slots, reoptimize
+                )
                 offset, k_open, def_open = state.realized, state.open_k, state.open_def
             else:
                 # expected points when playing: absences are drawn below, never discounted twice
@@ -212,7 +252,13 @@ def build_inputs(
                 known = {p.id: p for p in pool + floor}
                 lineup = [known[pid] for _, pid in full.slots]
                 offset, k_open, def_open = 0.0, constants.get("K", 0), constants.get("DEF", 0)
-            m, var, persistent = lineup_moments(lineup, data.cv, data.pair_rho, data.cv_tiers)
+            # in-progress players enter at projection * share left; so does their persistent error
+            left = (
+                {p.id: data.live.get(p.id, (0.0, 1.0))[1] for p in lineup}
+                if state is not None
+                else {}
+            )
+            m, var, persistent = lineup_moments(lineup, data.cv, data.pair_rho, data.cv_tiers, left)
             weekly = max(var - persistent, 0.5 * var)
             fixed_var = k_open * data.k_var + def_open * data.def_var
             mean[t, w] = offset + m + k_open * data.k_mean + def_open * data.def_mean
@@ -220,18 +266,13 @@ def build_inputs(
             for p in lineup:
                 if p.id not in errors:  # a stand-in free agent
                     errors[p.id] = TAU[p.position] * player_error(p.id, n_sims, seed)
-                shift[t, w] += errors[p.id]
+                shift[t, w] += errors[p.id] * left.get(p.id, 1.0)
             if w >= 1 and HAZARD > 0 and state is None:
                 # a starter who is out falls back to the bench or a stand-in
-                for p in lineup:
-                    if p.id not in position:
-                        continue
-                    rest = [q for q in pool if q.id != p.id] + floor
-                    loss = full.total - auto_lineup(rest, slots).total
-                    gone = absence_path(
-                        p.id, curves.get(p.id, healthy), n_weeks, n_sims, seed, HAZARD, STAY_OUT
-                    )[w]
-                    shift[t, w] -= loss * gone
+                _subtract_absences(
+                    shift[t, w], lineup, set(position), pool + floor, full.total, slots,
+                    (curves, w, n_weeks, n_sims, seed),
+                )  # fmt: skip
 
     return SeasonInputs(
         roster_ids=data.roster_ids,
@@ -257,6 +298,5 @@ def league_odds(
     n_sims: int = 20000,
     seed: int = 0,
     reoptimize: bool = False,
-) -> tuple[SeasonResult, SeasonInputs]:
-    inputs = build_inputs(data, rosters, n_sims, seed, reoptimize)
-    return simulate_season(inputs), inputs
+) -> SeasonResult:
+    return simulate_season(build_inputs(data, rosters, n_sims, seed, reoptimize))

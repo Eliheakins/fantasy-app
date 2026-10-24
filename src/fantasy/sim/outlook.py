@@ -15,8 +15,9 @@ from typing import NamedTuple
 
 import polars as pl
 
+from fantasy.sim.scoring_scale import Effects
+
 MIN_SHARE = (0.04, 0.08)  # an absent teammate counts if his target or carry share is above this
-Effects = dict[tuple[str, str], float]  # (position, kind) -> value
 
 
 class Context(NamedTuple):

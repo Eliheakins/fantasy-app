@@ -32,8 +32,16 @@ def position_scale(baseline: pl.DataFrame, league_id: str, reference_id: str) ->
 
 
 def scale_points(effects: Effects, scale: dict[str, float], kinds: frozenset[str]) -> Effects:
-    """`effects` with each point-valued kind multiplied by its position's scale."""
+    """`effects` with each point-valued kind multiplied by its position's scale. A position with
+    a point-valued effect but no scale would silently keep the reference league's points, so it
+    raises."""
+    unscaled = {pos for (pos, kind) in effects if kind in kinds and pos not in scale}
+    if unscaled:
+        raise ValueError(
+            f"no scoring scale for {sorted(unscaled)}: a point-valued effect would be applied "
+            "unscaled (position missing from the league or the reference league)"
+        )
     return {
-        (position, kind): value * scale.get(position, 1.0) if kind in kinds else value
+        (position, kind): value * scale[position] if kind in kinds else value
         for (position, kind), value in effects.items()
     }

@@ -15,9 +15,9 @@ from typing import NamedTuple
 
 import polars as pl
 
-MIN_T = 2.0
+from fantasy.sim.scoring_scale import Effects
 
-Effects = dict[tuple[str, str], float]  # (position, kind) -> points
+MIN_T = 2.0
 
 
 class Situation(NamedTuple):

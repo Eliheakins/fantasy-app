@@ -44,20 +44,3 @@ def standings(matchups: pl.DataFrame, through_week: int) -> pl.DataFrame:
         )
         .sort("league_id", "roster_id")
     )
-
-
-def seed_order(table: pl.DataFrame, n_teams: int) -> list[int]:
-    """Roster ids of the top n_teams for one league: wins, then points for, then roster id."""
-    ranked = table.sort(["wins", "points_for", "roster_id"], descending=[True, True, False])
-    return ranked["roster_id"].head(n_teams).to_list()
-
-
-def bracket_rounds(n_teams: int) -> list[list[tuple[int, int]]]:
-    """Playoff rounds as seed pairs. Only the 6-team, no-reseed bracket is supported.
-
-    Round 1 (seeds 3 v 6, 4 v 5), then 1 v winner of 4/5 and 2 v winner of 3/6 is expressed by the
-    simulator, which knows the round-1 winners; here we list round 1 only.
-    """
-    if n_teams != 6:
-        raise ValueError(f"only a 6-team playoff is supported, not {n_teams}")
-    return [[(3, 6), (4, 5)]]

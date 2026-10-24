@@ -2,6 +2,7 @@
 
 import tomllib
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -19,6 +20,12 @@ class Config:
 
 
 def load_config(path: Path = ROOT / "config.toml") -> Config:
+    """Parsed config, cached per file and modification time so an edit is still picked up."""
+    return _load(path, path.stat().st_mtime_ns)
+
+
+@lru_cache(maxsize=16)
+def _load(path: Path, _mtime_ns: int) -> Config:
     raw = tomllib.loads(path.read_text())
     model = raw.get("projection_model", "baseline")
     if model not in PROJECTION_MODELS:

@@ -61,8 +61,8 @@ def simulate_season(inp: SeasonInputs) -> SeasonResult:
     scores = inp.mean[:, :, None] + inp.shift + inp.noise_sd[:, :, None] * z  # (T, W, S)
     column = {week: w for w, week in enumerate(inp.weeks)}
 
-    wins = np.broadcast_to(inp.wins0[:, None], (n_teams, n_sims)).astype(float).copy()
-    points = np.broadcast_to(inp.points0[:, None], (n_teams, n_sims)).astype(float).copy()
+    wins = np.broadcast_to(inp.wins0[:, None], (n_teams, n_sims)).astype(float)
+    points = np.broadcast_to(inp.points0[:, None], (n_teams, n_sims)).astype(float)
     for week, pairs in inp.pairs.items():
         for a, b in pairs:
             sa, sb = scores[a, column[week]], scores[b, column[week]]

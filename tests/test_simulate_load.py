@@ -176,3 +176,44 @@ def test_tier_spreads_lists_each_positions_edges_in_ascending_order() -> None:
     ] + [{"position": "WR", "tier": -1, "proj_max": 1e9, "cv": 0.7, "tau": 0.5}]
     out = tier_spreads(pl.DataFrame(rows))
     assert out == {"WR": ((6.0, 1.0), (12.0, 0.8), (1e9, 0.4))}
+
+
+def test_league_data_fields_for_the_fixture_league(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Characterization: pins the assembled LeagueData so the loader can be split safely."""
+    build_store(tmp_path, monkeypatch, [(100.0, 90.0)])
+    data = load_league_data(LEAGUE)
+    assert data.roster_ids == [1, 2, 3, 4, 5, 6]
+    assert data.team_names[1] == "Mine" and data.team_names[6] == "Team 6"
+    assert (data.current_week, data.playoff_start, data.trade_deadline) == (3, 15, 99)
+    assert data.roster_positions == ["QB", "RB", "WR", "BN"]
+    assert data.cv == {"QB": 0.5, "RB": 0.5, "WR": 0.5, "TE": 0.5}
+    assert data.pairings[3] == [(1, 2), (3, 4), (5, 6)] and sorted(data.pairings) == [1, 2, 3]
+    assert data.wins0 == {1: 1.5, 2: 0.5, 3: 1.0, 4: 1.0, 5: 1.0, 6: 1.0}
+    assert data.points0 == {1: 100.0, 2: 90.0, 3: 100.0, 4: 100.0, 5: 100.0, 6: 100.0}
+    assert data.injuries == {
+        "G_RB": ("Out", None, None),
+        "G_WR": ("Questionable", None, None),
+        "G_TE": ("IR", None, None),
+        "G_DL": ("Doubtful", None, None),
+    }
+    assert (data.current, data.played, data.live) == ({}, frozenset(), {})
+    assert data.positions == {
+        "G_QB": "QB", "G_RB": "RB", "G_WR": "WR", "G_TE": "TE",
+        "G_DL": "WR", "G_OPP": "WR", "G_FA": "WR",
+    }  # fmt: skip
+    assert data.league_id == "L1"
+    assert sorted(data.projections.rows()) == [
+        ("G_DL", 3, "WR", "KC", 0.2, 0.02), ("G_DL", 4, "WR", "KC", 10.0, 1.0),
+        ("G_FA", 3, "WR", "KC", 10.0, 1.0), ("G_FA", 4, "WR", "KC", 10.0, 1.0),
+        ("G_OPP", 3, "WR", "KC", 10.0, 1.0), ("G_OPP", 4, "WR", "KC", 10.0, 1.0),
+        ("G_QB", 3, "QB", "KC", 10.0, 1.0), ("G_QB", 4, "QB", "KC", 10.0, 1.0),
+        ("G_RB", 3, "RB", "KC", 0.0, 0.0), ("G_RB", 4, "RB", "KC", 10.0, 1.0),
+        ("G_TE", 3, "TE", "KC", 0.0, 0.0), ("G_TE", 4, "TE", "KC", 0.0, 0.0),
+        ("G_WR", 3, "WR", "KC", 7.6, 0.76), ("G_WR", 4, "WR", "KC", 10.0, 1.0),
+    ]  # fmt: skip
+    assert sorted(data.rosters.rows()) == [
+        (1, "G_DL", "WR"), (1, "G_QB", "QB"), (1, "G_RB", "RB"),
+        (1, "G_TE", "TE"), (1, "G_WR", "WR"), (2, "G_OPP", "WR"),
+    ]  # fmt: skip

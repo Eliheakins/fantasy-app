@@ -23,3 +23,11 @@ def test_a_lower_scoring_league_scales_point_effects_down_and_leaves_ratios_alon
     got = scale_points(effects, scale, frozenset({"vac_target"}))
     assert got[("WR", "vac_target")] == pytest.approx(2.4)
     assert got[("WR", "first_back_injury")] == 0.9
+
+
+def test_a_point_effect_for_a_position_without_a_scale_raises() -> None:
+    with pytest.raises(ValueError, match="TE"):
+        scale_points({("TE", "vac_target"): 3.0}, {"WR": 0.8}, frozenset({"vac_target"}))
+    assert scale_points({("TE", "ratio"): 0.9}, {}, frozenset({"vac_target"})) == {
+        ("TE", "ratio"): 0.9
+    }

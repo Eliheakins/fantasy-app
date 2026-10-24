@@ -79,7 +79,7 @@ def test_inputs_have_one_mean_per_team_and_week_including_playoff_weeks() -> Non
 
 
 def test_odds_sum_to_six_two_and_one_and_equal_teams_are_close() -> None:
-    result, _ = odds.league_odds(toy_league(), n_sims=8000)
+    result = odds.league_odds(toy_league(), n_sims=8000)
     assert result.p_playoffs.sum() == pytest.approx(6.0)
     assert result.p_bye.sum() == pytest.approx(2.0)
     assert result.p_title.sum() == pytest.approx(1.0)
@@ -87,10 +87,10 @@ def test_odds_sum_to_six_two_and_one_and_equal_teams_are_close() -> None:
 
 
 def test_a_stronger_roster_raises_title_odds_and_same_seed_reuses_draws() -> None:
-    base, _ = odds.league_odds(toy_league(), n_sims=8000, seed=1)
-    better, _ = odds.league_odds(toy_league(boost_team=1, boost=3.0), n_sims=8000, seed=1)
+    base = odds.league_odds(toy_league(), n_sims=8000, seed=1)
+    better = odds.league_odds(toy_league(boost_team=1, boost=3.0), n_sims=8000, seed=1)
     assert better.p_title[0] - base.p_title[0] > 0.04
-    again, _ = odds.league_odds(toy_league(), n_sims=8000, seed=1)
+    again = odds.league_odds(toy_league(), n_sims=8000, seed=1)
     assert np.array_equal(base.p_title, again.p_title)
 
 
@@ -122,3 +122,14 @@ def test_a_big_projection_uses_its_own_size_tiers_spread() -> None:
     assert huge[1] == pytest.approx((20.0 * 0.4) ** 2)
     unlisted = odds.lineup_moments([Player("d", "QB", 10.0)], {"QB": 0.5}, {}, tiers)
     assert unlisted[1] == pytest.approx(25.0)  # a position without tiers keeps its pooled spread
+
+
+def test_persistent_variance_of_a_game_in_progress_scales_with_the_share_left() -> None:
+    from fantasy.sim.odds import TAU, lineup_moments
+
+    players = [Player("a", "WR", 5.0), Player("b", "WR", 8.0)]
+    cv = {"WR": 0.5}
+    _, _, full = lineup_moments(players, cv, {})
+    _, _, half = lineup_moments(players, cv, {}, shares={"a": 0.5})
+    assert full == pytest.approx(2 * TAU["WR"] ** 2)
+    assert half == pytest.approx(TAU["WR"] ** 2 * (1 + 0.25))
