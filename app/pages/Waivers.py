@@ -1,32 +1,24 @@
 import polars as pl
 import streamlit as st
-from ui import league_picker, no_data_warning
-
-from fantasy import data_api
+from ui import (
+    league_picker,
+    no_data_warning,
+    player_weeks,
+    streamers,
+    strength_table,
+    waivers,
+)
 
 league_key, _week = league_picker()
 st.title("Waivers")
 try:
-    adds = data_api.waivers(league_key)
+    adds = waivers(league_key)
 except FileNotFoundError:
     no_data_warning()
     st.stop()
 
 st.subheader("Where your roster is strong or thin")
-strength = data_api.position_strength(league_key)
-st.dataframe(
-    strength,
-    hide_index=True,
-    width="stretch",
-    column_config={
-        "position": "Position",
-        "vor_per_week": st.column_config.NumberColumn(
-            "Points a week over replacement", format="%.1f"
-        ),
-        "rank": "League rank",
-        "teams": "Teams",
-    },
-)
+strength_table(league_key)
 st.caption(
     "Your best lineup each week against the stand-in free agent at each position (the third-best "
     "or so on the wire, since the top ones are the adds). Rank 1 is the strongest team. Thin "
@@ -79,7 +71,7 @@ else:
     chosen = event.selection.rows
     if chosen:
         pick = adds.row(chosen[0], named=True)
-        weeks = data_api.player_weeks(league_key, pick["gsis_id"])
+        weeks = player_weeks(league_key, pick["gsis_id"])
         st.subheader(f"{pick['full_name']}: next four weeks")
         st.bar_chart(weeks.with_columns(pl.col("week").cast(pl.String)), x="week", y="projection")
 
@@ -92,7 +84,7 @@ st.caption(
 )
 for kind, label in (("DEF", "Defenses"), ("K", "Kickers")):
     try:
-        picks = data_api.streamers(league_key, kind)
+        picks = streamers(league_key, kind)
     except FileNotFoundError:
         st.info("Run the streaming stage to see this.")
         break

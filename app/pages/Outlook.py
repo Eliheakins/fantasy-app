@@ -1,12 +1,17 @@
 import polars as pl
 import streamlit as st
-from ui import league_picker, no_data_warning
-
-from fantasy import data_api
+from ui import (
+    league_picker,
+    no_data_warning,
+    odds_history,
+    schedule,
+    season_odds,
+    seed_distribution,
+)
 
 league_key, _week = league_picker()
 st.title("Outlook")
-odds = data_api.season_odds(league_key)
+odds = season_odds(league_key)
 if odds.is_empty():
     no_data_warning()
     st.stop()
@@ -32,8 +37,8 @@ st.dataframe(
 )
 
 try:
-    seeds = data_api.seed_distribution(league_key)
-    games = data_api.schedule(league_key)
+    seeds = seed_distribution(league_key)
+    games = schedule(league_key)
 except FileNotFoundError:
     seeds, games = pl.DataFrame(), pl.DataFrame()
 if not seeds.is_empty():
@@ -63,7 +68,7 @@ if not games.is_empty():
         },
     )
 
-history = data_api.odds_history(league_key)
+history = odds_history(league_key)
 mine = odds.filter(pl.col("is_me"))
 if not mine.is_empty() and history["run_at"].n_unique() >= 2:
     mine_history = history.filter(pl.col("roster_id") == mine["roster_id"][0]).sort("run_at")

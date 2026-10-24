@@ -1,7 +1,5 @@
 import streamlit as st
-from ui import league_picker, no_data_warning
-
-from fantasy import data_api
+from ui import league_picker, no_data_warning, player_outlook
 
 league_key, _week = league_picker()
 st.title("Player outlook")
@@ -11,13 +9,8 @@ scope = st.radio(
 key = {"My roster": "mine", "Other rosters": "league", "Free agents": "free"}[scope]
 
 
-@st.cache_data(ttl=300)
-def load(league: str, which: str):
-    return data_api.player_outlook(league, which)
-
-
 try:
-    table = load(league_key, key)
+    table = player_outlook(league_key, key)
 except FileNotFoundError:
     no_data_warning()
     st.stop()

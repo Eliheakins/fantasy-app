@@ -28,7 +28,7 @@ test:
 
 lint:
 	uv run ruff check .
-	uv run mypy src
+	uv run mypy src app
 
 fmt:
 	uv run ruff check --fix .

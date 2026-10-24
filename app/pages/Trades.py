@@ -1,22 +1,25 @@
 import polars as pl
 import streamlit as st
-from ui import league_picker, no_data_warning
+from ui import (
+    CACHE_SECONDS,
+    find_trades,
+    league_picker,
+    no_data_warning,
+    strength_table,
+    trade_assets,
+    trade_partners,
+)
 
 from fantasy import data_api
 
-CACHE_SECONDS = 300
-
 
 @st.cache_data(ttl=CACHE_SECONDS)
-def evaluate(league_key: str, partner: int, give: tuple[str, ...], get: tuple[str, ...]):
+def evaluate(
+    league_key: str, partner: int, give: tuple[str, ...], get: tuple[str, ...]
+) -> tuple[pl.DataFrame, pl.DataFrame]:
     odds = data_api.evaluate_trade(league_key, partner, list(give), list(get))
     changes = data_api.trade_roster_changes(league_key, partner, list(give), list(get))
     return odds, changes
-
-
-@st.cache_data(ttl=CACHE_SECONDS)
-def find(league_key: str):
-    return data_api.find_trades(league_key)
 
 
 def labels(assets: pl.DataFrame) -> dict[str, str]:
@@ -44,26 +47,14 @@ def show_side(title: str, row: dict) -> None:
 league_key, _week = league_picker()
 st.title("Trades")
 try:
-    partners = data_api.trade_partners(league_key)
-    mine = data_api.trade_assets(league_key)
+    partners = trade_partners(league_key)
+    mine = trade_assets(league_key)
 except FileNotFoundError:
     no_data_warning()
     st.stop()
 
 st.subheader("Where your roster is strong or thin")
-st.dataframe(
-    data_api.position_strength(league_key),
-    hide_index=True,
-    width="stretch",
-    column_config={
-        "position": "Position",
-        "vor_per_week": st.column_config.NumberColumn(
-            "Points a week over replacement", format="%.1f"
-        ),
-        "rank": "League rank",
-        "teams": "Teams",
-    },
-)
+strength_table(league_key)
 st.caption("Deep positions (rank near 1) are where a trade can come from; thin ones are the needs.")
 
 st.subheader("Find trades")
@@ -80,7 +71,7 @@ if st.button("Find trades"):
     st.session_state[found_key] = True
 if st.session_state.get(found_key):
     try:
-        found = find(league_key)
+        found = find_trades(league_key)
     except ValueError as err:
         st.warning(str(err))
     else:
@@ -108,17 +99,24 @@ if st.session_state.get(found_key):
 
 st.subheader("Evaluate a trade")
 team_names = dict(zip(partners["roster_id"], partners["team_name"], strict=True))
-partner = st.selectbox("Trade partner", list(team_names), format_func=team_names.get)
-theirs = data_api.trade_assets(league_key, int(partner))
+partner = st.selectbox(
+    "Trade partner", list(team_names), format_func=lambda rid: team_names.get(rid, str(rid))
+)
+if partner is None:
+    st.stop()
+theirs = trade_assets(league_key, int(partner))
 mine_labels, their_labels = labels(mine), labels(theirs)
 left, right = st.columns(2)
 give = left.multiselect(
-    "I give", list(mine_labels), format_func=mine_labels.get, key=f"give_{league_key}"
+    "I give",
+    list(mine_labels),
+    format_func=lambda g: mine_labels.get(g, g),
+    key=f"give_{league_key}",
 )
 get = right.multiselect(
     f"I get from {team_names[partner]}",
     list(their_labels),
-    format_func=their_labels.get,
+    format_func=lambda g: their_labels.get(g, g),
     key=f"get_{league_key}_{partner}",
 )
 st.caption(

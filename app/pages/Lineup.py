@@ -1,14 +1,14 @@
+from typing import Any
+
 import altair as alt
 import polars as pl
 import streamlit as st
-from ui import league_picker, no_data_warning
-
-from fantasy import data_api
+from ui import cached_lineup, cached_win_probability, league_picker, no_data_warning
 
 league_key, week = league_picker()
 st.title("Lineup")
 try:
-    rows = data_api.lineup(league_key, week)
+    rows = cached_lineup(league_key, week)
 except FileNotFoundError:
     no_data_warning()
     st.stop()
@@ -19,12 +19,11 @@ if rows.is_empty():
 
 name_of = dict(zip(rows["gsis_id"], rows["full_name"], strict=True))
 try:
-    odds = data_api.win_probability(league_key, week)
+    odds = cached_win_probability(league_key, week)
 except FileNotFoundError:
-    odds = None
-by_option = {} if odds is None else {r["option"]: r for r in odds.iter_rows(named=True)}
+    odds = pl.DataFrame()
+by_option = {r["option"]: r for r in odds.iter_rows(named=True)}
 pick, best = by_option.get("win_prob"), by_option.get("max_points")
-differs = pick is not None and pick["tag"] != "same as max points"
 LABELS = {
     "Expected points": "max_points",
     "Win probability": "win_prob",
@@ -56,7 +55,8 @@ cols[0].metric("Lineup shown", f"{best_total:.1f} pts")
 if known:
     gap = current_total - best_total
     cols[1].metric("Set in Sleeper now", f"{current_total:.1f} pts", delta=f"{gap:+.1f}")
-if best is not None and shown_option is not None:
+if pick is not None and best is not None and shown_option is not None:
+    differs = pick["tag"] != "same as max points"
     cols[2].metric("Chance to win", f"{shown_option['win_prob']:.1%}")
     if differs:
         ins = [name_of[i] for i in set(pick["gsis_ids"]) - set(best["gsis_ids"])]
@@ -94,20 +94,18 @@ if best is not None and shown_option is not None:
     )
 
 
-def change(row: dict) -> str:
-    if not known:
-        return ""
-    if row["recommended"] and not row["starting_now"]:
-        return "Start"
-    if row["starting_now"] and not row["recommended"]:
-        return "Sit"
-    return ""
-
-
 def table(frame: pl.DataFrame) -> pl.DataFrame:
     low, high = pl.col("p10").round(1).cast(pl.String), pl.col("p90").round(1).cast(pl.String)
+    seen = pl.lit(known)
+    start_it = seen & pl.col("recommended") & ~pl.col("starting_now")
+    sit_it = seen & pl.col("starting_now") & ~pl.col("recommended")
     return frame.with_columns(
-        pl.struct(frame.columns).map_elements(change, return_dtype=pl.String).alias("change"),
+        pl.when(start_it)
+        .then(pl.lit("Start"))
+        .when(sit_it)
+        .then(pl.lit("Sit"))
+        .otherwise(pl.lit(""))
+        .alias("change"),
         (low + " to " + high).alias("range"),
     ).select(
         "slot",
@@ -122,7 +120,7 @@ def table(frame: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-config = {
+config: dict[str, Any] = {
     "slot": "Slot",
     "full_name": "Player",
     "position": "Pos",
@@ -136,7 +134,7 @@ config = {
 st.subheader("Start")
 st.dataframe(table(start), hide_index=True, width="stretch", column_config=config)
 
-spread = start.select("full_name", "p10", "p90", "projection").to_pandas()
+spread = start.select("full_name", "p10", "p90", "projection")
 base = alt.Chart(spread).encode(y=alt.Y("full_name:N", sort=None, title=None))
 st.altair_chart(
     base.mark_rule(strokeWidth=5, opacity=0.35).encode(
