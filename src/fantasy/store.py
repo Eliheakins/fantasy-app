@@ -21,6 +21,28 @@ _NAME = re.compile(r"^[a-z][a-z0-9_]*$")
 _S, _I, _F, _B = pl.String, pl.Int64, pl.Float64, pl.Boolean
 
 
+# Pro-Football-Reference and Next Gen Stats columns kept per player-week (prefixes: pfr, ngsrec,
+# ngsrus, ngspas), written by stages/ingest_role.py
+ADVANCED_COLUMNS = (
+    "pfr_rushing_broken_tackles pfr_receiving_broken_tackles "
+    "pfr_receiving_drop_pct pfr_receiving_rat "
+    "ngsrec_avg_cushion ngsrec_avg_separation ngsrec_avg_intended_air_yards "
+    "ngsrec_percent_share_of_intended_air_yards ngsrec_receptions ngsrec_targets "
+    "ngsrec_catch_percentage ngsrec_yards ngsrec_rec_touchdowns ngsrec_avg_yac "
+    "ngsrec_avg_expected_yac ngsrec_avg_yac_above_expectation "
+    "ngsrus_efficiency ngsrus_percent_attempts_gte_eight_defenders ngsrus_avg_time_to_los "
+    "ngsrus_rush_attempts ngsrus_rush_yards ngsrus_avg_rush_yards ngsrus_rush_touchdowns "
+    "ngsrus_expected_rush_yards ngsrus_rush_yards_over_expected "
+    "ngsrus_rush_yards_over_expected_per_att ngsrus_rush_pct_over_expected "
+    "ngspas_avg_time_to_throw ngspas_avg_completed_air_yards ngspas_avg_intended_air_yards "
+    "ngspas_avg_air_yards_differential ngspas_aggressiveness ngspas_max_completed_air_distance "
+    "ngspas_avg_air_yards_to_sticks ngspas_attempts ngspas_pass_yards ngspas_pass_touchdowns "
+    "ngspas_interceptions ngspas_passer_rating ngspas_completions ngspas_completion_percentage "
+    "ngspas_expected_completion_percentage ngspas_completion_percentage_above_expectation "
+    "ngspas_avg_air_distance ngspas_max_air_distance"
+)
+
+
 def _cols(
     strings: str = "", ints: str = "", floats: str = ""
 ) -> dict[str, pl.DataType | type[pl.DataType]]:
@@ -189,6 +211,20 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         floats="projection context",
     )
     | {"has_history": _B, "is_future": _B},
+    # written by ingest_role (area: raw). Role and context data keyed by player and week.
+    "nfl_rosters_weekly": _cols(
+        strings="gsis_id", ints="season week", floats="age years_exp draft_pick"
+    ),
+    "nfl_depth": _cols(strings="gsis_id", ints="season week", floats="depth_rank"),
+    "nfl_advanced": _cols(strings="gsis_id", ints="season week", floats=ADVANCED_COLUMNS),
+    "nfl_team_pace": _cols(
+        strings="team", ints="season week", floats="plays dropbacks pass_oe team_epa"
+    ),
+    "nfl_ecr": _cols(
+        strings="gsis_id",
+        ints="season week",
+        floats="ecr_pos ecr_pos_sd ecr_pos_range ecr_all ecr_all_sd ecr_all_range",
+    ),
     # written by ingest_nfl (area: raw). Only the columns later stages use.
     "nfl_player_stats": _cols(
         strings="player_id player_display_name position season_type team opponent_team "

@@ -18,6 +18,8 @@ the player plays, the same meaning as the baseline's.
 Run: uv run python -m fantasy.stages.learn
 """
 
+from dataclasses import dataclass
+
 import numpy as np
 import polars as pl
 from sklearn.ensemble import HistGradientBoostingRegressor
@@ -47,8 +49,23 @@ LAG_COLUMNS = (
 HALF_LIVES = (2, 4, 8)
 STATE_FEATURES = [f"{c}_hl{h}" for c in LAG_COLUMNS for h in HALF_LIVES]
 STATE_FEATURES += [f"{c}_last" for c in LAG_COLUMNS] + ["n_games", "pts_sd8"]
-LINE_FEATURES = ["team_implied", "total_line", "is_home"]
+LINE_FEATURES = ["team_implied", "total_line", "is_home", "spread"]
+SCHEDULE_FEATURES = ["rest", "indoor"]
+ROLE_COLUMNS = ["age", "years_exp", "draft_pick"]  # static: the latest roster row up to the game
+DEPTH_COLUMNS = ["depth_rank"]  # the chart for the game (the origin's chart when further ahead)
+ECR_COLUMNS = ["ecr_pos", "ecr_pos_sd", "ecr_pos_range", "ecr_all", "ecr_all_sd", "ecr_all_range"]
+PACE_COLUMNS = ["plays", "dropbacks", "pass_oe", "team_epa"]  # lagged team pace
 KEY = ["gsis_id", "season", "week"]
+ADVANCED_COLUMNS = [c for c in store.SCHEMAS["nfl_advanced"] if c not in KEY]  # lagged
+EXTRA_FEATURES = (
+    ROLE_COLUMNS
+    + DEPTH_COLUMNS
+    + ECR_COLUMNS
+    + [f"pace_{c}" for c in PACE_COLUMNS]
+    + [f"adv_{c}" for c in ADVANCED_COLUMNS]
+    + SCHEDULE_FEATURES
+)
+EXTRA_HALF_LIFE = 4.0  # games, for the lagged team and advanced stats
 MIN_TRAIN_SEASONS = 2  # a season with fewer earlier seasons is scored by leave-one-season-out
 EARLY_BLOCK = 4  # seasons in that early block
 FIRST_ACCEPTANCE_SEASON = 2024
@@ -143,10 +160,121 @@ def with_lines(frame: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
     return frame.join(lines, on=["season", "week", "team"], how="left")
 
 
+@dataclass(frozen=True)
+class Extras:
+    """Role and context tables from `ingest_role`."""
+
+    roster: pl.DataFrame
+    depth: pl.DataFrame
+    ecr: pl.DataFrame
+    pace: pl.DataFrame
+    advanced: pl.DataFrame
+
+
+def load_extras() -> Extras:
+    read = {
+        n: store.read_table(f"nfl_{n}", "raw") for n in ("depth", "ecr", "team_pace", "advanced")
+    }
+    return Extras(
+        roster=store.read_table("nfl_rosters_weekly", "raw"),
+        depth=read["depth"],
+        ecr=read["ecr"],
+        pace=read["team_pace"],
+        advanced=read["advanced"],
+    )
+
+
+def _index() -> pl.Expr:
+    return pl.col("season") * 100 + pl.col("week")
+
+
+def lag_asof(
+    target: pl.DataFrame, table: pl.DataFrame, by: str, cols: list[str], prefix: str
+) -> pl.DataFrame:
+    """Each column's weighted average over the rows of `table` strictly before the target game,
+    as `<prefix>_<column>`. A value missing in the latest row carries the earlier one forward."""
+    lagged = [f"{prefix}_{c}" for c in cols]
+    state = (
+        table.sort(by, "season", "week")
+        .with_columns(
+            *[
+                pl.col(c)
+                .forward_fill()
+                .ewm_mean(half_life=EXTRA_HALF_LIFE)
+                .over(by)
+                .alias(f"{prefix}_{c}")
+                for c in cols
+            ],
+            _index().alias("t"),
+        )
+        .select(by, "t", *lagged)
+        .sort("t")
+    )
+    left = target.with_columns(_index().alias("t")).sort("t")
+    return left.join_asof(
+        state, on="t", by=by, strategy="backward", allow_exact_matches=False
+    ).drop("t")
+
+
+def latest_asof(
+    target: pl.DataFrame, table: pl.DataFrame, by: str, cols: list[str], shift: int = 0
+) -> pl.DataFrame:
+    """For attributes that hold until they change (age, draft pick, a depth chart): the latest
+    row of `table` at or before the target game, `shift` weeks earlier. A game beyond the
+    table's last week keeps the last known value."""
+    right = table.select(by, _index().alias("t"), *cols).sort("t")
+    left = target.with_columns((_index() - shift).alias("t")).sort("t")
+    return left.join_asof(right, on="t", by=by, strategy="backward").drop("t")
+
+
+def with_schedule(frame: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
+    """Rest days and an indoor flag for the game: both are known when the schedule is."""
+    sched = games.select(
+        "season",
+        "week",
+        "team",
+        pl.col("rest").cast(pl.Float64),
+        pl.col("roof").is_in(["dome", "closed"]).cast(pl.Float64).alias("indoor"),
+    ).unique(["season", "week", "team"])
+    return frame.join(sched, on=["season", "week", "team"], how="left")
+
+
+def attach_extras(
+    frame: pl.DataFrame, extras: Extras, games: pl.DataFrame, horizon: int = 1
+) -> pl.DataFrame:
+    """Adds the role and context features. One game ahead the depth chart and expert ranking are
+    the game's own; further ahead the chart is the origin's and no ranking exists, as for the
+    later weeks of a live projection."""
+    out = with_schedule(frame, games)
+    if horizon == 1:
+        out = out.join(extras.depth.unique(KEY), on=KEY, how="left").join(
+            extras.ecr.unique(KEY), on=KEY, how="left"
+        )
+    else:
+        out = latest_asof(out, extras.depth.unique(KEY), "gsis_id", DEPTH_COLUMNS, horizon - 1)
+        out = out.with_columns([pl.lit(None, dtype=pl.Float64).alias(c) for c in ECR_COLUMNS])
+    out = latest_asof(out, extras.roster.unique(KEY), "gsis_id", ROLE_COLUMNS)
+    out = lag_asof(out, extras.pace, "team", PACE_COLUMNS, "pace")
+    return lag_asof(out, extras.advanced.unique(KEY), "gsis_id", ADVANCED_COLUMNS, "adv")
+
+
+def build_features(
+    targets: pl.DataFrame,
+    state: pl.DataFrame,
+    games: pl.DataFrame,
+    extras: Extras,
+    horizon: int = 1,
+) -> pl.DataFrame:
+    """State, lines (one game ahead only) and role features for the target rows."""
+    features = attach_extras(feature_frame(targets, state, horizon), extras, games, horizon)
+    return with_lines(features, games) if horizon == 1 else features
+
+
 def design(frame: pl.DataFrame, lines: bool) -> np.ndarray:
     columns = [*STATE_FEATURES, "week", "is_qb", "is_rb", "is_wr"] + (
         LINE_FEATURES if lines else []
     )
+    columns += EXTRA_FEATURES
     out = frame.with_columns(
         *[
             (pl.col("position") == p).cast(pl.Float64).alias(f"is_{p.lower()}")
@@ -166,7 +294,15 @@ def train_seasons(season: int, available: list[int]) -> list[int]:
     return [s for s in ordered[:EARLY_BLOCK] if s != season]
 
 
+def _varies(column: np.ndarray) -> bool:
+    finite = column[np.isfinite(column)]
+    return len(np.unique(finite)) > 1
+
+
 def fit_predict(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray) -> np.ndarray:
+    # a column that is empty or constant in training carries nothing and breaks the binning
+    usable = [j for j in range(x_train.shape[1]) if _varies(x_train[:, j])]
+    x_train, x_test = x_train[:, usable], x_test[:, usable]
     model = HistGradientBoostingRegressor(
         loss="squared_error",
         max_iter=400,
@@ -221,13 +357,12 @@ def history_forecasts(horizon: int = 1) -> pl.DataFrame:
         store.read_table("nfl_player_stats", "raw"),
     )
     lines = store.read_table("team_games")
+    extras = load_extras()
     parts = []
     for lid in leagues["league_id"].to_list():
         games = games_all.filter(pl.col("league_id") == lid)
         targets = history_targets(exp.filter(pl.col("league_id") == lid))
-        features = feature_frame(targets, state_frame(games), horizon)
-        if horizon == 1:
-            features = with_lines(features, lines)
+        features = build_features(targets, state_frame(games), lines, extras, horizon)
         history = features.join(
             games.select(*GROUP, "season", "week", "points"), on=[*GROUP, "season", "week"]
         )
@@ -248,6 +383,7 @@ def run() -> dict[str, int]:
         store.read_table("nfl_player_stats", "raw"),
     )
     lines = store.read_table("team_games")
+    extras = load_extras()
     current, rostered = current_and_rostered()
     future_all = future_targets(store.read_table("player_form"), current, rostered, lines)
     context = store.read_table("proj_baseline").select(*GROUP, "season", "week", "context")
@@ -258,12 +394,12 @@ def run() -> dict[str, int]:
         games = games_all.filter(pl.col("league_id") == lid)
         state = state_frame(games)
         targets = history_targets(exp.filter(pl.col("league_id") == lid))
-        history = with_lines(feature_frame(targets, state), lines).join(
+        history = build_features(targets, state, lines, extras).join(
             games.select(*GROUP, "season", "week", "points"), on=[*GROUP, "season", "week"]
         )
         past = walk_forward(history).with_columns(is_future=pl.lit(False))
-        future_features = with_lines(
-            feature_frame(future_all.filter(pl.col("league_id") == lid), state), lines
+        future_features = build_features(
+            future_all.filter(pl.col("league_id") == lid), state, lines, extras
         )
         future = predict_future(history, future_features).with_columns(is_future=pl.lit(True))
         out += [past.select(keep), future.select(keep)]

@@ -124,3 +124,42 @@ def test_a_missing_value_in_the_latest_game_keeps_the_earlier_weighted_average()
     last = state.filter(pl.col("as_of_week") == 3)
     assert last["snap_hl4"].item() == pytest.approx(70.0)  # carried forward, not blanked
     assert last["snap_last"].item() is None  # the last value itself stays missing
+
+
+def test_lagged_stats_use_only_games_before_the_target_game() -> None:
+    table = pl.DataFrame(
+        {
+            "team": ["KC", "KC", "KC"],
+            "season": [2025, 2025, 2025],
+            "week": [1, 2, 3],
+            "plays": [60.0, 70.0, 100.0],
+        }
+    )
+    target = pl.DataFrame({"team": ["KC", "KC"], "season": [2025, 2025], "week": [3, 4]})
+    out = learn.lag_asof(target, table, "team", ["plays"], "pace").sort("week")
+    assert 60.0 < out["pace_plays"][0] < 70.0  # week 3 sees weeks 1 and 2, not its own 100
+    assert 70.0 < out["pace_plays"][1] < 100.0  # week 4 now includes week 3
+
+
+def test_a_static_attribute_comes_from_the_latest_row_up_to_the_target_week() -> None:
+    table = pl.DataFrame(
+        {
+            "gsis_id": ["A", "A"],
+            "season": [2025, 2025],
+            "week": [1, 6],
+            "age": [24.0, 25.0],
+        }
+    )
+    target = pl.DataFrame({"gsis_id": ["A", "A", "A"], "season": [2025] * 3, "week": [3, 6, 9]})
+    out = learn.latest_asof(target, table, "gsis_id", ["age"]).sort("week")
+    assert out["age"].to_list() == [24.0, 25.0, 25.0]  # a future week keeps the last known value
+
+
+def test_a_column_that_is_empty_or_constant_in_training_does_not_break_the_fit() -> None:
+    rng = np.random.default_rng(1)
+    x = rng.uniform(0.0, 10.0, size=(3000, 3))
+    x[:, 1] = np.nan  # a feature with no data in this fold
+    x[:, 2] = 7.0  # and one that never varies
+    y = 2.0 * x[:, 0] + rng.normal(scale=0.3, size=3000)
+    pred = learn.fit_predict(x[:2500], y[:2500], x[2500:])
+    assert np.corrcoef(pred, y[2500:])[0, 1] > 0.9

@@ -1,7 +1,8 @@
 """Load nflverse tables (stats, snaps, injuries, schedules, expected points) into raw parquet.
 
 Only the columns later stages use are kept, cast to fixed dtypes. A missing or renamed column
-fails here, loudly, not three stages later. Depth charts are skipped: nothing in the MVP uses them.
+fails here, loudly, not three stages later. Depth charts, weekly rosters, advanced stats, team pace
+and FantasyPros rankings come from `ingest_role`.
 
 Run: uv run python -m fantasy.stages.ingest_nfl [--force]
 """
@@ -14,6 +15,7 @@ import nflreadpy as nfl
 import polars as pl
 
 from fantasy import store
+from fantasy.stages import ingest_role as role
 
 SEASONS = list(range(2018, 2027))
 TTL_SECONDS = 12 * 3600
@@ -49,6 +51,12 @@ SOURCES: dict[str, tuple[Callable[[], pl.DataFrame], str | None]] = {
         lambda: nfl.load_ff_opportunity(SEASONS, stat_type="weekly"),
         "player_id",
     ),
+    # role and context data for the learned model (see ingest_role)
+    "nfl_rosters_weekly": (role.load_rosters, "gsis_id"),
+    "nfl_depth": (role.load_depth, "gsis_id"),
+    "nfl_advanced": (role.load_advanced, "gsis_id"),
+    "nfl_team_pace": (role.load_pace, None),
+    "nfl_ecr": (role.load_ecr, "gsis_id"),
 }
 
 
