@@ -106,3 +106,22 @@ def test_a_switched_off_environment_layer_returns_the_projections_untouched(
     projections = pl.DataFrame({"gsis_id": ["A"], "week": [7], "projection": [10.0]})
     out = simulate._apply_environment(projections, 7, None, {})
     assert out.equals(projections)
+
+
+def test_size_calibration_is_skipped_for_the_learned_projection_and_kept_for_the_baseline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import polars as pl
+
+    from fantasy.stages.distributions import calibrated
+
+    use_store(monkeypatch, tmp_path)
+    write_rows(tmp_path, "proj_baseline", [projection_row(2025, 1, False, 10.0)])
+    write_rows(tmp_path, "proj_learned", [projection_row(2025, 1, False, 10.0)])
+    curve = {"league_id": "L", "position": "WR", "center": 10.0, "factor": 0.5, "n": 100}
+    write_rows(tmp_path, "projection_calibration", [curve])
+    frame = pl.DataFrame({"league_id": ["L"], "position": ["WR"], "projection": [10.0]})
+    configured(monkeypatch, "learned")
+    assert calibrated(frame)["projection"].to_list() == [10.0]  # the learned model is calibrated
+    configured(monkeypatch, "baseline")
+    assert calibrated(frame)["projection"].to_list() == [5.0]  # the baseline over-projects

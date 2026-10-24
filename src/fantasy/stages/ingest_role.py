@@ -47,9 +47,16 @@ def new_depth(snapshots: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
     snaps = snapshots.filter(pl.col("pos_abb").is_in(SKILL)).with_columns(
         pl.col("dt").str.to_datetime(time_zone="UTC").dt.replace_time_zone(None).alias("taken")
     )
-    kicks = games.select(
-        "season", "week", "team", pl.col("gameday").str.to_date().cast(pl.Datetime).alias("kick")
-    ).sort("kick")
+    # every team uses the week's first game as its cutoff, as the rankings do: a chart taken on
+    # the weekend carries injury news a midweek decision could not see
+    kicks = (
+        games.select(
+            "season", "week", "team", pl.col("gameday").str.to_date().cast(pl.Datetime).alias("day")
+        )
+        .with_columns(pl.col("day").min().over("season", "week").alias("kick"))
+        .drop("day")
+        .sort("kick")
+    )
     taken = snaps.select("team", "taken").unique().sort("taken")
     picked = kicks.join_asof(
         taken, left_on="kick", right_on="taken", by="team", strategy="backward"

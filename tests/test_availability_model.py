@@ -73,3 +73,10 @@ def test_a_flagged_players_first_game_chance_can_be_replaced() -> None:
     assert chance(over, "A", 7) == pytest.approx(0.4)  # replaced
     assert chance(over, "A", 8) == pytest.approx(0.9)  # the later games keep the table's curve
     assert chance(over, "B", 7) == 1.0  # an unflagged player is untouched
+
+
+def test_no_rows_to_predict_gives_no_predictions_not_an_error() -> None:
+    rng = np.random.default_rng(0)
+    x = rng.uniform(0.0, 10.0, size=(400, 3))
+    y = (x[:, 0] > 5).astype(int)
+    assert a.fit_predict(x, y, np.empty((0, 3))).shape == (0,)

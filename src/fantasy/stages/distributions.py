@@ -196,7 +196,11 @@ def run() -> dict[str, int]:
 
 def calibrated(frame: pl.DataFrame) -> pl.DataFrame:
     """`frame` (league_id, position, projection) with the projection calibrated by size, when the
-    curves have been estimated; otherwise unchanged."""
+    curves have been estimated; otherwise unchanged. The learned projection is left alone: held
+    out, the curves made it slightly worse (RMSE up in 7 of 8 league-seasons, mean error shifted by
+    0.1 to 0.3 points), because it is already trained to be unbiased."""
+    if store.projection_name() == "proj_learned":
+        return frame
     try:
         curves = store.read_table("projection_calibration")
     except FileNotFoundError:

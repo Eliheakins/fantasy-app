@@ -4,7 +4,7 @@ The universe is every skill player on a team's depth chart for a game week who p
 last three games, so a player who is hurt and does not play is in it. The label is whether he had
 any offensive snaps. Features: depth rank, injury report status and practice participation, snap
 share in earlier games, weeks since he last played, position and age. Scored on every listed
-player, it beat the injury-status table by 7% Brier on report-listed players even though the table
+player, it beat the injury-status table by 6% Brier on report-listed players even though the table
 had seen the test seasons (research/availability_check.py), so the simulation uses it for a
 flagged player's chance of playing the next game; later games keep the table's curve.
 
@@ -103,6 +103,8 @@ def design(frame: pl.DataFrame) -> np.ndarray:
 
 
 def fit_predict(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray) -> np.ndarray:
+    if x_test.shape[0] == 0:  # nothing on the depth chart yet (preseason, or not yet published)
+        return np.empty(0)
     model = HistGradientBoostingClassifier(
         max_iter=300,
         learning_rate=0.05,

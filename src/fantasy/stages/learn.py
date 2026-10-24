@@ -19,6 +19,7 @@ Run: uv run python -m fantasy.stages.learn
 """
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 import numpy as np
 import polars as pl
@@ -417,10 +418,42 @@ def run() -> dict[str, int]:
         .with_columns(pl.col("context").fill_null(1.0))
     )
     store.write_table("proj_learned", final.select(*store.SCHEMAS["proj_learned"]))
+    archive_snapshot(final, int(leagues["current_week"].max()))  # type: ignore[arg-type]
     return {
         "history": final.filter(~pl.col("is_future")).height,
         "future": final.filter(pl.col("is_future")).height,
     }
+
+
+def snapshot_frame(
+    learned: pl.DataFrame, baseline: pl.DataFrame, fetched_at: str, current_week: int
+) -> pl.DataFrame:
+    """The next game's projection from both models, as made at `fetched_at`."""
+    keys = [*GROUP, "season", "week"]
+    now = learned.filter(pl.col("is_future") & (pl.col("week") == current_week)).select(
+        *keys, pl.col("projection").alias("learned")
+    )
+    base = baseline.filter(pl.col("is_future") & (pl.col("week") == current_week)).select(
+        *keys, pl.col("projection").alias("baseline")
+    )
+    return (
+        now.join(base, on=keys, how="left")
+        .with_columns(pl.lit(fetched_at).alias("fetched_at"))
+        .select(*GROUP, "season", "week", "fetched_at", "learned", "baseline")
+    )
+
+
+def archive_snapshot(final: pl.DataFrame, current_week: int) -> None:
+    """Append this refresh's projections for the next game to the archive. Scored after the games,
+    they are the one clean test of the learned model: nothing was chosen with them in view."""
+    fetched_at = datetime.now(UTC).isoformat(timespec="seconds")
+    new = snapshot_frame(final, store.read_table("proj_baseline"), fetched_at, current_week)
+    new = new.select(*store.SCHEMAS["proj_snapshots"])
+    try:
+        new = pl.concat([store.read_table("proj_snapshots", "archive"), new])
+    except FileNotFoundError:
+        pass
+    store.write_table("proj_snapshots", new, "archive")
 
 
 def compare_to_baseline() -> pl.DataFrame:

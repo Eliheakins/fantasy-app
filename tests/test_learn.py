@@ -179,3 +179,29 @@ def test_a_forecast_made_further_ahead_cannot_see_games_after_its_origin() -> No
     assert 60.0 < ahead["pace_plays"].item() < 70.0  # weeks 1 and 2 only, as at the origin
     now = learn.lag_asof(target, table, "team", ["plays"], "pace")
     assert now["pace_plays"].item() < 60.0  # one game ahead sees week 4's 10 as well
+
+
+def test_the_weekly_snapshot_keeps_only_the_next_game_with_both_projections() -> None:
+    final = pl.DataFrame(
+        {
+            "league_id": ["L"] * 3,
+            "gsis_id": ["A", "A", "A"],
+            "season": [2026] * 3,
+            "week": [6, 7, 8],
+            "is_future": [False, True, True],
+            "projection": [9.0, 11.0, 12.0],
+        }
+    )
+    baseline = final.with_columns((pl.col("projection") - 1.0).alias("projection"))
+    out = learn.snapshot_frame(final, baseline, "2026-10-23T12:00:00+00:00", current_week=7)
+    assert out.to_dicts() == [
+        {
+            "league_id": "L",
+            "gsis_id": "A",
+            "season": 2026,
+            "week": 7,
+            "fetched_at": "2026-10-23T12:00:00+00:00",
+            "learned": 11.0,
+            "baseline": 10.0,
+        }
+    ]

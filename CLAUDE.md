@@ -45,7 +45,7 @@ A missing table for a layer in step 4, or for calibration or the Sleeper blend, 
 ## Gotchas
 
 - `data/` is gitignored. A fresh clone has no data: run `make setup`, then `make refresh` (needs the network).
-- `data/archive/` cannot be regenerated: Sleeper projection snapshots (re-stamped by the endpoint after games, so only our own snapshots are clean), odds snapshots, season-odds history. Back it up before wiping `data/`. Issue #40 depends on it.
+- `data/archive/` cannot be regenerated: our own weekly projections for the next game (`proj_snapshots`, the clean test of the learned model), Sleeper projection snapshots (re-stamped by the endpoint after games, so only our own snapshots are clean), odds snapshots, season-odds history. Back it up before wiping `data/`. Issue #40 depends on it.
 - Point-valued effects are measured in the reference league (lowest league id) and scaled per league (`sim/scoring_scale.py`). Add a new point-valued effect to the `*_POINT_KINDS` sets in `stages/simulate.py`, or YinzBurgh (0.5 PPR) will be overstated.
 - My teams: Colgate "Lisan Al-Caleb", YinzBurgh "LaPorta Potty" (Sleeper's `is_me` flag, not the league's top team).
 - `data_api.py` is 1150 lines. Splitting it would bypass tests that patch `data_api.leagues` and `data_api._read`; fix those patches first.

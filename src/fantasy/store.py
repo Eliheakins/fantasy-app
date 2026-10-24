@@ -163,6 +163,11 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         ints="roster_id as_of_week n_sims",
         floats="p_playoffs p_bye p_title exp_wins",
     ),
+    # written by learn (area: archive, only ever appended): each refresh's projections for the next
+    # game, both models, so a later check scores what was actually available before kickoff
+    "proj_snapshots": _cols(
+        strings="league_id gsis_id fetched_at", ints="season week", floats="learned baseline"
+    ),
     # written by sleeper_projections (area: archive, only ever appended)
     "sleeper_proj_snapshots": _cols(strings="fetched_at sleeper_id stats", ints="week"),
     # written by sleeper_projections (area: derived): Sleeper's projections under each league

@@ -114,3 +114,26 @@ def test_a_team_with_no_depth_snapshot_is_an_error_not_a_silent_drop() -> None:
     games = pl.DataFrame({"season": [2025], "week": [1], "team": ["LA"], "gameday": ["2025-09-07"]})
     with pytest.raises(ValueError, match="LA"):
         r.new_depth(snaps, games)
+
+
+def test_depth_snapshots_are_cut_off_at_the_weeks_first_game_for_every_team() -> None:
+    snaps = pl.DataFrame(
+        {
+            "team": ["BUF", "BUF", "KC", "KC"],
+            "dt": ["2025-09-02T10:00:00Z", "2025-09-06T10:00:00Z"] * 2,
+            "gsis_id": ["B", "B", "K", "K"],
+            "pos_abb": ["WR"] * 4,
+            "pos_rank": [2, 1, 2, 1],
+        }
+    )
+    games = pl.DataFrame(
+        {
+            "season": [2025, 2025],
+            "week": [1, 1],
+            "team": ["KC", "BUF"],
+            "gameday": ["2025-09-04", "2025-09-07"],  # Thursday and Sunday
+        }
+    )
+    out = r.new_depth(snaps, games).sort("gsis_id")
+    # Saturday's chart, taken after Thursday's game, is not what a midweek decision could see
+    assert out["depth_rank"].to_list() == [2.0, 2.0]
