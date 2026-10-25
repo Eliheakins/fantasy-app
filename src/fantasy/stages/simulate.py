@@ -539,7 +539,8 @@ def append_history(latest: pl.DataFrame, data_dir: Path = store.DATA_DIR) -> pl.
     return stamped
 
 
-def run(n_sims: int | None = None) -> pl.DataFrame:
+def run(n_sims: int | None = None, archive: bool = True) -> pl.DataFrame:
+    """Simulate every league. `archive=False` skips the append-only history (live ticks)."""
     cfg = load_config()
     n_sims = n_sims or cfg.n_sims
     rows, seed_rows = [], []
@@ -570,7 +571,8 @@ def run(n_sims: int | None = None) -> pl.DataFrame:
         "sim_seeds", pl.DataFrame(seed_rows, schema=store.SCHEMAS["sim_seeds"], orient="row")
     )
     store.write_table("sim_season", latest)
-    append_history(latest)
+    if archive:
+        append_history(latest)
     return latest
 
 

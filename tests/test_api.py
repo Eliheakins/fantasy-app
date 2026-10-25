@@ -56,7 +56,8 @@ def store_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 @pytest.fixture
-def client(store_dir: Path) -> Iterator[TestClient]:
+def client(store_dir: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+    monkeypatch.setenv("LIVE_REFRESH", "off")  # no background thread in API tests
     with TestClient(api.create_app(), base_url="http://localhost", headers=CSRF_HEADER) as c:
         yield c
 
@@ -96,7 +97,13 @@ def test_status_reports_freshness_layers_and_version_in_one_call(client: TestCli
     out = body(client.get("/api/status"))
     assert out["status"] == "ok" and out["error"] is None
     data = out["data"]
-    assert set(data) == {"freshness", "missing_layers", "simulation_behind_inputs", "data_version"}
+    assert set(data) == {
+        "freshness",
+        "missing_layers",
+        "simulation_behind_inputs",
+        "data_version",
+        "live_refresh",
+    }
     assert "injury model" in data["missing_layers"]
     assert {r["source"] for r in data["freshness"]} >= {"Sleeper"}
 

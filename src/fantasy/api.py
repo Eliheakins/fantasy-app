@@ -19,6 +19,7 @@ from fantasy.api_envelope import rows as rows
 from fantasy.api_jobs import JobRunner
 from fantasy.api_routes import router
 from fantasy.config import ROOT
+from fantasy.live_refresh import LiveRefresher
 
 WEB_DIST = ROOT / "web" / "dist"
 LOCAL_HOSTS = ("localhost", "127.0.0.1")
@@ -46,14 +47,20 @@ def forbidden(request: Request, hosts: list[str]) -> str | None:
 def create_app(web_dist: Path | None = None) -> FastAPI:
     dist = WEB_DIST if web_dist is None else web_dist
     runner = JobRunner(max_workers=2)
+    live = LiveRefresher(runner)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        yield
-        runner.shutdown()
+        live.start()
+        try:
+            yield
+        finally:
+            live.stop()
+            runner.shutdown()
 
     app = FastAPI(title="Fantasy API", version="1", lifespan=lifespan)
     app.state.runner = runner
+    app.state.live = live
     hosts = allowed_hosts()
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=hosts)
 
