@@ -50,6 +50,15 @@ def _game_state(live: dict[str, tuple[float, float]], gsis_id: str) -> str:
     return "Final" if share <= 0.0 else f"Live, {share:.0%} left"
 
 
+def _expected_total(p: Player, live: dict[str, tuple[float, float]], chance: float) -> float:
+    """Points he is expected to end the week with: banked so far plus what is left of his game
+    (he is playing, so his chance of playing no longer discounts it)."""
+    points, share = live.get(p.id, (0.0, 1.0))
+    if not 0.0 < share < 1.0:
+        return p.value
+    return points + share * p.value / max(chance, PLAY_PROB_FLOOR)
+
+
 def _is_out(data: LeagueData, gsis_id: str) -> bool:
     flag = data.injuries.get(gsis_id)
     return flag is not None and (flag[0] == "Out" or flag[0] in LONG_TERM)
@@ -117,7 +126,7 @@ def lineup(
             "gsis_id": p.id,
             "full_name": names.get(p.id, p.id),
             "position": p.position,
-            "projection": p.value,
+            "projection": _expected_total(p, live, chance.get(p.id, 1.0)),
             "p10": _spread(p, 0.1, chance, ratio, edges, _is_out(data, p.id)),
             "p90": _spread(p, 0.9, chance, ratio, edges, _is_out(data, p.id)),
             "starting_now": p.id in starting,
