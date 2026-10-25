@@ -54,3 +54,17 @@ def test_the_cache_key_moves_with_the_clock_only_while_a_game_is_on() -> None:
     # the window outlasts the game by a few minutes so the last build sees it final
     assert _engine._clock_bucket(kicks, at(GAME_MINUTES + 2)) != ""
     assert _engine._clock_bucket(kicks, at(GAME_MINUTES + 30)) == ""
+
+
+def test_a_player_mid_game_and_a_finished_one_keep_their_projection_inside_their_range(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _engine_store(tmp_path, monkeypatch)
+    # the QB banked 25 with 40% of his game left; the WR finished with 17.5
+    _with(monkeypatch, live={"G_QB": (25.0, 0.4), "G_WR": (17.5, 0.0)})
+    out = data_api.lineup("t", now=NOW)
+    qb = out.filter(pl.col("gsis_id") == "G_QB").row(0, named=True)
+    wr = out.filter(pl.col("gsis_id") == "G_WR").row(0, named=True)
+    assert qb["p10"] <= qb["projection"] <= qb["p90"]
+    assert qb["p10"] >= 25.0  # points already scored cannot be lost
+    assert (wr["p10"], wr["p90"]) == (17.5, 17.5)

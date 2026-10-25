@@ -279,17 +279,22 @@ def _play_probs(data: LeagueData, week: int) -> dict[str, float]:
     return dict(zip(rows["gsis_id"], rows["play_prob"], strict=True))
 
 
-def _constant_points(
-    data: LeagueData, n_sims: int, seed: int, state: CurrentWeek | None = None
-) -> np.ndarray:
-    """K and DEF slots: points already scored plus a league-average draw for what is left
-    (their points are not projected yet). `state` is None for a week not yet under way."""
+def _constant_moments(data: LeagueData, state: CurrentWeek | None) -> tuple[float, float]:
+    """Mean and variance of the K and DEF slots: points already scored plus a league average for
+    what is left. `state` is None for a week not yet under way."""
     counts = constant_slot_count(data.roster_positions)
     open_k = counts.get("K", 0) if state is None else state.open_k
     open_def = counts.get("DEF", 0) if state is None else state.open_def
     scored = 0.0 if state is None else state.kd_actual
     mean = scored + open_k * data.k_mean + open_def * data.def_mean
-    var = open_k * data.k_var + open_def * data.def_var
+    return mean, open_k * data.k_var + open_def * data.def_var
+
+
+def _constant_points(
+    data: LeagueData, n_sims: int, seed: int, state: CurrentWeek | None = None
+) -> np.ndarray:
+    """K and DEF slots as draws (their points are not projected yet)."""
+    mean, var = _constant_moments(data, state)
     return mean + np.sqrt(var) * np.random.default_rng(seed).standard_normal(n_sims)
 
 

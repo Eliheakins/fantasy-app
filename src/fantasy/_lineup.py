@@ -9,6 +9,7 @@ from fantasy._engine import (
     KD_SEED_OFFSET,
     LINEUP_SEED,
     PLAY_PROB_FLOOR,
+    _constant_moments,
     _constant_points,
     _injury_note,
     _league,
@@ -57,6 +58,15 @@ def _expected_total(p: Player, live: dict[str, tuple[float, float]], chance: flo
     if not 0.0 < share < 1.0:
         return p.value
     return points + share * p.value / max(chance, PLAY_PROB_FLOOR)
+
+
+def _ranged(p: Player, spread: float | None, live: dict[str, tuple[float, float]]) -> float | None:
+    """A quantile of his week's total: points banked so far plus the share of the game left times
+    the full-game quantile, so a player mid-game or done keeps his range around his projection."""
+    if spread is None:
+        return None
+    points, share = live.get(p.id, (0.0, 1.0))
+    return spread if not 0.0 <= share < 1.0 else points + share * spread
 
 
 def _is_out(data: LeagueData, gsis_id: str) -> bool:
@@ -127,8 +137,8 @@ def lineup(
             "full_name": names.get(p.id, p.id),
             "position": p.position,
             "projection": _expected_total(p, live, chance.get(p.id, 1.0)),
-            "p10": _spread(p, 0.1, chance, ratio, edges, _is_out(data, p.id)),
-            "p90": _spread(p, 0.9, chance, ratio, edges, _is_out(data, p.id)),
+            "p10": _ranged(p, _spread(p, 0.1, chance, ratio, edges, _is_out(data, p.id)), live),
+            "p90": _ranged(p, _spread(p, 0.9, chance, ratio, edges, _is_out(data, p.id)), live),
             "starting_now": p.id in starting,
             "recommended": p.id in slot_of,
             "injury": status.get(p.id),
@@ -227,6 +237,7 @@ def win_probability(
     script = _script(verdict.win_prob[base])
 
     mean_of = {r["gsis_id"]: r["projection"] for r in mine_rows.iter_rows(named=True)}
+    kd_mean, _ = _constant_moments(data, data.current.get(mine) if current else None)
     options = {"max_points": base, "win_prob": verdict.chosen, "ceiling": ceiling, "floor": floor}
     if sleeper:
         options["sleeper_now"] = sleeper
@@ -234,7 +245,7 @@ def win_probability(
         {
             "option": name,
             "win_prob": verdict.win_prob[ids_],
-            "expected_points": sum(mean_of[i] for i in ids_),
+            "expected_points": sum(mean_of[i] for i in ids_) + kd_mean,
             "gsis_ids": sorted(ids_),
             "slots": _slots_of(ids_, mean_of, positions, slots),
             "share_better": verdict.share_better if name == "win_prob" else 0.5,
