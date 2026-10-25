@@ -2622,6 +2622,54 @@
         ],
         "title": "LineupRow"
       },
+      "LiveRefreshData": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "active": {
+            "type": "boolean",
+            "title": "Active"
+          },
+          "last_ok_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Ok At"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "interval_minutes": {
+            "type": "integer",
+            "title": "Interval Minutes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "enabled",
+          "active",
+          "last_ok_at",
+          "last_error",
+          "interval_minutes"
+        ],
+        "title": "LiveRefreshData"
+      },
       "LiveScoreRow": {
         "properties": {
           "side": {
@@ -3190,6 +3238,9 @@
           "data_version": {
             "type": "string",
             "title": "Data Version"
+          },
+          "live_refresh": {
+            "$ref": "#/components/schemas/LiveRefreshData"
           }
         },
         "additionalProperties": false,
@@ -3198,7 +3249,8 @@
           "freshness",
           "missing_layers",
           "simulation_behind_inputs",
-          "data_version"
+          "data_version",
+          "live_refresh"
         ],
         "title": "StatusData"
       },

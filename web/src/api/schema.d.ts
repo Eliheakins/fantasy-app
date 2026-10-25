@@ -824,6 +824,19 @@ export interface components {
             /** Change */
             change: string;
         };
+        /** LiveRefreshData */
+        LiveRefreshData: {
+            /** Enabled */
+            enabled: boolean;
+            /** Active */
+            active: boolean;
+            /** Last Ok At */
+            last_ok_at: string | null;
+            /** Last Error */
+            last_error: string | null;
+            /** Interval Minutes */
+            interval_minutes: number;
+        };
         /** LiveScoreRow */
         LiveScoreRow: {
             /** Side */
@@ -992,6 +1005,7 @@ export interface components {
             simulation_behind_inputs: string | null;
             /** Data Version */
             data_version: string;
+            live_refresh: components["schemas"]["LiveRefreshData"];
         };
         /** StreamerRow */
         StreamerRow: {

@@ -2,12 +2,13 @@ import type { Status } from "@/api/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useApi } from "@/hooks/useApi";
 import { useLeague } from "@/lib/league";
-import { formatAsOf, latestUpdate } from "@/lib/status";
+import { formatAsOf, latestUpdate, liveLabel } from "@/lib/status";
 
 export function TopBar() {
   const { leagues, league, setLeague } = useLeague();
   const status = useApi<Status>("/api/status");
   const updated = status.kind === "ready" ? latestUpdate(status.data) : null;
+  const live = status.kind === "ready" ? liveLabel(status.data, new Date()) : null;
   const list = leagues.kind === "ready" ? leagues.data : [];
   return (
     <header className="flex min-h-14 items-center justify-between gap-2 border-b border-border px-4">
@@ -23,7 +24,7 @@ export function TopBar() {
           ))}
         </SelectContent>
       </Select>
-      <p className="text-caption text-muted">{updated ? `as of ${formatAsOf(updated)}` : "as of unknown"}</p>
+      <p className="text-caption text-muted">{live ?? (updated ? `as of ${formatAsOf(updated)}` : "as of unknown")}</p>
     </header>
   );
 }

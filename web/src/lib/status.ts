@@ -32,3 +32,13 @@ export function formatAsOf(date: Date): string {
   const time = date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   return `${day} ${time}`;
 }
+
+/** "live, updated 4 min ago" while a game is on and a live tick has landed; otherwise null. */
+export function liveLabel(status: Status, now: Date): string | null {
+  const live = status.live_refresh;
+  if (!live.enabled || !live.active || !live.last_ok_at) return null;
+  const ms = now.getTime() - Date.parse(live.last_ok_at);
+  if (!Number.isFinite(ms)) return null;
+  const minutes = Math.max(0, Math.floor(ms / 60_000));
+  return `live, updated ${minutes} min ago`;
+}
