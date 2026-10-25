@@ -6,6 +6,10 @@ export const CLEAR_SHARE = 0.7;
 export const LEAN_SHARE = 0.55;
 /** Monte Carlo noise at 50k runs is about 0.2 points; below this a delta is shown as "~". */
 export const NOISE_POINTS = 0.5;
+/** Percentage points of probability. */
+export const NOISE_PERCENT = 0.1;
+/** Expected wins. */
+export const NOISE_WINS = 0.05;
 
 export type FormattedDelta = { text: string; tone: DeltaTone; sign: -1 | 0 | 1 };
 
@@ -25,7 +29,8 @@ export function formatNumber(value: number | null | undefined, digits = 1): stri
 /** Points of probability or fantasy score: "+4.1 ▲", "-2.0 ▼", "~0.4" inside the noise band. */
 export function formatDelta(points: number, noise: number = NOISE_POINTS): FormattedDelta {
   if (!Number.isFinite(points)) return { text: "–", tone: "neutral", sign: 0 };
-  const magnitude = formatNumber(Math.abs(points));
+  const digits = noise < NOISE_PERCENT ? 2 : 1;
+  const magnitude = formatNumber(Math.abs(points), digits);
   if (Math.abs(points) < noise) {
     // "~0.5" would read as the threshold itself, so a value that rounds up to it keeps its sign.
     if (Number(magnitude) < noise) return { text: `~${magnitude}`, tone: "neutral", sign: 0 };

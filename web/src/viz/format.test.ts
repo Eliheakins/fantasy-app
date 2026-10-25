@@ -1,4 +1,4 @@
-import { confidenceFromShare, formatDelta, formatNumber, formatPercent } from "./format";
+import { confidenceFromShare, formatDelta, formatNumber, formatPercent, NOISE_PERCENT, NOISE_WINS } from "./format";
 
 describe("formatDelta", () => {
   it("shows sign and up arrow for gains", () => {
@@ -26,6 +26,16 @@ describe("formatDelta", () => {
   it("rounds to one decimal", () => {
     expect(formatDelta(4.04).text).toBe("+4.0 ▲");
     expect(formatDelta(-1.26).text).toBe("-1.3 ▼");
+  });
+  it("takes a per-use noise band", () => {
+    expect(formatDelta(0.3, NOISE_PERCENT).tone).toBe("positive");
+    expect(formatDelta(0.04, NOISE_PERCENT).text).toBe("~0.0");
+    expect(formatDelta(0.1, NOISE_PERCENT).text).toBe("+0.1 ▲");
+  });
+  it("shows two decimals for the wins band so small changes are not ~0.0", () => {
+    expect(formatDelta(0.07, NOISE_WINS).text).toBe("+0.07 ▲");
+    expect(formatDelta(0.03, NOISE_WINS).text).toBe("~0.03");
+    expect(formatDelta(-0.05, NOISE_WINS).text).toBe("-0.05 ▼");
   });
   it("never prints a negative zero", () => {
     expect(formatNumber(-0.04)).toBe("0.0");

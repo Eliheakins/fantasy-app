@@ -1,7 +1,7 @@
 import { Delta } from "./Delta";
 import { type Domain } from "./rangeAxis";
 import { scaleLinear } from "d3-scale";
-import { formatNumber } from "./format";
+import { formatNumber, NOISE_PERCENT, NOISE_WINS } from "./format";
 
 type DumbbellProps = {
   before: number;
@@ -12,13 +12,15 @@ type DumbbellProps = {
   width?: number;
   /** True when the values are percentages: labels get a % sign. */
   percent?: boolean;
+  /** Defaults to the percentage-point band when percent, else the expected-wins band. */
+  noise?: number;
 };
 
 const HEIGHT = 16;
 const RADIUS = 4;
 
 /** Before (hollow) and after (filled) dots joined by a line, with the signed change beside it. */
-export function Dumbbell({ before, after, domain, measure, width = 140, percent = false }: DumbbellProps) {
+export function Dumbbell({ before, after, domain, measure, width = 140, percent = false, noise }: DumbbellProps) {
   const x = scaleLinear().domain([...domain]).range([RADIUS + 1, width - RADIUS - 1]).clamp(true);
   const unit = percent ? "%" : "";
   const shown = (v: number) => `${formatNumber(v)}${unit}`;
@@ -34,7 +36,7 @@ export function Dumbbell({ before, after, domain, measure, width = 140, percent 
         <circle cx={x(before)} cy={HEIGHT / 2} r={RADIUS} className="fill-page stroke-tick" strokeWidth={1.5} />
         <circle cx={x(after)} cy={HEIGHT / 2} r={RADIUS} className="fill-tick" />
       </svg>
-      <Delta points={after - before} />
+      <Delta points={after - before} noise={noise ?? (percent ? NOISE_PERCENT : NOISE_WINS)} />
     </span>
   );
 }
