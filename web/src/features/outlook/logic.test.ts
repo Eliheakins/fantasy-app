@@ -1,4 +1,4 @@
-import { canShowHistory, rankOdds, distinctRuns, historyTeams, pivotHistory } from "./logic";
+import { canShowHistory, dodgeLabels, rankOdds, distinctRuns, historyTeams, pivotHistory } from "./logic";
 import type { OddsHistoryRow, SeasonOddsRow } from "./types";
 
 const odds: SeasonOddsRow[] = [
@@ -40,5 +40,27 @@ describe("odds history logic", () => {
       { id: "1", name: "Me", isMe: true },
       { id: "2", name: "Them", isMe: false },
     ]);
+  });
+});
+
+describe("dodgeLabels", () => {
+  it("leaves well-spaced labels where they are, in input order", () => {
+    expect(dodgeLabels([100, 20, 60], 12, 0, 200)).toEqual([100, 20, 60]);
+  });
+  it("pushes bunched labels apart by the minimum gap", () => {
+    const out = dodgeLabels([50, 52, 51], 12, 0, 200);
+    const [a, b, c] = [...out].sort((x, y) => x - y);
+    expect(b! - a!).toBeGreaterThanOrEqual(12);
+    expect(c! - b!).toBeGreaterThanOrEqual(12);
+    expect(out[0]!).toBeLessThan(out[2]!);
+    expect(out[2]!).toBeLessThan(out[1]!);
+  });
+  it("clamps to the plot area, pushing a stack at the bottom up", () => {
+    expect(dodgeLabels([199, 200, 198], 12, 0, 200)).toEqual([188, 200, 176]);
+    expect(dodgeLabels([0, 1], 12, 0, 200)).toEqual([0, 12]);
+  });
+  it("handles empty input and a plot too small for the gap", () => {
+    expect(dodgeLabels([], 12, 0, 200)).toEqual([]);
+    expect(dodgeLabels([5, 6, 7], 12, 0, 10).every((y) => y >= 0 && y <= 10)).toBe(true);
   });
 });
