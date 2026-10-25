@@ -732,6 +732,23 @@ export interface components {
             give: string;
             /** Get */
             get: string;
+            /** Give Ids */
+            give_ids: string[];
+            /** Get Ids */
+            get_ids: string[];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "win-win" | "need swap";
+            /** My Fills */
+            my_fills: string;
+            /** Their Fills */
+            their_fills: string;
+            /** My Fit */
+            my_fit: number;
+            /** Their Fit */
+            their_fit: number;
             /** My Playoff */
             my_playoff: number;
             /** My Title */

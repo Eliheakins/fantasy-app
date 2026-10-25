@@ -19,11 +19,14 @@ def test_build_inputs_is_pinned(reoptimize: bool) -> None:
 def test_find_trades_is_pinned() -> None:
     data = league_with([("fa_wr", "WR", 15.0), ("fa_rb", "RB", 12.0), ("fa_te", "TE", 6.0)])
     rows = moves.find_trades(data, 1, n_sims=500).to_dicts()
+    # re-pinned for the need-based finder: a cross-position win-win with need fit now leads, the
+    # old same-position win-wins follow (fit 0)
     assert [(r["partner_id"], r["give_ids"], r["get_ids"]) for r in rows] == [
+        (5, ["t1_qb", "t1_rb1"], ["t5_qb", "t5_wr1"]),
         (3, ["t1_rb1"], ["t3_rb2"]),
         (8, ["t1_rb1"], ["t8_rb2"]),
         (2, ["t1_rb1"], ["t2_rb2"]),
-        (2, ["t1_wr1"], ["t2_wr1"]),
     ]
-    assert rows[0]["my_title"] == pytest.approx(0.022)
-    assert rows[3]["their_title"] == pytest.approx(0.018)
+    assert rows[1]["my_title"] == pytest.approx(0.022)
+    assert rows[0]["their_title"] == pytest.approx(0.022)
+    assert [r["kind"] for r in rows] == ["win-win"] * 4

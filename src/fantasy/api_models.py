@@ -268,6 +268,13 @@ class FoundTradeRow(Row):
     partner: str
     give: str
     get: str
+    give_ids: list[str]
+    get_ids: list[str]
+    kind: Literal["win-win", "need swap"]
+    my_fills: str
+    their_fills: str
+    my_fit: float
+    their_fit: float
     my_playoff: float
     my_title: float
     their_playoff: float

@@ -2288,6 +2288,44 @@
             "type": "string",
             "title": "Get"
           },
+          "give_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Give Ids"
+          },
+          "get_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Get Ids"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "win-win",
+              "need swap"
+            ],
+            "title": "Kind"
+          },
+          "my_fills": {
+            "type": "string",
+            "title": "My Fills"
+          },
+          "their_fills": {
+            "type": "string",
+            "title": "Their Fills"
+          },
+          "my_fit": {
+            "type": "number",
+            "title": "My Fit"
+          },
+          "their_fit": {
+            "type": "number",
+            "title": "Their Fit"
+          },
           "my_playoff": {
             "type": "number",
             "title": "My Playoff"
@@ -2315,6 +2353,13 @@
           "partner",
           "give",
           "get",
+          "give_ids",
+          "get_ids",
+          "kind",
+          "my_fills",
+          "their_fills",
+          "my_fit",
+          "their_fit",
           "my_playoff",
           "my_title",
           "their_playoff",

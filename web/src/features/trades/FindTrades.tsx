@@ -7,10 +7,19 @@ import type { FoundTrade } from "./types";
 import { useKeptState } from "./useKeptState";
 import { usePostApi } from "./usePostApi";
 
+/** "fills WR, they fill RB"; a side with no named need says so plainly. */
+export function needNote(r: Pick<FoundTrade, "my_fills" | "their_fills">): string {
+  const mine = r.my_fills ? `fills ${r.my_fills}` : "fills no need";
+  const theirs = r.their_fills ? `they fill ${r.their_fills}` : "they fill no need";
+  return `${mine}, ${theirs}`;
+}
+
 const COLUMNS: readonly Column<FoundTrade>[] = [
   { label: "Partner", render: (r) => r.partner },
   { label: "You give", render: (r) => r.give },
   { label: "You get", render: (r) => r.get },
+  { label: "Needs", render: needNote },
+  { label: "Kind", render: (r) => r.kind },
   { label: "Your playoffs (pts)", render: (r) => <Delta points={points(r.my_playoff)} /> },
   { label: "Your title (pts)", render: (r) => <Delta points={points(r.my_title)} /> },
   { label: "Their playoffs (pts)", render: (r) => <Delta points={points(r.their_playoff)} /> },
@@ -19,10 +28,10 @@ const COLUMNS: readonly Column<FoundTrade>[] = [
 ];
 
 export function FoundTradesTable({ rows }: { rows: readonly FoundTrade[] }) {
-  if (rows.length === 0) return <p className="py-2">No trade helps both teams right now.</p>;
+  if (rows.length === 0) return <p className="py-2">No trade fills a need for both teams right now.</p>;
   return (
     <ResponsiveTable
-      caption="Trades that raise both teams' odds, in percentage points"
+      caption="Trades that fill a position of need for both teams, with the change in odds in percentage points"
       columns={COLUMNS}
       rows={rows}
       rowKey={(r) => `${r.partner}|${r.give}|${r.get}`}
@@ -42,12 +51,14 @@ export function FindTradesSection({ league }: { league: string }) {
     <section aria-labelledby="find-h" className="space-y-2">
       <h2 id="find-h" className="text-body font-semibold">Find trades</h2>
       <p className="text-caption text-muted">
-        Trades of one or two players each way (1 for 1, 1 for 2, 2 for 1, 2 for 2) between each team's top six
-        players that raise both teams' playoff plus title odds, best for you first. A side left with an open
-        roster spot is compared with itself after its own best waiver move, so a free pickup is not credited
-        to the trade. Managers accept trades based on how they value players, which is not modeled. Changes are
-        in percentage points; error is the Monte Carlo error of your title change. Searching can take several
-        minutes; the result is kept if you leave this page.
+        Trades of one or two players each way (1 for 1, 1 for 2, 2 for 1, 2 for 2) that fill a position where each
+        team is thin, using players the other side can spare, best need fit first. "win-win" raises both teams'
+        playoff plus title odds. "need swap" costs a side up to one point of those odds for a need filled, so
+        one side may give up a little to fix a hole. Managers accept trades based on how they value players,
+        which is not modeled, so nothing here says a partner will accept. A side left with an open roster spot
+        is compared with itself after its own best waiver move. Changes are in percentage points; error is the
+        Monte Carlo error of your title change. Searching can take several minutes; the result is kept if you
+        leave this page.
       </p>
       <button
         type="button"

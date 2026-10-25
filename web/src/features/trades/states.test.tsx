@@ -23,7 +23,8 @@ function wrap(ui: ReactNode) {
 afterEach(() => vi.unstubAllGlobals());
 
 const FOUND = {
-  partner: "Rivals", give: "A (RB)", get: "B (WR)",
+  partner: "Rivals", give: "A (RB)", get: "B (WR)", give_ids: ["a"], get_ids: ["b"],
+  kind: "need swap", my_fills: "WR", their_fills: "RB", my_fit: 12.5, their_fit: 4.2,
   my_playoff: 0.021, my_title: 0.012, their_playoff: 0.013, their_title: 0.004, se_title: 0.0031,
 };
 
@@ -41,12 +42,14 @@ describe("find trades", () => {
     expect(await screen.findByText("Rivals")).toBeInTheDocument();
     expect(screen.getByText("0.31%")).toBeInTheDocument();
     expect(screen.getByText("+2.1 ▲")).toBeInTheDocument();
+    expect(screen.getByText("fills WR, they fill RB")).toBeInTheDocument();
+    expect(screen.getByText("need swap")).toBeInTheDocument();
   });
   it("says so when nothing helps both teams", async () => {
     mockFetch(() => ({ status: "ok", data: [] }));
     wrap(<FindTradesSection league="L" />);
     await userEvent.click(screen.getByRole("button", { name: "Find trades" }));
-    expect(await screen.findByText("No trade helps both teams right now.")).toBeInTheDocument();
+    expect(await screen.findByText("No trade fills a need for both teams right now.")).toBeInTheDocument();
   });
   it("offers a retry on busy, and retrying works", async () => {
     let calls = 0;
