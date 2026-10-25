@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/PageHeader";
 import { useState } from "react";
 import type { Status } from "@/api/types";
 import { ApiBoundary } from "@/components/ApiBoundary";
@@ -51,8 +52,9 @@ export default function Scoreboard() {
   const go = (next: number) => setPicked({ league, week: clampWeek(next) });
   return (
     <div key={league}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-display">Scoreboard</h1>
+      <PageHeader
+        title="Scoreboard"
+        actions={
         <div role="group" aria-label="Week" className="flex items-center gap-2">
           <button type="button" className={STEP_CLASS} disabled={week <= FIRST_WEEK} onClick={() => go(week - 1)} aria-label="Previous week">
             ‹
@@ -73,7 +75,8 @@ export default function Scoreboard() {
             ›
           </button>
         </div>
-      </div>
+        }
+      />
       <ApiBoundary state={board}>
         {(rows) => <ScoreboardView rows={rows} week={week} asOf={updated ? formatAsOf(updated) : null} />}
       </ApiBoundary>

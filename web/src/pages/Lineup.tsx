@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/PageHeader";
 import { useState } from "react";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { RadioGroup } from "@/components/RadioGroup";
@@ -89,8 +90,9 @@ export default function Lineup() {
   const odds = useLeagueApi<WinProbability>(`win-probability?week=${week}`);
   return (
     <div key={league}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-display">Lineup</h1>
+      <PageHeader
+        title="Lineup"
+        actions={
         <label className="flex items-center gap-2 text-body">
           Week
           <select
@@ -103,7 +105,8 @@ export default function Lineup() {
             ))}
           </select>
         </label>
-      </div>
+        }
+      />
       <ApiBoundary state={lineup}>
         {(base) => (
           <>

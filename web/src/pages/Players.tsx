@@ -1,9 +1,10 @@
+import { PageHeader } from "@/components/PageHeader";
 import { PlayersView } from "@/features/players/PlayersView";
 
 export default function Players() {
   return (
     <section>
-      <h1 className="text-display font-semibold">Player outlook</h1>
+      <PageHeader title="Player outlook" />
       <PlayersView />
     </section>
   );

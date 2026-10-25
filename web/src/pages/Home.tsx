@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/PageHeader";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { LeagueCard } from "@/features/home/LeagueCard";
 import { useHomeLeagues } from "@/features/home/hooks";
@@ -8,8 +9,8 @@ export default function Home() {
   const leagues = useHomeLeagues();
   const { team, league, viewed } = useTeam();
   return (
-    <div className="space-y-4 p-4">
-      <h1 className="text-display">Home</h1>
+    <div>
+      <PageHeader title="Home" />
       <ApiBoundary state={leagues}>
         {(all) => {
           // roster ids belong to one league: while viewing a team, show only its league
