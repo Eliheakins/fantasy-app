@@ -142,7 +142,7 @@ Plan from the `ecc:planner` agent, adjusted for the FantasyPros rankings now all
 
 Order: M1 (with the M4 features that passed testing), M2, M3, then M4 loaders for the live path, M5, M6. Cut first if short: M6, M5, then pace and advanced stats within M4. Participation data is skipped (no gain).
 
-## UI v2 (React): planned 2026-10-24, nothing built yet
+## UI v2 (React): planned 2026-10-24; U1 to U10 built (API, shell, charts, six pages), the rest open
 
 Epic #68. One switch from Streamlit to React, built next to Streamlit and retired in one commit after a parity check on live data. Decided: FastAPI over `data_api`; Vite, React 19, TypeScript, TanStack Query and Table; shadcn/ui on Tailwind 4; Recharts for line and bar charts; hand-drawn SVG for the range bar, sparkline, bullet bar and trade dumbbell (Tremor rejected: stale npm package, React 18 only); phone through `tailscale serve`; refresh stays manual; no alerts and no AI assistant for now. First new features: League page (power rankings, luck and all-play, manager grades, schedule strength, what-ifs), market trade values (FantasyCalc), Weekly digest. The Streamlit Trades page stays until the React one has parity (trade deadline is week 11).
 

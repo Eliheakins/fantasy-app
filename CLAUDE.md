@@ -11,7 +11,8 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 ## Run it
 
 - `make refresh`: pull Sleeper and nflverse and rebuild every table (needs the network)
-- `make app`: open the dashboard
+- `make app`: open the old Streamlit dashboard (port 8501, retired after the React parity check, #66)
+- `make serve`: build `web/` and serve the React UI plus the API at http://127.0.0.1:8000. `make dev`: API plus the Vite dev server (hot reload)
 - `make odds`: archive one week of prop lines (needs `ODDS_API_KEY` in env or `.env`, gitignored; free tier is 500 credits a month, a snapshot costs about 80)
 - Checks against real data: `uv run python -m fantasy.stages.validate_scoring`, `validate_standings`, `backtest`, `calibration`
 - Never pipe `make check` into `tail` before committing: the pipe hides a failing exit code
@@ -24,7 +25,7 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 ## Conventions
 
 - Parquet under `data/` (gitignored) is the source of truth. Stages and `data_api.py` read it with polars; DuckDB is not a dependency (add it back only if a query needs it).
-- The dashboard imports only `fantasy.data_api`.
+- The dashboard and the API (`src/fantasy/api*.py`) import only `fantasy.data_api`. `make check` also typechecks and tests `web/`.
 - No secrets in the repo. API keys come from environment variables.
 - Lean MVP: simplest method that works, tests only for math and config, no CI.
 - Sleeper's API is read-only. Stay under 1,000 calls a minute and fetch the players file at most once a day.
@@ -51,6 +52,8 @@ A missing table for a layer in step 4, or for calibration or the Sleeper blend, 
 - `data_api.py` (370 lines) re-exports entry points that live in private sibling modules (`_engine`, `_lineup`, `_market`, `_outlook`, `_schemas`). Tests patch only `data_api.leagues` (`tests/test_app_pages.py`, `tests/test_data_api_engine.py`), so keep any function that calls `leagues` in `data_api.py`, and never call it from a `_`-module.
 - The learned model's past-game projections for 2019 and 2020 come from models that saw later seasons, so `store.projection_table()` drops them; never fit residual sizes or effects on them. Model features must use only games before the target game: pass a horizon shift to every lagged join (`learn.lag_asof`, `latest_asof`), and add a test.
 - FantasyPros weekly rankings (`nfl_ecr`) are private-use only: keep them under the gitignored `data/` and never commit or share them. No paid data (user decision, 2026-10-23).
+- API: non-GET requests need the header `X-Requested-With: fantasy-app`; the server binds 127.0.0.1 and rejects unknown Host headers. Phone access only through `tailscale serve`, never funnel. `web/openapi.json` is generated; never put `nfl_ecr` data in it or in fixtures.
+- `project.future_targets` starts at the league's `current_week` and keeps only games with no score yet (a Thursday game in the data must not hide week N for other teams). Scores only enter data on `make refresh`: run it after Sunday and after Monday night.
 - `environment_layer = false` in `config.toml`: the corner and offense-efficiency adjustments had no held-out gain on the learned projections. The stage and code remain.
 - Held-out checks: `learn` prints the learned model against the size-calibrated baseline; `backtest` adds pinball and coverage by size tier; `research/ros_check.py` (rest-of-season sums), `layers_check.py`, `availability_check.py`. Run `uv run python -m fantasy.stages.learn`, `availability` and `backtest` after changing a feature.
 
