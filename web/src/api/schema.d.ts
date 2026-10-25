@@ -160,6 +160,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/team-grades": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Team Grades */
+        get: operations["team_grades_api_leagues__league__team_grades_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/luck": {
         parameters: {
             query?: never;
@@ -865,6 +882,19 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** Envelope[list[TeamGradeRow]] */
+        Envelope_list_TeamGradeRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["TeamGradeRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[list[TeamRow]] */
         Envelope_list_TeamRow__: {
             /**
@@ -1324,6 +1354,27 @@ export interface components {
             /** Text */
             text: string | null;
         };
+        /** TeamGradeRow */
+        TeamGradeRow: {
+            /** Roster Id */
+            roster_id: number;
+            /** Team Name */
+            team_name: string;
+            /** Is Me */
+            is_me: boolean;
+            /** Position */
+            position: string;
+            /** Vor Per Week */
+            vor_per_week: number;
+            /** Depth Per Week */
+            depth_per_week: number;
+            /** Score */
+            score: number;
+            /** Rank */
+            rank: number;
+            /** Grade */
+            grade: string;
+        };
         /** TeamRow */
         TeamRow: {
             /** Roster Id */
@@ -1721,6 +1772,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_PowerRankingRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    team_grades_api_leagues__league__team_grades_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_TeamGradeRow__"];
                 };
             };
             /** @description Validation Error */

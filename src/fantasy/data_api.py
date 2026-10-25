@@ -34,6 +34,7 @@ from fantasy._schemas import ENGINE_SCHEMAS
 from fantasy._values import market_values as _market_values
 from fantasy.config import load_config
 from fantasy.sim import moves as moves
+from fantasy.sim.depth import position_depth
 
 __all__ = [
     "actions",
@@ -53,6 +54,7 @@ __all__ = [
     "player_weeks",
     "position_strength",
     "power_rankings",
+    "team_grades",
     "refresh_live",
     "roster",
     "schedule",
@@ -229,6 +231,17 @@ def power_rankings(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataF
     if me is None:
         return pl.DataFrame(schema=ENGINE_SCHEMAS["power_rankings"])
     return _league_view.power_rankings(me, data_dir)
+
+
+def team_grades(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+    """Every team's value over replacement by position, ranked and graded (A to F)."""
+    me = _my_league(league_key, data_dir)
+    if me is None:
+        return pl.DataFrame(schema=ENGINE_SCHEMAS["team_grades"])
+    data, _ = _league(league_key)
+    valuer = moves.Valuer(data)
+    strength = moves.position_strength(data, valuer)
+    return _league_view.team_grades(me, strength, position_depth(data, valuer), data_dir)
 
 
 def luck(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:

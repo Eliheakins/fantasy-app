@@ -75,6 +75,20 @@ ENGINE_SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "sos_remaining": _F,
         "sos_rank": _I,
     },
+    # one row per team and position (QB, RB, WR, TE) plus "overall"; rank 1 is strongest and
+    # the grade is by rank scaled to the league size (top fifth A ... bottom fifth F). vor_per_week
+    # is the starters' value over stand-ins, depth_per_week the bench's; score blends them 75/25
+    "team_grades": {
+        "roster_id": _I,
+        "team_name": _S,
+        "is_me": _B,
+        "position": _S,
+        "vor_per_week": _F,
+        "depth_per_week": _F,
+        "score": _F,
+        "rank": _I,
+        "grade": _S,
+    },
     # ap_* is the all-play record; exp_wins = all-play win share * weeks; luck = wins - exp_wins
     "luck": {
         "roster_id": _I,

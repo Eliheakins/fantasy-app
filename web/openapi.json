@@ -384,6 +384,63 @@
         }
       }
     },
+    "/api/leagues/{league}/team-grades": {
+      "get": {
+        "summary": "Team Grades",
+        "operationId": "team_grades_api_leagues__league__team_grades_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_TeamGradeRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/luck": {
       "get": {
         "summary": "Luck",
@@ -3101,6 +3158,63 @@
         ],
         "title": "Envelope[list[StrengthRow]]"
       },
+      "Envelope_list_TeamGradeRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TeamGradeRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[TeamGradeRow]]"
+      },
       "Envelope_list_TeamRow__": {
         "properties": {
           "status": {
@@ -4723,6 +4837,60 @@
           "text"
         ],
         "title": "SwapNoteModel"
+      },
+      "TeamGradeRow": {
+        "properties": {
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "is_me": {
+            "type": "boolean",
+            "title": "Is Me"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "vor_per_week": {
+            "type": "number",
+            "title": "Vor Per Week"
+          },
+          "depth_per_week": {
+            "type": "number",
+            "title": "Depth Per Week"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "grade": {
+            "type": "string",
+            "title": "Grade"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "roster_id",
+          "team_name",
+          "is_me",
+          "position",
+          "vor_per_week",
+          "depth_per_week",
+          "score",
+          "rank",
+          "grade"
+        ],
+        "title": "TeamGradeRow"
       },
       "TeamRow": {
         "properties": {
