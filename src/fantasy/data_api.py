@@ -15,7 +15,7 @@ from typing import Any
 import polars as pl
 
 from fantasy import store
-from fantasy._engine import _league, _names, _read
+from fantasy._engine import _league, _names, _read, viewed_team
 from fantasy._engine import _tier as _tier  # re-exported: tests import it from here
 from fantasy._engine import _tier_edges as _tier_edges
 from fantasy._lineup import lineup, win_probability
@@ -56,6 +56,7 @@ __all__ = [
     "seed_distribution",
     "simulation_behind_inputs",
     "streamers",
+    "teams",
     "trade_assets",
     "trade_partners",
     "trade_roster_changes",
@@ -75,6 +76,7 @@ ROSTER_COLUMNS = [
     "is_ir",
 ]
 STREAM_WEEKS = 3
+TEAM_COLUMNS = ["roster_id", "team_name", "wins", "losses", "ties", "points_for"]
 
 
 def scoring_labels(scoring: dict[str, float], roster_positions: list[str]) -> list[str]:
@@ -118,7 +120,34 @@ def _my_league(league_key: str, data_dir: Path | None = None) -> dict[str, Any] 
     rows = (leagues() if data_dir is None else leagues(data_dir)).filter(
         pl.col("league_key") == league_key
     )
-    return None if rows.is_empty() else rows.row(0, named=True)
+    if rows.is_empty():
+        return None
+    row = rows.row(0, named=True)
+    viewed = viewed_team()
+    return row if viewed is None else {**row, **_team_fields(row["league_id"], viewed, data_dir)}
+
+
+def _team_fields(league_id: str, roster_id: int, data_dir: Path | None) -> dict[str, Any]:
+    """The `leagues` columns that describe a team, for the team being viewed."""
+    team = _read("league_teams", data_dir or store.DATA_DIR).filter(
+        (pl.col("league_id") == league_id) & (pl.col("roster_id") == roster_id)
+    )
+    if team.is_empty():
+        raise ValueError(f"unknown team {roster_id} in league {league_id!r}")
+    return team.select(TEAM_COLUMNS).row(0, named=True)
+
+
+def teams(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+    """Every team in a league, for the team selector: id, name, record, and which one is me."""
+    league = leagues(data_dir).filter(pl.col("league_key") == league_key)
+    if league.is_empty():
+        raise ValueError(f"unknown league {league_key!r}")
+    return (
+        _read("league_teams", data_dir)
+        .filter(pl.col("league_id") == league["league_id"][0])
+        .select(*TEAM_COLUMNS, "is_me")
+        .sort("roster_id")
+    )
 
 
 def roster(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
