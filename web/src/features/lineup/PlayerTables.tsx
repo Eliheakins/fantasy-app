@@ -19,7 +19,7 @@ function Bar({ row, domain }: { row: LineupRow; domain: ReturnType<typeof tableD
   return <RangeBar domain={domain} p10={row.p10} p50={row.projection} p90={row.p90} />;
 }
 
-const rowClass = (row: LineupRow) => (row.locked ? "opacity-60" : "");
+const rowClass = (row: LineupRow) => (row.locked ? "text-muted" : "");
 
 /** Table at md and up, stacked cards on a phone. One shared range axis per table. */
 export function PlayerTable({ title, rows, known }: { title: string; rows: readonly LineupRow[]; known: boolean }) {
