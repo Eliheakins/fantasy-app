@@ -221,6 +221,9 @@ def win_probability(
     held = {
         q: {c: float(np.quantile(totals[c][half:], q)) for c in candidates} for q in (0.1, 0.5, 0.9)
     }
+    opp_floor, opp_median, opp_ceiling = (
+        float(np.quantile(opponent[half:], q)) for q in (0.1, 0.5, 0.9)
+    )
     script = _script(verdict.win_prob[base])
 
     mean_of = {r["gsis_id"]: r["projection"] for r in mine_rows.iter_rows(named=True)}
@@ -239,6 +242,9 @@ def win_probability(
             "floor": held[0.1][ids_],
             "median": held[0.5][ids_],
             "ceiling": held[0.9][ids_],
+            "opp_floor": opp_floor,
+            "opp_median": opp_median,
+            "opp_ceiling": opp_ceiling,
             "script": script,
         }
         for name, ids_ in options.items()

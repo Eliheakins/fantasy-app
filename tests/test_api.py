@@ -280,6 +280,19 @@ def test_static_files_absent_is_a_404_and_present_is_served(
         assert c.get("/api/status").status_code == 200
 
 
+def test_deep_links_serve_the_app_but_unknown_api_paths_stay_404(
+    store_dir: Path, tmp_path: Path
+) -> None:
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "index.html").write_text("<html>hi</html>")
+    with TestClient(api.create_app(web_dist=dist), base_url="http://localhost") as c:
+        assert "hi" in c.get("/lineup").text
+        assert c.get("/api/nope").status_code == 404
+        assert "hi" not in c.get("/api/nope").text
+        assert c.get("/assets/missing.js").status_code == 404
+
+
 # --- errors ---------------------------------------------------------------------------
 
 

@@ -45,6 +45,12 @@ export function myRange(data: WinProbability) {
   return o ? { p10: o.floor, p50: o.median, p90: o.ceiling } : null;
 }
 
+/** Opponent team-total range; the same on every option row, so read the max-points one. */
+export function opponentRange(data: WinProbability) {
+  const o = data.options.find((x) => x.option === "max_points");
+  return o ? { p10: o.opp_floor, p50: o.opp_median, p90: o.opp_ceiling } : null;
+}
+
 const POINTS_IN_TEXT = /([+-]\d+(?:\.\d+)?) points/;
 
 /** The action text carries its gain ("+4.1 points"); there is no separate field yet. */

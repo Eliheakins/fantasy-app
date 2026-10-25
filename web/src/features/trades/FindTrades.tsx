@@ -1,6 +1,6 @@
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
-import { Delta } from "@/viz";
+import { Delta, NOISE_PERCENT } from "@/viz";
 import { FailureNotice } from "./FailureNotice";
 import { points } from "./logic";
 import type { FoundTrade } from "./types";
@@ -20,10 +20,10 @@ const COLUMNS: readonly Column<FoundTrade>[] = [
   { label: "You get", render: (r) => r.get },
   { label: "Needs", render: needNote },
   { label: "Kind", render: (r) => r.kind },
-  { label: "Your playoffs (pts)", render: (r) => <Delta points={points(r.my_playoff)} /> },
-  { label: "Your title (pts)", render: (r) => <Delta points={points(r.my_title)} /> },
-  { label: "Their playoffs (pts)", render: (r) => <Delta points={points(r.their_playoff)} /> },
-  { label: "Their title (pts)", render: (r) => <Delta points={points(r.their_title)} /> },
+  { label: "Your playoffs (pts)", render: (r) => <Delta points={points(r.my_playoff)} noise={NOISE_PERCENT} /> },
+  { label: "Your title (pts)", render: (r) => <Delta points={points(r.my_title)} noise={NOISE_PERCENT} /> },
+  { label: "Their playoffs (pts)", render: (r) => <Delta points={points(r.their_playoff)} noise={NOISE_PERCENT} /> },
+  { label: "Their title (pts)", render: (r) => <Delta points={points(r.their_title)} noise={NOISE_PERCENT} /> },
   { label: "Error (pts)", render: (r) => `${points(r.se_title).toFixed(2)}%` },
 ];
 

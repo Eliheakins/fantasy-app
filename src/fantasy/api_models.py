@@ -254,6 +254,9 @@ class OptionRow(Row):
     floor: float
     median: float
     ceiling: float
+    opp_floor: float
+    opp_median: float
+    opp_ceiling: float
     script: str
 
 

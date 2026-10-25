@@ -43,3 +43,28 @@ export function historyTeams(
 export function rankOdds(rows: readonly SeasonOddsRow[]): SeasonOddsRow[] {
   return [...rows].sort((a, b) => (b.p_playoffs ?? -1) - (a.p_playoffs ?? -1));
 }
+
+/**
+ * Vertical label positions with at least `minGap` between neighbours, kept inside [lo, hi].
+ * Returns one y per input, in input order. When the area is too small for the gap, labels overlap
+ * rather than leave it.
+ */
+export function dodgeLabels(ys: readonly number[], minGap: number, lo: number, hi: number): number[] {
+  const items = ys.map((y, i) => ({ i, y: Math.min(hi, Math.max(lo, y)) })).sort((a, b) => a.y - b.y);
+  let floor = lo;
+  const down = items.map((it) => {
+    floor = Math.max(it.y, floor);
+    const y = floor;
+    floor += minGap;
+    return { i: it.i, y };
+  });
+  let ceiling = hi;
+  const up = down.reduceRight<{ i: number; y: number }[]>((acc, it) => {
+    const y = Math.max(lo, Math.min(it.y, ceiling));
+    ceiling = y - minGap;
+    return [{ i: it.i, y }, ...acc];
+  }, []);
+  const out = new Array<number>(ys.length).fill(lo);
+  for (const it of up) out[it.i] = it.y;
+  return out;
+}

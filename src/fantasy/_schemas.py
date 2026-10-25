@@ -32,6 +32,9 @@ ENGINE_SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "floor": _F,
         "median": _F,
         "ceiling": _F,
+        "opp_floor": _F,
+        "opp_median": _F,
+        "opp_ceiling": _F,
         "script": _S,
     },
     "streamers": {

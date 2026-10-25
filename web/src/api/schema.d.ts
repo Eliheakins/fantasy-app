@@ -1128,6 +1128,12 @@ export interface components {
             median: number;
             /** Ceiling */
             ceiling: number;
+            /** Opp Floor */
+            opp_floor: number;
+            /** Opp Median */
+            opp_median: number;
+            /** Opp Ceiling */
+            opp_ceiling: number;
             /** Script */
             script: string;
         };

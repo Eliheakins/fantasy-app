@@ -5,7 +5,7 @@ import { Confidence, DataTableFallback, Delta, RangeBar, formatNumber, formatPer
 import { leagueUrl, useRefreshScores } from "./hooks";
 import {
   type ActionRow, type LiveScore, type RosterRow, type SeasonOdds, type Unmatched, type WinProbability,
-  actionPoints, actionShare, liveScoreText, myOdds, myRange, recordLine, titlePercent, winChance,
+  actionPoints, actionShare, liveScoreText, myOdds, myRange, opponentRange, recordLine, titlePercent, winChance,
 } from "./logic";
 import { RosterList } from "./RosterList";
 
@@ -66,16 +66,20 @@ function LiveScoreSection({ leagueKey }: { leagueKey: string }) {
 
 function RangeBars({ odds }: { odds: WinProbability }) {
   const mine = myRange(odds);
-  const domain = mine ? sharedDomain([mine]) : null;
-  if (!mine || !domain) return null;
+  const theirs = opponentRange(odds);
+  const domain = mine && theirs ? sharedDomain([mine, theirs]) : null;
+  if (!mine || !theirs || !domain) return null;
   return (
     <div className="space-y-1">
-      <p className="text-caption text-muted">Team total this week (my lineup)</p>
+      <p className="text-caption text-muted">Team total this week: me (top) vs opponent</p>
       <RangeBar {...mine} domain={domain} width={RANGE_WIDTH} height={24} />
-      <p className="text-caption text-muted">Opponent range not available yet.</p>
+      <RangeBar {...theirs} domain={domain} width={RANGE_WIDTH} height={24} />
       <DataTableFallback
         columns={["Team", "p10", "Median", "p90"]}
-        rows={[["Me", formatNumber(mine.p10), formatNumber(mine.p50), formatNumber(mine.p90)]]}
+        rows={[
+          ["Me", formatNumber(mine.p10), formatNumber(mine.p50), formatNumber(mine.p90)],
+          ["Opponent", formatNumber(theirs.p10), formatNumber(theirs.p50), formatNumber(theirs.p90)],
+        ]}
       />
     </div>
   );
