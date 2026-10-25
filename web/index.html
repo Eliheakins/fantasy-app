@@ -7,22 +7,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <!-- TEMPORARY theme comparison: ?theme=a|b|c or the saved choice, default a. Remove with ThemeSwitcher. -->
-    <script>
-      (function () {
-        var theme = "a";
-        try {
-          var q = new URLSearchParams(location.search).get("theme");
-          var saved = localStorage.getItem("fantasy-theme");
-          if (q && /^[abc]$/.test(q)) { theme = q; localStorage.setItem("fantasy-theme", q); }
-          else if (saved && /^[abc]$/.test(saved)) theme = saved;
-        } catch (e) {}
-        document.documentElement.setAttribute("data-theme", theme);
-      })();
-    </script>
     <title>Fantasy</title>
   </head>
   <body>

@@ -1,6 +1,5 @@
 import type { Status } from "@/api/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ThemeSwitcher } from "./ThemeSwitcher";
 import { useApi } from "@/hooks/useApi";
 import { useLeague } from "@/lib/league";
 import { formatAsOf, latestUpdate } from "@/lib/status";
@@ -24,10 +23,7 @@ export function TopBar() {
           ))}
         </SelectContent>
       </Select>
-      <div className="flex items-center gap-3">
-        <ThemeSwitcher />
-        <p className="text-caption text-muted">{updated ? `as of ${formatAsOf(updated)}` : "as of unknown"}</p>
-      </div>
+      <p className="text-caption text-muted">{updated ? `as of ${formatAsOf(updated)}` : "as of unknown"}</p>
     </header>
   );
 }

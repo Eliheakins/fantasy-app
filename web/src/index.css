@@ -3,11 +3,9 @@
 
 /* Design tokens (docs/spec/dashboard.md rules survive every theme: semantic colour only for change
    and warnings, ranges grey, contrast measured in CONTRAST.md).
-   Three dark directions are selectable at runtime with html[data-theme='a'|'b'|'c'] while the owner
-   compares them. TEMPORARY: once one is chosen, delete the other two sets and the ThemeSwitcher.
-   .theme-light / .theme-dark exist only so /dev/viz can show both side by side. */
+   The app is dark graphite with one cool accent. .theme-light / .theme-dark exist only so /dev/viz
+   can show both side by side. */
 
-/* Shared defaults, overridden per theme below. */
 :root {
   --font-body: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: var(--font-body);
@@ -22,9 +20,8 @@
   --th-size: var(--fs-caption);
 }
 
-/* ---------- A: graphite. Soft surfaces lifted by elevation, one cool accent. ---------- */
+/* Graphite: soft surfaces lifted by elevation, one cool accent. */
 :root,
-html[data-theme="a"],
 .theme-dark {
   color-scheme: dark;
   --page: #131417;
@@ -56,88 +53,9 @@ html[data-theme="a"],
   --nav-edge: 0 0 0 transparent;
 }
 
-/* ---------- B: warm near-black, copper accent, editorial. ---------- */
-html[data-theme="b"] {
-  color-scheme: dark;
-  --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-display: Newsreader, Georgia, "Times New Roman", serif;
-  --fs-display: 34px;
-  --lh-display: 40px;
-  --th-tracking: 0.02em;
-  --page: #151210;
-  --surface: #1f1a17;
-  --border: #3a322b;
-  --text: #efe7dc;
-  --text-muted: #a99e91;
-  --mark-muted: #a99e91;
-  --accent: #d28e62;
-  --accent-fg: #1a110a;
-  --positive: #86c278;
-  --negative: #f2727f;
-  --warning: #e0b13a;
-  --warning-bg: #2a2008;
-  --range: #756a5e;
-  --tick: #f5eee3;
-  --focus: #d28e62;
-  --nav-active-bg: #2a231e;
-  --radius: 3px;
-  --radius-md: 3px;
-  --radius-sm: 2px;
-  --border-width: 1px;
-  --card-border: #3a322b;
-  --shadow-card: none;
-  --card-pad: 28px;
-  --page-pad: 36px;
-  --row-y: 12px;
-  --rail-w: 13.5rem;
-  --nav-edge: inset 2px 0 0 var(--accent);
-}
-
-/* ---------- C: blue-black analyst terminal, teal accent, dense, mono numerals. ---------- */
-html[data-theme="c"] {
-  color-scheme: dark;
-  --font-body: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --fs-display: 22px;
-  --lh-display: 28px;
-  --fs-body: 13px;
-  --lh-body: 18px;
-  --fs-caption: 11px;
-  --lh-caption: 14px;
-  --th-transform: uppercase;
-  --th-tracking: 0.06em;
-  --page: #090d13;
-  --surface: #0f1520;
-  --border: #243449;
-  --text: #d6e2f0;
-  --text-muted: #8196ae;
-  --mark-muted: #8196ae;
-  --accent: #2ec4b6;
-  --accent-fg: #03110e;
-  --positive: #56d364;
-  --negative: #ff6b6b;
-  --warning: #e3b341;
-  --warning-bg: #241c05;
-  --range: #4f677f;
-  --tick: #eaf3fb;
-  --focus: #2ec4b6;
-  --nav-active-bg: #12202b;
-  --radius: 2px;
-  --radius-md: 2px;
-  --radius-sm: 1px;
-  --border-width: 1px;
-  --card-border: #243449;
-  --shadow-card: none;
-  --card-pad: 12px;
-  --page-pad: 14px;
-  --row-y: 3px;
-  --rail-w: 10.5rem;
-  --nav-edge: inset 2px 0 0 var(--accent);
-}
-
-/* Small screens: every theme tightens its page and card padding so tables stay readable. */
+/* Small screens: tighten its page and card padding so tables stay readable. */
 @media (max-width: 767px) {
-  html,
-  html[data-theme] {
+  :root {
     --page-pad: 12px;
     --card-pad: 14px;
   }
