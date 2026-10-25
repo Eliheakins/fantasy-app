@@ -35,7 +35,7 @@ function TableForm<T>({ caption, columns, rows, rowKey, isStrong }: FormProps<T>
         <thead>
           <tr className="border-b border-border text-left text-caption text-muted">
             {columns.map((c) => (
-              <th key={c.label} scope="col" className={cn("px-2 py-1 font-normal", c.numeric && "text-right")}>
+              <th key={c.label} scope="col" className={cn("px-2 py-1 font-normal", c.numeric && columns.indexOf(c) !== head && "text-right")}>
                 {c.label}
               </th>
             ))}
@@ -45,9 +45,9 @@ function TableForm<T>({ caption, columns, rows, rowKey, isStrong }: FormProps<T>
           {rows.map((row, i) => (
             <tr key={rowKey(row, i)} className={cn("border-b border-border", isStrong?.(row) && "border-l-4 border-l-accent font-semibold")}>
               {columns.map((c, ci) => {
-                const cls = cn("px-2 py-1 align-top", c.numeric && "text-right tabular-nums");
+                const cls = cn("px-2 py-1 align-top", c.numeric && ci !== head && "text-right tabular-nums");
                 return ci === head ? (
-                  <th key={c.label} scope="row" className={cn(cls, "text-left font-[inherit] text-text")}>
+                  <th key={c.label} scope="row" className={cn(cls, "text-left [font-weight:inherit] text-text")}>
                     {c.render(row)}
                   </th>
                 ) : (

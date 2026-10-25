@@ -27,7 +27,7 @@ export function PlayerTable({ title, rows, known }: { title: string; rows: reado
   return (
     <section aria-label={title} className="mt-6">
       <h2 className="text-heading font-semibold">{title}</h2>
-      <table className="mt-2 hidden w-full text-body md:table">
+      <table className="mt-2 hidden w-full text-body lg:table">
         <thead>
           <tr className="border-b border-border text-left text-caption text-muted">
             <th className="py-2 pr-3 font-normal">Slot</th>
@@ -58,7 +58,7 @@ export function PlayerTable({ title, rows, known }: { title: string; rows: reado
           ))}
         </tbody>
       </table>
-      <ul className="mt-2 md:hidden">
+      <ul className="mt-2 lg:hidden">
         {rows.map((r) => (
           <li key={r.gsis_id} className={`min-h-[44px] border-b border-border py-2 ${rowClass(r)}`}>
             <div className="flex items-baseline justify-between gap-2">
