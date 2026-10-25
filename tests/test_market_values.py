@@ -2,9 +2,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+import polars as pl
 import pytest
 from fastapi.testclient import TestClient
 from store_fixture import use_store, write_rows
+from test_api import client, wait_ok  # noqa: F401  (fixture)
 from test_api import store_dir as store_dir  # noqa: F401  (fixture)
 
 from fantasy import api, data_api, store
@@ -150,15 +152,15 @@ def test_market_values_maps_to_gsis_and_is_empty_without_the_table(
 
 
 def test_route_returns_ok_with_empty_data_when_the_table_is_missing(store_dir: Path) -> None:  # noqa: F811
-    with TestClient(api.create_app(), base_url="http://localhost") as client:
-        r = client.get("/api/leagues/t/market-values", params={"ids": "00-1,00-2"})
+    with TestClient(api.create_app(), base_url="http://localhost") as bare:
+        r = bare.get("/api/leagues/t/market-values", params={"ids": "00-1,00-2"})
     assert r.json()["status"] == "ok" and r.json()["data"] == []
 
 
 def test_route_serves_values(store_dir: Path) -> None:  # noqa: F811
     seed_values(store_dir)
-    with TestClient(api.create_app(), base_url="http://localhost") as client:
-        data = client.get("/api/leagues/t/market-values", params={"ids": "00-1"}).json()["data"]
+    with TestClient(api.create_app(), base_url="http://localhost") as bare:
+        data = bare.get("/api/leagues/t/market-values", params={"ids": "00-1"}).json()["data"]
     assert data[0]["gsis_id"] == "00-1" and data[0]["value"] == 7000.0
 
 
@@ -181,3 +183,59 @@ def test_market_hint_reports_missing_values_and_handles_zero_totals() -> None:
     assert market_hint(1000, 2000, 2) == "you receive 50% more; no value for 2 players"
     assert market_hint(1000, 1000, 1) == "even; no value for 1 player"
     assert market_hint(0, 0, 0) == "even"
+
+
+def test_trade_market_sums_each_side_and_counts_players_without_a_value(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    use_store(monkeypatch, tmp_path)
+    write_rows(tmp_path, "leagues", [league("t", {}, ["QB"])])
+    write_rows(tmp_path, "id_map", [{"sleeper_id": "1", "gsis_id": "00-1"}])
+    trades = [(["00-1"], ["00-1", "00-9"])]
+    assert data_api.trade_market("t", trades, tmp_path) == [None]  # no table: no hint, no error
+    seed_values(tmp_path)
+    [out] = data_api.trade_market("t", trades, tmp_path)
+    assert out == {
+        "give_value": 7000.0, "get_value": 7000.0, "fetched_at": TODAY,
+        "hint": "even; no value for 1 player",
+    }  # fmt: skip
+    assert data_api.trade_market("t", [], tmp_path) == []
+
+
+PAYLOAD = {"partner_roster_id": 2, "give_ids": ["G_QB", "G_WR"], "get_ids": ["G_OPP"]}
+
+
+def test_evaluate_route_has_no_market_without_the_table(client: TestClient) -> None:  # noqa: F811
+    out = client.post("/api/leagues/t/trades/evaluate", json=PAYLOAD).json()
+    assert out["status"] == "ok" and out["data"]["market"] is None
+
+
+def test_evaluate_route_carries_the_market_summary(
+    client: TestClient,  # noqa: F811
+    store_dir: Path,  # noqa: F811
+) -> None:
+    mapped = store.read_table("id_map", "derived", store_dir)
+    seed_values(store_dir)  # replaces the map with sleeper 1 as 00-1
+    other = pl.DataFrame([{"sleeper_id": "1", "gsis_id": "G_OPP"}], schema=store.SCHEMAS["id_map"])
+    store.write_table("id_map", pl.concat([mapped, other], how="diagonal"), "derived", store_dir)
+    out = client.post("/api/leagues/t/trades/evaluate", json=PAYLOAD).json()
+    assert out["data"]["market"]["hint"] == "you receive 100% more; no value for 2 players"
+
+
+def test_find_route_rows_carry_the_market_summary(
+    client: TestClient,  # noqa: F811
+    store_dir: Path,  # noqa: F811
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seed_values(store_dir)
+    found = {
+        "partner": ["T"], "give": ["a (WR)"], "get": ["b (RB)"], "give_ids": [["00-1"]],
+        "get_ids": [["00-2"]], "kind": ["need swap"], "my_fills": ["RB"], "their_fills": ["WR"],
+        "my_fit": [9.0], "their_fit": [4.0],
+    }  # fmt: skip
+    found |= {k: [0.01] for k in ("my_playoff", "my_title", "their_playoff", "their_title")}
+    found["se_title"] = [0.01]
+    monkeypatch.setattr(data_api, "find_trades", lambda league: pl.DataFrame(found))
+    out = wait_ok(client, lambda: client.post("/api/leagues/t/trades/find"))
+    market = out["data"][0]["market"]
+    assert market["give_value"] == 7000.0 and market["hint"].endswith("no value for 1 player")

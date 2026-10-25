@@ -367,6 +367,9 @@ def evaluate_trade(league: str, trade: TradeRequest, team: Team = None) -> Any:
             "roster_changes": rows(changes),
             "warning": view.roster_moves_warning(changes),
             "trade_deadline": view.trade_deadline(league, store.DATA_DIR),
+            "market": data_api.trade_market(
+                league, [(trade.give_ids, trade.get_ids)], store.DATA_DIR
+            )[0],
         }
 
     if not TRADE_SLOTS.acquire(blocking=False):
@@ -384,9 +387,14 @@ def evaluate_trade(league: str, trade: TradeRequest, team: Team = None) -> Any:
 )
 def find_trades(league: str, runner: Runner, team: Team = None) -> Any:
     """A long job (minutes): POST again to poll, same as the GET jobs."""
-    return run_job(
-        runner, "find-trades", (league,), lambda: rows(data_api.find_trades(league)), team
-    )
+    return run_job(runner, "find-trades", (league,), lambda: found_trades_data(league), team)
+
+
+def found_trades_data(league: str) -> list[dict[str, Any]]:
+    found = rows(data_api.find_trades(league))
+    pairs = [(r["give_ids"], r["get_ids"]) for r in found]
+    markets = data_api.trade_market(league, pairs, store.DATA_DIR)
+    return [{**r, "market": m} for r, m in zip(found, markets, strict=True)]
 
 
 @router.post("/live/refresh", response_model=Envelope[RefreshData])

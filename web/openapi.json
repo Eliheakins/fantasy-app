@@ -3567,6 +3567,16 @@
             "type": "number",
             "title": "Their Fit"
           },
+          "market": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MarketSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "my_playoff": {
             "type": "number",
             "title": "My Playoff"
@@ -3601,6 +3611,7 @@
           "their_fills",
           "my_fit",
           "their_fit",
+          "market",
           "my_playoff",
           "my_title",
           "their_playoff",
@@ -4102,6 +4113,36 @@
           "bench_points_left"
         ],
         "title": "ManagerGradeRow"
+      },
+      "MarketSummary": {
+        "properties": {
+          "give_value": {
+            "type": "number",
+            "title": "Give Value"
+          },
+          "get_value": {
+            "type": "number",
+            "title": "Get Value"
+          },
+          "hint": {
+            "type": "string",
+            "title": "Hint"
+          },
+          "fetched_at": {
+            "type": "string",
+            "title": "Fetched At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "give_value",
+          "get_value",
+          "hint",
+          "fetched_at"
+        ],
+        "title": "MarketSummary",
+        "description": "Market value each side gives and gets (FantasyCalc), the hint and the values' date."
       },
       "MarketValueRow": {
         "properties": {
@@ -5319,6 +5360,16 @@
               }
             ],
             "title": "Trade Deadline"
+          },
+          "market": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MarketSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,
@@ -5327,7 +5378,8 @@
           "odds",
           "roster_changes",
           "warning",
-          "trade_deadline"
+          "trade_deadline",
+          "market"
         ],
         "title": "TradeEvaluation"
       },

@@ -2,7 +2,7 @@ import { ApiBoundary } from "@/components/ApiBoundary";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { Delta, NOISE_PERCENT } from "@/viz";
 import { FailureNotice } from "./FailureNotice";
-import { points } from "./logic";
+import { marketDate, marketText, points } from "./logic";
 import type { FoundTrade } from "./types";
 import { useKeptState } from "./useKeptState";
 import { usePostApi } from "./usePostApi";
@@ -20,6 +20,18 @@ const COLUMNS: readonly Column<FoundTrade>[] = [
   { label: "You get", render: (r) => r.get },
   { label: "Needs", render: needNote },
   { label: "Kind", render: (r) => r.kind },
+  {
+    label: "Market value",
+    render: (r) =>
+      r.market ? (
+        <span className="text-muted">
+          {`${marketText(r.market)} `}
+          <span className="whitespace-nowrap">{`(${marketDate(r.market)})`}</span>
+        </span>
+      ) : (
+        ""
+      ),
+  },
   { label: "Your playoffs (pts)", render: (r) => <Delta points={points(r.my_playoff)} noise={NOISE_PERCENT} /> },
   { label: "Your title (pts)", render: (r) => <Delta points={points(r.my_title)} noise={NOISE_PERCENT} /> },
   { label: "Their playoffs (pts)", render: (r) => <Delta points={points(r.their_playoff)} noise={NOISE_PERCENT} /> },
@@ -57,7 +69,8 @@ export function FindTradesSection({ league, scope = league }: { league: string; 
         one side may give up a little to fix a hole. Managers accept trades based on how they value players,
         which is not modeled, so nothing here says a partner will accept. A side left with an open roster spot
         is compared with itself after its own best waiver move. Changes are in percentage points; error is the
-        Monte Carlo error of your title change. Searching can take several minutes; the result is kept if you
+        Monte Carlo error of your title change. Market value sums FantasyCalc values for each side and says only
+        which side the market favors; it ignores the premium paid to turn two players into one. Searching can take several minutes; the result is kept if you
         leave this page.
       </p>
       <button
