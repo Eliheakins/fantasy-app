@@ -260,7 +260,17 @@ SIZES = ((1, 1), (1, 2), (2, 1), (2, 2))  # (players I give, players I get)
 SCREEN_TOL = 2.0  # rest-of-season points either side may lose in the cheap screen
 SCREEN_KEEP = 24  # per partner, after the points screen, for the depth-aware ranking
 SHORTLIST = 6  # per partner, after the depth-aware ranking, for a full re-simulation
-CONFIRM = 10  # best swaps re-checked on fresh random draws
+CONFIRM = 20  # best swaps re-checked on fresh random draws
+# A need swap may cost either side up to one percentage point of (playoff + title) odds. Chosen
+# as about twice the paired Monte Carlo error of a single odds change at 20,000 sims (0.3 to
+# 0.5 points on real data), so a swap is not rejected for noise alone, yet a visible loss is.
+ODDS_TOL = 0.01
+NEED_MIN = 3.0  # rest-of-season points (about half a point a week) that count as a need filled
+SURPLUS_COST = 1.0  # a player whose loss costs less than this (points) is surplus
+PER_POSITION = 2  # best players per position in a candidate pool
+SURPLUS_POOL = 3  # most valuable surplus bench players added to a candidate pool
+NEED_KEEP = 8  # per partner, the most even need-fit swaps sent to simulation
+BENCH_SPARES = 2  # benchmark starters kept per position, in case a team already holds the first
 FINDER_COLUMNS: dict[str, pl.DataType | type[pl.DataType]] = {
     "partner_id": pl.Int64,
     "give_ids": pl.List(pl.String),
@@ -270,6 +280,11 @@ FINDER_COLUMNS: dict[str, pl.DataType | type[pl.DataType]] = {
     "their_playoff": pl.Float64,
     "their_title": pl.Float64,
     "se_title": pl.Float64,
+    "kind": pl.String,
+    "my_fit": pl.Float64,
+    "their_fit": pl.Float64,
+    "my_needs": pl.List(pl.String),
+    "their_needs": pl.List(pl.String),
 }
 
 
@@ -279,6 +294,127 @@ def trade_pool(data: LeagueData, roster_id: int, n: int = POOL_SIZE) -> list[str
     values = ros_value(data, ids)
     ranked = sorted((i for i in ids if values[i] > 0), key=lambda i: (-values[i], i))
     return ranked[:n]
+
+
+def benchmarks(data: LeagueData, valuer: Valuer) -> dict[str, list[str]]:
+    """Per position, rostered players of typical starter quality (the last starter on an average
+    team): the league's rank `teams x starting slots` by rest-of-season points, plus the next
+    ones. Adding one to a roster measures how much a starter at that position would help."""
+    ros = ros_value(data, data.rosters["gsis_id"].to_list())
+    out: dict[str, list[str]] = {}
+    for position in POSITIONS:
+        ids = sorted(
+            (i for i in ros if valuer.positions.get(i) == position), key=lambda i: (-ros[i], i)
+        )
+        rank = len(data.roster_ids) * max(valuer.slots.count(position), 1)
+        start = max(min(rank, len(ids)) - 1, 0)
+        out[position] = ids[start : start + BENCH_SPARES]
+    return out
+
+
+class TeamNeeds:
+    """One team's positional need and surplus, from its own best weekly lineups.
+
+    need[position]: expected points over the rest of the season that adding one typical starter at
+    that position would give the team (FLEX and replacement stand-ins counted by the Valuer).
+    cost(give): points lost by giving those players up; about 0 for a bench player behind a
+    healthy starter. A swap's fit is the need it fills minus the cost of what it gives up."""
+
+    def __init__(self, valuer: Valuer, ids: list[str], bench: dict[str, list[str]]) -> None:
+        self.valuer, self.ids = valuer, list(ids)
+        self.base = self._value(self.ids)
+        self.bench = bench
+        self._cost: dict[tuple[str, ...], float] = {}
+        self._opened: dict[tuple[str, ...], float] = {}
+        self._gain: dict[str, float] = {}
+        self.need = {
+            position: self.gain(next((b for b in spares if b not in self.ids), ""))
+            for position, spares in bench.items()
+        }
+
+    def _value(self, ids: list[str]) -> float:
+        """Best weekly lineups with free-agent stand-ins but no absence discount, so a spare
+        behind a healthy starter is surplus rather than insurance."""
+        v = self.valuer
+        return season_value(v.slots, v.positions, v.values, ids, {}, v.replacements)
+
+    def gain(self, player_id: str) -> float:
+        """Points a single added player gives this team (0 for an empty id)."""
+        if player_id and player_id not in self._gain:
+            self._gain[player_id] = max(0.0, self._value([*self.ids, player_id]) - self.base)
+        return self._gain.get(player_id, 0.0)
+
+    def cost(self, give: tuple[str, ...]) -> float:
+        key = tuple(sorted(give))
+        if key not in self._cost:
+            self._cost[key] = self.base - self._value([i for i in self.ids if i not in key])
+        return self._cost[key]
+
+    def opened(self, lost: tuple[str, ...]) -> float:
+        """New need created by giving `lost` up: at each of their positions, how much more a
+        typical starter would add to the team without them than with them."""
+        key = tuple(sorted(lost))
+        if key not in self._opened:
+            rest = [i for i in self.ids if i not in key]
+            base = self._value(rest)
+            total = 0.0
+            for position in {self.valuer.positions[i] for i in key}:
+                spare = next((b for b in self.bench[position] if b not in rest), None)
+                after = max(0.0, self._value([*rest, spare]) - base) if spare else 0.0
+                total += max(0.0, after - self.need[position])
+            self._opened[key] = total
+        return self._opened[key]
+
+    def fit(self, give: tuple[str, ...], get: tuple[str, ...]) -> tuple[float, list[str]]:
+        """Need fit of a swap and the positions of need it fills: the need filled (what the best
+        player received at a position of need adds, capped at that need) minus the need opened
+        by what is given up. Positions that give and get equally cancel, so a like-for-like swap
+        fits 0 however much better the player is."""
+        at = self.valuer.positions
+        net = {p: sum(at[g] == p for g in get) - sum(at[g] == p for g in give) for p in POSITIONS}
+        filled = [p for p, n in net.items() if n > 0 and self.need[p] >= NEED_MIN]
+        credit = sum(
+            min(self.need[p], max(self.gain(g) for g in get if at[g] == p)) for p in filled
+        )
+        lost: list[str] = []
+        for position in (p for p, n in net.items() if n < 0):
+            of_position = sorted(
+                (g for g in give if at[g] == position), key=lambda g: -self.cost((g,))
+            )
+            lost += of_position[: -net[position]]
+        return credit - (self.opened(tuple(lost)) if lost else 0.0), filled
+
+    def pool(self, ros: dict[str, float]) -> list[str]:
+        """Candidates to trade away: the best players at each position plus the most valuable
+        surplus bench players, who are the natural currency for a need swap."""
+        at = self.valuer.positions
+        live = sorted((i for i in self.ids if ros.get(i, 0.0) > 0), key=lambda i: (-ros[i], i))
+        picked = [i for p in POSITIONS for i in [x for x in live if at[x] == p][:PER_POSITION]]
+        surplus = [i for i in live if i not in picked and self.cost((i,)) < SURPLUS_COST]
+        return picked + surplus[:SURPLUS_POOL]
+
+
+def swap_kind(result: dict[str, float], my_fit: float, their_fit: float) -> str | None:
+    """ "win-win" if both teams' odds rise, "need swap" if neither loses more than ODDS_TOL and
+    both fill a need (fit of at least NEED_MIN), else None (rejected)."""
+    if _both_gain(result):
+        return "win-win"
+    mine = result["my_playoff"] + result["my_title"]
+    theirs = result["their_playoff"] + result["their_title"]
+    if min(mine, theirs) >= -ODDS_TOL and min(my_fit, their_fit) >= NEED_MIN:
+        return "need swap"
+    return None
+
+
+def rank_key(row: dict[str, Any]) -> tuple[float, float, float]:
+    """Need fit first (the weaker side's; below NEED_MIN it counts as none, a negative one as is),
+    then my title and playoff odds change."""
+    weaker = min(row["my_fit"], row["their_fit"])
+    return (
+        -(weaker if weaker >= NEED_MIN else min(weaker, 0.0)),
+        -row["my_title"],
+        -row["my_playoff"],
+    )
 
 
 def paired_se(before: np.ndarray, after: np.ndarray) -> float:
@@ -396,15 +532,37 @@ def _depth_ranked(
     return sorted(scored, key=lambda t: -t[0])[:SHORTLIST]
 
 
-def find_trades(data: LeagueData, my_id: int, n_sims: int = 20000, seed: int = 0) -> pl.DataFrame:
-    """Trades (1 for 1, 1 for 2, 2 for 1, 2 for 2) that raise both teams' odds, best for me first.
+Swap2 = tuple[tuple[str, ...], tuple[str, ...]]  # I give, I get
 
-    Stage 1 screens every swap of two teams' top players by change in rest-of-season points;
-    stage 2 ranks the survivors by depth-aware value; stage 3 re-simulates the best few per
-    partner and keeps those where both teams' playoff plus title odds rise; stage 4 re-checks the
-    leaders on fresh draws and reports those numbers, so the winner of many candidates is not
-    flattered by its own draws. A side with an open roster spot is compared with itself after
-    its own waiver move.
+
+def _need_swaps(me: TeamNeeds, them: TeamNeeds, ros: dict[str, float]) -> list[Swap2]:
+    """Swaps with one partner where both sides fill a need, the most even in rest-of-season
+    points first (the ones a partner might also accept; the simulation then decides)."""
+    pool_me, pool_them = me.pool(ros), them.pool(ros)
+    found: list[tuple[float, float, tuple[str, ...], tuple[str, ...]]] = []
+    for gives, gets in SIZES:
+        for give in combinations(pool_me, gives):
+            for get in combinations(pool_them, gets):
+                fit = min(me.fit(give, get)[0], them.fit(get, give)[0])
+                if fit >= NEED_MIN:
+                    gap = abs(sum(ros[i] for i in give) - sum(ros[i] for i in get))
+                    found.append((gap, -fit, give, get))
+    found.sort()
+    return [(g, r) for _, _, g, r in found[:NEED_KEEP]]
+
+
+def find_trades(data: LeagueData, my_id: int, n_sims: int = 20000, seed: int = 0) -> pl.DataFrame:
+    """Trades (1 for 1, 1 for 2, 2 for 1, 2 for 2) that fill both teams' positions of need, best
+    need fit first. Every row is labelled "win-win" (both teams' playoff plus title odds rise) or
+    "need swap" (neither loses more than ODDS_TOL, both fill a need), with its need fit.
+
+    Candidates come from two sources. Points route: stage 1 screens every swap of two teams' top
+    players by change in rest-of-season points and stage 2 ranks the survivors by depth-aware value
+    (finds win-wins). Need route: each team's best players per position plus its surplus bench
+    players, ranked by need fit (finds need swaps). Both are re-simulated; the leaders are
+    re-checked on fresh draws and those numbers are reported, so the winner of many candidates is
+    not flattered by its own draws. A side with an open roster spot is compared with itself after
+    its own waiver move. Nothing here says the partner will accept.
     """
     if data.current_week > data.trade_deadline:
         raise ValueError(f"the trade deadline (week {data.trade_deadline}) has passed")
@@ -414,12 +572,14 @@ def find_trades(data: LeagueData, my_id: int, n_sims: int = 20000, seed: int = 0
     free = sorted(free_agents(data), key=lambda i: (-ros.get(i, 0.0), i))
     mine = team_ids(data, my_id)
     pool_me = trade_pool(data, my_id)
+    bench = benchmarks(data, valuer)
+    needs = {r: TeamNeeds(valuer, team_ids(data, r), bench) for r in data.roster_ids}
 
     def reference(ids: list[str], opens_a_spot: bool) -> tuple[float, float]:
         ref = _pickup(ids, taken, ros, free) if opens_a_spot else ids
         return team_total(data, ref, values, slots, positions), valuer(ref)
 
-    ranked: list[tuple[float, int, tuple[str, ...], tuple[str, ...]]] = []
+    swaps: list[Swap] = []
     for partner_id in data.roster_ids:
         if partner_id == my_id:
             continue
@@ -452,20 +612,32 @@ def find_trades(data: LeagueData, my_id: int, n_sims: int = 20000, seed: int = 0
                                 min(d_me, d_them), give, get, new_me, new_them, vref_me, vref_them
                             )
                         )
-        ranked += _depth_ranked(local, partner_id, valuer)
+        points = [(p, g, r) for _, p, g, r in _depth_ranked(local, partner_id, valuer)]
+        want = _need_swaps(needs[my_id], needs[partner_id], ros)
+        swaps += list(dict.fromkeys(points + [(partner_id, g, r) for g, r in want]))
 
-    swaps: list[Swap] = [(p, g, r) for _, p, g, r in ranked]
+    def label(result: dict[str, float], swap: Swap) -> dict[str, Any] | None:
+        partner_id, give, get = swap
+        fit_me, fills_me = needs[my_id].fit(give, get)
+        fit_them, fills_them = needs[partner_id].fit(get, give)
+        kind = swap_kind(result, fit_me, fit_them)
+        if kind is None:
+            return None
+        return {
+            "partner_id": partner_id, "give_ids": list(give), "get_ids": list(get), **result,
+            "kind": kind, "my_fit": fit_me, "their_fit": fit_them,
+            "my_needs": fills_me, "their_needs": fills_them,
+        }  # fmt: skip
+
     first = _rerun(data, my_id, swaps, n_sims, seed)
-    kept = [(s, r) for s, r in zip(swaps, first, strict=True) if _both_gain(r)]
-    kept.sort(key=lambda sr: (-sr[1]["my_title"], -sr[1]["my_playoff"]))
-    leaders = [s for s, _ in kept[:CONFIRM]]
-    second = _rerun(data, my_id, leaders, n_sims, seed + 1)
-    rows: list[dict[str, Any]] = [
-        {"partner_id": p, "give_ids": list(g), "get_ids": list(r), **res}
-        for (p, g, r), res in zip(leaders, second, strict=True)
-        if _both_gain(res)
+    kept = [row for s, r in zip(swaps, first, strict=True) if (row := label(r, s))]
+    kept.sort(key=rank_key)
+    leaders: list[Swap] = [
+        (r["partner_id"], tuple(r["give_ids"]), tuple(r["get_ids"])) for r in kept[:CONFIRM]
     ]
-    rows.sort(key=lambda r: (-r["my_title"], -r["my_playoff"]))
+    second = _rerun(data, my_id, leaders, n_sims, seed + 1)
+    rows = [row for s, r in zip(leaders, second, strict=True) if (row := label(r, s))]
+    rows.sort(key=rank_key)
     return pl.DataFrame(rows, schema=FINDER_COLUMNS)
 
 

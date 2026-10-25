@@ -101,13 +101,18 @@ def trade_roster_changes(
     return pl.DataFrame(rows, schema=schema, orient="row")
 
 
-def find_trades(league_key: str) -> pl.DataFrame:
-    """Trades (1 for 1, 1 for 2, 2 for 1, 2 for 2) that raise both teams' odds. May raise
-    ValueError after the deadline.
+FOUND_NUMBERS = ("my_playoff", "my_title", "their_playoff", "their_title", "se_title")
 
-    Columns: partner, give, get (names with position, joined with " + "), my_playoff, my_title,
-    their_playoff, their_title (changes in probability) and se_title (paired Monte Carlo error
-    of my_title).
+
+def find_trades(league_key: str) -> pl.DataFrame:
+    """Trades (1 for 1, 1 for 2, 2 for 1, 2 for 2) that fill both teams' positions of need, best
+    need fit first. May raise ValueError after the deadline.
+
+    Columns: partner, give, get (names with position, joined with " + "), give_ids, get_ids,
+    kind ("win-win": both teams' odds rise; "need swap": a small cost for a need), my_fills and
+    their_fills (positions of need filled, joined with ", "), my_fit and their_fit (need fit in
+    points), my_playoff, my_title, their_playoff, their_title (changes in probability) and
+    se_title (paired Monte Carlo error of my_title).
     """
     data, mine = _league(league_key)
     found = moves.find_trades(data, mine)
@@ -121,10 +126,14 @@ def find_trades(league_key: str) -> pl.DataFrame:
             "partner": data.team_names[r["partner_id"]],
             "give": label(r["give_ids"]),
             "get": label(r["get_ids"]),
-            **{
-                k: r[k]
-                for k in ("my_playoff", "my_title", "their_playoff", "their_title", "se_title")
-            },
+            "give_ids": r["give_ids"],
+            "get_ids": r["get_ids"],
+            "kind": r["kind"],
+            "my_fills": ", ".join(r["my_needs"]),
+            "their_fills": ", ".join(r["their_needs"]),
+            "my_fit": r["my_fit"],
+            "their_fit": r["their_fit"],
+            **{k: r[k] for k in FOUND_NUMBERS},
         }
         for r in found.iter_rows(named=True)
     ]
@@ -132,9 +141,14 @@ def find_trades(league_key: str) -> pl.DataFrame:
         "partner": pl.String,
         "give": pl.String,
         "get": pl.String,
-        **dict.fromkeys(
-            ("my_playoff", "my_title", "their_playoff", "their_title", "se_title"), pl.Float64
-        ),
+        "give_ids": pl.List(pl.String),
+        "get_ids": pl.List(pl.String),
+        "kind": pl.String,
+        "my_fills": pl.String,
+        "their_fills": pl.String,
+        "my_fit": pl.Float64,
+        "their_fit": pl.Float64,
+        **dict.fromkeys(FOUND_NUMBERS, pl.Float64),
     }
     return pl.DataFrame(rows, schema=schema)
 

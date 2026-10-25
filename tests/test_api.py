@@ -437,9 +437,20 @@ def test_trade_evaluate_validates_the_body(client: TestClient) -> None:
 
 def test_trade_find_is_a_job(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     # the tiny store is too small for the finder's screen (it needs six players a side)
-    found = {"partner": ["Theirs"], "give": ["a (WR)"], "get": ["b (WR)"]} | {
-        k: [0.01] for k in ("my_playoff", "my_title", "their_playoff", "their_title", "se_title")
+    found = {
+        "partner": ["Theirs"],
+        "give": ["a (WR)"],
+        "get": ["b (RB)"],
+        "give_ids": [["a"]],
+        "get_ids": [["b"]],
+        "kind": ["need swap"],
+        "my_fills": ["RB"],
+        "their_fills": ["WR"],
+        "my_fit": [9.0],
+        "their_fit": [4.0],
     }
+    found |= {k: [0.01] for k in ("my_playoff", "my_title", "their_playoff", "their_title")}
+    found["se_title"] = [0.01]
     monkeypatch.setattr(data_api, "find_trades", lambda league: pl.DataFrame(found))
     out = wait_ok(client, lambda: client.post("/api/leagues/t/trades/find"))
     assert out["status"] == "ok" and out["data"][0]["partner"] == "Theirs"
