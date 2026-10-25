@@ -136,3 +136,23 @@ def season_value(
             week_total -= q * (lineup.total - auto_lineup(rest, slots).total)
         total += week_total
     return total
+
+
+EVEN_BAND = 0.10  # arbitrary starting point (issue U12), not fitted to anything
+
+
+def market_hint(give: float, get: float, missing: int) -> str:
+    """Which side the market favors, from summed market values. Says nothing about whether a
+    leaguemate would accept. Shortcut: sums ignore the premium for turning two players into
+    one, so a 2-for-1 looks fairer than it is."""
+    top = max(give, get)
+    gap = (get - give) / top if top > 0 else 0.0
+    if abs(gap) < EVEN_BAND:
+        text = "even"
+    elif gap > 0:
+        text = f"you receive {gap:.0%} more"
+    else:
+        text = f"you overpay {-gap:.0%}"
+    if missing:
+        text += f"; no value for {missing} player{'s' if missing > 1 else ''}"
+    return text

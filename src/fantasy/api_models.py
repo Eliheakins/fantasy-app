@@ -153,6 +153,15 @@ class AssetRow(Row):
     label: str
 
 
+class MarketValueRow(Row):
+    gsis_id: str
+    value: float
+    overall_rank: int | None
+    position_rank: int | None
+    trend_30_day: float | None
+    fetched_at: str
+
+
 class PlayerWeekRow(Row):
     week: int
     projection: float
