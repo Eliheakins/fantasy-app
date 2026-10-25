@@ -11,7 +11,9 @@ from urllib.parse import urlsplit
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.types import Scope
 
 from fantasy.api_envelope import clean as clean
 from fantasy.api_envelope import fail
@@ -66,8 +68,20 @@ def create_app(web_dist: Path | None = None) -> FastAPI:
 
     app.include_router(router)
     if dist.is_dir():  # mounted last so /api wins; absent until `web/` is built
-        app.mount("/", StaticFiles(directory=dist, html=True), name="web")
+        app.mount("/", SpaFiles(directory=dist, html=True), name="web")
     return app
+
+
+class SpaFiles(StaticFiles):
+    """Static files that hand client-side routes (/lineup, a refresh) the app shell."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        try:
+            return await super().get_response(path, scope)
+        except HTTPException as err:
+            if err.status_code != 404 or path.startswith("api/") or "." in path.rsplit("/", 1)[-1]:
+                raise
+            return await super().get_response("index.html", scope)
 
 
 def main(argv: list[str]) -> None:
