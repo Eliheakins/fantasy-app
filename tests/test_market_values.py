@@ -169,10 +169,10 @@ def test_route_serves_values(store_dir: Path) -> None:  # noqa: F811
     [
         (1000, 1000, "even"),
         (1000, 1099, "even"),  # gap 9.1%
-        (1000, 1112, "you receive 10% more"),  # gap 10.07%
-        (1000, 2000, "you receive 50% more"),
-        (2000, 1000, "you overpay 50%"),
-        (1112, 1000, "you overpay 10%"),
+        (1000, 1112, "you receive 11% more"),  # gap 10.07% of the larger side
+        (1000, 2000, "you receive 100% more"),  # twice the value is 100% more, not 50%
+        (2000, 1000, "you overpay 100%"),
+        (1112, 1000, "you overpay 11%"),
     ],
 )
 def test_market_hint_bands(give: float, get: float, text: str) -> None:
@@ -180,7 +180,7 @@ def test_market_hint_bands(give: float, get: float, text: str) -> None:
 
 
 def test_market_hint_reports_missing_values_and_handles_zero_totals() -> None:
-    assert market_hint(1000, 2000, 2) == "you receive 50% more; no value for 2 players"
+    assert market_hint(1000, 2000, 2) == "you receive 100% more; no value for 2 players"
     assert market_hint(1000, 1000, 1) == "even; no value for 1 player"
     assert market_hint(0, 0, 0) == "even"
 
@@ -219,7 +219,8 @@ def test_evaluate_route_carries_the_market_summary(
     other = pl.DataFrame([{"sleeper_id": "1", "gsis_id": "G_OPP"}], schema=store.SCHEMAS["id_map"])
     store.write_table("id_map", pl.concat([mapped, other], how="diagonal"), "derived", store_dir)
     out = client.post("/api/leagues/t/trades/evaluate", json=PAYLOAD).json()
-    assert out["data"]["market"]["hint"] == "you receive 100% more; no value for 2 players"
+    # the two players given have no value, so a percentage would divide by zero
+    assert out["data"]["market"]["hint"] == "you receive more; no value for 2 players"
 
 
 def test_find_route_rows_carry_the_market_summary(

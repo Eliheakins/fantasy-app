@@ -150,9 +150,9 @@ def market_hint(give: float, get: float, missing: int) -> str:
     if abs(gap) < EVEN_BAND:
         text = "even"
     elif gap > 0:
-        text = f"you receive {gap:.0%} more"
+        text = f"you receive {get / give - 1:.0%} more" if give > 0 else "you receive more"
     else:
-        text = f"you overpay {-gap:.0%}"
+        text = f"you overpay {give / get - 1:.0%}" if get > 0 else "you overpay"
     if missing:
         text += f"; no value for {missing} player{'s' if missing > 1 else ''}"
     return text
