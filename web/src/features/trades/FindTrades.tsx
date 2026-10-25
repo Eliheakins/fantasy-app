@@ -23,7 +23,14 @@ const COLUMNS: readonly Column<FoundTrade>[] = [
   {
     label: "Market value",
     render: (r) =>
-      r.market ? <span className="text-muted">{`${marketText(r.market)} (${marketDate(r.market)})`}</span> : "",
+      r.market ? (
+        <span className="text-muted">
+          {`${marketText(r.market)} `}
+          <span className="whitespace-nowrap">{`(${marketDate(r.market)})`}</span>
+        </span>
+      ) : (
+        ""
+      ),
   },
   { label: "Your playoffs (pts)", render: (r) => <Delta points={points(r.my_playoff)} noise={NOISE_PERCENT} /> },
   { label: "Your title (pts)", render: (r) => <Delta points={points(r.my_title)} noise={NOISE_PERCENT} /> },
