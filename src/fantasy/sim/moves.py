@@ -638,7 +638,30 @@ def find_trades(data: LeagueData, my_id: int, n_sims: int = 20000, seed: int = 0
     second = _rerun(data, my_id, leaders, n_sims, seed + 1)
     rows = [row for s, r in zip(leaders, second, strict=True) if (row := label(r, s))]
     rows.sort(key=rank_key)
-    return pl.DataFrame(rows, schema=FINDER_COLUMNS)
+    return pl.DataFrame(drop_addons(rows, position_of(data)), schema=FINDER_COLUMNS)
+
+
+def _is_addon(big: dict[str, Any], small: dict[str, Any], positions: dict[str, str]) -> bool:
+    """`big` is `small` plus one like-for-like leg (same position each way) that moves my
+    playoff plus title odds by less than ODDS_TOL."""
+    if big["partner_id"] != small["partner_id"]:
+        return False
+    extra_give = set(big["give_ids"]) - set(small["give_ids"])
+    extra_get = set(big["get_ids"]) - set(small["get_ids"])
+    give_subset = set(small["give_ids"]) < set(big["give_ids"])
+    if not (give_subset and set(small["get_ids"]) < set(big["get_ids"])):
+        return False
+    if len(extra_give) != 1 or len(extra_get) != 1:
+        return False
+    if positions[next(iter(extra_give))] != positions[next(iter(extra_get))]:
+        return False
+    odds = lambda r: r["my_playoff"] + r["my_title"]  # noqa: E731
+    return abs(odds(big) - odds(small)) < ODDS_TOL
+
+
+def drop_addons(rows: list[dict[str, Any]], positions: dict[str, str]) -> list[dict[str, Any]]:
+    """Rows without the ones that are a smaller listed swap plus a like-for-like add-on leg."""
+    return [r for r in rows if not any(_is_addon(r, s, positions) for s in rows)]
 
 
 def position_strength(data: LeagueData, valuer: Valuer | None = None) -> pl.DataFrame:

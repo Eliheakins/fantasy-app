@@ -352,11 +352,21 @@ class RosterChangeRow(Row):
     position: str
 
 
+class MarketSummary(Row):
+    """Market value each side gives and gets (FantasyCalc), the hint and the values' date."""
+
+    give_value: float
+    get_value: float
+    hint: str
+    fetched_at: str
+
+
 class TradeEvaluation(Row):
     odds: list[TradeSideRow]
     roster_changes: list[RosterChangeRow]
     warning: str | None
     trade_deadline: int | None
+    market: MarketSummary | None
 
 
 class FoundTradeRow(Row):
@@ -370,6 +380,7 @@ class FoundTradeRow(Row):
     their_fills: str
     my_fit: float
     their_fit: float
+    market: MarketSummary | None
     my_playoff: float
     my_title: float
     their_playoff: float
