@@ -117,6 +117,26 @@ ENGINE_SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     },
 }
 
+_SIDE_COLUMNS: dict[str, pl.DataType | type[pl.DataType]] = {
+    "roster_id": pl.Int64,
+    "team_name": _S,
+    "is_me": _B,
+    "projected": _F,  # expected points to the end of the week
+    "floor": _F,
+    "median": _F,
+    "ceiling": _F,
+    "win_prob": _F,
+    "points": _F,  # already scored
+    "share_left": _F,  # share of the team's starters' games still to play
+}
+# One row per matchup: week, matchup_id, status, then every side column for a_ and for b_.
+ENGINE_SCHEMAS["scoreboard"] = {
+    "week": pl.Int64,
+    "matchup_id": pl.Int64,
+    "status": _S,
+    **{f"{side}_{name}": kind for side in ("a", "b") for name, kind in _SIDE_COLUMNS.items()},
+}
+
 OUTLOOK_SCHEMA: dict[str, pl.DataType | type[pl.DataType]] = {
     "gsis_id": _S,
     "full_name": _S,

@@ -31,6 +31,7 @@ from fantasy._market import (
 )
 from fantasy._outlook import live_score, player_outlook, schedule
 from fantasy._schemas import ENGINE_SCHEMAS
+from fantasy._scoreboard import SCOREBOARD_SIMS, scoreboard_of
 from fantasy._values import market_values as _market_values
 from fantasy.config import load_config
 from fantasy.sim import moves as moves
@@ -56,6 +57,7 @@ __all__ = [
     "refresh_live",
     "roster",
     "schedule",
+    "scoreboard",
     "scoring_labels",
     "season_odds",
     "seed_distribution",
@@ -443,3 +445,10 @@ def refresh_live() -> int:
 
     week = int(leagues()["current_week"].to_numpy().max())
     return sync_week(week)
+
+
+def scoreboard(league_key: str, week: int = 0, n_sims: int = SCOREBOARD_SIMS) -> pl.DataFrame:
+    """Every matchup of a week with projected totals, ranges and chances to win, my matchup
+    first (see `_scoreboard`). `is_me` follows the viewed team."""
+    data, mine = _league(league_key)
+    return scoreboard_of(data, mine, week, n_sims)

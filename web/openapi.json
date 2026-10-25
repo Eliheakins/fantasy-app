@@ -881,6 +881,78 @@
         }
       }
     },
+    "/api/leagues/{league}/scoreboard": {
+      "get": {
+        "summary": "Scoreboard",
+        "description": "Every matchup of a week, my (or the viewed) team first. About 0.5 s, so not a job.",
+        "operationId": "scoreboard_api_leagues__league__scoreboard_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "week",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 22,
+              "minimum": 0,
+              "description": "0 means the current week",
+              "default": 0,
+              "title": "Week"
+            },
+            "description": "0 means the current week"
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_ScoreboardRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/trade-partners": {
       "get": {
         "summary": "Trade Partners",
@@ -2873,6 +2945,63 @@
         ],
         "title": "Envelope[list[ScheduleRow]]"
       },
+      "Envelope_list_ScoreboardRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ScoreboardRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[ScoreboardRow]]"
+      },
       "Envelope_list_SeasonOddsRow__": {
         "properties": {
           "status": {
@@ -4412,6 +4541,116 @@
           "win_chance"
         ],
         "title": "ScheduleRow"
+      },
+      "ScoreboardRow": {
+        "properties": {
+          "week": {
+            "type": "integer",
+            "title": "Week"
+          },
+          "matchup_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matchup Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Not started",
+              "Live",
+              "Final"
+            ],
+            "title": "Status"
+          },
+          "a": {
+            "$ref": "#/components/schemas/ScoreboardSide"
+          },
+          "b": {
+            "$ref": "#/components/schemas/ScoreboardSide"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "week",
+          "matchup_id",
+          "status",
+          "a",
+          "b"
+        ],
+        "title": "ScoreboardRow"
+      },
+      "ScoreboardSide": {
+        "properties": {
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "is_me": {
+            "type": "boolean",
+            "title": "Is Me"
+          },
+          "projected": {
+            "type": "number",
+            "title": "Projected"
+          },
+          "floor": {
+            "type": "number",
+            "title": "Floor"
+          },
+          "median": {
+            "type": "number",
+            "title": "Median"
+          },
+          "ceiling": {
+            "type": "number",
+            "title": "Ceiling"
+          },
+          "win_prob": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Win Prob"
+          },
+          "points": {
+            "type": "number",
+            "title": "Points"
+          },
+          "share_left": {
+            "type": "number",
+            "title": "Share Left"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "roster_id",
+          "team_name",
+          "is_me",
+          "projected",
+          "floor",
+          "median",
+          "ceiling",
+          "win_prob",
+          "points",
+          "share_left"
+        ],
+        "title": "ScoreboardSide"
       },
       "SeasonOddsRow": {
         "properties": {

@@ -371,3 +371,24 @@ class TradeRequest(BaseModel):
 
 class RefreshData(Row):
     player_rows: int
+
+
+class ScoreboardSide(Row):
+    roster_id: int
+    team_name: str
+    is_me: bool
+    projected: float  # expected points to the end of the week
+    floor: float  # 10th percentile
+    median: float
+    ceiling: float  # 90th percentile
+    win_prob: float | None  # None for a finished week
+    points: float  # scored so far
+    share_left: float  # share of the starters games still to play
+
+
+class ScoreboardRow(Row):
+    week: int
+    matchup_id: int | None
+    status: Literal["Not started", "Live", "Final"]
+    a: ScoreboardSide
+    b: ScoreboardSide

@@ -34,6 +34,7 @@ from fantasy.api_models import (
     RefreshData,
     RosterRow,
     ScheduleRow,
+    ScoreboardRow,
     SeasonOddsRow,
     SeedRow,
     StatusData,
@@ -237,6 +238,16 @@ def strength(league: str, team: Team = None) -> Any:
 @router.get("/leagues/{league}/live-score", response_model=Envelope[list[LiveScoreRow]])
 def live_score(league: str, team: Team = None) -> Any:
     return guarded(as_team(team, lambda: rows(data_api.live_score(league))))
+
+
+def scoreboard_data(league: str, week: int) -> list[dict[str, Any]]:
+    return clean(view.scoreboard_rows(data_api.scoreboard(league, week)))
+
+
+@router.get("/leagues/{league}/scoreboard", response_model=Envelope[list[ScoreboardRow]])
+def scoreboard(league: str, week: Week = 0, team: Team = None) -> Any:
+    """Every matchup of a week, my (or the viewed) team first. About 0.5 s, so not a job."""
+    return guarded(as_team(team, lambda: scoreboard_data(league, week)))
 
 
 @router.get("/leagues/{league}/trade-partners", response_model=Envelope[list[PartnerRow]])

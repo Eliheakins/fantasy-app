@@ -609,3 +609,17 @@ def test_unexpected_exceptions_become_a_server_error_without_the_text(
     monkeypatch.setattr(data_api, "lineup", boom)
     out = body(client.get("/api/leagues/t/lineup"))
     assert out["error"]["code"] == "server" and "secret" not in out["error"]["message"]
+
+
+def test_scoreboard_returns_one_nested_row_per_matchup_and_follows_the_team(
+    client: TestClient,
+) -> None:
+    out = body(client.get("/api/leagues/t/scoreboard"))
+    assert out["status"] == "ok", out
+    first = out["data"][0]
+    assert set(first) == {"week", "matchup_id", "status", "a", "b"}
+    assert first["a"]["is_me"] and first["a"]["team_name"] == "Mine"
+    assert first["a"]["win_prob"] + first["b"]["win_prob"] == pytest.approx(1.0)
+    other = body(client.get("/api/leagues/t/scoreboard?team=5"))["data"][0]
+    assert other["matchup_id"] == 3 and other["a"]["is_me"]
+    assert client.get("/api/leagues/t/scoreboard?week=99").status_code == 422

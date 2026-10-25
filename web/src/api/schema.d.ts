@@ -296,6 +296,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/scoreboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Scoreboard
+         * @description Every matchup of a week, my (or the viewed) team first. About 0.5 s, so not a job.
+         */
+        get: operations["scoreboard_api_leagues__league__scoreboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/trade-partners": {
         parameters: {
             query?: never;
@@ -813,6 +833,19 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** Envelope[list[ScoreboardRow]] */
+        Envelope_list_ScoreboardRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["ScoreboardRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[list[SeasonOddsRow]] */
         Envelope_list_SeasonOddsRow__: {
             /**
@@ -1244,6 +1277,43 @@ export interface components {
             their_points: number;
             /** Win Chance */
             win_chance: number;
+        };
+        /** ScoreboardRow */
+        ScoreboardRow: {
+            /** Week */
+            week: number;
+            /** Matchup Id */
+            matchup_id: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "Not started" | "Live" | "Final";
+            a: components["schemas"]["ScoreboardSide"];
+            b: components["schemas"]["ScoreboardSide"];
+        };
+        /** ScoreboardSide */
+        ScoreboardSide: {
+            /** Roster Id */
+            roster_id: number;
+            /** Team Name */
+            team_name: string;
+            /** Is Me */
+            is_me: boolean;
+            /** Projected */
+            projected: number;
+            /** Floor */
+            floor: number;
+            /** Median */
+            median: number;
+            /** Ceiling */
+            ceiling: number;
+            /** Win Prob */
+            win_prob: number | null;
+            /** Points */
+            points: number;
+            /** Share Left */
+            share_left: number;
         };
         /** SeasonOddsRow */
         SeasonOddsRow: {
@@ -2004,6 +2074,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_LiveScoreRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scoreboard_api_leagues__league__scoreboard_get: {
+        parameters: {
+            query?: {
+                /** @description 0 means the current week */
+                week?: number;
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_ScoreboardRow__"];
                 };
             };
             /** @description Validation Error */
