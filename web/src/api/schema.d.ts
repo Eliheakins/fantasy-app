@@ -72,6 +72,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Teams */
+        get: operations["teams_api_leagues__league__teams_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/season-odds": {
         parameters: {
             query?: never;
@@ -848,6 +865,19 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** Envelope[list[TeamRow]] */
+        Envelope_list_TeamRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["TeamRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[list[WaiverRow]] */
         Envelope_list_WaiverRow__: {
             /**
@@ -1294,6 +1324,25 @@ export interface components {
             /** Text */
             text: string | null;
         };
+        /** TeamRow */
+        TeamRow: {
+            /** Roster Id */
+            roster_id: number;
+            /** Team Name */
+            team_name: string | null;
+            /** Wins */
+            wins: number | null;
+            /** Losses */
+            losses: number | null;
+            /** Ties */
+            ties: number | null;
+            /** Points For */
+            points_for: number | null;
+            /** Is Me */
+            is_me: boolean;
+            /** Record */
+            record: string;
+        };
         /** TradeEvaluation */
         TradeEvaluation: {
             /** Odds */
@@ -1466,7 +1515,10 @@ export interface operations {
     };
     roster_api_leagues__league__roster_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
             header?: never;
             path: {
                 league: string;
@@ -1515,9 +1567,43 @@ export interface operations {
             };
         };
     };
-    season_odds_api_leagues__league__season_odds_get: {
+    teams_api_leagues__league__teams_get: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_TeamRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    season_odds_api_leagues__league__season_odds_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
             header?: never;
             path: {
                 league: string;
@@ -1548,7 +1634,10 @@ export interface operations {
     };
     seeds_api_leagues__league__seeds_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
             header?: never;
             path: {
                 league: string;
@@ -1579,7 +1668,10 @@ export interface operations {
     };
     odds_history_api_leagues__league__odds_history_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
             header?: never;
             path: {
                 league: string;
@@ -1610,7 +1702,10 @@ export interface operations {
     };
     power_rankings_api_leagues__league__power_rankings_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
             header?: never;
             path: {
                 league: string;
@@ -1641,7 +1736,10 @@ export interface operations {
     };
     luck_api_leagues__league__luck_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
             header?: never;
             path: {
                 league: string;
@@ -1672,7 +1770,10 @@ export interface operations {
     };
     manager_grades_api_leagues__league__manager_grades_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
             header?: never;
             path: {
                 league: string;
@@ -1706,6 +1807,8 @@ export interface operations {
             query?: {
                 /** @description 0 means the current week */
                 week?: number;
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
             };
             header?: never;
             path: {
@@ -1739,6 +1842,8 @@ export interface operations {
         parameters: {
             query: {
                 kind: "K" | "DEF";
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
             };
             header?: never;
             path: {
@@ -1773,6 +1878,8 @@ export interface operations {
             query?: {
                 /** @description 0 means the current week */
                 week?: number;
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
             };
             header?: never;
             path: {
@@ -1804,7 +1911,10 @@ export interface operations {
     };
     schedule_api_leagues__league__schedule_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
             header?: never;
             path: {
                 league: string;
@@ -1835,7 +1945,10 @@ export interface operations {
     };
     strength_api_leagues__league__strength_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
             header?: never;
             path: {
                 league: string;
@@ -1866,7 +1979,10 @@ export interface operations {
     };
     live_score_api_leagues__league__live_score_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
             header?: never;
             path: {
                 league: string;
@@ -1897,7 +2013,10 @@ export interface operations {
     };
     trade_partners_api_leagues__league__trade_partners_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
             header?: never;
             path: {
                 league: string;
@@ -1930,6 +2049,8 @@ export interface operations {
         parameters: {
             query?: {
                 roster_id?: number | null;
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
             };
             header?: never;
             path: {
@@ -1998,6 +2119,8 @@ export interface operations {
             query: {
                 gsis_id: string;
                 n?: number;
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
             };
             header?: never;
             path: {
@@ -2031,6 +2154,8 @@ export interface operations {
         parameters: {
             query?: {
                 scope?: "mine" | "league" | "free";
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
             };
             header?: never;
             path: {
@@ -2065,6 +2190,8 @@ export interface operations {
             query?: {
                 /** @description 0 means the current week */
                 week?: number;
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
             };
             header?: never;
             path: {
@@ -2103,7 +2230,10 @@ export interface operations {
     };
     actions_api_leagues__league__actions_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
             header?: never;
             path: {
                 league: string;
@@ -2141,7 +2271,10 @@ export interface operations {
     };
     waivers_api_leagues__league__waivers_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
             header?: never;
             path: {
                 league: string;
@@ -2179,7 +2312,10 @@ export interface operations {
     };
     evaluate_trade_api_leagues__league__trades_evaluate_post: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
             header?: never;
             path: {
                 league: string;
@@ -2214,7 +2350,10 @@ export interface operations {
     };
     find_trades_api_leagues__league__trades_find_post: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
             header?: never;
             path: {
                 league: string;

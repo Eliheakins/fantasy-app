@@ -1,7 +1,9 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Footer } from "./Footer";
 import { StatusBanner } from "./StatusBanner";
+import { TeamBanner } from "./TeamBanner";
 import { TopBar } from "./TopBar";
+import { TeamProvider } from "@/lib/TeamProvider";
 import { NAV_ITEMS } from "@/nav";
 import { cn } from "@/lib/utils";
 
@@ -13,47 +15,51 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 
 /** Left rail from 768 px up, bottom tab bar below. */
 export function AppShell() {
+  const { search } = useLocation(); // nav links keep ?team= and ?league=
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
-      <nav aria-label="Main" className="hidden w-48 shrink-0 border-r border-border p-4 md:block">
-        <ul className="flex flex-col gap-1">
+    <TeamProvider>
+      <div className="flex min-h-screen flex-col md:flex-row">
+        <nav aria-label="Main" className="hidden w-48 shrink-0 border-r border-border p-4 md:block">
+          <ul className="flex flex-col gap-1">
+            {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
+              return (
+                <li key={path}>
+                  <NavLink to={{ pathname: path, search }} end={path === "/"} className={(s) => cn(linkClass(s), "min-h-[44px] px-2")}>
+                    <Icon size={16} aria-hidden /> {label}
+                  </NavLink>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+        <div className="flex min-w-0 flex-1 flex-col pb-14 md:pb-0">
+          <TopBar />
+          <StatusBanner />
+          <TeamBanner />
+          <main className="flex-1 p-4">
+            <Outlet />
+          </main>
+          <Footer />
+        </div>
+        <nav
+          aria-label="Main"
+          className="fixed inset-x-0 bottom-0 z-10 flex border-t border-border bg-page md:hidden"
+        >
           {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
             return (
-              <li key={path}>
-                <NavLink to={path} end={path === "/"} className={(s) => cn(linkClass(s), "min-h-[44px] px-2")}>
-                  <Icon size={16} aria-hidden /> {label}
-                </NavLink>
-              </li>
+              <NavLink
+                key={path}
+                to={{ pathname: path, search }}
+                end={path === "/"}
+                className={(s) => cn(linkClass(s), "min-h-[56px] flex-1 flex-col justify-center gap-0 text-caption")}
+              >
+                <Icon size={20} aria-hidden />
+                {label}
+              </NavLink>
             );
           })}
-        </ul>
-      </nav>
-      <div className="flex min-w-0 flex-1 flex-col pb-14 md:pb-0">
-        <TopBar />
-        <StatusBanner />
-        <main className="flex-1 p-4">
-          <Outlet />
-        </main>
-        <Footer />
+        </nav>
       </div>
-      <nav
-        aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-10 flex border-t border-border bg-page md:hidden"
-      >
-        {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
-          return (
-            <NavLink
-              key={path}
-              to={path}
-              end={path === "/"}
-              className={(s) => cn(linkClass(s), "min-h-[56px] flex-1 flex-col justify-center gap-0 text-caption")}
-            >
-              <Icon size={20} aria-hidden />
-              {label}
-            </NavLink>
-          );
-        })}
-      </nav>
-    </div>
+    </TeamProvider>
   );
 }

@@ -79,6 +79,7 @@ def data_version() -> str:
 
 
 _PINNED_VERSION: ContextVar[str | None] = ContextVar("pinned_version", default=None)
+_VIEWED_TEAM: ContextVar[int | None] = ContextVar("viewed_team", default=None)
 _BUILD_LOCKS: dict[tuple[str, str], Lock] = {}  # one per (league, data dir): bounded by leagues
 _BUILD_LOCKS_GUARD = Lock()
 
@@ -93,12 +94,35 @@ def pinned_version(version: str) -> Iterator[None]:
         _PINNED_VERSION.reset(token)
 
 
+@contextmanager
+def viewing_team(roster_id: int | None) -> Iterator[None]:
+    """Treat this roster as "my team" for everything read in this context (None: the real me).
+
+    A ContextVar is not inherited by worker threads: set it again inside the job."""
+    token = _VIEWED_TEAM.set(roster_id)
+    try:
+        yield
+    finally:
+        _VIEWED_TEAM.reset(token)
+
+
+def viewed_team() -> int | None:
+    return _VIEWED_TEAM.get()
+
+
 def _league(league_key: str) -> tuple[LeagueData, int]:
-    """Simulation inputs for one league and my roster id, built once per data version.
+    """Simulation inputs for one league and "my" roster id (the viewed team if one is set),
+    built once per data version.
 
     Shared across threads: treat it as read-only (nothing in the engine mutates it)."""
     version = _PINNED_VERSION.get() or data_version()
-    return _league_cached(league_key, version, str(store.DATA_DIR))
+    data, mine = _league_cached(league_key, version, str(store.DATA_DIR))
+    viewed = _VIEWED_TEAM.get()
+    if viewed is None:
+        return data, mine
+    if viewed not in data.roster_ids:
+        raise ValueError(f"unknown team {viewed} in league {league_key!r}")
+    return data, viewed
 
 
 # used by the API refresh route and tests

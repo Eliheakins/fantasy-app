@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { type ApiState, fetchEnvelope, pollInterval, resolveState } from "@/api/envelope";
 import type { Envelope } from "@/api/types";
+import { withTeam } from "@/lib/team";
+import { useTeam } from "@/lib/teamContext";
 
 /**
  * POST a simulation route and poll it while the server says "running". The result stays in the
@@ -9,11 +11,13 @@ import type { Envelope } from "@/api/types";
  */
 export function usePostApi<T>(
   key: readonly unknown[],
-  url: string,
+  path: string,
   body: unknown | null,
 ): { state: ApiState<T> | null; refetch: () => void } {
+  const { team, league } = useTeam();
+  const url = withTeam(path, team, league);
   const query = useQuery<Envelope<T>, Error>({
-    queryKey: ["post", ...key],
+    queryKey: ["post", ...key, url],
     queryFn: () =>
       fetchEnvelope<T>(url, {
         method: "POST",

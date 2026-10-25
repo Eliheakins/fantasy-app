@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Query, Request
 
 from fantasy import _view as view
 from fantasy import data_api, store
-from fantasy._engine import _clear_league_cache, data_version, pinned_version
+from fantasy._engine import _clear_league_cache, data_version, pinned_version, viewing_team
 from fantasy.api_envelope import NO_DATA_MESSAGE, clean, fail, guarded, ok, rows, running
 from fantasy.api_jobs import Busy, JobKey, JobRunner
 from fantasy.api_models import (
@@ -39,6 +39,7 @@ from fantasy.api_models import (
     StatusData,
     StreamerRow,
     StrengthRow,
+    TeamRow,
     TradeEvaluation,
     TradeRequest,
     UnmatchedData,
@@ -57,6 +58,9 @@ MAX_TRADE_EVALUATIONS = 2
 TRADE_SLOTS = threading.BoundedSemaphore(MAX_TRADE_EVALUATIONS)
 REFRESH_LOCK = threading.Lock()
 MAX_IDS_LENGTH = 4000
+Team = Annotated[
+    int | None, Query(description="Roster id to view as; omitted means my team (Sleeper is_me)")
+]
 Week = Annotated[int, Query(ge=0, le=22, description="0 means the current week")]
 
 
@@ -68,22 +72,38 @@ def get_runner(request: Request) -> JobRunner:
 Runner = Annotated[JobRunner, Depends(get_runner)]
 
 
+def as_team(team: int | None, fn: Callable[[], Any]) -> Callable[[], Any]:
+    """`fn` run with `team` treated as my team (the real me when None)."""
+
+    def run() -> Any:
+        with viewing_team(team):
+            return fn()
+
+    return run
+
+
 def known_league(league: str) -> bool:
     return league in data_api.leagues(store.DATA_DIR)["league_key"].to_list()
 
 
-def run_job(runner: JobRunner, endpoint: str, args: tuple[Any, ...], fn: Callable[[], Any]) -> Any:
-    """Start the job once per (endpoint, args, data version); 202 until it has finished."""
+def run_job(
+    runner: JobRunner,
+    endpoint: str,
+    args: tuple[Any, ...],
+    fn: Callable[[], Any],
+    team: int | None = None,
+) -> Any:
+    """Start the job once per (endpoint, args, team, data version); 202 until it has finished."""
     try:
         if not known_league(args[0]):
             return fail("invalid", f"unknown league {args[0]!r}")
     except FileNotFoundError:
         return fail("no_data", NO_DATA_MESSAGE)
     version = data_version()  # once: the key and the league build must agree
-    key: JobKey = (endpoint, args, version)
+    key: JobKey = (endpoint, (*args, team), version)  # team is last: args[0] stays the league
 
     def pinned() -> Any:
-        with pinned_version(version):
+        with pinned_version(version), viewing_team(team):  # a worker thread has no context
             return fn()
 
     try:
@@ -129,8 +149,8 @@ def leagues() -> Any:
 
 
 @router.get("/leagues/{league}/roster", response_model=Envelope[list[RosterRow]])
-def roster(league: str) -> Any:
-    return guarded(lambda: rows(data_api.roster(league, store.DATA_DIR)))
+def roster(league: str, team: Team = None) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.roster(league, store.DATA_DIR))))
 
 
 @router.get("/unmatched", response_model=Envelope[UnmatchedData])
@@ -142,84 +162,97 @@ def unmatched() -> Any:
     return guarded(build)
 
 
+@router.get("/leagues/{league}/teams", response_model=Envelope[list[TeamRow]])
+def teams(league: str) -> Any:
+    def build() -> list[dict[str, Any]]:
+        return [
+            {**r, "record": view.record_string(r["wins"], r["losses"], r["ties"])}
+            for r in rows(data_api.teams(league, store.DATA_DIR))
+        ]
+
+    return guarded(build)
+
+
 @router.get("/leagues/{league}/season-odds", response_model=Envelope[list[SeasonOddsRow]])
-def season_odds(league: str) -> Any:
-    return guarded(lambda: rows(data_api.season_odds(league, store.DATA_DIR)))
+def season_odds(league: str, team: Team = None) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.season_odds(league, store.DATA_DIR))))
 
 
 @router.get("/leagues/{league}/seeds", response_model=Envelope[list[SeedRow]])
-def seeds(league: str) -> Any:
-    return guarded(lambda: rows(data_api.seed_distribution(league)))
+def seeds(league: str, team: Team = None) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.seed_distribution(league))))
 
 
 @router.get("/leagues/{league}/odds-history", response_model=Envelope[list[OddsHistoryRow]])
-def odds_history(league: str) -> Any:
+def odds_history(league: str, team: Team = None) -> Any:
     """Every team's saved runs, oldest first."""
-    return guarded(lambda: rows(data_api.odds_history(league, store.DATA_DIR).sort("run_at")))
+    return guarded(
+        as_team(team, lambda: rows(data_api.odds_history(league, store.DATA_DIR).sort("run_at")))
+    )
 
 
 @router.get("/leagues/{league}/power-rankings", response_model=Envelope[list[PowerRankingRow]])
-def power_rankings(league: str) -> Any:
-    return guarded(lambda: rows(data_api.power_rankings(league, store.DATA_DIR)))
+def power_rankings(league: str, team: Team = None) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.power_rankings(league, store.DATA_DIR))))
 
 
 @router.get("/leagues/{league}/luck", response_model=Envelope[list[LuckRow]])
-def luck(league: str) -> Any:
-    return guarded(lambda: rows(data_api.luck(league, store.DATA_DIR)))
+def luck(league: str, team: Team = None) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.luck(league, store.DATA_DIR))))
 
 
 @router.get("/leagues/{league}/manager-grades", response_model=Envelope[list[ManagerGradeRow]])
-def manager_grades(league: str) -> Any:
-    return guarded(lambda: rows(data_api.manager_grades(league, store.DATA_DIR)))
+def manager_grades(league: str, team: Team = None) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.manager_grades(league, store.DATA_DIR))))
 
 
 @router.get("/leagues/{league}/what-if", response_model=Envelope[list[WhatIfRow]])
-def what_if(league: str, week: Week = 0) -> Any:
-    return guarded(lambda: rows(data_api.what_if(league, week, store.DATA_DIR)))
+def what_if(league: str, week: Week = 0, team: Team = None) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.what_if(league, week, store.DATA_DIR))))
 
 
 @router.get("/leagues/{league}/streamers", response_model=Envelope[list[StreamerRow]])
-def streamers(league: str, kind: Literal["K", "DEF"]) -> Any:
-    return guarded(lambda: rows(data_api.streamers(league, kind)))
+def streamers(league: str, kind: Literal["K", "DEF"], team: Team = None) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.streamers(league, kind))))
 
 
 # --- league-build reads ----------------------------------------------------------------
 
 
 @router.get("/leagues/{league}/lineup", response_model=Envelope[list[LineupRow]])
-def lineup(league: str, week: Week = 0) -> Any:
-    return guarded(lambda: rows(view.lineup_changes(data_api.lineup(league, week))))
+def lineup(league: str, week: Week = 0, team: Team = None) -> Any:
+    return guarded(as_team(team, lambda: rows(view.lineup_changes(data_api.lineup(league, week)))))
 
 
 @router.get("/leagues/{league}/schedule", response_model=Envelope[list[ScheduleRow]])
-def schedule(league: str) -> Any:
-    return guarded(lambda: rows(data_api.schedule(league)))
+def schedule(league: str, team: Team = None) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.schedule(league))))
 
 
 @router.get("/leagues/{league}/strength", response_model=Envelope[list[StrengthRow]])
-def strength(league: str) -> Any:
-    return guarded(lambda: rows(data_api.position_strength(league)))
+def strength(league: str, team: Team = None) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.position_strength(league))))
 
 
 @router.get("/leagues/{league}/live-score", response_model=Envelope[list[LiveScoreRow]])
-def live_score(league: str) -> Any:
-    return guarded(lambda: rows(data_api.live_score(league)))
+def live_score(league: str, team: Team = None) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.live_score(league))))
 
 
 @router.get("/leagues/{league}/trade-partners", response_model=Envelope[list[PartnerRow]])
-def trade_partners(league: str) -> Any:
-    return guarded(lambda: rows(data_api.trade_partners(league)))
+def trade_partners(league: str, team: Team = None) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.trade_partners(league))))
 
 
 @router.get("/leagues/{league}/trade-assets", response_model=Envelope[list[AssetRow]])
-def trade_assets(league: str, roster_id: int | None = None) -> Any:
+def trade_assets(league: str, roster_id: int | None = None, team: Team = None) -> Any:
     def build() -> list[dict[str, Any]]:
         assets = data_api.trade_assets(league, roster_id)
         labels = view.asset_labels(assets)
         label = pl.Series("label", [labels[g] for g in assets["gsis_id"]], dtype=pl.String)
         return rows(assets.with_columns(label))
 
-    return guarded(build)
+    return guarded(as_team(team, build))
 
 
 @router.get("/leagues/{league}/market-values", response_model=Envelope[list[MarketValueRow]])
@@ -232,13 +265,17 @@ def market_values(
 
 
 @router.get("/leagues/{league}/player-weeks", response_model=Envelope[list[PlayerWeekRow]])
-def player_weeks(league: str, gsis_id: str, n: Annotated[int, Query(ge=1, le=18)] = 4) -> Any:
-    return guarded(lambda: rows(data_api.player_weeks(league, gsis_id, n)))
+def player_weeks(
+    league: str, gsis_id: str, n: Annotated[int, Query(ge=1, le=18)] = 4, team: Team = None
+) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.player_weeks(league, gsis_id, n))))
 
 
 @router.get("/leagues/{league}/outlook", response_model=Envelope[list[OutlookRow]])
-def outlook(league: str, scope: Literal["mine", "league", "free"] = "mine") -> Any:
-    return guarded(lambda: rows(data_api.player_outlook(league, scope)))
+def outlook(
+    league: str, scope: Literal["mine", "league", "free"] = "mine", team: Team = None
+) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.player_outlook(league, scope))))
 
 
 # --- simulations as jobs -----------------------------------------------------------------
@@ -272,17 +309,17 @@ def win_probability_data(league: str, week: int) -> dict[str, Any]:
     response_model=Envelope[WinProbabilityData],
     responses=JOB_RESPONSES,
 )
-def win_probability(league: str, runner: Runner, week: Week = 0) -> Any:
+def win_probability(league: str, runner: Runner, week: Week = 0, team: Team = None) -> Any:
     return run_job(
-        runner, "win-probability", (league, week), lambda: win_probability_data(league, week)
+        runner, "win-probability", (league, week), lambda: win_probability_data(league, week), team
     )
 
 
 @router.get(
     "/leagues/{league}/actions", response_model=Envelope[list[ActionRow]], responses=JOB_RESPONSES
 )
-def actions(league: str, runner: Runner) -> Any:
-    return run_job(runner, "actions", (league,), lambda: actions_data(league))
+def actions(league: str, runner: Runner, team: Team = None) -> Any:
+    return run_job(runner, "actions", (league,), lambda: actions_data(league), team)
 
 
 def actions_data(league: str) -> list[dict[str, Any]]:
@@ -295,12 +332,12 @@ def actions_data(league: str) -> list[dict[str, Any]]:
 @router.get(
     "/leagues/{league}/waivers", response_model=Envelope[list[WaiverRow]], responses=JOB_RESPONSES
 )
-def waivers(league: str, runner: Runner) -> Any:
-    return run_job(runner, "waivers", (league,), lambda: rows(data_api.waivers(league)))
+def waivers(league: str, runner: Runner, team: Team = None) -> Any:
+    return run_job(runner, "waivers", (league,), lambda: rows(data_api.waivers(league)), team)
 
 
 @router.post("/leagues/{league}/trades/evaluate", response_model=Envelope[TradeEvaluation])
-def evaluate_trade(league: str, trade: TradeRequest) -> Any:
+def evaluate_trade(league: str, trade: TradeRequest, team: Team = None) -> Any:
     """Odds before and after plus the automatic roster moves, in one response."""
 
     def build() -> dict[str, Any]:
@@ -317,7 +354,7 @@ def evaluate_trade(league: str, trade: TradeRequest) -> Any:
     if not TRADE_SLOTS.acquire(blocking=False):
         return fail("busy", BUSY_MESSAGE)
     try:
-        return guarded(build)
+        return guarded(as_team(team, build))
     finally:
         TRADE_SLOTS.release()
 
@@ -327,9 +364,11 @@ def evaluate_trade(league: str, trade: TradeRequest) -> Any:
     response_model=Envelope[list[FoundTradeRow]],
     responses=JOB_RESPONSES,
 )
-def find_trades(league: str, runner: Runner) -> Any:
+def find_trades(league: str, runner: Runner, team: Team = None) -> Any:
     """A long job (minutes): POST again to poll, same as the GET jobs."""
-    return run_job(runner, "find-trades", (league,), lambda: rows(data_api.find_trades(league)))
+    return run_job(
+        runner, "find-trades", (league,), lambda: rows(data_api.find_trades(league)), team
+    )
 
 
 @router.post("/live/refresh", response_model=Envelope[RefreshData])

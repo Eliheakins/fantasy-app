@@ -39,10 +39,10 @@ export function FoundTradesTable({ rows }: { rows: readonly FoundTrade[] }) {
   );
 }
 
-export function FindTradesSection({ league }: { league: string }) {
-  const [requested, setRequested] = useKeptState<boolean>(["finder-requested", league], false);
+export function FindTradesSection({ league, scope = league }: { league: string; scope?: string }) {
+  const [requested, setRequested] = useKeptState<boolean>(["finder-requested", scope], false);
   const { state, refetch } = usePostApi<FoundTrade[]>(
-    ["find-trades", league],
+    ["find-trades", scope],
     `/api/leagues/${encodeURIComponent(league)}/trades/find`,
     requested ? {} : null,
   );

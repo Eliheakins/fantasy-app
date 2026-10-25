@@ -53,6 +53,17 @@ class LeagueRow(Row):
     trade_deadline: int | None
 
 
+class TeamRow(Row):
+    roster_id: int
+    team_name: str | None
+    wins: int | None
+    losses: int | None
+    ties: int | None
+    points_for: float | None
+    is_me: bool
+    record: str
+
+
 class RosterRow(Row):
     sleeper_id: str
     full_name: str | None

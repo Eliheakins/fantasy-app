@@ -11,12 +11,13 @@ import { usePostApi } from "./usePostApi";
 
 const toOptions = (assets: readonly Asset[]) => assets.map((a) => ({ id: a.gsis_id, label: a.label }));
 
-type EvaluatorProps = { league: string; partners: readonly Partner[]; mine: readonly Asset[] };
+/** `scope` (league plus viewed team) keys the kept draft; it defaults to the league. */
+type EvaluatorProps = { league: string; scope?: string; partners: readonly Partner[]; mine: readonly Asset[] };
 
-export function Evaluator({ league, partners, mine }: EvaluatorProps) {
+export function Evaluator({ league, scope = league, partners, mine }: EvaluatorProps) {
   const selectId = useId();
-  const [stored, setDraft] = useKeptState<Draft>(["draft", league], EMPTY_DRAFT);
-  const [submitted, setSubmitted] = useKeptState<Draft | null>(["submitted", league], null);
+  const [stored, setDraft] = useKeptState<Draft>(["draft", scope], EMPTY_DRAFT);
+  const [submitted, setSubmitted] = useKeptState<Draft | null>(["submitted", scope], null);
   const partner = stored.partner !== null && partners.some((p) => p.roster_id === stored.partner)
     ? stored.partner
     : (partners[0]?.roster_id ?? null);
@@ -27,7 +28,7 @@ export function Evaluator({ league, partners, mine }: EvaluatorProps) {
   );
   const active = submitted !== null && tradeKey(submitted) === tradeKey(draft) ? toRequest(draft) : null;
   const { state, refetch } = usePostApi<TradeEvaluation>(
-    ["evaluate", league, tradeKey(draft)],
+    ["evaluate", scope, tradeKey(draft)],
     `/api/leagues/${encodeURIComponent(league)}/trades/evaluate`,
     active,
   );

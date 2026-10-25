@@ -2,16 +2,22 @@ import type { Status } from "@/api/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useApi } from "@/hooks/useApi";
 import { useLeague } from "@/lib/league";
+import { useTeam } from "@/lib/teamContext";
 import { formatAsOf, latestUpdate } from "@/lib/status";
 
 export function TopBar() {
   const { leagues, league, setLeague } = useLeague();
+  const { team, teams, setTeam } = useTeam();
+  const mine = teams.find((t) => t.is_me)?.roster_id ?? null;
   const status = useApi<Status>("/api/status");
   const updated = status.kind === "ready" ? latestUpdate(status.data) : null;
   const list = leagues.kind === "ready" ? leagues.data : [];
   return (
-    <header className="flex min-h-14 items-center justify-between gap-2 border-b border-border px-4">
-      <Select value={league ?? undefined} onValueChange={setLeague} disabled={list.length === 0}>
+    <header className="flex min-h-14 items-center flex-wrap justify-between gap-2 border-b border-border px-4">
+      <Select value={league ?? undefined} onValueChange={(key) => {
+          setLeague(key);
+          setTeam(null); // roster ids belong to one league
+        }} disabled={list.length === 0}>
         <SelectTrigger aria-label="League" className="min-h-[44px] min-w-40">
           <SelectValue placeholder="No leagues" />
         </SelectTrigger>
@@ -19,6 +25,23 @@ export function TopBar() {
           {list.map((l) => (
             <SelectItem key={l.league_key} value={l.league_key}>
               {l.name ?? l.league_key}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        value={String(team ?? mine ?? "")}
+        onValueChange={(id) => setTeam(Number(id) === mine ? null : Number(id))}
+        disabled={teams.length === 0}
+      >
+        <SelectTrigger aria-label="Team" className="min-h-[44px] min-w-40">
+          <SelectValue placeholder="Team" />
+        </SelectTrigger>
+        <SelectContent>
+          {teams.map((t) => (
+            <SelectItem key={t.roster_id} value={String(t.roster_id)}>
+              {t.team_name ?? `Team ${t.roster_id}`}
+              {t.is_me ? " (My team)" : ""}
             </SelectItem>
           ))}
         </SelectContent>

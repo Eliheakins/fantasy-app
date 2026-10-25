@@ -6,6 +6,8 @@ import type { ApiState } from "@/api/envelope";
 const STORAGE_KEY = "fantasy.league";
 
 function readStored(): string | null {
+  const linked = new URLSearchParams(window.location.search).get("league"); // a shared link wins
+  if (linked) return linked;
   try {
     return window.localStorage.getItem(STORAGE_KEY);
   } catch {
