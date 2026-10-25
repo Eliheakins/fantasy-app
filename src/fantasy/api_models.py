@@ -29,11 +29,20 @@ class FreshnessRow(Row):
     age_hours: float
 
 
+class LiveRefreshData(Row):
+    enabled: bool
+    active: bool  # a game of the current week is on now
+    last_ok_at: str | None  # ISO time of the last good live tick
+    last_error: str | None
+    interval_minutes: int
+
+
 class StatusData(Row):
     freshness: list[FreshnessRow]
     missing_layers: list[str]
     simulation_behind_inputs: str | None
     data_version: str
+    live_refresh: LiveRefreshData
 
 
 class LeagueRow(Row):

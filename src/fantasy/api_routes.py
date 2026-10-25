@@ -122,13 +122,14 @@ def run_job(
 
 
 @router.get("/status", response_model=Envelope[StatusData])
-def status() -> Any:
+def status(request: Request) -> Any:
     def build() -> dict[str, Any]:
         return {
             "freshness": rows(data_api.freshness()),
             "missing_layers": data_api.missing_layers(store.DATA_DIR),
             "simulation_behind_inputs": data_api.simulation_behind_inputs(store.DATA_DIR),
             "data_version": data_version(),
+            "live_refresh": request.app.state.live.status(),
         }
 
     return guarded(build)

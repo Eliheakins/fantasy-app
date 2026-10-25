@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import replace
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 from threading import Lock
@@ -19,7 +19,7 @@ import polars as pl
 from fantasy import store
 from fantasy.config import load_config
 from fantasy.sim import moves
-from fantasy.sim.availability import GAME_MINUTES, LONG_TERM, kickoffs, locked_teams
+from fantasy.sim.availability import LONG_TERM, games_on, kickoffs, locked_teams
 from fantasy.sim.calibration import tier_of
 from fantasy.sim.lineup import Player, auto_lineup, constant_slot_count
 from fantasy.sim.odds import CurrentWeek, LeagueData
@@ -44,14 +44,12 @@ LEAGUE_CACHE_SIZE = 4
 
 
 LIVE_BUCKET_MINUTES = 2  # how stale the share of a game left may get while games are on
-LIVE_WINDOW_PAD_MINUTES = 5  # keep moving a little past the assumed end so the last build is final
 
 
 def _clock_bucket(kicks: dict[str, datetime], now: datetime) -> str:
     """Empty unless a game is on; then a value that changes every LIVE_BUCKET_MINUTES. The share
     of each game left is read off the clock when a league is built, so the cache key must move."""
-    end = timedelta(minutes=GAME_MINUTES + LIVE_WINDOW_PAD_MINUTES)
-    if not any(k <= now < k + end for k in kicks.values()):
+    if not games_on(kicks, now):
         return ""
     return f"@{int(now.timestamp() // (LIVE_BUCKET_MINUTES * 60))}"
 

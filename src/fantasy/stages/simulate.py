@@ -553,7 +553,8 @@ def team_week_rows(data: LeagueData, inp: SeasonInputs) -> list[tuple[Any, ...]]
     ]
 
 
-def run(n_sims: int | None = None) -> pl.DataFrame:
+def run(n_sims: int | None = None, archive: bool = True) -> pl.DataFrame:
+    """Simulate every league. `archive=False` skips the append-only history (live ticks)."""
     cfg = load_config()
     n_sims = n_sims or cfg.n_sims
     rows, seed_rows, week_rows, conditional = [], [], [], []
@@ -600,7 +601,8 @@ def run(n_sims: int | None = None) -> pl.DataFrame:
             "sim_season": latest,
         }
     )
-    append_history(latest)
+    if archive:
+        append_history(latest)
     return latest
 
 

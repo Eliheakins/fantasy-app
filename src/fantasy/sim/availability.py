@@ -7,7 +7,8 @@ Long-term designations sit out the 4-game minimum; after that the player is assu
 """
 
 import warnings
-from datetime import datetime
+from collections.abc import Mapping
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import polars as pl
@@ -52,6 +53,15 @@ def scale_projections(
 GAME_MINUTES = (
     200  # shortcut: overtime and delays read as final early; upgrade with a live game clock
 )
+
+
+LIVE_WINDOW_PAD_MINUTES = 10  # keeps the window open past the nominal end, for late scores
+
+
+def games_on(kicks: Mapping[str, datetime], now: datetime) -> bool:
+    """True while any game is on: from kickoff to GAME_MINUTES plus the pad after it."""
+    span = timedelta(minutes=GAME_MINUTES + LIVE_WINDOW_PAD_MINUTES)
+    return any(k <= now < k + span for k in kicks.values())
 
 
 def _games(schedules: pl.DataFrame, season: int, week: int) -> list[tuple]:
