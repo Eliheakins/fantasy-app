@@ -3,7 +3,7 @@ import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import type { ScheduleRow } from "./types";
 
 const COLUMNS: Column<ScheduleRow>[] = [
-  { label: "Week", numeric: true, render: (r) => r.week },
+  { label: "Week", role: "primary", numeric: true, render: (r) => r.week },
   { label: "Opponent", render: (r) => r.opponent },
   { label: "You", numeric: true, render: (r) => formatNumber(r.my_points) },
   { label: "Them", numeric: true, render: (r) => formatNumber(r.their_points) },

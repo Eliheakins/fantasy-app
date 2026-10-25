@@ -6,7 +6,7 @@ import type { TradeEvaluation, TradeSide } from "./types";
 
 type RosterChange = TradeEvaluation["roster_changes"][number];
 const CHANGE_COLUMNS: readonly Column<RosterChange>[] = [
-  { label: "Team", render: (c) => c.team_name },
+  { label: "Team", role: "primary", render: (c) => c.team_name },
   { label: "Action", render: (c) => c.action },
   { label: "Player", render: (c) => c.full_name },
   { label: "Position", render: (c) => c.position },

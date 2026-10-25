@@ -15,13 +15,14 @@ export function needNote(r: Pick<FoundTrade, "my_fills" | "their_fills">): strin
 }
 
 const COLUMNS: readonly Column<FoundTrade>[] = [
-  { label: "Partner", render: (r) => r.partner },
+  { label: "Partner", role: "primary", render: (r) => r.partner },
   { label: "You give", render: (r) => r.give },
   { label: "You get", render: (r) => r.get },
-  { label: "Needs", render: needNote },
-  { label: "Kind", render: (r) => r.kind },
+  { label: "Needs", role: "detail", render: needNote },
+  { label: "Kind", role: "detail", render: (r) => r.kind },
   {
     label: "Market value",
+    role: "detail",
     render: (r) =>
       r.market ? (
         <span className="text-muted">
@@ -34,9 +35,9 @@ const COLUMNS: readonly Column<FoundTrade>[] = [
   },
   { label: "Your playoffs (pts)", render: (r) => <Delta points={points(r.my_playoff)} noise={NOISE_PERCENT} /> },
   { label: "Your title (pts)", render: (r) => <Delta points={points(r.my_title)} noise={NOISE_PERCENT} /> },
-  { label: "Their playoffs (pts)", render: (r) => <Delta points={points(r.their_playoff)} noise={NOISE_PERCENT} /> },
-  { label: "Their title (pts)", render: (r) => <Delta points={points(r.their_title)} noise={NOISE_PERCENT} /> },
-  { label: "Error (pts)", render: (r) => `${points(r.se_title).toFixed(2)}%` },
+  { label: "Their playoffs (pts)", role: "detail", render: (r) => <Delta points={points(r.their_playoff)} noise={NOISE_PERCENT} /> },
+  { label: "Their title (pts)", role: "detail", render: (r) => <Delta points={points(r.their_title)} noise={NOISE_PERCENT} /> },
+  { label: "Error (pts)", role: "detail", render: (r) => `${points(r.se_title).toFixed(2)}%` },
 ];
 
 export function FoundTradesTable({ rows }: { rows: readonly FoundTrade[] }) {
