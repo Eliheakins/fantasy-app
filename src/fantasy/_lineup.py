@@ -24,6 +24,7 @@ from fantasy._engine import (
     _tier,
     _tier_edges,
     _week_points,
+    _week_values,
 )
 from fantasy._schemas import ENGINE_SCHEMAS
 from fantasy.sim import moves
@@ -87,7 +88,7 @@ def lineup(
     data, mine = loaded or _league(league_key)
     week = week or data.current_week
     names, positions = _names(), moves.position_of(data)
-    values = moves.week_values(data).get(week, {})
+    values = _week_values(data, week, positions)
     pool = _pool(data, mine, positions, values)
     marginals = _marginals(data.league_id)
     ratio = {
@@ -100,8 +101,13 @@ def lineup(
     starting = set(_set_starters(data.league_id, week, mine)) if current else set()
 
     status, locked = _status_and_locks(week, data.current_week, now)
+    # a player who is out is never slotted: an empty slot scores the same, and Sleeper shows blank
+    available = [p for p in pool if not _is_out(data, p.id)]
     best = lineup_with_locks(
-        pool, lineup_slots(data.roster_positions), {p.id for p in pool if p.id in locked}, starting
+        available,
+        lineup_slots(data.roster_positions),
+        {p.id for p in available if p.id in locked},
+        starting,
     )
     slot_of = {pid: slot for slot, pid in best.slots}
     live = data.live if current else {}
@@ -159,7 +165,8 @@ def win_probability(
     if opp is None or mine_rows.is_empty():
         return pl.DataFrame(schema=ENGINE_SCHEMAS["win_probability"])
 
-    positions, values = moves.position_of(data), moves.week_values(data).get(week, {})
+    positions = moves.position_of(data)
+    values = _week_values(data, week, positions)
     slots = lineup_slots(data.roster_positions)
     opp_ids = _opponent_lineup(data, opp, week, positions, values, slots)
 

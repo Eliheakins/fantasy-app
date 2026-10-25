@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 from threading import Lock
@@ -19,7 +19,7 @@ import polars as pl
 from fantasy import store
 from fantasy.config import load_config
 from fantasy.sim import moves
-from fantasy.sim.availability import LONG_TERM, locked_teams
+from fantasy.sim.availability import GAME_MINUTES, LONG_TERM, kickoffs, locked_teams
 from fantasy.sim.calibration import tier_of
 from fantasy.sim.lineup import Player, auto_lineup, constant_slot_count
 from fantasy.sim.odds import CurrentWeek, LeagueData
@@ -43,15 +43,39 @@ def _read(name: str, data_dir: Path, area: str = "raw") -> pl.DataFrame:
 LEAGUE_CACHE_SIZE = 4
 
 
+LIVE_BUCKET_MINUTES = 2  # how stale the share of a game left may get while games are on
+LIVE_WINDOW_PAD_MINUTES = 5  # keep moving a little past the assumed end so the last build is final
+
+
+def _clock_bucket(kicks: dict[str, datetime], now: datetime) -> str:
+    """Empty unless a game is on; then a value that changes every LIVE_BUCKET_MINUTES. The share
+    of each game left is read off the clock when a league is built, so the cache key must move."""
+    end = timedelta(minutes=GAME_MINUTES + LIVE_WINDOW_PAD_MINUTES)
+    if not any(k <= now < k + end for k in kicks.values()):
+        return ""
+    return f"@{int(now.timestamp() // (LIVE_BUCKET_MINUTES * 60))}"
+
+
+def _live_bucket() -> str:
+    try:
+        leagues = store.read_table("leagues", "raw", store.DATA_DIR)
+        schedules = store.read_table("nfl_schedules", "raw", store.DATA_DIR)
+        week = int(leagues["current_week"].max())  # type: ignore[arg-type]
+    except FileNotFoundError:
+        return ""
+    return _clock_bucket(kickoffs(schedules, load_config().season, week), datetime.now(UTC))
+
+
 def data_version() -> str:
     """Latest mtime (ns) and total size of the parquet files under data/raw and data/derived,
-    read through `store.DATA_DIR` now. Changes whenever a stage rewrites a table."""
+    read through `store.DATA_DIR` now, plus a clock bucket while games are on. Changes whenever a
+    stage rewrites a table or the live clock moves on."""
     stats = [
         p.stat() for area in ("raw", "derived") for p in (store.DATA_DIR / area).glob("*.parquet")
     ]
     if not stats:
         return "0-0"
-    return f"{max(s.st_mtime_ns for s in stats)}-{sum(s.st_size for s in stats)}"
+    return f"{max(s.st_mtime_ns for s in stats)}-{sum(s.st_size for s in stats)}{_live_bucket()}"
 
 
 _PINNED_VERSION: ContextVar[str | None] = ContextVar("pinned_version", default=None)
@@ -154,6 +178,16 @@ def _pool(
     return [
         Player(i, positions[i], values[i]) for i in moves.team_ids(data, roster_id) if i in values
     ]
+
+
+def _week_values(data: LeagueData, week: int, positions: dict[str, str]) -> dict[str, float]:
+    """Expected points by player for `week`. In the current week a player whose game is over has
+    no projection left, so he counts what he scored: without him a lineup would show empty slots."""
+    values = moves.week_values(data).get(week, {})
+    if week != data.current_week:
+        return values
+    final = {i: points for i, (points, share) in data.live.items() if share <= 0 and i in positions}
+    return {**values, **final}
 
 
 def _opponent_of(data: LeagueData, mine: int, week: int) -> int | None:

@@ -64,8 +64,8 @@ def test_win_probability_options_are_pinned(
     same = {
         "win_prob": 0.867,
         "expected_points": 17.6,
-        "gsis_ids": ["G_QB", "G_RB", "G_WR"],
-        "slots": ["QB", "RB", "WR"],
+        "gsis_ids": ["G_QB", "G_WR"],  # G_RB is Out, so his slot stays empty
+        "slots": ["QB", "WR"],
         "share_better": 0.5,
         "floor": 9.040432,
         "median": 18.255272,
