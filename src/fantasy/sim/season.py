@@ -14,6 +14,7 @@ winner(3/6); the final is the next week.
 from dataclasses import dataclass
 
 import numpy as np
+import polars as pl
 
 N_PLAYOFF_TEAMS = 6
 BYE_SEEDS = 2
@@ -53,12 +54,17 @@ def noise_matrix(roster_ids: list[int], weeks: list[int], n_sims: int, seed: int
     return z
 
 
+def team_scores(inp: SeasonInputs) -> np.ndarray:
+    """Simulated team scores (T, W, S): mean + persistent shift + noise."""
+    z = noise_matrix(inp.roster_ids, inp.weeks, inp.shift.shape[2], inp.seed)
+    return inp.mean[:, :, None] + inp.shift + inp.noise_sd[:, :, None] * z
+
+
 def simulate_season(inp: SeasonInputs) -> SeasonResult:
     """Simulate inp.shift.shape[2] seasons."""
     n_teams = len(inp.roster_ids)
     n_sims = inp.shift.shape[2]
-    z = noise_matrix(inp.roster_ids, inp.weeks, n_sims, inp.seed)
-    scores = inp.mean[:, :, None] + inp.shift + inp.noise_sd[:, :, None] * z  # (T, W, S)
+    scores = team_scores(inp)
     column = {week: w for w, week in enumerate(inp.weeks)}
 
     wins = np.broadcast_to(inp.wins0[:, None], (n_teams, n_sims)).astype(float)
@@ -106,3 +112,43 @@ def simulate_season(inp: SeasonInputs) -> SeasonResult:
         made_playoffs=made,
         champion=champion,
     )
+
+
+CONDITIONAL_SCHEMA = {
+    "week": pl.Int64,
+    "winner_id": pl.Int64,
+    "loser_id": pl.Int64,
+    "roster_id": pl.Int64,
+    "n_runs": pl.Int64,
+    "p_condition": pl.Float64,
+    "p_playoffs": pl.Float64,
+    "p_title": pl.Float64,
+}
+
+
+def conditional_odds(inp: SeasonInputs, result: SeasonResult) -> pl.DataFrame:
+    """Every team's playoff and title odds given each outcome of each remaining regular-season
+    matchup: the runs where that side won (ties drop out), averaged. One row per (matchup
+    outcome, team); p_condition is the share of runs, n_runs the runs behind the averages."""
+    scores = team_scores(inp)
+    column = {week: w for w, week in enumerate(inp.weeks)}
+    n_teams, n_sims = scores.shape[0], scores.shape[2]
+    ids = inp.roster_ids
+    rows = []
+    for week, pairs in inp.pairs.items():
+        if week not in column:
+            continue
+        for a, b in pairs:
+            sa, sb = scores[a, column[week]], scores[b, column[week]]
+            for win, lose, mask in ((a, b, sa > sb), (b, a, sb > sa)):
+                n_runs = int(mask.sum())
+                if n_runs == 0:
+                    continue
+                playoffs = result.made_playoffs[:, mask].mean(axis=1)
+                titles = np.bincount(result.champion[mask], minlength=n_teams) / n_runs
+                rows += [
+                    (week, ids[win], ids[lose], ids[t], n_runs, n_runs / n_sims,
+                     float(playoffs[t]), float(titles[t]))
+                    for t in range(n_teams)
+                ]  # fmt: skip
+    return pl.DataFrame(rows, schema=CONDITIONAL_SCHEMA, orient="row")

@@ -91,6 +91,57 @@ class OddsHistoryRow(Row):
     p_title: float | None
 
 
+class PowerRankingRow(Row):
+    roster_id: int
+    team_name: str
+    is_me: bool
+    rank: int | None
+    exp_points_week: float | None
+    exp_wins: float | None
+    p_playoffs: float | None
+    p_title: float | None
+    sos_remaining: float | None
+    sos_rank: int | None
+
+
+class LuckRow(Row):
+    roster_id: int
+    team_name: str
+    is_me: bool
+    weeks: int
+    wins: int
+    losses: int
+    ties: int
+    ap_wins: int
+    ap_losses: int
+    ap_ties: int
+    exp_wins: float
+    luck: float
+
+
+class ManagerGradeRow(Row):
+    roster_id: int
+    team_name: str
+    is_me: bool
+    weeks: int
+    actual_points: float
+    optimal_points: float
+    efficiency: float
+    bench_points_left: float
+
+
+class WhatIfRow(Row):
+    winner_id: int
+    loser_id: int
+    winner: str
+    loser: str
+    involves_me: bool
+    p_condition: float
+    n_runs: int
+    d_playoffs: float
+    d_title: float
+
+
 class StreamerRow(Row):
     unit: str
     name: str | None

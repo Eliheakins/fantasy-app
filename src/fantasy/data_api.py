@@ -14,7 +14,7 @@ from typing import Any
 
 import polars as pl
 
-from fantasy import store
+from fantasy import _league_view, store
 from fantasy._engine import _league, _names, _read
 from fantasy._engine import _tier as _tier  # re-exported: tests import it from here
 from fantasy._engine import _tier_edges as _tier_edges
@@ -42,12 +42,15 @@ __all__ = [
     "leagues",
     "lineup",
     "live_score",
+    "luck",
+    "manager_grades",
     "missing_layers",
     "moves",
     "odds_history",
     "player_outlook",
     "player_weeks",
     "position_strength",
+    "power_rankings",
     "refresh_live",
     "roster",
     "schedule",
@@ -61,6 +64,7 @@ __all__ = [
     "trade_roster_changes",
     "unmatched",
     "waivers",
+    "what_if",
     "win_probability",
 ]
 
@@ -179,6 +183,39 @@ def odds_history(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFra
         return pl.DataFrame(schema={c: store.SCHEMAS["sim_season_history"][c] for c in columns})
     history = _read("sim_season_history", data_dir, area="archive")
     return history.filter(pl.col("league_id") == me["league_id"]).select(columns)
+
+
+def power_rankings(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+    """Teams by expected score this week, with season odds and remaining schedule strength."""
+    me = _my_league(league_key, data_dir)
+    if me is None:
+        return pl.DataFrame(schema=ENGINE_SCHEMAS["power_rankings"])
+    return _league_view.power_rankings(me, data_dir)
+
+
+def luck(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+    """Actual wins against the wins the all-play record predicts, luckiest first."""
+    me = _my_league(league_key, data_dir)
+    if me is None:
+        return pl.DataFrame(schema=ENGINE_SCHEMAS["luck"])
+    return _league_view.luck(me, data_dir)
+
+
+def manager_grades(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+    """Points started against the best lineup in hindsight, most efficient first."""
+    me = _my_league(league_key, data_dir)
+    if me is None:
+        return pl.DataFrame(schema=ENGINE_SCHEMAS["manager_grades"])
+    return _league_view.manager_grades(me, data_dir)
+
+
+def what_if(league_key: str, week: int = 0, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+    """My change in playoff and title odds for each outcome of each matchup in a week (0 is the
+    current week). Empty for completed and playoff weeks."""
+    me = _my_league(league_key, data_dir)
+    if me is None:
+        return pl.DataFrame(schema=ENGINE_SCHEMAS["what_if"])
+    return _league_view.what_if(me, week, data_dir)
 
 
 def seed_distribution(league_key: str) -> pl.DataFrame:

@@ -216,6 +216,176 @@
         }
       }
     },
+    "/api/leagues/{league}/power-rankings": {
+      "get": {
+        "summary": "Power Rankings",
+        "operationId": "power_rankings_api_leagues__league__power_rankings_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_PowerRankingRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/luck": {
+      "get": {
+        "summary": "Luck",
+        "operationId": "luck_api_leagues__league__luck_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_LuckRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/manager-grades": {
+      "get": {
+        "summary": "Manager Grades",
+        "operationId": "manager_grades_api_leagues__league__manager_grades_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_ManagerGradeRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/what-if": {
+      "get": {
+        "summary": "What If",
+        "operationId": "what_if_api_leagues__league__what_if_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "week",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 22,
+              "minimum": 0,
+              "description": "0 means the current week",
+              "default": 0,
+              "title": "Week"
+            },
+            "description": "0 means the current week"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_WhatIfRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/streamers": {
       "get": {
         "summary": "Streamers",
@@ -1647,6 +1817,120 @@
         ],
         "title": "Envelope[list[LiveScoreRow]]"
       },
+      "Envelope_list_LuckRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/LuckRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[LuckRow]]"
+      },
+      "Envelope_list_ManagerGradeRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ManagerGradeRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[ManagerGradeRow]]"
+      },
       "Envelope_list_OddsHistoryRow__": {
         "properties": {
           "status": {
@@ -1874,6 +2158,63 @@
           "started_at"
         ],
         "title": "Envelope[list[PlayerWeekRow]]"
+      },
+      "Envelope_list_PowerRankingRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/PowerRankingRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[PowerRankingRow]]"
       },
       "Envelope_list_RosterRow__": {
         "properties": {
@@ -2274,6 +2615,63 @@
         ],
         "title": "Envelope[list[WaiverRow]]"
       },
+      "Envelope_list_WhatIfRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/WhatIfRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[WhatIfRow]]"
+      },
       "FoundTradeRow": {
         "properties": {
           "partner": {
@@ -2651,6 +3049,124 @@
         ],
         "title": "LiveScoreRow"
       },
+      "LuckRow": {
+        "properties": {
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "is_me": {
+            "type": "boolean",
+            "title": "Is Me"
+          },
+          "weeks": {
+            "type": "integer",
+            "title": "Weeks"
+          },
+          "wins": {
+            "type": "integer",
+            "title": "Wins"
+          },
+          "losses": {
+            "type": "integer",
+            "title": "Losses"
+          },
+          "ties": {
+            "type": "integer",
+            "title": "Ties"
+          },
+          "ap_wins": {
+            "type": "integer",
+            "title": "Ap Wins"
+          },
+          "ap_losses": {
+            "type": "integer",
+            "title": "Ap Losses"
+          },
+          "ap_ties": {
+            "type": "integer",
+            "title": "Ap Ties"
+          },
+          "exp_wins": {
+            "type": "number",
+            "title": "Exp Wins"
+          },
+          "luck": {
+            "type": "number",
+            "title": "Luck"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "roster_id",
+          "team_name",
+          "is_me",
+          "weeks",
+          "wins",
+          "losses",
+          "ties",
+          "ap_wins",
+          "ap_losses",
+          "ap_ties",
+          "exp_wins",
+          "luck"
+        ],
+        "title": "LuckRow"
+      },
+      "ManagerGradeRow": {
+        "properties": {
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "is_me": {
+            "type": "boolean",
+            "title": "Is Me"
+          },
+          "weeks": {
+            "type": "integer",
+            "title": "Weeks"
+          },
+          "actual_points": {
+            "type": "number",
+            "title": "Actual Points"
+          },
+          "optimal_points": {
+            "type": "number",
+            "title": "Optimal Points"
+          },
+          "efficiency": {
+            "type": "number",
+            "title": "Efficiency"
+          },
+          "bench_points_left": {
+            "type": "number",
+            "title": "Bench Points Left"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "roster_id",
+          "team_name",
+          "is_me",
+          "weeks",
+          "actual_points",
+          "optimal_points",
+          "efficiency",
+          "bench_points_left"
+        ],
+        "title": "ManagerGradeRow"
+      },
       "OddsHistoryRow": {
         "properties": {
           "run_at": {
@@ -2905,6 +3421,114 @@
           "projection"
         ],
         "title": "PlayerWeekRow"
+      },
+      "PowerRankingRow": {
+        "properties": {
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "is_me": {
+            "type": "boolean",
+            "title": "Is Me"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "exp_points_week": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exp Points Week"
+          },
+          "exp_wins": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exp Wins"
+          },
+          "p_playoffs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Playoffs"
+          },
+          "p_title": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Title"
+          },
+          "sos_remaining": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sos Remaining"
+          },
+          "sos_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sos Rank"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "roster_id",
+          "team_name",
+          "is_me",
+          "rank",
+          "exp_points_week",
+          "exp_wins",
+          "p_playoffs",
+          "p_title",
+          "sos_remaining",
+          "sos_rank"
+        ],
+        "title": "PowerRankingRow"
       },
       "RefreshData": {
         "properties": {
@@ -3676,6 +4300,60 @@
           "trending_adds"
         ],
         "title": "WaiverRow"
+      },
+      "WhatIfRow": {
+        "properties": {
+          "winner_id": {
+            "type": "integer",
+            "title": "Winner Id"
+          },
+          "loser_id": {
+            "type": "integer",
+            "title": "Loser Id"
+          },
+          "winner": {
+            "type": "string",
+            "title": "Winner"
+          },
+          "loser": {
+            "type": "string",
+            "title": "Loser"
+          },
+          "involves_me": {
+            "type": "boolean",
+            "title": "Involves Me"
+          },
+          "p_condition": {
+            "type": "number",
+            "title": "P Condition"
+          },
+          "n_runs": {
+            "type": "integer",
+            "title": "N Runs"
+          },
+          "d_playoffs": {
+            "type": "number",
+            "title": "D Playoffs"
+          },
+          "d_title": {
+            "type": "number",
+            "title": "D Title"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "winner_id",
+          "loser_id",
+          "winner",
+          "loser",
+          "involves_me",
+          "p_condition",
+          "n_runs",
+          "d_playoffs",
+          "d_title"
+        ],
+        "title": "WhatIfRow"
       },
       "WinProbabilityData": {
         "properties": {

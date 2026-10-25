@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import polars as pl
 
 from fantasy import store
@@ -22,11 +23,11 @@ from fantasy.sim.environment import Situation, apply_environment
 from fantasy.sim.environment import effects_dict as environment_effects
 from fantasy.sim.injuries import Flag, InjuryModel, injury_projections
 from fantasy.sim.lineup import Player
-from fantasy.sim.odds import CurrentWeek, LeagueData, league_odds
+from fantasy.sim.odds import CurrentWeek, LeagueData, build_inputs
 from fantasy.sim.outlook import apply_outlook, effects_dict
 from fantasy.sim.schedule import pairings, standings
 from fantasy.sim.scoring_scale import position_scale, reference_league, scale_points
-from fantasy.sim.season import N_PLAYOFF_TEAMS
+from fantasy.sim.season import N_PLAYOFF_TEAMS, SeasonInputs, conditional_odds, simulate_season
 from fantasy.stages.crosswalk import TEAM_MAP
 from fantasy.stages.distributions import calibrated
 from fantasy.stages.environment import live as environment_live
@@ -539,13 +540,33 @@ def append_history(latest: pl.DataFrame, data_dir: Path = store.DATA_DIR) -> pl.
     return stamped
 
 
+def team_week_rows(data: LeagueData, inp: SeasonInputs) -> list[tuple[Any, ...]]:
+    """(league_id, roster_id, week, as_of_week, exp_points, sd_points) for each remaining
+    regular-season week. exp_points counts the persistent shift (absence losses sit in it)."""
+    expected = inp.mean + inp.shift.mean(axis=2)
+    spread = np.sqrt(inp.noise_sd**2 + inp.shift.var(axis=2))
+    return [
+        (data.league_id, rid, week, data.current_week, float(expected[t, w]), float(spread[t, w]))
+        for t, rid in enumerate(data.roster_ids)
+        for w, week in enumerate(inp.weeks)
+        if week < data.playoff_start
+    ]
+
+
 def run(n_sims: int | None = None) -> pl.DataFrame:
     cfg = load_config()
     n_sims = n_sims or cfg.n_sims
-    rows, seed_rows = [], []
+    rows, seed_rows, week_rows, conditional = [], [], [], []
     for league in store.read_table("leagues", "raw").iter_rows(named=True):
         data = load_league_data(league)
-        result = league_odds(data, n_sims=n_sims)
+        inp = build_inputs(data, None, n_sims, 0)
+        result = simulate_season(inp)
+        week_rows += team_week_rows(data, inp)
+        cond = conditional_odds(inp, result).with_columns(
+            pl.lit(league["league_id"]).alias("league_id"),
+            pl.lit(data.current_week).cast(pl.Int64).alias("as_of_week"),
+        )
+        conditional.append(cond.select(*store.SCHEMAS["sim_conditional"]))
         for i, roster_id in enumerate(data.roster_ids):
             seed_rows += [
                 (league["league_id"], roster_id, k + 1, float(result.p_seed[i, k]))
@@ -565,11 +586,20 @@ def run(n_sims: int | None = None) -> pl.DataFrame:
                 }
             )
     latest = pl.DataFrame(rows, schema=store.SCHEMAS["sim_season"])
-    # the append-only history goes last: a failure earlier leaves it behind the tables, never ahead
-    store.write_table(
-        "sim_seeds", pl.DataFrame(seed_rows, schema=store.SCHEMAS["sim_seeds"], orient="row")
+    # one call so the tables cannot drift from sim_season; the append-only history goes last:
+    # a failure earlier leaves it behind the tables, never ahead
+    store.write_tables(
+        {
+            "sim_seeds": pl.DataFrame(seed_rows, schema=store.SCHEMAS["sim_seeds"], orient="row"),
+            "sim_team_weeks": pl.DataFrame(
+                week_rows, schema=store.SCHEMAS["sim_team_weeks"], orient="row"
+            ),
+            "sim_conditional": pl.concat(conditional)
+            if conditional
+            else pl.DataFrame(schema=store.SCHEMAS["sim_conditional"]),
+            "sim_season": latest,
+        }
     )
-    store.write_table("sim_season", latest)
     append_history(latest)
     return latest
 
