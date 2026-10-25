@@ -126,6 +126,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/power-rankings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Power Rankings */
+        get: operations["power_rankings_api_leagues__league__power_rankings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/leagues/{league}/luck": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Luck */
+        get: operations["luck_api_leagues__league__luck_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/leagues/{league}/manager-grades": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Manager Grades */
+        get: operations["manager_grades_api_leagues__league__manager_grades_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/leagues/{league}/what-if": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What If */
+        get: operations["what_if_api_leagues__league__what_if_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/streamers": {
         parameters: {
             query?: never;
@@ -598,6 +666,32 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** Envelope[list[LuckRow]] */
+        Envelope_list_LuckRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["LuckRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[list[ManagerGradeRow]] */
+        Envelope_list_ManagerGradeRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["ManagerGradeRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[list[MarketValueRow]] */
         Envelope_list_MarketValueRow__: {
             /**
@@ -659,6 +753,19 @@ export interface components {
             status: "ok" | "running" | "error";
             /** Data */
             data: components["schemas"]["PlayerWeekRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[list[PowerRankingRow]] */
+        Envelope_list_PowerRankingRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["PowerRankingRow"][] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -750,6 +857,19 @@ export interface components {
             status: "ok" | "running" | "error";
             /** Data */
             data: components["schemas"]["WaiverRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[list[WhatIfRow]] */
+        Envelope_list_WhatIfRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["WhatIfRow"][] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -865,6 +985,52 @@ export interface components {
             /** Projected Final */
             projected_final: number;
         };
+        /** LuckRow */
+        LuckRow: {
+            /** Roster Id */
+            roster_id: number;
+            /** Team Name */
+            team_name: string;
+            /** Is Me */
+            is_me: boolean;
+            /** Weeks */
+            weeks: number;
+            /** Wins */
+            wins: number;
+            /** Losses */
+            losses: number;
+            /** Ties */
+            ties: number;
+            /** Ap Wins */
+            ap_wins: number;
+            /** Ap Losses */
+            ap_losses: number;
+            /** Ap Ties */
+            ap_ties: number;
+            /** Exp Wins */
+            exp_wins: number;
+            /** Luck */
+            luck: number;
+        };
+        /** ManagerGradeRow */
+        ManagerGradeRow: {
+            /** Roster Id */
+            roster_id: number;
+            /** Team Name */
+            team_name: string;
+            /** Is Me */
+            is_me: boolean;
+            /** Weeks */
+            weeks: number;
+            /** Actual Points */
+            actual_points: number;
+            /** Optimal Points */
+            optimal_points: number;
+            /** Efficiency */
+            efficiency: number;
+            /** Bench Points Left */
+            bench_points_left: number;
+        };
         /** MarketValueRow */
         MarketValueRow: {
             /** Gsis Id */
@@ -956,6 +1122,29 @@ export interface components {
             week: number;
             /** Projection */
             projection: number;
+        };
+        /** PowerRankingRow */
+        PowerRankingRow: {
+            /** Roster Id */
+            roster_id: number;
+            /** Team Name */
+            team_name: string;
+            /** Is Me */
+            is_me: boolean;
+            /** Rank */
+            rank: number | null;
+            /** Exp Points Week */
+            exp_points_week: number | null;
+            /** Exp Wins */
+            exp_wins: number | null;
+            /** P Playoffs */
+            p_playoffs: number | null;
+            /** P Title */
+            p_title: number | null;
+            /** Sos Remaining */
+            sos_remaining: number | null;
+            /** Sos Rank */
+            sos_rank: number | null;
         };
         /** RefreshData */
         RefreshData: {
@@ -1170,6 +1359,27 @@ export interface components {
             /** Trending Adds */
             trending_adds: number | null;
         };
+        /** WhatIfRow */
+        WhatIfRow: {
+            /** Winner Id */
+            winner_id: number;
+            /** Loser Id */
+            loser_id: number;
+            /** Winner */
+            winner: string;
+            /** Loser */
+            loser: string;
+            /** Involves Me */
+            involves_me: boolean;
+            /** P Condition */
+            p_condition: number;
+            /** N Runs */
+            n_runs: number;
+            /** D Playoffs */
+            d_playoffs: number;
+            /** D Title */
+            d_title: number;
+        };
         /** WinProbabilityData */
         WinProbabilityData: {
             /** Script */
@@ -1368,6 +1578,133 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_OddsHistoryRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    power_rankings_api_leagues__league__power_rankings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_PowerRankingRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    luck_api_leagues__league__luck_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_LuckRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    manager_grades_api_leagues__league__manager_grades_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_ManagerGradeRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    what_if_api_leagues__league__what_if_get: {
+        parameters: {
+            query?: {
+                /** @description 0 means the current week */
+                week?: number;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_WhatIfRow__"];
                 };
             };
             /** @description Validation Error */

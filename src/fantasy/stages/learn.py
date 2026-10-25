@@ -150,7 +150,12 @@ def feature_frame(targets: pl.DataFrame, state: pl.DataFrame, horizon: int = 1) 
         targets.with_columns((week_index() - (horizon - 1)).alias("t"))
         .sort("t")
         .join_asof(
-            state.sort("t"), on="t", by=GROUP, strategy="backward", allow_exact_matches=False
+            state.sort("t"),
+            on="t",
+            by=GROUP,
+            strategy="backward",
+            allow_exact_matches=False,
+            check_sortedness=False,
         )
     )
     return joined.with_columns(has_history=pl.col("n_games").is_not_null()).drop("t")
@@ -218,7 +223,12 @@ def lag_asof(
     )
     left = target.with_columns((week_index() - shift).alias("t")).sort("t")
     return left.join_asof(
-        state, on="t", by=by, strategy="backward", allow_exact_matches=False
+        state,
+        on="t",
+        by=by,
+        strategy="backward",
+        allow_exact_matches=False,
+        check_sortedness=False,
     ).drop("t")
 
 
@@ -230,7 +240,9 @@ def latest_asof(
     table's last week keeps the last known value."""
     right = table.select(by, week_index().alias("t"), *cols).sort("t")
     left = target.with_columns((week_index() - shift).alias("t")).sort("t")
-    return left.join_asof(right, on="t", by=by, strategy="backward").drop("t")
+    return left.join_asof(right, on="t", by=by, strategy="backward", check_sortedness=False).drop(
+        "t"
+    )
 
 
 def with_schedule(frame: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:

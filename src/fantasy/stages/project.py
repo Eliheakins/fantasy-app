@@ -118,7 +118,14 @@ def project_targets(
     joined = (
         targets.with_columns((index - (horizon - 1)).alias("t"))
         .sort("t")
-        .join_asof(latest, on="t", by=GROUP, strategy="backward", allow_exact_matches=False)
+        .join_asof(
+            latest,
+            on="t",
+            by=GROUP,
+            strategy="backward",
+            allow_exact_matches=False,
+            check_sortedness=False,
+        )
         .join(prior, on=["league_id", "position", "season"], how="left")
         .join(context, on=["season", "week", "team"], how="left")
         .join(avg_implied, on="season", how="left")
@@ -206,12 +213,14 @@ def current_and_rostered() -> tuple[pl.DataFrame, pl.DataFrame]:
         .unique(subset="gsis_id", keep="first", maintain_order=True)
         .drop("sleeper_id")
     )
-    on_rosters = store.read_table("rosters", "raw").join(
-        id_map.select("sleeper_id", "gsis_id"), on="sleeper_id", how="left"
+    on_rosters = (
+        store.read_table("rosters", "raw")
+        .join(id_map.select("sleeper_id", "gsis_id"), on="sleeper_id", how="left")
+        .join(positions, on="sleeper_id", how="left")
     )
-    for league_id, n in (
-        on_rosters.filter(pl.col("gsis_id").is_null()).group_by("league_id").len().iter_rows()
-    ):
+    # team defenses have no nflverse id by design (they map by team code)
+    unmapped = on_rosters.filter(pl.col("gsis_id").is_null() & (pl.col("position") != "DEF"))
+    for league_id, n in unmapped.group_by("league_id").len().iter_rows():
         print(f"league {league_id}: {n} rostered players have no nflverse id, so no projection")
     rostered = (
         on_rosters.filter(pl.col("gsis_id").is_not_null())

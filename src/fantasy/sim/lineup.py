@@ -7,6 +7,7 @@ near-optimal alternatives. K and DEF slots are not filled here: they are not ski
 players, so callers add their own value for them.
 """
 
+import itertools
 from typing import NamedTuple
 
 ELIGIBLE: dict[str, frozenset[str]] = {
@@ -31,6 +32,12 @@ class Lineup(NamedTuple):
     total: float
     players: frozenset[str]
     slots: tuple[tuple[str, str], ...]  # (slot, player id), narrowest slots first
+
+
+class ActualPlayer(NamedTuple):
+    id: str
+    positions: tuple[str, ...]  # fantasy positions; more than one for a multi-position player
+    points: float
 
 
 def lineup_slots(roster_positions: list[str]) -> list[str]:
@@ -105,3 +112,23 @@ def top_lineups(players: list[Player], slots: list[str], k: int) -> list[Lineup]
 
     fill(0, frozenset(), ())
     return sorted(found.values(), key=lambda lu: (-lu.total, sorted(lu.players)))[:k]
+
+
+def best_actual(players: list[ActualPlayer], roster_positions: list[str]) -> float:
+    """Most points a roster could have started in a week it already played (hindsight). Skill
+    slots by the greedy fill, K and DEF as the top n of each (they are not in ELIGIBLE). A
+    multi-position player is tried at each of his positions."""
+    slots = lineup_slots(roster_positions)
+    skill = [p for p in players if p.positions[0] not in CONSTANT_SLOTS]
+    total = 0.0
+    for kind, n in constant_slot_count(roster_positions).items():
+        total += sum(
+            sorted((p.points for p in players if p.positions[0] == kind), reverse=True)[:n]
+        )
+    flexible = [p for p in skill if len(p.positions) > 1]
+    fixed = [Player(p.id, p.positions[0], p.points) for p in skill if len(p.positions) == 1]
+    best = 0.0
+    for choice in itertools.product(*(p.positions for p in flexible)):
+        chosen = [Player(p.id, pos, p.points) for p, pos in zip(flexible, choice, strict=True)]
+        best = max(best, auto_lineup(fixed + chosen, slots).total)
+    return total + best

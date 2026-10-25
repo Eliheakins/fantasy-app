@@ -137,9 +137,9 @@ def build_panel(
         "target_ewma",
         "carry_ewma",
     ).sort("t")
-    gone = out.join_asof(latest, on="t", by="gsis_id", strategy="backward").drop_nulls(
-        "target_ewma"
-    )
+    gone = out.join_asof(
+        latest, on="t", by="gsis_id", strategy="backward", check_sortedness=False
+    ).drop_nulls("target_ewma")
     gone = gone.filter(
         (pl.col("target_ewma") > MIN_SHARE[0]) | (pl.col("carry_ewma") > MIN_SHARE[1])
     )

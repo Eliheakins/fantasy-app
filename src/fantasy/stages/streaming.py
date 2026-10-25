@@ -45,6 +45,10 @@ def tier_terms(scoring: dict[str, float], prefix: str) -> list[tuple[int, int, f
     return terms
 
 
+# the schedules call the 2018 and 2019 Raiders OAK; the team stats call them LV
+SCHEDULE_TEAM_CODES = {"OAK": "LV"}
+
+
 def tier_expr(column: str, terms: list[tuple[int, int, float]]) -> pl.Expr:
     expr = pl.lit(0.0)
     for low, high, weight in terms:
@@ -71,7 +75,7 @@ def defense_points_frame(
     )
     games = team_games.select(
         "season", "week", "team", "points_against", "team_implied", "opp_implied", "roof"
-    )
+    ).with_columns(pl.col("team").replace(SCHEDULE_TEAM_CODES))
     joined = stats.join(games, on=["season", "week", "team"]).join(
         opponent, on=["season", "week", "opponent_team"]
     )

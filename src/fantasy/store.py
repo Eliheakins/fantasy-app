@@ -188,6 +188,18 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     # written by environment (area: derived): offense efficiency and opposing-corner effects
     "environment_effects": _cols(strings="position kind", ints="n", floats="value t"),
     "sim_seeds": _cols(strings="league_id", ints="roster_id seed", floats="p"),
+    # written by simulate with sim_season: a team's expected score (mean plus mean shift) and spread
+    # in each remaining regular-season week
+    "sim_team_weeks": _cols(
+        strings="league_id", ints="roster_id week as_of_week", floats="exp_points sd_points"
+    ),
+    # written by simulate with sim_season: odds for roster_id given winner_id beats loser_id in
+    # `week`, over the n_runs runs where that happened (p_condition of all runs)
+    "sim_conditional": _cols(
+        strings="league_id",
+        ints="as_of_week week winner_id loser_id roster_id n_runs",
+        floats="p_condition p_playoffs p_title",
+    ),
     "sim_season_history": _cols(
         strings="league_id team_name run_at",
         ints="roster_id as_of_week n_sims",

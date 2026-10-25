@@ -23,11 +23,14 @@ from fantasy.api_models import (
     LeagueRow,
     LineupRow,
     LiveScoreRow,
+    LuckRow,
+    ManagerGradeRow,
     MarketValueRow,
     OddsHistoryRow,
     OutlookRow,
     PartnerRow,
     PlayerWeekRow,
+    PowerRankingRow,
     RefreshData,
     RosterRow,
     ScheduleRow,
@@ -40,6 +43,7 @@ from fantasy.api_models import (
     TradeRequest,
     UnmatchedData,
     WaiverRow,
+    WhatIfRow,
     WinProbabilityData,
 )
 
@@ -152,6 +156,26 @@ def seeds(league: str) -> Any:
 def odds_history(league: str) -> Any:
     """Every team's saved runs, oldest first."""
     return guarded(lambda: rows(data_api.odds_history(league, store.DATA_DIR).sort("run_at")))
+
+
+@router.get("/leagues/{league}/power-rankings", response_model=Envelope[list[PowerRankingRow]])
+def power_rankings(league: str) -> Any:
+    return guarded(lambda: rows(data_api.power_rankings(league, store.DATA_DIR)))
+
+
+@router.get("/leagues/{league}/luck", response_model=Envelope[list[LuckRow]])
+def luck(league: str) -> Any:
+    return guarded(lambda: rows(data_api.luck(league, store.DATA_DIR)))
+
+
+@router.get("/leagues/{league}/manager-grades", response_model=Envelope[list[ManagerGradeRow]])
+def manager_grades(league: str) -> Any:
+    return guarded(lambda: rows(data_api.manager_grades(league, store.DATA_DIR)))
+
+
+@router.get("/leagues/{league}/what-if", response_model=Envelope[list[WhatIfRow]])
+def what_if(league: str, week: Week = 0) -> Any:
+    return guarded(lambda: rows(data_api.what_if(league, week, store.DATA_DIR)))
 
 
 @router.get("/leagues/{league}/streamers", response_model=Envelope[list[StreamerRow]])

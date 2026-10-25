@@ -115,3 +115,18 @@ def test_fit_context_recovers_slope_and_dome_effect():
     )
     slope, bonus = fit_context(history, "implied")
     assert abs(slope + 0.5) < 0.05 and abs(bonus - 1.5) < 0.2
+
+
+def test_a_team_the_schedules_call_oak_still_joins_the_team_stats_lv_rows():
+    stats = _stats().with_columns(
+        pl.when(pl.col("team") == "AAA").then(pl.lit("LV")).otherwise(pl.col("team")).alias("team"),
+        pl.when(pl.col("opponent_team") == "AAA")
+        .then(pl.lit("LV"))
+        .otherwise(pl.col("opponent_team"))
+        .alias("opponent_team"),
+    )
+    games = _games(10).with_columns(
+        pl.when(pl.col("team") == "AAA").then(pl.lit("OAK")).otherwise(pl.col("team")).alias("team")
+    )
+    out = defense_points_frame(stats, games, SCORING, "L")
+    assert sorted(out["team"].to_list()) == ["BBB", "LV"]
