@@ -8,6 +8,7 @@ import League from "@/pages/League";
 import Lineup from "@/pages/Lineup";
 import Outlook from "@/pages/Outlook";
 import Players from "@/pages/Players";
+import Scoreboard from "@/pages/Scoreboard";
 import Trades from "@/pages/Trades";
 import Waivers from "@/pages/Waivers";
 
@@ -18,6 +19,7 @@ const PAGES: Record<(typeof NAV_ITEMS)[number]["path"], ReactNode> = {
   "/waivers": <Waivers />,
   "/trades": <Trades />,
   "/outlook": <Outlook />,
+  "/scoreboard": <Scoreboard />,
   "/league": <League />,
   "/players": <Players />,
 };
