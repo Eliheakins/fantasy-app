@@ -1,6 +1,6 @@
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { DataTableFallback, Dumbbell } from "@/viz";
-import { formatSigned, formatValue, sideMeasures } from "./logic";
+import { formatSigned, formatValue, marketDate, marketText, sideMeasures } from "./logic";
 import { Notice } from "./Notice";
 import type { TradeEvaluation, TradeSide } from "./types";
 
@@ -73,6 +73,11 @@ export function TradeResult({ result }: { result: TradeEvaluation }) {
         <SideCard title="Me" side={me} sides={[me, them]} />
         <SideCard title={them.team_name} side={them} sides={[me, them]} />
       </div>
+      {result.market && (
+        <p className="text-caption text-muted">
+          {`Market value (${marketDate(result.market)}): ${marketText(result.market)}.`}
+        </p>
+      )}
       {result.warning && (
         <div>
           <Notice>{result.warning}</Notice>

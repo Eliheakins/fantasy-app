@@ -26,6 +26,7 @@ const FOUND = {
   partner: "Rivals", give: "A (RB)", get: "B (WR)", give_ids: ["a"], get_ids: ["b"],
   kind: "need swap", my_fills: "WR", their_fills: "RB", my_fit: 12.5, their_fit: 4.2,
   my_playoff: 0.021, my_title: 0.012, their_playoff: 0.013, their_title: 0.004, se_title: 0.0031,
+  market: { give_value: 5000, get_value: 5700, hint: "you receive 14% more", fetched_at: "2026-10-25T08:00:00+00:00" },
 };
 
 describe("find trades", () => {
@@ -44,6 +45,16 @@ describe("find trades", () => {
     expect(screen.getByText("+2.1 ▲")).toBeInTheDocument();
     expect(screen.getByText("fills WR, they fill RB")).toBeInTheDocument();
     expect(screen.getByText("need swap")).toBeInTheDocument();
+    expect(screen.getByText(/gives 5,000, gets 5,700/)).toBeInTheDocument();
+    expect(screen.getByText(/you receive 14% more/)).toBeInTheDocument();
+    expect(screen.getByText(/2026-10-25/)).toBeInTheDocument();
+  });
+  it("shows no market text when the values are missing", async () => {
+    mockFetch(() => ({ status: "ok", data: [{ ...FOUND, market: null }] }));
+    wrap(<FindTradesSection league="L" />);
+    await userEvent.click(screen.getByRole("button", { name: "Find trades" }));
+    expect(await screen.findByText("Rivals")).toBeInTheDocument();
+    expect(screen.queryByText(/gives \d/)).toBeNull();
   });
   it("says so when nothing helps both teams", async () => {
     mockFetch(() => ({ status: "ok", data: [] }));
@@ -77,6 +88,7 @@ const RESULT = {
   roster_changes: [{ team_name: "Rivals", action: "dropped", full_name: "Zed", position: "WR" }],
   warning: "Automatic roster moves to keep sizes equal:",
   trade_deadline: 11,
+  market: { give_value: 5000, get_value: 5000, hint: "even", fetched_at: "2026-10-25T08:00:00+00:00" },
 };
 
 async function evaluate(reply: Reply) {
@@ -100,6 +112,7 @@ describe("evaluator", () => {
     expect(screen.getAllByRole("img", { name: /Make playoffs: 50.0% before, 55.0% after/ })).toHaveLength(2);
     expect(screen.getAllByText("55.0%")).toHaveLength(4);
     expect(screen.getByText("Trade deadline: week 11.")).toBeInTheDocument();
+    expect(screen.getByText(/Market value \(2026-10-25\): gives 5,000, gets 5,000, even/)).toBeInTheDocument();
   });
   it("shows the server's message as an amber notice", async () => {
     await evaluate({ status: "error", error: { code: "invalid", message: "The trade deadline has passed." } });

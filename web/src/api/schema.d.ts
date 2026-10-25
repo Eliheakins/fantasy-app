@@ -992,6 +992,7 @@ export interface components {
             my_fit: number;
             /** Their Fit */
             their_fit: number;
+            market: components["schemas"]["MarketSummary"] | null;
             /** My Playoff */
             my_playoff: number;
             /** My Title */
@@ -1153,6 +1154,20 @@ export interface components {
             efficiency: number;
             /** Bench Points Left */
             bench_points_left: number;
+        };
+        /**
+         * MarketSummary
+         * @description Market value each side gives and gets (FantasyCalc), the hint and the values' date.
+         */
+        MarketSummary: {
+            /** Give Value */
+            give_value: number;
+            /** Get Value */
+            get_value: number;
+            /** Hint */
+            hint: string;
+            /** Fetched At */
+            fetched_at: string;
         };
         /** MarketValueRow */
         MarketValueRow: {
@@ -1494,6 +1509,7 @@ export interface components {
             warning: string | null;
             /** Trade Deadline */
             trade_deadline: number | null;
+            market: components["schemas"]["MarketSummary"] | null;
         };
         /** TradeRequest */
         TradeRequest: {

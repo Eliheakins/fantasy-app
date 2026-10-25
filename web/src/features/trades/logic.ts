@@ -1,4 +1,4 @@
-import type { Draft, TradeRequest, TradeSide } from "./types";
+import type { Draft, MarketSummary, TradeRequest, TradeSide } from "./types";
 
 /** The API rejects more ids than this per side. */
 export const MAX_TRADE_IDS = 10;
@@ -48,3 +48,12 @@ export function formatSigned(value: number, percent: boolean): string {
 
 /** Probability change to points. */
 export const points = (fraction: number): number => fraction * 100;
+
+/** "gives 5,000, gets 5,700, you receive 14% more": what the market says, nothing about acceptance. */
+export function marketText(m: MarketSummary): string {
+  const n = (v: number) => Math.round(v).toLocaleString("en-US");
+  return `gives ${n(m.give_value)}, gets ${n(m.get_value)}, ${m.hint}`;
+}
+
+/** The date part of the values' fetch time. */
+export const marketDate = (m: MarketSummary): string => m.fetched_at.slice(0, 10);
