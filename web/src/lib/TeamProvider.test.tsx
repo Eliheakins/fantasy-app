@@ -90,6 +90,23 @@ describe("TeamProvider", () => {
     expect(screen.queryByText(/Viewing as/)).not.toBeInTheDocument();
   });
 
+  it("tells the user and cleans the URL when the linked team is not in the league", async () => {
+    mockFetch();
+    renderAt("/?team=99&league=a");
+    expect(await screen.findByText("That team is not in this league. Showing your team.")).toBeInTheDocument();
+    expect(screen.getByTestId("search")).toHaveTextContent("?league=a");
+    expect(screen.getByTestId("search")).not.toHaveTextContent("team=");
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(screen.queryByText(/not in this league/)).not.toBeInTheDocument();
+  });
+
+  it("cleans my own roster id from the URL without a notice", async () => {
+    mockFetch();
+    renderAt("/?team=1&league=a");
+    await waitFor(() => expect(screen.getByTestId("search")).not.toHaveTextContent("team="));
+    expect(screen.queryByText(/not in this league/)).not.toBeInTheDocument();
+  });
+
   it("writes the choice to the URL and clears it again", async () => {
     mockFetch();
     renderAt("/");

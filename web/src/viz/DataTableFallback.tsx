@@ -8,7 +8,7 @@ type DataTableFallbackProps = {
 export function DataTableFallback({ summary = "Show data", columns, rows }: DataTableFallbackProps) {
   return (
     <details className="text-caption">
-      <summary className="cursor-pointer text-muted">{summary}</summary>
+      <summary className="flex min-h-[44px] cursor-pointer items-center text-muted">{summary}</summary>
       <table className="mt-1 tabular-nums">
         <thead>
           <tr>

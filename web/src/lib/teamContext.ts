@@ -12,9 +12,12 @@ export type TeamContextValue = {
   /** The viewed team's row, only when it is not mine. */
   viewed: TeamRow | null;
   setTeam: (rosterId: number | null) => void;
+  /** One-line notice when the link named a team that is not in this league; cleared by dismissNotice. */
+  notice: string | null;
+  dismissNotice: () => void;
 };
 
-export const NO_TEAM: TeamContextValue = { team: null, league: null, teams: [], viewed: null, setTeam: () => {} };
+export const NO_TEAM: TeamContextValue = { team: null, league: null, teams: [], viewed: null, setTeam: () => {}, notice: null, dismissNotice: () => {} };
 export const TeamContext = createContext<TeamContextValue>(NO_TEAM);
 
 /** Defaults to my team when there is no provider (tests, pages rendered alone). */
