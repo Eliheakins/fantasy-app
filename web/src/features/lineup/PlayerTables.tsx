@@ -26,7 +26,7 @@ export function PlayerTable({ title, rows, known }: { title: string; rows: reado
   const domain = tableDomain(rows);
   return (
     <section aria-label={title} className="mt-6">
-      <h2 className="text-lg font-semibold">{title}</h2>
+      <h2 className="text-heading font-semibold">{title}</h2>
       <table className="mt-2 hidden w-full text-body md:table">
         <thead>
           <tr className="border-b border-border text-left text-caption text-muted">

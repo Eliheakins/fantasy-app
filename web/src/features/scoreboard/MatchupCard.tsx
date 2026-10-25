@@ -22,7 +22,7 @@ function TeamRow({ side, status, domain }: { side: ScoreboardSide; status: Score
     <div className="py-2">
       <div className="flex items-baseline justify-between gap-3">
         <span className={cn("min-w-0 break-words text-body", side.is_me && "font-semibold")}>{sideName(side)}</span>
-        <span className="shrink-0 text-lg font-semibold tabular-nums">
+        <span className="shrink-0 text-heading font-semibold tabular-nums">
           {formatNumber(final ? side.points : side.projected)}
           <span className="sr-only">{final ? " points" : " projected points"}</span>
         </span>

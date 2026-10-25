@@ -22,7 +22,7 @@ const DELTAS = [4.1, -2.0, 0.4, -0.4, 0.5];
 
 function Panel({ theme }: { theme: "theme-light" | "theme-dark" }) {
   return (
-    <div className={cn(theme, "flex-1 rounded border border-border p-4")}>
+    <div className={cn(theme, "flex-1 card")}>
       <h2 className="mb-2 text-body font-semibold">{theme === "theme-light" ? "Light" : "Dark"}</h2>
       <table className="w-full text-body">
         <thead>

@@ -55,7 +55,7 @@ export function AddsTable({ rows, selected, onSelect }: Props) {
       </table>
       <ul className="space-y-2 md:hidden">
         {rows.map((r) => (
-          <li key={r.gsis_id} className="rounded border border-border p-3">
+          <li key={r.gsis_id} className="card-flat">
             <div>{pick(r)} <span className="text-muted">{r.position}</span></div>
             <div className="text-caption text-muted">Drop {r.drop_name}</div>
             <dl className="mt-1 grid grid-cols-2 gap-x-3 text-body">
