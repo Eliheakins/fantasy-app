@@ -47,7 +47,7 @@ describe("Outlook page", () => {
   it("ready: shows the history chart with its table from two runs", () => {
     outlookWith([...run("2026-10-01T00:00"), ...run("2026-10-08T00:00")]);
     render(<Outlook />);
-    expect(screen.getByRole("heading", { name: "Your odds over saved runs" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Season odds, all teams" })).toBeInTheDocument();
     expect(screen.queryByText(HISTORY_WAIT_MESSAGE)).toBeNull();
   });
   it("loading, running, no_data and error", () => {

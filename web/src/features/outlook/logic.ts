@@ -25,6 +25,23 @@ export function pivotHistory(history: readonly OddsHistoryRow[]): HistoryPoint[]
   return [...byRun.values()].sort((a, b) => a.run_at.localeCompare(b.run_at));
 }
 
+/** "Oct 23, 3 PM" for a saved run's timestamp. */
+export function formatRunDate(iso: string, timeZone?: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d
+    .toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", timeZone })
+    .replace(/\s/g, " ");
+}
+
+/** Axis ticks: the first run for each distinct label, thinned to at most `max`, so labels never repeat. */
+export function runTicks(runs: readonly string[], label: (iso: string) => string, max = 5): string[] {
+  const firsts = runs.filter((r, i) => i === 0 || label(r) !== label(runs[i - 1] as string));
+  if (firsts.length <= max) return firsts;
+  const stride = Math.ceil(firsts.length / max);
+  return firsts.filter((_, i) => i % stride === 0);
+}
+
 /** Teams in the history with their names, mine first flagged. */
 export function historyTeams(
   odds: readonly SeasonOddsRow[],

@@ -61,7 +61,7 @@ export function OutlookView() {
               )}
             </Optional>
             {history.kind === "ready" && canShowHistory(oddsRows, history.data) ? (
-              <Section title="Your odds over saved runs">
+              <Section title="Season odds, all teams" note="Chance to make the playoffs after each saved simulation run. Your team is the bold line.">
                 <OddsHistoryChart odds={oddsRows} history={history.data} />
               </Section>
             ) : (

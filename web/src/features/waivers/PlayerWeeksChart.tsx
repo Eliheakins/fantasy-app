@@ -1,5 +1,6 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { DataTableFallback, formatNumber } from "@/viz";
+import { AXIS, BAR_FILL, GRID, axisCaption } from "@/viz/chartTheme";
 import type { PlayerWeekRow } from "./logic";
 
 export function PlayerWeeksChart({ name, weeks }: { name: string; weeks: readonly PlayerWeekRow[] }) {
@@ -14,10 +15,10 @@ export function PlayerWeeksChart({ name, weeks }: { name: string; weeks: readonl
           <div className="h-48 w-full" role="img" aria-label={`Projected points by week for ${name}`}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis dataKey="week" />
-                <YAxis width={32} />
-                <Bar dataKey="projection" fill="var(--accent)" isAnimationActive={false} />
+                <CartesianGrid {...GRID} />
+                <XAxis dataKey="week" {...AXIS} />
+                <YAxis {...AXIS} width={48} label={axisCaption("Projected points")} />
+                <Bar dataKey="projection" fill={BAR_FILL} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
