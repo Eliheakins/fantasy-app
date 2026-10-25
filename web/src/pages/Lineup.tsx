@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/PageHeader";
 import { useState } from "react";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { RadioGroup } from "@/components/RadioGroup";
@@ -26,7 +27,7 @@ function Metric({ label, children }: { label: string; children: React.ReactNode 
   return (
     <div>
       <div className="text-caption text-muted">{label}</div>
-      <div className="text-lg font-semibold tabular-nums">{children}</div>
+      <div className="text-heading font-semibold tabular-nums">{children}</div>
     </div>
   );
 }
@@ -47,7 +48,7 @@ export function LineupView({ base, odds, week }: { base: LineupRow[]; odds: WinP
   const h = headline(rows, odds?.summaries[objective]);
   return (
     <div>
-      {odds?.script && <h2 className="text-lg font-semibold">{odds.script}</h2>}
+      {odds?.script && <h2 className="text-heading font-semibold">{odds.script}</h2>}
       {hasOdds && (
         <RadioGroup
           label="Optimize for"
@@ -68,7 +69,7 @@ export function LineupView({ base, odds, week }: { base: LineupRow[]; odds: WinP
         {hasOdds && h.win !== null && <Metric label="Chance to win">{formatPercent(h.win)}</Metric>}
       </div>
       {hasOdds && odds.swap?.differs && odds.swap.text && (
-        <p role="note" className="mt-4 rounded-md border border-border p-3 text-body">{odds.swap.text}</p>
+        <p role="note" className="mt-4 card-flat text-body">{odds.swap.text}</p>
       )}
       {hasOdds && odds.swap && !odds.swap.differs && <p className="mt-4 text-caption text-muted">{NO_SWAP_TEXT}</p>}
       {hasOdds && <Comparison rows={odds.comparison} />}
@@ -89,8 +90,9 @@ export default function Lineup() {
   const odds = useLeagueApi<WinProbability>(`win-probability?week=${week}`);
   return (
     <div key={league}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-display">Lineup</h1>
+      <PageHeader
+        title="Lineup"
+        actions={
         <label className="flex items-center gap-2 text-body">
           Week
           <select
@@ -103,7 +105,8 @@ export default function Lineup() {
             ))}
           </select>
         </label>
-      </div>
+        }
+      />
       <ApiBoundary state={lineup}>
         {(base) => (
           <>

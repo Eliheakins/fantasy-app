@@ -29,7 +29,7 @@ export function PositionalStrength({ rows }: { rows: readonly TeamGradeRow[] }) 
   const teams = gradeGrid(rows);
   const max = (p: GradePosition) => Math.max(0, ...teams.map((t) => t.cells[p]?.vor_per_week ?? 0));
   const columns: Column<GradeTeam>[] = [
-    { label: "Team", render: (t) => (t.is_me ? `${t.team_name} (you)` : t.team_name) },
+    { label: "Team", role: "primary", render: (t) => (t.is_me ? `${t.team_name} (you)` : t.team_name) },
     ...GRADE_POSITIONS.map((p) => ({ label: HEADINGS[p], render: (t: GradeTeam) => <Cell cell={t.cells[p]} max={max(p)} /> })),
   ];
   return (

@@ -23,6 +23,12 @@ function store(key: string): void {
   }
 }
 
+/** Sleeper pads some league names with a trailing space; trim for display. */
+export function trimLeagueNames(state: ApiState<League[]>): ApiState<League[]> {
+  if (state.kind !== "ready") return state;
+  return { ...state, data: state.data.map((l) => ({ ...l, name: l.name?.trim() ?? l.name })) };
+}
+
 type LeagueContextValue = {
   leagues: ApiState<League[]>;
   /** Selected league_key, or null until the league list has loaded. */
@@ -33,7 +39,8 @@ type LeagueContextValue = {
 const LeagueContext = createContext<LeagueContextValue | null>(null);
 
 export function LeagueProvider({ children }: { children: ReactNode }) {
-  const leagues = useApi<League[]>("/api/leagues");
+  const raw = useApi<League[]>("/api/leagues");
+  const leagues = useMemo(() => trimLeagueNames(raw), [raw]);
   const [chosen, setChosen] = useState<string | null>(readStored);
   const setLeague = useCallback((key: string) => {
     setChosen(key);

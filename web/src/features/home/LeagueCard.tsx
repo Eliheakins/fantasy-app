@@ -136,7 +136,7 @@ export function LeagueCard({ league }: { league: League }) {
   const roster = useApi<RosterRow[]>(leagueUrl(key, "roster"));
   const unmatched = useApi<Unmatched>("/api/unmatched");
   return (
-    <article className="min-w-0 space-y-4 rounded border border-border p-4">
+    <article className="min-w-0 space-y-4 card">
       <header>
         <h2 className="text-body font-semibold">{league.name} · {league.team_name}</h2>
         <p className="text-caption text-muted">{recordLine(league)}</p>

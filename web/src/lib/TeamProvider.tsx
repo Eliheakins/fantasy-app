@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useMemo } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useApi } from "@/hooks/useApi";
 import { useLeague } from "@/lib/league";
@@ -15,9 +15,25 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const teams = list.kind === "ready" ? list.data : [];
   const row = teams.find((t) => t.roster_id === asked) ?? null;
   // Until the list loads, trust the URL; once it has, an unknown or own team means the default.
+  const [notice, setNotice] = useState<string | null>(null);
   const team = list.kind !== "ready" || (row !== null && !row.is_me) ? asked : null;
+  const listReady = list.kind === "ready";
+  const unknown = listReady && asked !== null && row === null;
+  const ownTeam = listReady && row?.is_me === true;
+  // A link naming a team that is not here (or my own) is cleaned, so the URL says what the page shows.
+  useEffect(() => {
+    if (!unknown && !ownTeam) return;
+    if (unknown) setNotice("That team is not in this league. Showing your team.");
+    setParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("team");
+      return next;
+    }, { replace: true });
+  }, [unknown, ownTeam, setParams]);
+  const dismissNotice = useCallback(() => setNotice(null), []);
   const setTeam = useCallback(
-    (rosterId: number | null) =>
+    (rosterId: number | null) => {
+      setNotice(null);
       setParams((prev) => {
         const next = new URLSearchParams(prev);
         if (rosterId === null) {
@@ -28,12 +44,13 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           if (league !== null) next.set("league", league); // makes the link portable
         }
         return next;
-      }),
+      });
+    },
     [setParams, league],
   );
   const value = useMemo<TeamContextValue>(
-    () => ({ team, league, teams, viewed: team === null ? null : row, setTeam }),
-    [team, league, teams, row, setTeam],
+    () => ({ team, league, teams, viewed: team === null ? null : row, setTeam, notice, dismissNotice }),
+    [team, league, teams, row, setTeam, notice, dismissNotice],
   );
   return <TeamContext.Provider value={value}>{children}</TeamContext.Provider>;
 }

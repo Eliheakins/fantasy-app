@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { NAV_ITEMS } from "@/nav";
 import DevViz from "@/pages/DevViz";
 import Home from "@/pages/Home";
+import NotFound from "@/pages/NotFound";
 import League from "@/pages/League";
 import Lineup from "@/pages/Lineup";
 import Outlook from "@/pages/Outlook";
@@ -29,8 +30,8 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       ...NAV_ITEMS.map(({ path }) => ({ path, element: PAGES[path] })),
-      { path: "/dev/viz", element: <DevViz /> },
-      { path: "*", element: <Navigate to="/" replace /> },
+      ...(import.meta.env.DEV ? [{ path: "/dev/viz", element: <DevViz /> }] : []),
+      { path: "*", element: <NotFound /> },
     ],
   },
 ]);

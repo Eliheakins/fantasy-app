@@ -4,7 +4,7 @@ import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import type { SeasonOddsRow } from "./types";
 
 const COLUMNS: Column<SeasonOddsRow>[] = [
-  { label: "Team", render: (r) => (r.is_me ? `${r.team_name} (you)` : r.team_name) },
+  { label: "Team", role: "primary", render: (r) => (r.is_me ? `${r.team_name} (you)` : r.team_name) },
   { label: "Playoffs", render: (r) => <WinBar fraction={r.p_playoffs} /> },
   { label: "Bye", numeric: true, render: (r) => formatPercent(r.p_bye) },
   { label: "Title", numeric: true, render: (r) => formatPercent(r.p_title) },

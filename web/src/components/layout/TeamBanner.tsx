@@ -1,15 +1,27 @@
 import { useTeam } from "@/lib/teamContext";
 
-/** Shown only for a team other than mine, so a screenshot is never misread as the owner's view. */
+const STRIP = "flex min-h-[44px] flex-wrap items-center gap-x-3 border-b border-l-4 border-border border-l-accent bg-surface px-4 text-body";
+const ACTION = "min-h-[44px] underline";
+
+/** Sticky strip, so a scrolled screenshot is never misread as the owner's view: it names the viewed team,
+ * or explains that a link named a team that is not in this league. */
 export function TeamBanner() {
-  const { viewed, setTeam } = useTeam();
+  const { viewed, setTeam, notice, dismissNotice } = useTeam();
   return (
-    <div aria-live="polite" role="status">
+    <div aria-live="polite" role="status" className="sticky top-0 z-20">
       {viewed && (
-        <p className="flex flex-wrap items-center gap-x-3 border-b border-border bg-surface px-4 py-2 text-body text-muted">
+        <p className={STRIP}>
           <span>Viewing as {viewed.team_name ?? `Team ${viewed.roster_id}`}</span>
-          <button type="button" onClick={() => setTeam(null)} className="min-h-[44px] underline">
+          <button type="button" onClick={() => setTeam(null)} className={ACTION}>
             Back to my team
+          </button>
+        </p>
+      )}
+      {!viewed && notice && (
+        <p className={STRIP}>
+          <span>{notice}</span>
+          <button type="button" onClick={dismissNotice} className={ACTION}>
+            Dismiss
           </button>
         </p>
       )}

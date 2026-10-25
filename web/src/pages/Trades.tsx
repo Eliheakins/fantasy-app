@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/PageHeader";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Evaluator } from "@/features/trades/Evaluator";
 import { FindTradesSection } from "@/features/trades/FindTrades";
@@ -16,7 +17,7 @@ export default function Trades() {
   const mine = useApi<Asset[]>(base && `${base}/trade-assets`);
   return (
     <section className="space-y-6">
-      <h1 className="text-display font-semibold">Trades</h1>
+      <PageHeader title="Trades" />
       {league !== null && (
         <>
           <StrengthSection />

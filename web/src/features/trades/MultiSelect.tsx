@@ -18,7 +18,7 @@ export function MultiSelect({ legend, options, selected, onChange, max = MAX_TRA
   const shown = options.filter((o) => o.label.toLowerCase().includes(filter.trim().toLowerCase()));
   const full = selected.length >= max;
   return (
-    <fieldset className="min-w-0 rounded border border-border p-2">
+    <fieldset className="min-w-0 card-flat">
       <legend className="px-1 text-body font-semibold">{legend}</legend>
       <label htmlFor={filterId} className="sr-only">
         Filter {legend}

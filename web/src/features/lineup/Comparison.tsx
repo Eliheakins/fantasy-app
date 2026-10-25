@@ -6,7 +6,7 @@ export function Comparison({ rows }: { rows: readonly ComparisonRow[] }) {
   const note = collapsedNote(groups);
   return (
     <section aria-label="Lineup comparison" className="mt-6">
-      <table className="hidden w-full text-body md:table">
+      <table className="hidden w-full text-body lg:table">
         <thead>
           <tr className="border-b border-border text-left text-caption text-muted">
             <th className="py-2 pr-3 font-normal">Lineup</th>
@@ -28,7 +28,7 @@ export function Comparison({ rows }: { rows: readonly ComparisonRow[] }) {
           ))}
         </tbody>
       </table>
-      <ul className="md:hidden">
+      <ul className="lg:hidden">
         {groups.map(({ labels, row }) => (
           <li key={labels.join("|")} className="border-b border-border py-2">
             <div>{labels[0]}</div>
