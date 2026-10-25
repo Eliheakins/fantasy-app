@@ -169,6 +169,12 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     "proj_snapshots": _cols(
         strings="league_id gsis_id fetched_at", ints="season week", floats="learned baseline"
     ),
+    # written by market_values (area: raw): FantasyCalc values per league setting (`format`)
+    "market_values": _cols(
+        strings="format sleeper_id name position fetched_at",
+        ints="overall_rank position_rank tier",
+        floats="value trend_30_day",
+    ),
     # written by sleeper_projections (area: archive, only ever appended)
     "sleeper_proj_snapshots": _cols(strings="fetched_at sleeper_id stats", ints="week"),
     # written by sleeper_projections (area: derived): Sleeper's projections under each league

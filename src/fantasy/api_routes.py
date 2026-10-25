@@ -23,6 +23,7 @@ from fantasy.api_models import (
     LeagueRow,
     LineupRow,
     LiveScoreRow,
+    MarketValueRow,
     OddsHistoryRow,
     OutlookRow,
     PartnerRow,
@@ -51,6 +52,7 @@ BUSY_MESSAGE = "The server is busy. Try again in a moment."
 MAX_TRADE_EVALUATIONS = 2
 TRADE_SLOTS = threading.BoundedSemaphore(MAX_TRADE_EVALUATIONS)
 REFRESH_LOCK = threading.Lock()
+MAX_IDS_LENGTH = 4000
 Week = Annotated[int, Query(ge=0, le=22, description="0 means the current week")]
 
 
@@ -194,6 +196,15 @@ def trade_assets(league: str, roster_id: int | None = None) -> Any:
         return rows(assets.with_columns(label))
 
     return guarded(build)
+
+
+@router.get("/leagues/{league}/market-values", response_model=Envelope[list[MarketValueRow]])
+def market_values(
+    league: str,
+    ids: Annotated[str, Query(max_length=MAX_IDS_LENGTH, description="comma-separated gsis ids")],
+) -> Any:
+    wanted = [i for i in ids.split(",") if i]
+    return guarded(lambda: rows(data_api.market_values(league, wanted, store.DATA_DIR)))
 
 
 @router.get("/leagues/{league}/player-weeks", response_model=Envelope[list[PlayerWeekRow]])

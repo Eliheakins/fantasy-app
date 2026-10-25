@@ -31,6 +31,7 @@ from fantasy._market import (
 )
 from fantasy._outlook import live_score, player_outlook, schedule
 from fantasy._schemas import ENGINE_SCHEMAS
+from fantasy._values import market_values as _market_values
 from fantasy.config import load_config
 from fantasy.sim import moves as moves
 
@@ -40,6 +41,7 @@ __all__ = [
     "find_trades",
     "freshness",
     "leagues",
+    "market_values",
     "lineup",
     "live_score",
     "missing_layers",
@@ -110,6 +112,13 @@ def leagues(data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
         "points_for",
         "scoring_labels",
     )
+
+
+def market_values(
+    league_key: str, gsis_ids: list[str], data_dir: Path = store.DATA_DIR
+) -> pl.DataFrame:
+    """Market values (FantasyCalc) for players in a league's setting; empty without the table."""
+    return _market_values(league_key, gsis_ids, data_dir)
 
 
 def _my_league(league_key: str, data_dir: Path | None = None) -> dict[str, Any] | None:

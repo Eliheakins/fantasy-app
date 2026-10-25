@@ -245,6 +245,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/market-values": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Market Values */
+        get: operations["market_values_api_leagues__league__market_values_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/player-weeks": {
         parameters: {
             query?: never;
@@ -581,6 +598,19 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** Envelope[list[MarketValueRow]] */
+        Envelope_list_MarketValueRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["MarketValueRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[list[OddsHistoryRow]] */
         Envelope_list_OddsHistoryRow__: {
             /**
@@ -834,6 +864,21 @@ export interface components {
             points: number;
             /** Projected Final */
             projected_final: number;
+        };
+        /** MarketValueRow */
+        MarketValueRow: {
+            /** Gsis Id */
+            gsis_id: string;
+            /** Value */
+            value: number;
+            /** Overall Rank */
+            overall_rank: number | null;
+            /** Position Rank */
+            position_rank: number | null;
+            /** Trend 30 Day */
+            trend_30_day: number | null;
+            /** Fetched At */
+            fetched_at: string;
         };
         /** OddsHistoryRow */
         OddsHistoryRow: {
@@ -1547,6 +1592,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_AssetRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    market_values_api_leagues__league__market_values_get: {
+        parameters: {
+            query: {
+                /** @description comma-separated gsis ids */
+                ids: string;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_MarketValueRow__"];
                 };
             };
             /** @description Validation Error */

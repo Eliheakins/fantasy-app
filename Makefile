@@ -15,6 +15,7 @@ refresh:
 	uv run python -m fantasy.stages.outlook
 	uv run python -m fantasy.stages.environment
 	uv run python -m fantasy.stages.simulate
+	uv run python -m fantasy.stages.market_values
 
 app:
 	uv run streamlit run app/Home.py
