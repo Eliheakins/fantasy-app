@@ -12,3 +12,4 @@ data/
 research/scratch/
 .simplify-audit/
 .playwright-mcp/
+.claude/worktrees/
