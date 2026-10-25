@@ -4,6 +4,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { NAV_ITEMS } from "@/nav";
 import DevViz from "@/pages/DevViz";
 import Home from "@/pages/Home";
+import League from "@/pages/League";
 import Lineup from "@/pages/Lineup";
 import Outlook from "@/pages/Outlook";
 import Players from "@/pages/Players";
@@ -17,6 +18,7 @@ const PAGES: Record<(typeof NAV_ITEMS)[number]["path"], ReactNode> = {
   "/waivers": <Waivers />,
   "/trades": <Trades />,
   "/outlook": <Outlook />,
+  "/league": <League />,
   "/players": <Players />,
 };
 
