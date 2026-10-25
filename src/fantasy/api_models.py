@@ -115,6 +115,18 @@ class PowerRankingRow(Row):
     sos_rank: int | None
 
 
+class TeamGradeRow(Row):
+    roster_id: int
+    team_name: str
+    is_me: bool
+    position: str
+    vor_per_week: float
+    depth_per_week: float
+    score: float
+    rank: int
+    grade: str
+
+
 class LuckRow(Row):
     roster_id: int
     team_name: str

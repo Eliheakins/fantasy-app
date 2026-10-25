@@ -347,6 +347,10 @@ ROWS = {
     "/api/leagues/t/lineup?week=3": LINEUP,
     "/api/leagues/t/schedule": {"week", "opponent", "my_points", "their_points", "win_chance"},
     "/api/leagues/t/strength": {"position", "vor_per_week", "rank", "teams"},
+    "/api/leagues/t/team-grades": {
+        "roster_id", "team_name", "is_me", "position", "vor_per_week", "depth_per_week", "score",
+        "rank", "grade",
+    },
     "/api/leagues/t/live-score": {"side", "team_name", "points", "projected_final"},
     "/api/leagues/t/trade-partners": {"roster_id", "team_name"},
     "/api/leagues/t/trade-assets": {"gsis_id", "full_name", "position", "ros_points", "label"},

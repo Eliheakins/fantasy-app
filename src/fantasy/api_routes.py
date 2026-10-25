@@ -39,6 +39,7 @@ from fantasy.api_models import (
     StatusData,
     StreamerRow,
     StrengthRow,
+    TeamGradeRow,
     TeamRow,
     TradeEvaluation,
     TradeRequest,
@@ -194,6 +195,11 @@ def odds_history(league: str, team: Team = None) -> Any:
 @router.get("/leagues/{league}/power-rankings", response_model=Envelope[list[PowerRankingRow]])
 def power_rankings(league: str, team: Team = None) -> Any:
     return guarded(as_team(team, lambda: rows(data_api.power_rankings(league, store.DATA_DIR))))
+
+
+@router.get("/leagues/{league}/team-grades", response_model=Envelope[list[TeamGradeRow]])
+def team_grades(league: str, team: Team = None) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.team_grades(league, store.DATA_DIR))))
 
 
 @router.get("/leagues/{league}/luck", response_model=Envelope[list[LuckRow]])

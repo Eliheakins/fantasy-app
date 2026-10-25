@@ -4,8 +4,9 @@ import { ApiBoundary, NoData } from "@/components/ApiBoundary";
 import { useLeagueApi } from "@/lib/league";
 import { GradesTable, LuckTable } from "./LuckAndGrades";
 import { PowerRankings, ScheduleStrength } from "./PowerRankings";
+import { PositionalStrength } from "./PositionalStrength";
 import { WhatIf } from "./WhatIf";
-import type { LuckRow, ManagerGradeRow, PowerRankingRow } from "./types";
+import type { LuckRow, ManagerGradeRow, PowerRankingRow, TeamGradeRow } from "./types";
 
 function Section({ title, note, children }: { title: string; note: string; children: ReactNode }) {
   return (
@@ -37,6 +38,7 @@ export function LeagueView() {
   const power = useLeagueApi<PowerRankingRow[]>("power-rankings");
   const luck = useLeagueApi<LuckRow[]>("luck");
   const grades = useLeagueApi<ManagerGradeRow[]>("manager-grades");
+  const teamGrades = useLeagueApi<TeamGradeRow[]>("team-grades");
   return (
     <ApiBoundary state={power}>
       {(rows) =>
@@ -56,6 +58,13 @@ export function LeagueView() {
             >
               <ScheduleStrength rows={rows} />
             </Section>
+            <Rows
+              state={teamGrades}
+              title="Positional strength"
+              note="Points per week above a free-agent stand-in, from the best lineup (bar length), graded by rank in the league: top fifth A, bottom fifth F. Weighted 75% starters, 25% bench depth. Tap a grade for the split."
+            >
+              {(r) => <PositionalStrength rows={r} />}
+            </Rows>
             <Rows
               state={luck}
               title="Luck and all-play"

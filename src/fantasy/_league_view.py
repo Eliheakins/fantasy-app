@@ -12,6 +12,7 @@ import polars as pl
 
 from fantasy._engine import _read
 from fantasy._schemas import ENGINE_SCHEMAS
+from fantasy.sim import grades
 from fantasy.sim.lineup import ActualPlayer, best_actual
 from fantasy.sim.schedule import all_play, completed, pairings
 
@@ -185,3 +186,13 @@ def what_if(me: dict[str, Any], week: int, data_dir: Path) -> pl.DataFrame:
     )
     ordered = table.sort(["involves_me", "_pair", "winner_id"], descending=[True, False, False])
     return ordered.select(*ENGINE_SCHEMAS["what_if"])
+
+
+def team_grades(
+    me: dict[str, Any], strength: pl.DataFrame, depth: pl.DataFrame, data_dir: Path
+) -> pl.DataFrame:
+    """Positional grades for every team; `is_me` follows the team being viewed."""
+    teams = _teams(me, data_dir).with_columns(
+        (pl.col("roster_id") == me["roster_id"]).alias("is_me")
+    )
+    return grades.team_grades(strength, depth, teams)
