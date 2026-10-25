@@ -70,6 +70,9 @@ def test_win_probability_options_are_pinned(
         "floor": 9.040432,
         "median": 18.255272,
         "ceiling": 24.589722,
+        "opp_floor": 6.090747,
+        "opp_median": 9.956973,
+        "opp_ceiling": 13.89312,
         "script": "Favorite (87% to win): protect the floor",
     }
     tags = {"max_points": "", "win_prob": "same as max points", "ceiling": "", "floor": ""}

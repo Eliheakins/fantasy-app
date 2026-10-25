@@ -2747,6 +2747,18 @@
             "type": "number",
             "title": "Ceiling"
           },
+          "opp_floor": {
+            "type": "number",
+            "title": "Opp Floor"
+          },
+          "opp_median": {
+            "type": "number",
+            "title": "Opp Median"
+          },
+          "opp_ceiling": {
+            "type": "number",
+            "title": "Opp Ceiling"
+          },
           "script": {
             "type": "string",
             "title": "Script"
@@ -2765,6 +2777,9 @@
           "floor",
           "median",
           "ceiling",
+          "opp_floor",
+          "opp_median",
+          "opp_ceiling",
           "script"
         ],
         "title": "OptionRow"

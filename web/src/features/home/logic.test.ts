@@ -1,11 +1,11 @@
 import type { League } from "@/api/types";
-import { actionPoints, actionShare, myOdds, myRange, recordLine, titlePercent, winChance, type WinProbability } from "./logic";
+import { actionPoints, actionShare, myOdds, myRange, opponentRange, recordLine, titlePercent, winChance, type WinProbability } from "./logic";
 
 const league = {
   wins: 4, losses: 2, ties: 0, record: "4-2", points_for: 854.72, current_week: 7,
 } as League;
 const option = (o: string, win_prob: number, share_better = 0.5) =>
-  ({ option: o, win_prob, share_better, floor: 90, median: 110, ceiling: 130 }) as WinProbability["options"][number];
+  ({ option: o, win_prob, share_better, floor: 90, median: 110, ceiling: 130, opp_floor: 80, opp_median: 100, opp_ceiling: 120 }) as WinProbability["options"][number];
 const wp = { options: [option("max_points", 0.62), option("win_prob", 0.7, 0.8)] } as WinProbability;
 
 describe("home logic", () => {
@@ -23,6 +23,8 @@ describe("home logic", () => {
     expect(myOdds([{ is_me: false }, { is_me: true, team_name: "x" }] as never)?.team_name).toBe("x");
     expect(winChance(wp)).toBe(0.62);
     expect(myRange(wp)).toEqual({ p10: 90, p50: 110, p90: 130 });
+    expect(opponentRange(wp)).toEqual({ p10: 80, p50: 100, p90: 120 });
+    expect(opponentRange({ options: [] } as never)).toBeNull();
     expect(winChance({ options: [] } as never)).toBeNull();
   });
   it("reads the gain out of action text", () => {
