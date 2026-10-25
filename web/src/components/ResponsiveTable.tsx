@@ -29,7 +29,7 @@ function primaryIndex<T>(columns: readonly Column<T>[]): number {
 function TableForm<T>({ caption, columns, rows, rowKey, isStrong }: FormProps<T>) {
   const head = primaryIndex(columns);
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={caption}>
       <table className="w-full text-body">
         <caption className="sr-only">{caption}</caption>
         <thead>

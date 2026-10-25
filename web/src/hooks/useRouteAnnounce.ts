@@ -8,7 +8,8 @@ export const NOT_FOUND_TITLE = "Page not found";
 
 /** The page name for a path: the nav entry's title, else "Page not found". */
 export function pageTitle(pathname: string): string {
-  const item = NAV_ITEMS.find((n) => n.path === pathname);
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  const item = NAV_ITEMS.find((n) => n.path === path);
   if (!item) return NOT_FOUND_TITLE;
   return item.title;
 }
