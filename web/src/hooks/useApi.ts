@@ -16,5 +16,6 @@ export function useApi<T>(path: string | null): ApiState<T> {
     retry: 1,
   });
   if (url === null) return { kind: "loading" };
-  return resolveState(query.data, query.error);
+  const state = resolveState(query.data, query.error);
+  return state.kind === "error" ? { ...state, retry: () => void query.refetch() } : state;
 }

@@ -8,7 +8,7 @@ export type ApiState<T> =
   | { kind: "loading" }
   | { kind: "running"; startedAt: string | null }
   | { kind: "no_data"; message: string }
-  | { kind: "error"; error: ApiError }
+  | { kind: "error"; error: ApiError; retry?: () => void }
   | { kind: "ready"; data: T };
 
 export class ApiFailure extends Error {
