@@ -1,5 +1,6 @@
 import type { components } from "@/api/schema";
 import type { League } from "@/api/types";
+import type { TeamRow } from "@/lib/teamContext";
 import { formatNumber, formatPercent } from "@/viz";
 
 type Schemas = components["schemas"];
@@ -16,6 +17,13 @@ export function recordLine(l: League): string {
   const pf = l.points_for == null ? "no" : l.points_for.toFixed(1);
   const week = l.current_week == null ? "unknown" : l.current_week;
   return `${record} · ${pf} PF · week ${week}`;
+}
+
+/** The league card for the team being viewed: its name and record in place of mine. */
+export function asViewedTeam(l: League, viewed: TeamRow | null): League {
+  if (viewed === null) return l;
+  const { team_name, wins, losses, ties, points_for, record } = viewed;
+  return { ...l, team_name, wins, losses, ties, points_for, record };
 }
 
 /** Streamlit shows playoffs and bye as whole percents, the title to one decimal. */
