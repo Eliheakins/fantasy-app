@@ -17,7 +17,7 @@ function RangeRow({ label, p10, p50, p90, domain }: {
   return (
     <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-0 @md:grid-cols-[5.5rem_minmax(0,1fr)_9rem]">
       <span className="text-body">{label}</span>
-      <div className="[&>svg]:h-auto [&>svg]:w-full">
+      <div className="max-w-sm [&>svg]:h-auto [&>svg]:w-full">
         <RangeBar p10={p10} p50={p50} p90={p90} domain={domain} width={BAR_WIDTH} height={BAR_HEIGHT} />
       </div>
       <span className="col-start-2 text-caption text-muted tabular-nums @md:col-start-3">
