@@ -1,34 +1,33 @@
-"""Chance that an active player-game has a stat line: the first part of the two-part projection.
+"""Chance that a played game has a stat line: the first part of the two-part projection.
 
-About 6 to 12% of skill `player_points` rows are stat-less appearances: every stat 0 and no
-`nfl_ff_opportunity` row (special-teams snaps, or a couple of offensive snaps). The learned model
-trains only on games with a stat line, so its projection is E[points | stat line]. With
-`stat_line_model` on, `learn` multiplies it by q = P(stat line | active), so `proj_learned` holds
-E[points | active], where active means the player has a `player_points` row (he dressed and got
-on the field). research/hurdle_check.py and docs/decisions.md have the held-out test.
+A game is played when the player had offensive snaps (nfl_snaps) or has a `player_points` row. Some
+played games have no stat line: a `player_points` row with every stat 0 and no
+`nfl_ff_opportunity` row (special teams, a couple of snaps), or snaps and no row at all. Both score
+0. The learned model trains only on games with a stat line, so its projection is E[points | stat
+line]. With `stat_line_model` on, `learn` multiplies it by q = P(stat line | played), so
+`proj_learned` holds E[points | played]; availability's chance of playing (any offensive snaps) is
+the same event, so p * q * E counts nothing twice. research/hurdle_check.py and
+docs/decisions.md have the held-out tests.
 
-q comes from a classifier (mean of three seeds) on pre-game features: weighted averages
-(half-life 4 games, strictly before the game) of offensive and special-teams snap share, target
-share, targets, carries and the stat-line rate over earlier active games; the last snap share,
-games played and weeks since the last active game; the game's depth rank; position. Past games
-are scored walk-forward by season, like `learn`; stat-less games get a learned projection too, so
-the spread shapes are fit on every active game. A player's next game gets q from a model fit on
-all history; his later games get the higher of that and the stat-line rate of his position and
-latest depth rank (their own features are not known yet, and a long absence before the next game
-would otherwise drag every later game down). `learn` also writes q to the `stat_line` table: the
-injury table's chance of playing counts games with touches or targets, the same event, so the
-injury layer and the `injuries` stage take q back out there.
+q comes from a classifier (mean of three seeds, floored at Q_FLOOR) on pre-game features: weighted
+averages (half-life 4 games, strictly before the game) of offensive and special-teams snap share,
+target share, targets, carries and the stat-line rate over earlier played games; the last snap
+share, games played and weeks since the last played game; the game's depth rank; position. Past
+games are scored walk-forward by season, like `learn`; played games without a stat line get a
+learned projection too, so the spread shapes are fit on every played game. A player's next game
+gets q from a model fit on all history; his later games get the higher of that and the stat-line
+rate of his position and latest depth rank (their own features are not known yet, and a long
+absence before the next game would otherwise drag every later game down). `learn` writes q to the
+`stat_line` table (`fantasy/stat_line_table.py`): the injury table's chance of playing counts
+games with touches or targets, the stat-line event itself, so the injury layer and the `injuries`
+stage take q back out there.
 """
-
-import warnings
 
 import numpy as np
 import polars as pl
 from sklearn.ensemble import HistGradientBoostingClassifier
 
-from fantasy import store
-from fantasy.config import load_config
-from fantasy.stages import learn
+from fantasy.stages.lags import lag_asof, latest_asof, train_seasons
 from fantasy.stages.project import FIRST_PROJECTED_SEASON, POSITIONS
 
 KEY = ["gsis_id", "season", "week"]
@@ -37,36 +36,49 @@ FEATURES = [f"h_{c}" for c in LAGGED] + ["snap_last", "n_prior", "weeks_since", 
 WEEKS_PER_SEASON = 18  # to count weeks missed across a season boundary
 SEEDS = (0, 1, 2)  # averaged: early stopping draws a seeded validation split (decisions)
 MIN_CELL_ROWS = 30  # a position-depth cell with fewer games uses the position's rate
+Q_FLOOR = 0.01  # q is never 0, so a projection can always be divided by it
 
 
-def active_rows(points: pl.DataFrame, exp: pl.DataFrame) -> pl.DataFrame:
-    """KEY, position, statline (1.0 when the game has an expected-points row) for every skill
-    `player_points` row. Rows do not depend on the league, so the first league's are used."""
+def played_rows(
+    points: pl.DataFrame, exp: pl.DataFrame, snaps: pl.DataFrame, opp: pl.DataFrame
+) -> pl.DataFrame:
+    """KEY, position, team, statline for every played skill game: a `player_points` row (statline
+    1.0 when it has an expected-points row), or offensive snaps with no row (statline 0, 0
+    points). A snap game with an opportunity row but no scored row (nflverse labels the position
+    differently in the two sources) cannot be scored and is left out. Rows do not depend on the
+    league, so the first league's are used."""
     lid = min(points["league_id"].unique().to_list())
-    rows = points.filter((pl.col("league_id") == lid) & pl.col("position").is_in(POSITIONS))
-    have = exp.filter(pl.col("league_id") == lid).select(KEY).with_columns(statline=pl.lit(1.0))
-    return (
-        rows.select(*KEY, "position")
+    scored = (
+        points.filter((pl.col("league_id") == lid) & pl.col("position").is_in(POSITIONS))
+        .select(*KEY, "position", "team")
         .unique(KEY, keep="first", maintain_order=True)
-        .join(have, on=KEY, how="left")
-        .with_columns(pl.col("statline").fill_null(0.0))
     )
-
-
-def statless_targets(points: pl.DataFrame, exp: pl.DataFrame, league_id: str) -> pl.DataFrame:
-    """league_id, gsis_id, season, week, position, team of the league's skill `player_points`
-    rows with no expected-points row, from FIRST_PROJECTED_SEASON."""
-    cols = ["league_id", *KEY]
-    return (
-        points.filter(
-            (pl.col("league_id") == league_id)
+    have = exp.filter(pl.col("league_id") == lid).select(KEY).with_columns(statline=pl.lit(1.0))
+    with_opp = opp.select(pl.col("player_id").alias("gsis_id"), "season", "week")
+    snap_only = (
+        snaps.filter(
+            pl.col("gsis_id").is_not_null()
+            & (pl.col("offense_snaps") > 0)
             & pl.col("position").is_in(POSITIONS)
-            & (pl.col("season") >= FIRST_PROJECTED_SEASON)
         )
-        .join(exp.select(cols), on=cols, how="anti")
-        .select(*cols, "position", "team")
-        .unique(cols, keep="first", maintain_order=True)
+        .select(*KEY, "position", "team")
+        .unique(KEY, keep="first", maintain_order=True)
+        .join(scored.select(KEY), on=KEY, how="anti")
+        .join(with_opp, on=KEY, how="anti")
     )
+    return (
+        pl.concat([scored.join(have, on=KEY, how="left"), snap_only], how="diagonal_relaxed")
+        .with_columns(pl.col("statline").fill_null(0.0))
+        .select(*KEY, "position", "team", "statline")
+    )
+
+
+def statless_targets(played: pl.DataFrame, league_id: str) -> pl.DataFrame:
+    """league_id, gsis_id, season, week, position, team of the played games with no stat line,
+    from FIRST_PROJECTED_SEASON: `learn` projects them but never trains on them."""
+    return played.filter(
+        (pl.col("statline") == 0.0) & (pl.col("season") >= FIRST_PROJECTED_SEASON)
+    ).select(pl.lit(league_id).alias("league_id"), *KEY, "position", "team")
 
 
 def usage_frame(opp: pl.DataFrame, snaps: pl.DataFrame, stats: pl.DataFrame) -> pl.DataFrame:
@@ -102,11 +114,11 @@ def usage_frame(opp: pl.DataFrame, snaps: pl.DataFrame, stats: pl.DataFrame) -> 
     )
 
 
-def history_table(active: pl.DataFrame, usage: pl.DataFrame) -> pl.DataFrame:
-    """One row per active game with its usage (no opportunity row: 0 targets and carries), the
+def history_table(played: pl.DataFrame, usage: pl.DataFrame) -> pl.DataFrame:
+    """One row per played game with its usage (no opportunity row: 0 targets and carries), the
     running game count, a week counter and the snap share again as `snap_last`."""
     return (
-        active.select(*KEY, "statline")
+        played.select(*KEY, "statline")
         .join(usage, on=KEY, how="left")
         .with_columns(pl.col("tgt", "car").fill_null(0.0))
         .sort("gsis_id", "season", "week")
@@ -119,10 +131,10 @@ def history_table(active: pl.DataFrame, usage: pl.DataFrame) -> pl.DataFrame:
 
 
 def features(targets: pl.DataFrame, history: pl.DataFrame, depth: pl.DataFrame) -> pl.DataFrame:
-    """targets (KEY, position, ...) with FEATURES from active games strictly before each game and
+    """targets (KEY, position, ...) with FEATURES from played games strictly before each game and
     the game's own depth chart."""
-    out = learn.lag_asof(targets, history, "gsis_id", LAGGED, "h")
-    out = learn.latest_asof(out, history, "gsis_id", ["snap_last", "n_prior", "when"], shift=1)
+    out = lag_asof(targets, history, "gsis_id", LAGGED, "h")
+    out = latest_asof(out, history, "gsis_id", ["snap_last", "n_prior", "when"], shift=1)
     chart = depth.select(*KEY, "depth_rank").unique(KEY, keep="first", maintain_order=True)
     return (
         out.join(chart, on=KEY, how="left")
@@ -145,10 +157,12 @@ def design(frame: pl.DataFrame) -> np.ndarray:
 def fit_predict(
     train: pl.DataFrame, test: pl.DataFrame, seeds: tuple[int, ...] = SEEDS
 ) -> np.ndarray:
-    """q for `test`: the mean over `seeds` of a classifier fit on `train` (which has `statline`)."""
+    """q for `test`: the mean over `seeds` of a classifier fit on `train` (which has `statline`),
+    floored at Q_FLOOR."""
     y = train["statline"].to_numpy()
     if test.is_empty() or len(np.unique(y)) < 2:  # nothing to score, or nothing to learn
-        return np.full(test.height, float(y.mean()) if len(y) else 1.0)
+        rate = float(y.mean()) if len(y) else 1.0
+        return np.full(test.height, max(rate, Q_FLOOR))
     x_train, x_test = design(train), design(test)
     preds = []
     for seed in seeds:
@@ -161,7 +175,7 @@ def fit_predict(
             random_state=seed,
         )
         preds.append(model.fit(x_train, y).predict_proba(x_test)[:, 1])
-    return np.mean(preds, axis=0)
+    return np.clip(np.mean(preds, axis=0), Q_FLOOR, 1.0)
 
 
 def history_chance(feats: pl.DataFrame, seeds: tuple[int, ...] = SEEDS) -> pl.DataFrame:
@@ -171,7 +185,7 @@ def history_chance(feats: pl.DataFrame, seeds: tuple[int, ...] = SEEDS) -> pl.Da
     seasons = sorted(usable["season"].unique().to_list())
     parts = []
     for season in seasons:
-        train = usable.filter(pl.col("season").is_in(learn.train_seasons(season, seasons)))
+        train = usable.filter(pl.col("season").is_in(train_seasons(season, seasons)))
         test = usable.filter(pl.col("season") == season)
         parts.append(test.select(KEY).with_columns(pl.Series("q", fit_predict(train, test, seeds))))
     return pl.concat(parts)
@@ -184,7 +198,7 @@ def next_game_features(
     (a bye) gets the latest depth chart, since his game's chart is not out yet."""
     first = future.sort("week").unique("gsis_id", keep="first").select(*KEY, "position")
     chart = depth.select(*KEY, "depth_rank").unique(KEY, keep="first", maintain_order=True)
-    latest = learn.latest_asof(first.select(KEY), chart, "gsis_id", ["depth_rank"]).rename(
+    latest = latest_asof(first.select(KEY), chart, "gsis_id", ["depth_rank"]).rename(
         {"depth_rank": "_latest"}
     )
     return (
@@ -214,6 +228,7 @@ def next_game_chance(
 
 
 def depth_cell() -> pl.Expr:
+    """`d_cell`: the depth rank as a cell label, 1, 2, 3, 4+ or none (not on the chart)."""
     rank = pl.col("depth_rank")
     return (
         pl.when(rank.is_null())
@@ -238,6 +253,7 @@ def cell_chance(rows: pl.DataFrame, min_rows: int = MIN_CELL_ROWS) -> pl.DataFra
 
 
 def position_chance(rows: pl.DataFrame) -> dict[str, float]:
+    """Position -> stat-line rate, the fallback for a position-depth cell with too few games."""
     rates = rows.group_by("position").agg(pl.col("statline").mean())
     return dict(zip(rates["position"], rates["statline"], strict=True))
 
@@ -252,7 +268,7 @@ def future_chance(
     """KEY, q for every future game: the next game's q (nxt: gsis_id, q) for a player's first
     game, the higher of it and his position-depth rate (latest chart) for later ones."""
     chart = depth.select(*KEY, "depth_rank").unique(KEY, keep="first", maintain_order=True)
-    rows = learn.latest_asof(
+    rows = latest_asof(
         future.select(*KEY, "position").unique(KEY, keep="first"), chart, "gsis_id", ["depth_rank"]
     )
     fallback = pl.col("position").replace_strict(positions, default=None, return_dtype=pl.Float64)
@@ -264,6 +280,7 @@ def future_chance(
             pl.when(pl.col("week") == pl.col("week").min().over("gsis_id"))
             .then(pl.col("_next"))
             .otherwise(pl.max_horizontal("_next", pl.coalesce("q_cell", fallback)))
+            .clip(Q_FLOOR, 1.0)
             .alias("q")
         )
         .select(*KEY, "q")
@@ -278,35 +295,12 @@ def chances(
     current_week: int,
 ) -> tuple[pl.DataFrame, pl.DataFrame]:
     """(KEY, q) for past games and for future ones. raw: opp, snaps, stats, depth."""
-    active = active_rows(points, exp)
-    history = history_table(active, usage_frame(raw["opp"], raw["snaps"], raw["stats"]))
-    feats = features(active, history, raw["depth"])
+    played = played_rows(points, exp, raw["snaps"], raw["opp"])
+    history = history_table(played, usage_frame(raw["opp"], raw["snaps"], raw["stats"]))
+    feats = features(played, history, raw["depth"])
     nxt = next_game_chance(feats, history, raw["depth"], future, current_week)
     fit_rows = feats.filter(pl.col("season") >= FIRST_PROJECTED_SEASON)
     later = future_chance(
         future, nxt, cell_chance(fit_rows), position_chance(fit_rows), raw["depth"]
     )
     return history_chance(feats), later
-
-
-def stored() -> pl.DataFrame | None:
-    """The `stat_line` table when the switch is on and the learned projections are in use (so
-    they carry q), else None."""
-    if not (load_config().stat_line_model and store.projection_name() == "proj_learned"):
-        return None
-    try:
-        return store.read_table("stat_line")
-    except FileNotFoundError:
-        warnings.warn(
-            "stat_line_model is on but there is no stat_line table: run learn", stacklevel=2
-        )
-        return None
-
-
-def scale(frame: pl.DataFrame, chance: pl.DataFrame, on: list[str]) -> pl.DataFrame:
-    """`frame` with its projection multiplied by q (joined on `on`); every row must have one."""
-    joined = frame.join(chance.select(*on, "q"), on=on, how="left")
-    missing = int(joined["q"].null_count())
-    if missing:
-        raise ValueError(f"{missing} projection rows have no stat-line chance")
-    return joined.with_columns(pl.col("projection") * pl.col("q")).drop("q")

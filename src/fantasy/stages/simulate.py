@@ -15,7 +15,7 @@ from typing import Any
 import numpy as np
 import polars as pl
 
-from fantasy import store
+from fantasy import stat_line_table, store
 from fantasy.config import load_config
 from fantasy.sim.availability import kickoffs, remaining_share, scale_projections
 from fantasy.sim.blend import blend
@@ -33,7 +33,6 @@ from fantasy.stages.distributions import calibrated
 from fantasy.stages.environment import live as environment_live
 from fantasy.stages.injuries import PRACTICE
 from fantasy.stages.outlook import live_context
-from fantasy.stages.stat_line import stored as stat_line_table
 from fantasy.store import SKILL
 
 K_HISTORY_YEARS = 3  # kicker scoring is fit on this many seasons before the current one
@@ -203,7 +202,7 @@ def _apply_environment(
 def _stat_line(current: int) -> dict[tuple[str, int], float] | None:
     """(gsis id, week) -> chance of a stat line for this season's games from `current`, when the
     learned projections carry it."""
-    table = stat_line_table()
+    table = stat_line_table.stored()
     if table is None:
         return None
     rows = table.filter((pl.col("season") == load_config().season) & (pl.col("week") >= current))

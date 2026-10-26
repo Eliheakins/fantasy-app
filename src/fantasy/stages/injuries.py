@@ -14,11 +14,9 @@ from typing import NamedTuple
 
 import polars as pl
 
-from fantasy import store
+from fantasy import stat_line_table, store
 from fantasy.sim.scoring_scale import reference_league
-from fantasy.stages import stat_line
 from fantasy.stages.distributions import calibrated
-from fantasy.stages.stat_line import stored as stat_line_table
 from fantasy.store import SKILL
 
 HORIZON = 4
@@ -234,11 +232,9 @@ def run() -> int:
             (pl.col("league_id") == league_id) & ~pl.col("is_future") & pl.col("has_history")
         )
     ).select("gsis_id", "season", "week", "projection")
-    chance = stat_line_table()
+    chance = stat_line_table.stored()
     if chance is not None:  # perf is measured on games with touches or targets: against E, not qE
-        projection = stat_line.scale(
-            projection, chance.with_columns(1.0 / pl.col("q")), ["gsis_id", "season", "week"]
-        )
+        projection = stat_line_table.divide(projection, chance, ["gsis_id", "season", "week"])
     panel = build_panel(
         store.read_table("nfl_injuries", "raw").filter(pl.col("season") < season),
         store.read_table("nfl_player_stats", "raw"),

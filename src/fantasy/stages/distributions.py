@@ -21,7 +21,7 @@ import math
 import numpy as np
 import polars as pl
 
-from fantasy import store
+from fantasy import stat_line_table, store
 from fantasy.sim.calibration import CALIBRATION_BINS, apply_curves
 
 LEVELS = np.arange(1, 100) / 100
@@ -34,11 +34,14 @@ TEAM_WEEK = ["league_id", "season", "week", "team"]
 
 
 def residual_frame(proj: pl.DataFrame, points: pl.DataFrame) -> pl.DataFrame:
-    """Actual minus projection, for games whose projection used earlier games."""
+    """Actual minus projection, for games whose projection used earlier games. Past projections
+    exist only for scored games, except the played games with no `player_points` row that the
+    stat-line model projects (`learn`): those scored 0."""
     actual = points.select("league_id", "gsis_id", "season", "week", "points")
     return (
         proj.filter(~pl.col("is_future") & pl.col("has_history"))
-        .join(actual, on=["league_id", "gsis_id", "season", "week"])
+        .join(actual, on=["league_id", "gsis_id", "season", "week"], how="left")
+        .with_columns(pl.col("points").fill_null(0.0))
         .with_columns((pl.col("points") - pl.col("projection")).alias("resid"))
     )
 
@@ -106,7 +109,10 @@ def estimate_marginals(res: pl.DataFrame) -> pl.DataFrame:
         resid = g["resid"].to_numpy()
         cv = float(np.sqrt((resid**2).sum() / (projection**2).sum()))
         rows += _quantile_rows(league_id, position, ratio, cv, -1, TOP)
-        edges = np.quantile(projection, [1 / 3, 2 / 3])
+        # with the stat-line model, cut the thirds on stat-line games only, so the stat-less ones
+        # (low q * E) do not move the tiers the starters sit in
+        cut_on = projection[g["statline"].to_numpy()] if "statline" in g.columns else projection
+        edges = np.quantile(cut_on, [1 / 3, 2 / 3])
         tier = np.digitize(projection, edges)
         for t in range(3):
             in_tier = tier == t
@@ -179,8 +185,18 @@ def shape_frame(res: pl.DataFrame, curves: pl.DataFrame, projection_name: str) -
     return base.with_columns((pl.col("points") - pl.col("projection")).alias("resid"))
 
 
+def with_stat_line_flag(res: pl.DataFrame, baseline: pl.DataFrame) -> pl.DataFrame:
+    """A `statline` column: the game has a baseline projection, which only stat-line games have."""
+    keys = ["league_id", "gsis_id", "season", "week"]
+    have = baseline.filter(~pl.col("is_future")).select(keys).unique()
+    flagged = res.join(have.with_columns(pl.lit(True).alias("statline")), on=keys, how="left")
+    return flagged.with_columns(pl.col("statline").fill_null(False))
+
+
 def run() -> dict[str, int]:
     res = residual_frame(store.projection_table(), store.read_table("player_points"))
+    if stat_line_table.stored() is not None:
+        res = with_stat_line_flag(res, store.read_table("proj_baseline"))
     curves = estimate_curves(res)
     fitted = shape_frame(res, curves, store.projection_name())
     marginals = estimate_marginals(fitted)

@@ -94,25 +94,32 @@ def without_stat_line(
     first_game_chance: dict[str, float] | None,
     stat_line: dict[tuple[str, int], float] | None,
 ) -> pl.DataFrame:
-    """Our projection divided by q (stat_line: (gsis_id, week) -> q, from stages/stat_line.py)
+    """Our projection divided by q (stat_line: (gsis_id, week) -> q, the `stat_line` table)
     for the games whose chance of playing will come from the injury table. That chance counts
     games with touches or targets, the stat-line event itself, so those games use E, not q * E.
     The classifier's first-game chance (any offensive snaps) and healthy games keep q. Apply it
-    before the Sleeper blend, so Sleeper's half is never divided by q."""
+    before the Sleeper blend, so Sleeper's half is never divided by q. A game that needs q and
+    has none keeps its projection, with a warning."""
     if not stat_line:
         return projections
     override = first_game_chance or {}
     curves = {g: _curve_or_questionable(model, f) for g, f in flagged.items()}
     rows = _steps(projections, current_week)
-    undo = []
+    undo, missing = [], []
     for gsis, week, k in zip(rows["gsis_id"], rows["week"], rows["_k"], strict=True):
         curve = curves.get(gsis)
         # the curve's last entry is "healthy from then on", not a measured chance
         from_table = curve is not None and 0 <= k < len(curve[0]) - 1
         if k == 0 and gsis in override:
             from_table = False
-        undo.append(
-            1.0 / stat_line[(gsis, week)] if from_table and (gsis, week) in stat_line else 1.0
+        q = stat_line.get((gsis, week)) if from_table else None
+        if from_table and q is None:
+            missing.append(f"{gsis} week {week}")
+        undo.append(1.0 if q is None else 1.0 / q)
+    if missing:
+        warnings.warn(
+            f"no stat-line chance for flagged games {missing}: their projection keeps q",
+            stacklevel=2,
         )
     return rows.with_columns(pl.col("projection") * pl.Series(undo, dtype=pl.Float64)).drop("_k")
 
