@@ -91,6 +91,17 @@ def test_calibration_curve_finds_that_small_projections_over_promise() -> None:
     assert ordered["center"].to_list() == sorted(ordered["center"].to_list())
 
 
+def test_shapes_are_fit_on_the_projection_the_simulation_uses() -> None:
+    frame = _two_sizes()
+    curves = d.estimate_curves(frame)
+    learned = d.shape_frame(frame, curves, "proj_learned")
+    baseline = d.shape_frame(frame, curves, "proj_baseline")
+    assert learned["projection"].to_list() == frame["projection"].to_list()  # never calibrated
+    assert baseline["projection"].to_list() != frame["projection"].to_list()
+    for out in (learned, baseline):
+        assert (out["resid"] == out["points"] - out["projection"]).all()
+
+
 def test_applying_the_curves_scales_projections_and_keeps_row_order() -> None:
     from fantasy.sim.calibration import apply_curves, tier_of
 
