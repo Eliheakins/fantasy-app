@@ -2,7 +2,7 @@ import { scaleLinear } from "d3-scale";
 
 export type Range = { p10?: number | null; p50?: number | null; p90?: number | null };
 export type Domain = readonly [number, number];
-export type BarLayout = {
+type BarLayout = {
   /** Pixel x of the bar ends, or null when an end is missing (tick-only). */
   bar: { x1: number; x2: number } | null;
   tick: number | null;

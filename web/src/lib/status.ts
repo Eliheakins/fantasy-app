@@ -1,13 +1,13 @@
 import type { Status } from "@/api/types";
 
-/** Hours after which a source is stale; same limits as STALE_HOURS in app/ui.py. */
-export const STALE_HOURS: Readonly<Record<string, number>> = {
+/** Hours after which a source is stale; the retired Streamlit app used the same limits. */
+const STALE_HOURS: Readonly<Record<string, number>> = {
   Sleeper: 24,
   "NFL stats": 48,
   Simulation: 48,
 };
 
-/** Banner lines, worded exactly like stale_banner() in app/ui.py (each ends "Run `make refresh`."). */
+/** Banner lines, worded as the retired Streamlit stale_banner() was (each ends "Run `make refresh`."). */
 export function bannerMessages(status: Status): string[] {
   const old = status.freshness
     .filter((r) => r.age_hours > (STALE_HOURS[r.source] ?? Number.POSITIVE_INFINITY))

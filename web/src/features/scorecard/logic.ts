@@ -6,11 +6,11 @@ export type Model = ScorecardRow["model"];
 
 export const MODELS: readonly Model[] = ["learned", "baseline", "sleeper"];
 export const MODEL_LABEL: Record<Model, string> = { learned: "Learned", baseline: "Baseline", sleeper: "Sleeper" };
-export const ALL_POSITIONS = "ALL";
-export const ALL_TIERS = -1;
+const ALL_POSITIONS = "ALL";
+const ALL_TIERS = -1;
 /** A cell with fewer player-games than this is too noisy to rank models on. */
 export const SMALL_N = 30;
-export const TIER_LABEL: Record<number, string> = {
+const TIER_LABEL: Record<number, string> = {
   [ALL_TIERS]: "All sizes",
   0: "Low projection third",
   1: "Middle projection third",

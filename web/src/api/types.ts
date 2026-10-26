@@ -16,5 +16,4 @@ export type Envelope<T> = {
 };
 
 export type League = Schemas["LeagueRow"];
-export type FreshnessRow = Schemas["FreshnessRow"];
 export type Status = Schemas["StatusData"];

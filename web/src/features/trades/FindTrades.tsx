@@ -9,7 +9,7 @@ import { useKeptState } from "./useKeptState";
 import { usePostApi } from "./usePostApi";
 
 /** "You fill: WR" / "They fill: RB, WR" on two lines; a side with no named need says "none". */
-export function FillsNote({ r }: { r: Pick<FoundTrade, "my_fills" | "their_fills"> }) {
+function FillsNote({ r }: { r: Pick<FoundTrade, "my_fills" | "their_fills"> }) {
   return (
     <>
       <span className="block whitespace-nowrap">{`You fill: ${r.my_fills || "none"}`}</span>
@@ -58,7 +58,7 @@ const COLUMNS: readonly Column<FoundTrade>[] = [
   { label: "Title error (\u00b1 pp)", role: "detail", numeric: true, render: (r) => points(r.se_title).toFixed(2) },
 ];
 
-export function FoundTradesTable({ rows }: { rows: readonly FoundTrade[] }) {
+function FoundTradesTable({ rows }: { rows: readonly FoundTrade[] }) {
   if (rows.length === 0) {
     return <p className="measure py-2 text-muted">No trade fills a need for both teams right now. Try again after rosters or waivers change.</p>;
   }

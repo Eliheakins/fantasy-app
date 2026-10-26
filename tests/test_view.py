@@ -210,22 +210,6 @@ def test_unmatched_names_lists_name_position_and_team() -> None:
     assert view.unmatched_names(frame) == ["Zed (WR, KC)"]
 
 
-def test_my_odds_history_needs_two_runs_and_filters_to_my_team() -> None:
-    def history(runs: list[str]) -> pl.DataFrame:
-        return pl.DataFrame(
-            [
-                {"run_at": r, "team_name": t, "roster_id": rid, "p_playoffs": 0.5, "p_title": 0.1}
-                for r in runs
-                for t, rid in (("Mine", 1), ("Theirs", 2))
-            ]
-        )
-
-    odds = pl.DataFrame({"roster_id": [1, 2], "is_me": [True, False]})
-    two = view.my_odds_history(history(["2", "1"]), odds)
-    assert two["run_at"].to_list() == ["1", "2"] and set(two["roster_id"]) == {1}
-    assert view.my_odds_history(history(["1"]), odds).is_empty()
-
-
 def test_trade_deadline_reads_the_leagues_table(
     tmp_path: Path,
 ) -> None:

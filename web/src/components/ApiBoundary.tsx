@@ -29,7 +29,7 @@ function Loading() {
 }
 
 /** Looks unlike loading: amber edge, plain sentence, the cause in small type, and a way to try again. */
-export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
     <div role="alert" className="my-4 border-l-4 border-warning bg-surface px-4 py-3">
       <p className="text-body font-semibold">This did not load.</p>

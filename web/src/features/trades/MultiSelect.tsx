@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { MAX_TRADE_IDS, toggleId } from "./logic";
 
-export type Option = { id: string; label: string };
+type Option = { id: string; label: string };
 
 type MultiSelectProps = {
   legend: string;

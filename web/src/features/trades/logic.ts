@@ -24,7 +24,7 @@ export function tradeKey(draft: Draft): string {
   return JSON.stringify([draft.partner, [...draft.give].sort(), [...draft.get].sort()]);
 }
 
-export type Measure = { key: string; label: string; before: number; after: number; percent: boolean };
+type Measure = { key: string; label: string; before: number; after: number; percent: boolean };
 
 /** The three before/after measures of one side; probabilities become percentage points. */
 export function sideMeasures(side: TradeSide): [Measure, Measure, Measure] {

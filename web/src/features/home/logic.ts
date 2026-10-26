@@ -11,7 +11,7 @@ export type ActionRow = Schemas["ActionRow"];
 export type WinProbability = Schemas["WinProbabilityData"];
 export type Unmatched = Schemas["UnmatchedData"];
 
-/** "Colgate 5-2 · 801.3 PF · week 7": same fallbacks as app/Home.py. */
+/** "Colgate 5-2 · 801.3 PF · week 7": with fallbacks for missing fields. */
 export function recordLine(l: League): string {
   const record = l.wins == null || l.losses == null ? "no record yet" : l.record;
   const pf = l.points_for == null ? "no" : l.points_for.toFixed(1);
@@ -75,7 +75,7 @@ export const liveScoreParts = (r: LiveScore) => ({
 });
 
 /** Below these an action is inside the noise: it is not worth a move. */
-export const MIN_WIN_EDGE_POINTS = 0.5;
+const MIN_WIN_EDGE_POINTS = 0.5;
 const MIN_ACTION_POINTS = 0.5;
 
 const CONFIDENCE_PREFIX = /^(clear|lean|toss-up):\s*/i;
@@ -110,4 +110,4 @@ export function worthActing(a: ActionRow, share: number | null): boolean {
 export function splitRoster(rows: readonly RosterRow[]) {
   return { starters: rows.filter((r) => r.is_starter), bench: rows.filter((r) => !r.is_starter) };
 }
-export { formatPercent };
+;

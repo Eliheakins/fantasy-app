@@ -5,7 +5,7 @@ type Schemas = components["schemas"];
 export type LineupRow = Schemas["LineupRow"];
 export type WinProbability = Schemas["WinProbabilityData"];
 export type ComparisonRow = Schemas["ComparisonRow"];
-export type Summary = Schemas["SummaryModel"];
+type Summary = Schemas["SummaryModel"];
 
 export const OBJECTIVES = [
   { key: "expected_points", label: "Expected points" },
@@ -39,7 +39,7 @@ export function sleeperKnown(rows: readonly LineupRow[]): boolean {
   return rows.some((r) => r.starting_now);
 }
 
-export function sumProjection(rows: readonly LineupRow[]): number {
+function sumProjection(rows: readonly LineupRow[]): number {
   return rows.reduce((total, r) => total + r.projection, 0);
 }
 
@@ -54,7 +54,7 @@ export function headline(rows: readonly LineupRow[], summary: Summary | undefine
   return { shown, now, gap: now - shown, win: null };
 }
 
-export type ComparisonGroup = { labels: string[]; row: ComparisonRow };
+type ComparisonGroup = { labels: string[]; row: ComparisonRow };
 
 const SAME_KEYS = ["win_prob", "expected_points", "floor", "median", "ceiling"] as const;
 

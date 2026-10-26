@@ -1,4 +1,4 @@
-"""Page logic the Streamlit pages compute themselves, lifted out so the API can serve it.
+"""Page logic lifted out of the retired Streamlit pages so the API can serve it.
 
 Pure functions over the frames `data_api` returns (nothing here mutates its inputs). Probabilities
 stay 0 to 1; scaling to percent is a display concern.
@@ -25,7 +25,6 @@ OBJECTIVE_LABELS = {
     "max_floor": "Max floor",
 }
 NO_SWAP = "same as max points"
-MIN_HISTORY_RUNS = 2
 ROSTER_MOVES_WARNING = "Automatic roster moves to keep sizes equal:"
 
 
@@ -147,14 +146,6 @@ def unmatched_names(unmatched: pl.DataFrame) -> list[str]:
     return [
         f"{r['full_name']} ({r['position']}, {r['team']})" for r in unmatched.iter_rows(named=True)
     ]
-
-
-def my_odds_history(history: pl.DataFrame, odds: pl.DataFrame) -> pl.DataFrame:
-    """My team's saved runs, oldest first; empty until the simulation has run twice."""
-    mine = odds.filter(pl.col("is_me"))
-    if mine.is_empty() or history["run_at"].n_unique() < MIN_HISTORY_RUNS:
-        return history.clear()
-    return history.filter(pl.col("roster_id") == mine["roster_id"][0]).sort("run_at")
 
 
 def trade_deadline(league_key: str, data_dir: Path) -> int | None:

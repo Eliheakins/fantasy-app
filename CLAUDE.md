@@ -11,7 +11,6 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 ## Run it
 
 - `make refresh`: pull Sleeper and nflverse and rebuild every table (needs the network)
-- `make app`: open the old Streamlit dashboard (port 8501, retired after the React parity check, #66)
 - `make serve`: build `web/` and serve the React UI plus the API at http://127.0.0.1:8000. `make dev`: API plus the Vite dev server (hot reload)
 - `make odds`: archive one week of prop lines (needs `ODDS_API_KEY` in env or `.env`, gitignored; free tier is 500 credits a month, a snapshot costs about 80)
 - Checks against real data: `uv run python -m fantasy.stages.validate_scoring`, `validate_standings`, `backtest`, `calibration`
@@ -25,7 +24,7 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 ## Conventions
 
 - Parquet under `data/` (gitignored) is the source of truth. Stages and `data_api.py` read it with polars; DuckDB is not a dependency (add it back only if a query needs it).
-- The dashboard and the API (`src/fantasy/api*.py`) import only `fantasy.data_api`. `make check` also typechecks and tests `web/`.
+- The API (`src/fantasy/api*.py`) imports only `fantasy.data_api`. `make check` also typechecks and tests `web/`.
 - No secrets in the repo. API keys come from environment variables.
 - Lean MVP: simplest method that works, tests only for math and config, no CI.
 - Sleeper's API is read-only. Stay under 1,000 calls a minute and fetch the players file at most once a day.
@@ -33,7 +32,7 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 
 ## How it fits together
 
-Stages (`src/fantasy/stages/`, run by `make refresh` in this order) read and write parquet tables registered in `store.SCHEMAS`. `src/fantasy/sim/` holds the pure logic; `stages/simulate.py` builds a `LeagueData` from the tables and `data_api.py` serves it to the Streamlit pages in `app/`.
+Stages (`src/fantasy/stages/`, run by `make refresh` in this order) read and write parquet tables registered in `store.SCHEMAS`. `src/fantasy/sim/` holds the pure logic; `stages/simulate.py` builds a `LeagueData` from the tables and `data_api.py` serves it to the API in `src/fantasy/api*.py`, which the React app in `web/` calls.
 
 1. `sync_sleeper`, `sleeper_projections`, `ingest_nfl`, `crosswalk`: raw data and the Sleeper to nflverse ID map.
 2. `score`, `streaming`: points per league's scoring; K and DEF.

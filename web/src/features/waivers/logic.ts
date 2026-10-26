@@ -6,8 +6,8 @@ export type StrengthRow = components["schemas"]["StrengthRow"];
 export type StreamerRow = components["schemas"]["StreamerRow"];
 export type PlayerWeekRow = components["schemas"]["PlayerWeekRow"];
 
-export type ChangeKind = "missing" | "noise" | "delta";
-export type Change = { kind: ChangeKind; points: number; noiseText: string };
+type ChangeKind = "missing" | "noise" | "delta";
+type Change = { kind: ChangeKind; points: number; noiseText: string };
 
 /** Probability change in percentage points; a change inside the Monte Carlo error is noise ("~"). */
 export function classifyChange(change: number | null, error: number | null = null): Change {

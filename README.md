@@ -39,7 +39,7 @@ Requires [uv](https://docs.astral.sh/uv/) (it installs Python 3.12) and a networ
 ```sh
 make setup      # install dependencies, enable the pre-commit hook
 make refresh    # pull Sleeper and nflverse and rebuild every table
-make app        # open the dashboard at http://localhost:8501
+make serve      # build the web UI and open it at http://127.0.0.1:8000
 ```
 
 `data/` is gitignored, so a fresh clone has no data until `make refresh` runs. The app binds to `127.0.0.1` only because it has no login.
@@ -55,7 +55,6 @@ Configure your own leagues in [config.toml](config.toml) (Sleeper username, user
 | Command | What it does |
 |---|---|
 | `make refresh` | Rebuild all tables in order (needs the network) |
-| `make app` | Run the dashboard |
 | `make check` | ruff, mypy and pytest. Run before committing. |
 | `make fmt` | Auto-fix lint and formatting |
 | `make odds` | Archive one week of prop lines |
@@ -71,14 +70,14 @@ During the season, run `make refresh` after games and before setting a lineup. T
 ```
 config.toml            leagues and user (no secrets)
 src/fantasy/
-  data_api.py          the only module the dashboard imports: reads over the parquet store
+  data_api.py          the only module the API imports: reads over the parquet store
   store.py             parquet store: atomic writes, schema checks
   scoring.py           Sleeper scoring settings applied to nflverse stat lines
   sources/             Sleeper client
   stages/              pipeline stages, each run as python -m fantasy.stages.<name>
   sim/                 pure logic: lineups, sampler, season simulation, moves, injuries, effects
-app/                   Streamlit pages (Home plus pages/)
-tests/                 pytest suite (206 tests)
+web/                   React UI (Vite, TypeScript)
+tests/                 pytest suite
 research/              one-off analysis scripts behind decisions.md
 overrides/id_map.csv   manual Sleeper to nflverse ID overrides
 docs/                  decisions log, backlog, one-pager, specs

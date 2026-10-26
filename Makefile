@@ -1,4 +1,4 @@
-.PHONY: setup test lint fmt check refresh app serve dev web-build
+.PHONY: setup test lint fmt check refresh serve dev web-build
 
 refresh:
 	uv run python -m fantasy.stages.sync_sleeper
@@ -17,9 +17,6 @@ refresh:
 	uv run python -m fantasy.stages.simulate
 	uv run python -m fantasy.stages.digest
 	uv run python -m fantasy.stages.market_values
-
-app:
-	uv run streamlit run app/Home.py
 
 web-build:
 	cd web && npm run build
@@ -40,7 +37,7 @@ test:
 
 lint:
 	uv run ruff check .
-	uv run mypy src app
+	uv run mypy src
 
 fmt:
 	uv run ruff check --fix .

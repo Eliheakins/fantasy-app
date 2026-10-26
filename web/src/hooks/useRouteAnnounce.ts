@@ -4,7 +4,7 @@ import { PAGE_HEADING_ID } from "@/components/PageHeader";
 import { NAV_ITEMS } from "@/nav";
 
 const SITE = "Fantasy";
-export const NOT_FOUND_TITLE = "Page not found";
+const NOT_FOUND_TITLE = "Page not found";
 
 /** The page name for a path: the nav entry's title, else "Page not found". */
 export function pageTitle(pathname: string): string {

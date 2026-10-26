@@ -87,7 +87,7 @@ function WeekBars({ lines }: { lines: Line[] }) {
   );
 }
 
-export function EmptyScorecard({ data }: { data: ScorecardData }) {
+function EmptyScorecard({ data }: { data: ScorecardData }) {
   return (
     <div className="card">
       <p className="text-body">{EMPTY_TEXT}</p>

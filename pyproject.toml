@@ -14,7 +14,6 @@ dependencies = [
     "polars>=2.0.0",
     "scikit-learn>=1.9.1",
     "scipy>=1.18.1",
-    "streamlit>=1.66.1",
 ]
 
 [build-system]

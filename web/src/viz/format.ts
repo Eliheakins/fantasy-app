@@ -1,9 +1,9 @@
 /** Share of paired simulations in which a change helps, bucketed per docs/spec/dashboard.md. */
 export type ConfidenceLevel = "clear" | "lean" | "toss-up";
-export type DeltaTone = "positive" | "negative" | "neutral";
+type DeltaTone = "positive" | "negative" | "neutral";
 
-export const CLEAR_SHARE = 0.7;
-export const LEAN_SHARE = 0.55;
+const CLEAR_SHARE = 0.7;
+const LEAN_SHARE = 0.55;
 /** Monte Carlo noise at 50k runs is about 0.2 points; below this a delta is shown as "~". */
 export const NOISE_POINTS = 0.5;
 /** Percentage points of probability. */
@@ -11,7 +11,7 @@ export const NOISE_PERCENT = 0.1;
 /** Expected wins. */
 export const NOISE_WINS = 0.05;
 
-export type FormattedDelta = { text: string; tone: DeltaTone; sign: -1 | 0 | 1 };
+type FormattedDelta = { text: string; tone: DeltaTone; sign: -1 | 0 | 1 };
 
 /** 0.62 becomes "62%". Missing values become an en dash. */
 export function formatPercent(fraction: number | null | undefined): string {

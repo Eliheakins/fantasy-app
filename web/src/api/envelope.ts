@@ -1,6 +1,6 @@
 import { ENVELOPE_STATUSES, type Envelope, type EnvelopeStatus } from "./types";
 
-export const POLL_INTERVAL_MS = 2000;
+const POLL_INTERVAL_MS = 2000;
 
 export type ApiError = { message: string; code: string | null };
 

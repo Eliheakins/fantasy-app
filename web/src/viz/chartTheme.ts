@@ -1,16 +1,16 @@
 /** Shared look for the Recharts charts, from the dashboard rules: tokens only, ranges and
  * non-semantic bars grey, my series the one strong mark, a caption on the value axis. */
 
-export const CHART_FONT_SIZE = 12;
+const CHART_FONT_SIZE = 12;
 /** --text-muted: at least 4.5:1 on page and surface in both themes (see web/CONTRAST.md). */
 export const TICK_COLOR = "var(--text-muted)";
-export const GRID_COLOR = "var(--border)";
+const GRID_COLOR = "var(--border)";
 /** Bars that carry no good/bad meaning. */
 export const BAR_FILL = "var(--range)";
 export const OTHER_LINE = "var(--range)";
 export const MY_LINE = "var(--tick)";
 
-export const TICK = { fill: TICK_COLOR, fontSize: CHART_FONT_SIZE };
+const TICK = { fill: TICK_COLOR, fontSize: CHART_FONT_SIZE };
 
 /** Spread onto XAxis / YAxis. */
 export const AXIS = { tick: TICK, stroke: GRID_COLOR, tickLine: false } as const;

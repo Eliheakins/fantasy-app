@@ -1,4 +1,4 @@
-"""The only module the dashboard imports: pure reads over the parquet store, no Streamlit.
+"""The only module the API imports: pure reads over the parquet store.
 
 Optional tables that no stage has written yet come back empty with the right columns. Core
 tables (the ones whose emptiness would fabricate defaults) raise FileNotFoundError instead.
