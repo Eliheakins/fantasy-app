@@ -16,7 +16,7 @@ export default function Trades() {
   const partners = useApi<Partner[]>(base && `${base}/trade-partners`);
   const mine = useApi<Asset[]>(base && `${base}/trade-assets`);
   return (
-    <section className="space-y-6">
+    <div>
       <PageHeader title="Trades" />
       {league !== null && (
         <>
@@ -31,6 +31,6 @@ export default function Trades() {
           </ApiBoundary>
         </>
       )}
-    </section>
+    </div>
   );
 }

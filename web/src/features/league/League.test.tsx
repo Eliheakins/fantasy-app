@@ -45,8 +45,8 @@ describe("League page", () => {
     render(<League />);
     expect(screen.getByRole("list", { name: /Power rankings/ })).toBeInTheDocument();
     expect(screen.getAllByText("Lisan (you)").length).toBeGreaterThan(0);
-    expect(screen.getByText("~0.4")).toBeInTheDocument();
-    expect(screen.getByText("-1.8 ▼")).toBeInTheDocument();
+    expect(screen.getByText("+0.44 ▲")).toBeInTheDocument();
+    expect(screen.getByText("-1.78 ▼")).toBeInTheDocument();
     expect(screen.getByText("4-2")).toBeInTheDocument();
     expect(screen.getByText("86%")).toBeInTheDocument();
   });
@@ -83,10 +83,11 @@ describe("League page", () => {
       unmount();
     }
   });
-  it("empty power rankings show the no-data copy", () => {
+  it("empty power rankings say so and leave the other sections", () => {
     respond({ "power-rankings": ready([]) });
     render(<League />);
-    expect(screen.getByText(/make refresh/)).toBeInTheDocument();
+    expect(screen.getAllByText("Nothing to show yet.").length).toBe(2);
+    expect(screen.getByText("Luck and all-play")).toBeInTheDocument();
   });
   it("a failing section reports its own error and leaves the rest", () => {
     respond({ luck: { kind: "error", error: { message: "luck broke", code: null } } });
