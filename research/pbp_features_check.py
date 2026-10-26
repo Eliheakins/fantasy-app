@@ -140,12 +140,19 @@ def walk(
     extra: list[str],
     seasons: tuple[int, ...] = SCORED,
     first_train: int | None = None,
+    drop: tuple[str, ...] = (),
 ) -> pl.DataFrame:
-    """Walk-forward predictions of the production model with `extra` columns appended."""
+    """Walk-forward predictions of the production model with `extra` columns appended and the
+    `drop` columns of the production design removed."""
     available = sorted(history["season"].unique().to_list())
+    names = [*learn.STATE_FEATURES, "week", "is_qb", "is_rb", "is_wr"]
+    names += learn.LINE_FEATURES + learn.EXTRA_FEATURES  # learn.design's column order
+    keep = [i for i, n in enumerate(names) if n not in drop]
 
     def x(frame: pl.DataFrame) -> np.ndarray:
         base = learn.design(frame, True)
+        assert base.shape[1] == len(names), "learn.design columns changed"
+        base = base[:, keep]
         if not extra:
             return base
         return np.hstack([base, frame.select(pl.col(extra).cast(pl.Float64)).to_numpy()])
