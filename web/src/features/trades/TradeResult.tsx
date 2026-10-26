@@ -70,7 +70,7 @@ export function TradeResult({ result }: { result: TradeEvaluation }) {
   return (
     <div className="space-y-3">
       <div className="grid gap-3 md:grid-cols-2">
-        <SideCard title="Me" side={me} sides={[me, them]} />
+        <SideCard title={me.team_name} side={me} sides={[me, them]} />
         <SideCard title={them.team_name} side={them} sides={[me, them]} />
       </div>
       {result.market && (

@@ -39,9 +39,10 @@ export function PowerRankings({ rows }: { rows: readonly PowerRankingRow[] }) {
 }
 
 const SCHEDULE_COLUMNS: Column<PowerRankingRow>[] = [
-  { label: "Team", role: "primary", render: (r) => `${r.sos_rank ?? "–"}. ${r.is_me ? `${r.team_name} (you)` : r.team_name}` },
+  { label: "Team", role: "primary", render: (r) => (r.is_me ? `${r.team_name} (you)` : r.team_name) },
+  { label: "Rank", numeric: true, render: (r) => r.sos_rank ?? "–" },
   { label: "Opponents' avg. expected points", numeric: true, render: (r) => formatNumber(r.sos_remaining) },
-  { label: "Playoffs", render: (r) => <WinBar fraction={r.p_playoffs} /> },
+  { label: "Playoff odds", render: (r) => <WinBar fraction={r.p_playoffs} /> },
 ];
 
 export function ScheduleStrength({ rows }: { rows: readonly PowerRankingRow[] }) {

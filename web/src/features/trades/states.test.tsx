@@ -41,9 +41,10 @@ describe("find trades", () => {
     wrap(<FindTradesSection league="L" />);
     await userEvent.click(screen.getByRole("button", { name: "Find trades" }));
     expect(await screen.findByText("Rivals")).toBeInTheDocument();
-    expect(screen.getByText("0.31%")).toBeInTheDocument();
+    expect(screen.getByText("0.31")).toBeInTheDocument();
     expect(screen.getByText("+2.1 ▲")).toBeInTheDocument();
-    expect(screen.getByText("fills WR, they fill RB")).toBeInTheDocument();
+    expect(screen.getByText("You fill: WR")).toBeInTheDocument();
+    expect(screen.getByText("They fill: RB")).toBeInTheDocument();
     expect(screen.getByText("need swap")).toBeInTheDocument();
     expect(screen.getByText(/gives 5,000, gets 5,700/)).toBeInTheDocument();
     expect(screen.getByText(/you receive 14% more/)).toBeInTheDocument();
@@ -60,7 +61,7 @@ describe("find trades", () => {
     mockFetch(() => ({ status: "ok", data: [] }));
     wrap(<FindTradesSection league="L" />);
     await userEvent.click(screen.getByRole("button", { name: "Find trades" }));
-    expect(await screen.findByText("No trade fills a need for both teams right now.")).toBeInTheDocument();
+    expect(await screen.findByText(/No trade fills a need for both teams right now/)).toBeInTheDocument();
   });
   it("offers a retry on busy, and retrying works", async () => {
     let calls = 0;
@@ -103,7 +104,9 @@ describe("evaluator", () => {
   it("keeps Evaluate disabled until both sides have a player", () => {
     mockFetch(() => ({ status: "ok", data: [] }));
     wrap(<Evaluator league="L" partners={PARTNERS} mine={[asset("m1", "Mine")]} />);
-    expect(screen.getByRole("button", { name: "Evaluate" })).toBeDisabled();
+    const button = screen.getByRole("button", { name: "Evaluate" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription("Pick at least one player on each side.");
   });
   it("shows both sides, the roster-moves warning with the partner's drop, and a text equivalent", async () => {
     await evaluate({ status: "ok", data: RESULT });
