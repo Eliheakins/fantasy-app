@@ -61,6 +61,36 @@ def test_projections_follow_the_players_own_games_and_leave_others_alone() -> No
     assert out.filter(pl.col("gsis_id") == "fine")["play_prob"].to_list() == [1.0] * 5
 
 
+def test_a_table_chance_of_playing_replaces_the_stat_line_chance() -> None:
+    # the table's chance counts a game with touches or targets, which already is the stat-line
+    # event, so its games get p * E, not p * q * E; the classifier's first-game chance (any
+    # offensive snaps) keeps q, and so does a healthy game after the curve
+    weeks = [7, 8, 9, 10, 11]
+    rows = [("hurt", w, 9.0) for w in weeks] + [("snaps", w, 9.0) for w in weeks]
+    frame = pl.DataFrame(
+        rows + [("fine", 7, 9.0)], schema=["gsis_id", "week", "projection"], orient="row"
+    )
+    q = {(g, w): 0.9 for g, w, _ in rows} | {("fine", 7): 0.9}  # E is 10 everywhere
+    flag = ("Questionable", "Hamstring", None)
+    out = injury_projections(
+        frame,
+        {"hurt": flag, "snaps": flag},
+        InjuryModel(_effects()),
+        7,
+        first_game_chance={"snaps": 0.8},
+        stat_line=q,
+    ).sort("gsis_id", "week")
+    perf = [1 - 0.1 * 0.5**k for k in range(5)]
+    hurt = out.filter(pl.col("gsis_id") == "hurt")
+    expected = [p * f * 10.0 for p, f in zip([0.55, 0.69, 0.71, 0.69], perf, strict=False)]
+    assert hurt["projection"].to_list()[:4] == pytest.approx(expected)
+    assert hurt["projection"][4] == pytest.approx(perf[4] * 9.0)
+    snaps = out.filter(pl.col("gsis_id") == "snaps")
+    assert snaps["projection"][0] == pytest.approx(0.8 * perf[0] * 9.0)
+    assert snaps["projection"][1] == pytest.approx(0.69 * perf[1] * 10.0)
+    assert out.filter(pl.col("gsis_id") == "fine")["projection"].item() == 9.0
+
+
 def test_weeks_before_the_current_one_are_untouched() -> None:
     frame = pl.DataFrame({"gsis_id": ["a", "a"], "week": [6, 7], "projection": [10.0, 10.0]})
     out = injury_projections(

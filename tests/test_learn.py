@@ -100,6 +100,20 @@ def test_each_season_is_scored_by_a_model_that_never_saw_it() -> None:
     assert learn.train_seasons(2020, [2019, 2020, 2021, 2022, 2023]) == [2019, 2021, 2022]
 
 
+def test_rows_without_a_stat_line_are_projected_but_never_trained_on(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr(learn, "design", lambda frame, lines: frame.select("x").to_numpy())
+    monkeypatch.setattr(learn, "fit_predict", lambda xt, yt, xs: np.full(len(xs), float(len(yt))))
+    history = pl.DataFrame(
+        {"season": [2019, 2020, 2021, 2021], "x": [1.0] * 4, "points": [5.0] * 4}
+    )
+    extra = pl.DataFrame({"season": [2021], "x": [0.0]})
+    out = learn.walk_forward(history, extra=extra)
+    assert out.height == 5
+    later = out.filter(pl.col("season") == 2021)
+    assert later["projection"].to_list() == [2.0, 2.0, 2.0]  # trained on the two earlier rows
+    assert later["points"].null_count() == 1
+
+
 def test_the_model_is_deterministic_and_learns_a_simple_signal() -> None:
     rng = np.random.default_rng(0)
     x = rng.uniform(0.0, 10.0, size=(3500, 3))  # points cannot be negative, so neither is y

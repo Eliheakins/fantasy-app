@@ -112,6 +112,48 @@ def test_a_player_off_this_week_uses_his_latest_depth_chart() -> None:
     assert ranks == {"A": 2, "B": None}  # B plays this week and is not on its chart
 
 
+def test_cell_chance_is_the_stat_line_rate_by_position_and_depth() -> None:
+    rows = pl.DataFrame(
+        {
+            "position": ["WR"] * 40 + ["WR"] * 40 + ["TE"] * 10,
+            "depth_rank": [1] * 40 + [None] * 40 + [1] * 10,
+            "statline": [1.0] * 39 + [0.0] + [1.0] * 20 + [0.0] * 20 + [1.0] * 10,
+            "season": [2025] * 90,
+        },
+        schema_overrides={"depth_rank": pl.Int64},
+    )
+    cells = stat_line.cell_chance(rows, min_rows=30)
+    got = {(r["position"], r["d_cell"]): r["q_cell"] for r in cells.iter_rows(named=True)}
+    assert got[("WR", "1")] == pytest.approx(39 / 40) and got[("WR", "none")] == 0.5
+    assert ("TE", "1") not in got  # too few rows: the position rate is used instead
+    assert stat_line.position_chance(rows)["TE"] == 1.0
+
+
+def test_later_games_use_the_higher_of_next_game_and_depth_cell_chance() -> None:
+    future = pl.concat([target(8), target(9), target(10), target(8, "B"), target(9, "B")])
+    depth = pl.DataFrame(
+        [("A", 2025, 7, 1), ("B", 2025, 7, 1)],
+        schema=KEY_SCHEMA | {"depth_rank": pl.Int64},
+        orient="row",
+    )
+    nxt = pl.DataFrame({"gsis_id": ["A", "B"], "q": [0.5, 0.99]})
+    cells = pl.DataFrame({"position": ["WR"], "d_cell": ["1"], "q_cell": [0.97]})
+    out = stat_line.future_chance(future, nxt, cells, {"WR": 0.9}, depth)
+    got = {(r["gsis_id"], r["week"]): r["q"] for r in out.iter_rows(named=True)}
+    assert got == {("A", 8): 0.5, ("A", 9): 0.97, ("A", 10): 0.97, ("B", 8): 0.99, ("B", 9): 0.99}
+
+
+def test_the_classifier_averages_its_seeds() -> None:
+    rng = np.random.default_rng(0)
+    frame = pl.DataFrame(
+        {c: rng.uniform(0, 1, 12000) for c in stat_line.FEATURES} | {"position": ["WR"] * 12000}
+    ).with_columns((pl.col("h_snap") > rng.uniform(0, 1, 12000)).cast(pl.Float64).alias("statline"))
+    train, test = frame.head(11000), frame.tail(1000)
+    singles = [stat_line.fit_predict(train, test, seeds=(s,)) for s in (0, 1)]
+    bag = stat_line.fit_predict(train, test, seeds=(0, 1))
+    assert np.allclose(bag, (singles[0] + singles[1]) / 2)
+
+
 def test_scale_multiplies_the_projection_and_fails_on_a_missing_chance() -> None:
     frame = pl.DataFrame({"gsis_id": ["A", "B"], "projection": [10.0, 4.0]})
     chance = pl.DataFrame({"gsis_id": ["A", "B"], "q": [0.9, 0.5]})
