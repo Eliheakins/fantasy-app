@@ -162,29 +162,42 @@ def test_the_stand_in_and_the_report_give_the_same_features_for_the_same_statuse
     assert features(final, use) == features(stand_in, use)
 
 
-def test_a_teams_week_uses_the_final_report_once_it_has_game_statuses_else_the_stand_in() -> None:
+STAND_IN = pl.DataFrame(
+    [
+        ("B", 2025, 3, "KC", "WR", "Out", None),
+        ("C", 2025, 3, "KC", "WR", "Out", None),
+        ("Y", 2025, 3, "BUF", "WR", "Out", None),
+        ("Y", 2025, 3, "BUF", "WR", "Out", None),
+    ],
+    schema=REPORT,
+    orient="row",
+)
+BUF_PRACTICE = pl.DataFrame(
+    [("X", 2025, 3, "BUF", "WR", None, "Full")], schema=REPORT, orient="row"
+)
+
+
+def test_once_the_weeks_reports_are_out_a_team_with_no_game_status_is_healthy() -> None:
     final = pl.concat(
-        [
-            report([("B", 3, "WR", "Out", "DNP"), ("B", 2, "WR", "Out", "DNP")]),
-            pl.DataFrame([("X", 2025, 3, "BUF", "WR", None, "Full")], schema=REPORT, orient="row"),
-        ]
+        [report([("B", 3, "WR", "Out", "DNP"), ("B", 2, "WR", "Out", "DNP")]), BUF_PRACTICE]
     )
-    stand_in = pl.DataFrame(
-        [
-            ("B", 2025, 3, "KC", "WR", "Out", None),
-            ("C", 2025, 3, "KC", "WR", "Out", None),
-            ("Y", 2025, 3, "BUF", "WR", "Out", None),
-            ("Y", 2025, 3, "BUF", "WR", "Out", None),
-        ],
-        schema=REPORT,
-        orient="row",
-    )
-    out = vacancy.with_stand_in(final, stand_in, 2025, 3)
-    # KC has a game status on the final report; BUF has only a practice row, so Sleeper's is used
-    assert sorted(out.filter(pl.col("week") == 3)["gsis_id"].to_list()) == ["B", "Y"]
+    out = vacancy.with_stand_in(final, STAND_IN, 2025, 3)
+    assert out.sort("gsis_id", "week").equals(final.sort("gsis_id", "week"))  # no stand-in at all
+    use = usage([("Y", 2, 0.3, 0.2, 0.9)], team="BUF")
+    target = targets("Z", 3).with_columns(pl.lit("BUF").alias("team"))
+    row = vacancy.vacancy_features(target, out, use, WEIGHTS, depth([])).row(0, named=True)
+    assert [row[c] for c in vacancy.VAC_COLUMNS[:-1]] == [0.0] * 6  # Sleeper's Out on BUF ignored
+    assert vacancy.report_sources(final, 2025, 3, ["KC", "BUF"]) == {"KC": "final", "BUF": "final"}
+
+
+def test_before_the_weeks_reports_are_out_sleepers_out_list_stands_in_once_per_player() -> None:
+    final = pl.concat([report([("B", 2, "WR", "Out", "DNP")]), BUF_PRACTICE])
+    out = vacancy.with_stand_in(final, STAND_IN, 2025, 3)
+    listed = out.filter((pl.col("week") == 3) & pl.col("status").is_not_null())
+    assert sorted(listed["gsis_id"].to_list()) == ["B", "C", "Y"]
     assert out.filter(pl.col("week") == 2).height == 1  # other weeks are untouched
     assert vacancy.report_sources(final, 2025, 3, ["KC", "BUF"]) == {
-        "KC": "final",
+        "KC": "sleeper",
         "BUF": "sleeper",
     }
 
