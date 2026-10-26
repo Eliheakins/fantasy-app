@@ -4,8 +4,7 @@ import pytest
 
 from fantasy import store
 from fantasy.sim import odds
-from fantasy.sim.blend import blend
-from fantasy.sim.injuries import InjuryModel, injury_projections, without_stat_line
+from fantasy.sim.injuries import InjuryModel, injury_projections, stat_line_blend
 from fantasy.sim.value import absence_probs, conditional_values, play_curves
 from fantasy.stages import injuries as stage
 
@@ -74,8 +73,8 @@ def test_a_table_chance_of_playing_replaces_the_stat_line_chance() -> None:
     q = {(g, w): 0.9 for g, w, _ in rows} | {("fine", 7): 0.9}  # E is 10 everywhere
     flag = ("Questionable", "Hamstring", None)
     flags, model, first = {"hurt": flag, "snaps": flag}, InjuryModel(_effects()), {"snaps": 0.8}
-    conditional = without_stat_line(frame, flags, model, 7, first, q)
-    out = injury_projections(conditional, flags, model, 7, first_game_chance=first).sort(
+    blended = stat_line_blend(frame, [], flags, model, 7, first, q)
+    out = injury_projections(blended, flags, model, 7, first_game_chance=first).sort(
         "gsis_id", "week"
     )
     perf = [1 - 0.1 * 0.5**k for k in range(5)]
@@ -86,26 +85,49 @@ def test_a_table_chance_of_playing_replaces_the_stat_line_chance() -> None:
     snaps = out.filter(pl.col("gsis_id") == "snaps")
     assert snaps["projection"][0] == pytest.approx(0.8 * perf[0] * 9.0)
     assert snaps["projection"][1] == pytest.approx(0.69 * perf[1] * 10.0)
-    assert out.filter(pl.col("gsis_id") == "fine")["projection"].item() == 9.0
+    assert out.filter(pl.col("gsis_id") == "fine")["projection"].item() == pytest.approx(9.0)
 
 
-def test_the_stat_line_chance_comes_out_of_our_projection_before_the_sleeper_blend() -> None:
-    # ours is E * q = 10 * 0.8, Sleeper says 12, the table's chance is 0.55 (hamstring, game 0)
-    ours = pl.DataFrame({"gsis_id": ["hurt"], "week": [7], "projection": [8.0]})
-    theirs = pl.DataFrame({"gsis_id": ["hurt"], "week": [7], "other": [12.0]})
-    flags, model = {"hurt": ("Questionable", "Hamstring", None)}, InjuryModel(_effects())
-    conditional = without_stat_line(ours, flags, model, 7, None, {("hurt", 7): 0.8})
-    blended = blend(conditional, theirs, "gsis_id")
-    assert blended["projection"].item() == pytest.approx(0.5 * 10.0 + 0.5 * 12.0)
+def _sources(sleeper: float) -> list[pl.DataFrame]:
+    """Sleeper, FFToday and prop points for one player-week (ours is E * q = 10 * 0.8)."""
+    return [
+        pl.DataFrame({"gsis_id": ["p"], "week": [7], "other": [v]}) for v in (sleeper, 14.0, 16.0)
+    ]
+
+
+OURS = pl.DataFrame({"gsis_id": ["p"], "week": [7], "projection": [8.0]})
+Q = {("p", 7): 0.8}
+
+
+def test_a_healthy_game_is_q_times_the_blend_of_e_and_the_outside_sources() -> None:
+    out = stat_line_blend(OURS, _sources(12.0), {}, InjuryModel(_effects()), 7, None, Q)
+    assert out["projection"].item() == pytest.approx(0.8 * (10.0 + 12.0 + 14.0 + 16.0) / 4)
+
+
+def test_a_first_game_chance_from_snaps_keeps_q_on_the_blend() -> None:
+    flags, model, first = (
+        {"p": ("Questionable", "Hamstring", None)},
+        InjuryModel(_effects()),
+        {"p": 0.6},
+    )
+    blended = stat_line_blend(OURS, _sources(12.0), flags, model, 7, first, Q)
+    assert blended["projection"].item() == pytest.approx(0.8 * 13.0)
+    out = injury_projections(blended, flags, model, 7, first_game_chance=first)
+    assert out["projection"].item() == pytest.approx(0.6 * 0.9 * 0.8 * 13.0)
+
+
+def test_a_table_chance_takes_no_q_and_never_divides_an_outside_source() -> None:
+    # Sleeper's 0 for a Questionable player counts as missing; FFToday and props stay as they are
+    flags, model = {"p": ("Questionable", "Hamstring", None)}, InjuryModel(_effects())
+    blended = stat_line_blend(OURS, _sources(0.0), flags, model, 7, None, Q, frozenset({"p"}))
+    assert blended["projection"].item() == pytest.approx((10.0 + 14.0 + 16.0) / 3)
     out = injury_projections(blended, flags, model, 7)
-    assert out["projection"].item() == pytest.approx(0.55 * 0.9 * 11.0)
+    assert out["projection"].item() == pytest.approx(0.55 * 0.9 * (10.0 + 14.0 + 16.0) / 3)
 
 
-def test_a_flagged_game_without_a_stat_line_chance_is_warned_about() -> None:
-    ours = pl.DataFrame({"gsis_id": ["hurt"], "week": [7], "projection": [8.0]})
-    flags, model = {"hurt": ("Questionable", "Hamstring", None)}, InjuryModel(_effects())
+def test_a_game_without_a_stat_line_chance_is_warned_about_and_kept() -> None:
     with pytest.warns(UserWarning, match="no stat-line chance"):
-        out = without_stat_line(ours, flags, model, 7, None, {("other", 7): 0.8})
+        out = stat_line_blend(OURS, [], {}, InjuryModel(_effects()), 7, None, {("x", 7): 0.8})
     assert out["projection"].item() == 8.0
 
 
