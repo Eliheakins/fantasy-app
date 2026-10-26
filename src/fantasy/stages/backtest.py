@@ -77,6 +77,8 @@ def metrics(rows: pl.DataFrame, horizon: int) -> pl.DataFrame:
             continue
         train_tier = size_tiers(train["projection"].to_numpy(), train["projection"].to_numpy())
         test_tier = size_tiers(train["projection"].to_numpy(), test["projection"].to_numpy())
+        # learned forecasts for earlier seasons came from models that saw later ones
+        clean_seasons = train["season"].to_numpy() >= store.LEARNED_FIRST_CLEAN_SEASON
         for tier in (ALL_TIERS, *range(N_TIERS)):
             keep_train = np.ones(train.height, bool) if tier == ALL_TIERS else train_tier == tier
             keep_test = np.ones(test.height, bool) if tier == ALL_TIERS else test_tier == tier
@@ -86,12 +88,12 @@ def metrics(rows: pl.DataFrame, horizon: int) -> pl.DataFrame:
                     f"no rows in {'train' if not keep_train.any() else 'test'}, skipped"
                 )
                 continue
-            y_train = train["points"].to_numpy()[keep_train]
             y = test["points"].to_numpy()[keep_test]
             for name, column in forecasters.items():
-                mu_train = np.maximum(train[column].to_numpy()[keep_train], MIN_MEAN)
+                fit = keep_train & (clean_seasons if name == "learned" else True)
+                mu_train = np.maximum(train[column].to_numpy()[fit], MIN_MEAN)
                 mu = np.maximum(test[column].to_numpy()[keep_test], MIN_MEAN)
-                ratios = fit_ratios(y_train, mu_train)
+                ratios = fit_ratios(train["points"].to_numpy()[fit], mu_train)
                 out.append(
                     {
                         "league_id": league_id,
