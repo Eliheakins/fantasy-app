@@ -42,6 +42,20 @@ baseline. A feature ships only if it improves held-out error.
 | `layers_check.py` | Do the outlook and environment layers help on seasons they never saw? | Outlook layer kept (helps on average); environment layer no held-out gain, switched off |
 | `availability_check.py` | Does a chance-of-playing classifier beat the injury-status table? | Yes, Brier 0.0980 against 0.1041 on listed player-weeks (shipped as `stages/availability.py`) |
 | `sleeper_proj.py` | How do Sleeper's projections compare with ours? | Not clean: the endpoint re-stamps after games (issue #40 reruns it on clean snapshots) |
+| `bias_check.py` | Is the learned projection biased upward, and does recalibration help? | Not on training rows (2026 weeks 1 to 6: -0.3); the scorecard's extra stat-less rows put it at +0.2 to +0.65; recalibration does not help |
+| `union_check.py` | Should the learned model also train on stat-less `player_points` rows? | Scorecard rows 1.2% better (t 10); Colgate training rows 0.17% worse; not shipped (open question) |
+| `blend_weight.py` | What Sleeper weight do clean pre-kickoff snapshots support (#40)? | Harness only: 0 clean scored games on 2026-10-25; rerun after week 10 |
+| `availability_target_check.py` | Should the chance-of-playing classifier predict a stat line rather than any snaps? | Not for Questionable players (t 0.0 to 1.1); across all regulars yes, mostly TE |
+| `quantile_check.py` | Do quantile GBM or conformal quantiles beat the tier marginals for the spread? | No: 0.00 to 0.13% pinball against production's tiers, inside refit noise |
+| `stack_check.py` | Does a non-negative stack of GBM, ridge and baseline beat the GBM? | No: +0.04 to 0.09% RMSE, t below 0.4 |
+| `settings_check.py` | Do per-position models, other GBM settings or monotone constraints help? | No: per-position -0.08 to +0.19% with early stopping matched; best grid point +0.02 to 0.08%; monotone -0.04 to -0.12% |
+| `component_check.py` | Do per-stat models (Poisson touchdowns), their average with the direct model, or usage-first beat it? | No: the average's +0.3% does not beat averaging two direct fits (t 1.0 to 1.3) and comes from 2025 |
+| `pbp_features_check.py` | Do red-zone and goal-line shares, neutral pass rate, FTN charting, combine or contracts help? | No: all within 0.11% RMSE and within their placebos |
+| `td_redundancy_check.py` | Is goal-line share redundant with lagged expected touchdowns? | Correlated (0.85), and both add nothing beyond lagged points |
+| `shrink_check.py` | Does shrinking low-game players toward a position-by-round prior help? | k/(k+n) picks k = 0; a variant formed after looking gains 0.05% overall (t 1.9 to 2.0), not shipped |
+
+`wf_panel.py` is a shared helper for `stack_check.py` and `settings_check.py`. The plan behind the
+2026-10-25 tests is in `memo_projection_2026-10-25.md`.
 
 Left out on purpose: seven exploratory scripts that only inspected data shapes (participation
 files, snap-count joins, rosters).
