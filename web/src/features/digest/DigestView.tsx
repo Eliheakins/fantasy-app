@@ -59,7 +59,7 @@ function Body({ data }: { data: DigestData }) {
       </Section>
       <Section
         title="Top waiver adds"
-        caption="Free agents who add the most to playoff odds, from the last refresh."
+        caption="Free agents who add the most points over the rest of the season, from the last refresh."
         howCalculated="Each add is simulated against the player it would replace, over the rest of the season. Changes inside the simulation error show as ~."
       >
         <AsOf info={data.ideas} />
