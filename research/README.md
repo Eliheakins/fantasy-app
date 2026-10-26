@@ -82,6 +82,12 @@ not deterministic (see the 2026-10-25 entry).
 | `slot_test.py` | Does a slot corner being out help slot receivers? | Not measurable with free data | Rejected | 10-23 |
 | `h2h_test.py` | Does history against an opponent predict points? | No | Rejected | 10-23 |
 
+## Evaluation tools
+
+| Script | Question | Result | Status | Log |
+|---|---|---|---|---|
+| `regret.py` | Do candidates pick better lineups (start/sit regret, error near the flex cutoff)? | Learned beats baseline by 0.55 to 0.71 points a team-week; component average and reconciliation win against learned but not against a two-seed average | Report only (proposed as a second gate) | 10-26 |
+
 ## Spread, correlations and team totals
 
 | Script | Question | Result | Status | Log |
