@@ -35,6 +35,7 @@ baseline. A feature ships only if it improves held-out error.
 | `slot_test.py` | Does a slot corner being out help slot receivers? | Not measurable with free data (no alignment) |
 | `h2h_test.py` | Does history against a specific opponent predict points, divisional or not? | No out-of-sample signal |
 | `inj_explore.py` | How do injury status, practice report and injury type predict playing? | Became `stages/injuries.py` |
+| `weather_check.py` | Do actual temperature and wind add held-out accuracy to the learned model, by position? | No: every variant is within a random-noise placebo (gain 0.04% or less overall, \|t\| below 2) |
 | `sleeper_proj.py` | How do Sleeper's projections compare with ours? | Not clean: the endpoint re-stamps after games (issue #40 reruns it on clean snapshots) |
 
 Left out on purpose: seven exploratory scripts that only inspected data shapes (participation
