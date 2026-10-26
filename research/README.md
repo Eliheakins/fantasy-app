@@ -73,6 +73,7 @@ not deterministic (see the 2026-10-25 entry).
 | `ecr_value.py` | Do FantasyPros weekly rankings help? | 0.02 RMSE, mostly QB and TE | Shipped (`nfl_ecr`, private use) | 10-23 |
 | `pbp_features_check.py` | Red-zone and goal-line shares, neutral pass rate, FTN, combine, contracts? | All within 0.11% and within their placebos | Rejected | 10-25 |
 | `td_redundancy_check.py` | Is goal-line share redundant with lagged expected TDs? | Correlated 0.85; both add nothing beyond lagged points | Explained | 10-25 |
+| `news_features_check.py` | Teammate vacancy from the final injury report; own status, practice and body part? | Vacancy -0.25 and -0.18% played (t 3.6 and 2.6), -0.46 and -0.40% protocol; own status t below 2 | Vacancy shipped, own rejected | 10-26 |
 | `role_features_check.py` | Depth moves, team and coach tenure, weeks since IR or practice squad, pre-kickoff chart? | All under 0.06% overall (t below 2); a post-hoc pair flagged for retest | Rejected | 10-26 |
 | `weather_check.py` | Do temperature and wind help the learned model? | Within a random placebo | Rejected | 10-25 |
 | `avail_test.py` | Do line, safety or linebacker absences move points? | Only the opposing leading corner | Shipped, later switched off | 10-23 |
