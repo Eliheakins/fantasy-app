@@ -154,12 +154,63 @@ def test_the_classifier_averages_its_seeds() -> None:
     assert np.allclose(bag, (singles[0] + singles[1]) / 2)
 
 
-def test_scale_multiplies_the_projection_and_fails_on_a_missing_chance() -> None:
-    frame = pl.DataFrame({"gsis_id": ["A", "B"], "projection": [10.0, 4.0]})
-    chance = pl.DataFrame({"gsis_id": ["A", "B"], "q": [0.9, 0.5]})
-    assert stat_line.scale(frame, chance, ["gsis_id"])["projection"].to_list() == [9.0, 2.0]
-    with pytest.raises(ValueError, match="no stat-line chance"):
-        stat_line.scale(frame, chance.head(1), ["gsis_id"])
+def test_played_games_are_scored_rows_and_snap_games_without_one() -> None:
+    k = {"season": [2025] * 4, "week": [1] * 4}
+    points = pl.DataFrame(
+        {
+            "league_id": ["L"] * 2,
+            "gsis_id": ["line", "zero"],
+            "season": [2025] * 2,
+            "week": [1] * 2,
+            "position": ["WR", "TE"],
+            "team": ["KC", "KC"],
+        }
+    )
+    exp = pl.DataFrame({"league_id": ["L"], "gsis_id": ["line"], "season": [2025], "week": [1]})
+    snaps = pl.DataFrame(
+        k
+        | {
+            "gsis_id": ["line", "snaponly", "bench", "mislabel"],
+            "position": ["WR", "RB", "WR", "WR"],
+            "team": ["KC", "SF", "SF", "SF"],
+            "offense_snaps": [50.0, 18.0, 0.0, 30.0],
+        }
+    )
+    opp = pl.DataFrame({"player_id": ["line", "mislabel"], "season": [2025] * 2, "week": [1] * 2})
+    out = stat_line.played_rows(points, exp, snaps, opp).sort("gsis_id")
+    rows = {
+        r["gsis_id"]: (r["position"], r["team"], r["statline"]) for r in out.iter_rows(named=True)
+    }
+    # a snap game with an opportunity row but no scored row cannot be scored, so it is left out
+    assert rows == {
+        "line": ("WR", "KC", 1.0),
+        "snaponly": ("RB", "SF", 0.0),
+        "zero": ("TE", "KC", 0.0),
+    }
+
+
+def test_statless_targets_are_the_played_games_without_a_stat_line() -> None:
+    played = pl.DataFrame(
+        {
+            "gsis_id": ["a", "b", "c"],
+            "season": [2025, 2025, 2018],
+            "week": [1, 1, 1],
+            "position": ["WR"] * 3,
+            "team": ["KC"] * 3,
+            "statline": [1.0, 0.0, 0.0],
+        }
+    )
+    out = stat_line.statless_targets(played, "L")
+    assert out["gsis_id"].to_list() == ["b"]  # c is before the first projected season
+    assert out.columns == ["league_id", "gsis_id", "season", "week", "position", "team"]
+    assert out["league_id"].to_list() == ["L"]
+
+
+def test_q_never_falls_below_the_floor() -> None:
+    train = active([0.0] * 5).with_columns(
+        pl.lit(None, pl.Float64).alias(c) for c in stat_line.FEATURES
+    )
+    assert stat_line.fit_predict(train, train.head(2)).tolist() == [stat_line.Q_FLOOR] * 2
 
 
 def test_the_stat_line_switch_defaults_off(tmp_path: Path) -> None:

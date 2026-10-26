@@ -101,6 +101,14 @@ def test_the_stat_line_chance_comes_out_of_our_projection_before_the_sleeper_ble
     assert out["projection"].item() == pytest.approx(0.55 * 0.9 * 11.0)
 
 
+def test_a_flagged_game_without_a_stat_line_chance_is_warned_about() -> None:
+    ours = pl.DataFrame({"gsis_id": ["hurt"], "week": [7], "projection": [8.0]})
+    flags, model = {"hurt": ("Questionable", "Hamstring", None)}, InjuryModel(_effects())
+    with pytest.warns(UserWarning, match="no stat-line chance"):
+        out = without_stat_line(ours, flags, model, 7, None, {("other", 7): 0.8})
+    assert out["projection"].item() == 8.0
+
+
 def test_weeks_before_the_current_one_are_untouched() -> None:
     frame = pl.DataFrame({"gsis_id": ["a", "a"], "week": [6, 7], "projection": [10.0, 10.0]})
     out = injury_projections(

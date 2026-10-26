@@ -133,8 +133,48 @@ def test_a_stat_less_game_takes_its_team_weeks_context_and_is_not_reported(capsy
     out = learn.with_context(rows, baseline, statless).sort("gsis_id")
     assert out["context"].to_list() == [1.05, 1.05, 1.0]  # SF's team-week has no baseline row
     assert "no proj_baseline row" not in capsys.readouterr().out
-    learn.with_context(rows, baseline, statless.head(0))
+    learn.with_context(rows, baseline, None)
     assert "2 projection rows have no proj_baseline row" in capsys.readouterr().out
+
+
+def test_a_team_weeks_context_is_the_mean_and_rows_without_one_are_counted(capsys) -> None:  # type: ignore[no-untyped-def]
+    rows = pl.DataFrame(
+        {
+            "league_id": ["L"] * 2,
+            "gsis_id": ["B", "C"],
+            "season": [2025] * 2,
+            "week": [5] * 2,
+            "team": ["KC", "SF"],
+        }
+    )
+    baseline = pl.DataFrame(
+        {
+            "league_id": ["L"] * 2,
+            "gsis_id": ["A", "D"],
+            "season": [2025] * 2,
+            "week": [5] * 2,
+            "team": ["KC", "KC"],
+            "context": [1.0, 1.1],
+        }
+    )
+    out = learn.with_context(rows, baseline, rows.drop("team")).sort("gsis_id")
+    assert out["context"].to_list() == [pytest.approx(1.05), 1.0]
+    assert "1 stat-less rows have no team-week context" in capsys.readouterr().out
+    assert learn.with_context(rows, baseline, None)["context"].to_list() == [1.0, 1.0]
+
+
+def test_the_stat_line_branch_scales_past_and_future_rows_by_game() -> None:
+    frame = pl.DataFrame(
+        {"gsis_id": ["A", "A"], "season": [2025, 2026], "week": [3, 8], "projection": [10.0, 10.0]}
+    )
+    past, future = frame.head(1), frame.tail(1)
+    chance = (
+        pl.DataFrame({"gsis_id": ["A"], "season": [2025], "week": [3], "q": [0.5]}),
+        pl.DataFrame({"gsis_id": ["A"], "season": [2026], "week": [8], "q": [0.9]}),
+    )
+    out = learn.stat_line_scaled(past, future, chance)
+    assert out[0]["projection"].to_list() == [5.0] and out[1]["projection"].to_list() == [9.0]
+    assert learn.stat_line_scaled(past, future, None) == (past, future)
 
 
 def test_the_model_is_deterministic_and_learns_a_simple_signal() -> None:

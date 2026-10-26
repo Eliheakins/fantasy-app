@@ -75,6 +75,34 @@ def test_counts_each_reason_a_game_is_left_out() -> None:
     }  # fmt: skip
 
 
+def test_a_final_game_with_snaps_and_no_scored_row_counts_as_zero_points() -> None:
+    nfl_snaps = pl.DataFrame(
+        {
+            "gsis_id": ["zero", "open", "sat"],
+            "season": [2026] * 3,
+            "week": [7] * 3,
+            "offense_snaps": [18.0, 20.0, 0.0],
+        }
+    )
+    team_games = pl.DataFrame(
+        {"season": [2026, 2026], "week": [7, 7], "team": ["X", "Y"], "points_for": [24.0, None]}
+    )
+    games = universe(("ok", "X"), ("zero", "X"), ("open", "Y"), ("sat", "X"))
+    out = sc.with_zero_point_games(actuals(ok=4.0), games, nfl_snaps, team_games)
+    assert dict(out.select("gsis_id", "points").sort("gsis_id").iter_rows()) == {
+        "ok": 4.0,
+        "zero": 0.0,
+    }
+    scored, ex = sc.score_games(
+        games,
+        snaps(*[(g, "2026-10-24T00:00:00+00:00", 1.0, 1.0) for g in ("ok", "zero", "open")]),
+        None,
+        out,
+        kicks(X=KICK, Y=KICK),
+    )
+    assert sorted(scored["gsis_id"]) == ["ok", "zero"] and ex["not_final"] == 2
+
+
 def test_sleeper_is_scored_only_from_its_own_pre_kickoff_snapshot() -> None:
     sleeper = pl.DataFrame(
         [
