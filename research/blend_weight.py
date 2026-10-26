@@ -1,18 +1,24 @@
-"""Sleeper blend weight by position on clean pre-kickoff snapshots (issue #40).
+"""Sleeper blend weight on clean pre-kickoff snapshots (issue #40).
 
-Per player-game: the last snapshot fetched before that team's kickoff of ours (`proj_snapshots`,
-learned) and of Sleeper's (`sleeper_proj_snapshots`, scored under each league's rules), through
-the scorecard's own helpers, so the rows are the scorecard's rows.
+Per player-game: our last snapshot fetched before that team's kickoff (`proj_snapshots`, learned,
+passed through `distributions.calibrated` as `simulate` does before blending) and the Sleeper
+snapshot (`sleeper_proj_snapshots`, scored under each league's rules) fetched before kickoff and
+nearest in time to ours, so the pair is what one refresh would have blended. Actuals and
+exclusions come from the scorecard's helpers.
 
-1. Per league and position: RMSE of learned alone, Sleeper alone and the production 0.5 blend.
-2. A non-negative least-squares fit of points on [learned, Sleeper] (no intercept), leave one week
-   out: each week is predicted by weights fit on the other weeks. RMSE at 0.5 and at the fitted
-   weights, paired t over held-out weeks on the per-week squared-error difference. Keep 0.5 unless
-   the fitted weights are better with |t| >= 2. The week-level t overstates evidence (players in a
-   week share game scripts), so read 2 as about 1.5.
+1. Per league and position: RMSE of ours alone, Sleeper alone and the production 0.5 blend.
+2. One weight w in [0, 1] on Sleeper, (1 - w) on ours (weights sum to 1, so a level error both
+   sources share cannot be fit away), least squares, leave one week out: each week is predicted
+   by w fit on the other weeks. RMSE at 0.5 and at the fitted w; paired t over held-out weeks on
+   the per-week squared-error difference against the two-sided 5% t critical value for
+   weeks - 1 degrees of freedom. Keep 0.5 unless the fitted w is better and clears it.
+   Positions are pooled; a position gets its own verdict only with at least
+   MIN_POSITION_WEEK_ROWS rows in every week. The two leagues score the same games, so their
+   verdicts are not independent evidence, and players in a week share game scripts, so the
+   week-level t still overstates.
 3. The rule that a Sleeper 0 counts as missing for Questionable and Doubtful players (decisions,
-   2026-10-23) against blending the 0. Both go through the chance of playing: value = p * learned
-   (rule) against p * (0.5 * learned + 0.5 * 0) (blend), scored against points, 0 for a player
+   2026-10-23) against blending the 0. Both go through the chance of playing: value = p * ours
+   (rule) against p * (0.5 * ours + 0.5 * 0) (blend), scored against points, 0 for a player
    with no stat line in a final game. p is the `availability` table's p_play where it has the
    week, else the historical share of report-listed regulars with that status who had a stat line.
 
@@ -25,15 +31,17 @@ Run from the repo root: uv run python research/blend_weight.py
 
 import numpy as np
 import polars as pl
-from scipy.optimize import nnls
+from scipy.stats import t as student_t
 
 from fantasy import store
-from fantasy._scorecard import KEY, _kickoff_frame, _last_before_kickoff, _sleeper_points, score_games
+from fantasy._scorecard import KEY, _at, _kickoff_frame, _last_before_kickoff, _sleeper_points, score_games
 from fantasy.sim.blend import SLEEPER_WEIGHT
+from fantasy.stages.distributions import calibrated
 from fantasy.stages.simulate import SLEEPER_ZEROED_STATUSES
 
-MIN_T = 2.0
+ALPHA = 0.05
 MIN_WEEKS = 3  # a paired t needs at least this many held-out weeks
+MIN_POSITION_WEEK_ROWS = 100  # rows of a position in every week before it gets its own fit
 STATUS_FIT_SEASONS = (2021, 2025)
 pl.Config(tbl_rows=40, tbl_cols=14, tbl_width_chars=180, float_precision=3)
 
@@ -41,27 +49,26 @@ pl.Config(tbl_rows=40, tbl_cols=14, tbl_width_chars=180, float_precision=3)
 # ---------- the method (pure, checked on synthetic data below) ----------
 
 
-def fit_weights(learned: np.ndarray, sleeper: np.ndarray, y: np.ndarray) -> tuple[float, float]:
-    coef, _ = nnls(np.column_stack([learned, sleeper]), y)
-    return float(coef[0]), float(coef[1])
+def fit_weight(ours: np.ndarray, sleeper: np.ndarray, y: np.ndarray) -> float:
+    """Least-squares w in [0, 1] for (1 - w) * ours + w * sleeper."""
+    gap = sleeper - ours
+    denom = float(gap @ gap)
+    return float(np.clip(gap @ (y - ours) / denom, 0.0, 1.0)) if denom > 0 else SLEEPER_WEIGHT
 
 
 def leave_one_week_out(rows: pl.DataFrame) -> pl.DataFrame:
-    """rows: week, learned, sleeper, actual. Adds `fitted` (weights fit on the other weeks) and
-    `w_sleeper` (the implied Sleeper share b / (a + b) of that fit). Empty with one week."""
+    """rows: week, ours, sleeper, actual. Adds `fitted` and `w` (fit on the other weeks). Empty
+    with fewer than two weeks."""
     weeks = sorted(rows["week"].unique().to_list())
     if len(weeks) < 2:
-        return rows.clear().with_columns(fitted=pl.lit(0.0), w_sleeper=pl.lit(0.0))
+        return rows.clear().with_columns(fitted=pl.lit(0.0), w=pl.lit(0.0))
     parts = []
     for week in weeks:
         train, test = rows.filter(pl.col("week") != week), rows.filter(pl.col("week") == week)
-        a, b = fit_weights(
-            train["learned"].to_numpy(), train["sleeper"].to_numpy(), train["actual"].to_numpy()
-        )
+        w = fit_weight(train["ours"].to_numpy(), train["sleeper"].to_numpy(), train["actual"].to_numpy())
         parts.append(
             test.with_columns(
-                fitted=a * pl.col("learned") + b * pl.col("sleeper"),
-                w_sleeper=pl.lit(b / (a + b) if a + b > 0 else float("nan")),
+                fitted=(1 - w) * pl.col("ours") + w * pl.col("sleeper"), w=pl.lit(w)
             )
         )
     return pl.concat(parts)
@@ -70,7 +77,7 @@ def leave_one_week_out(rows: pl.DataFrame) -> pl.DataFrame:
 def compare(held: pl.DataFrame) -> dict[str, float | int | str]:
     """Held-out rows with `fitted`: RMSE at 0.5 and fitted, paired t over weeks, the verdict."""
     d = held.with_columns(
-        half=(1 - SLEEPER_WEIGHT) * pl.col("learned") + SLEEPER_WEIGHT * pl.col("sleeper")
+        half=(1 - SLEEPER_WEIGHT) * pl.col("ours") + SLEEPER_WEIGHT * pl.col("sleeper")
     )
     by_week = d.group_by("week").agg(
         ((pl.col("half") - pl.col("actual")) ** 2).mean().alias("se_half"),
@@ -79,54 +86,75 @@ def compare(held: pl.DataFrame) -> dict[str, float | int | str]:
     diff = (by_week["se_half"] - by_week["se_fit"]).to_numpy()
     enough = len(diff) >= MIN_WEEKS and diff.std(ddof=1) > 0
     t = float(diff.mean() / (diff.std(ddof=1) / np.sqrt(len(diff)))) if enough else float("nan")
+    critical = float(student_t.ppf(1 - ALPHA / 2, len(diff) - 1)) if len(diff) > 1 else float("nan")
     rmse_half = float(((d["half"] - d["actual"]) ** 2).mean() ** 0.5)
     rmse_fit = float(((d["fitted"] - d["actual"]) ** 2).mean() ** 0.5)
-    adopt = enough and abs(t) >= MIN_T and rmse_fit < rmse_half
+    adopt = enough and abs(t) >= critical and rmse_fit < rmse_half
     return {
         "n": d.height,
         "weeks": len(diff),
         "rmse_0.5": round(rmse_half, 3),
         "rmse_fit": round(rmse_fit, 3),
-        "w_sleeper_mean": round(float(d["w_sleeper"].mean()), 3),
+        "w_mean": round(float(d["w"].mean()), 3),
         "t": round(t, 2),
+        "t_critical": round(critical, 2),
         "weeks_better": f"{int((diff > 0).sum())}/{len(diff)}",
         "verdict": "fitted" if adopt else f"keep {SLEEPER_WEIGHT}",
     }
 
 
 def self_check() -> None:
-    """A known weight is recovered and adopted; with no signal 0.5 is kept."""
+    """A known weight is recovered and adopted; 0.5 is kept with no signal and when both
+    sources share the same over-projection; one week cannot be held out."""
     rng = np.random.default_rng(0)
     n_weeks, per_week = 6, 400
     truth = rng.gamma(2.0, 4.0, n_weeks * per_week)
-    learned = truth + rng.normal(0, 2.0, truth.size)
-    sleeper = truth + rng.normal(0, 2.0, truth.size)
     week = np.repeat(np.arange(1, n_weeks + 1), per_week)
-    y = 0.15 * learned + 0.85 * sleeper + rng.normal(0, 1.0, truth.size)
-    rows = pl.DataFrame({"week": week, "learned": learned, "sleeper": sleeper, "actual": y})
-    a, b = fit_weights(learned, sleeper, y)
-    assert abs(b / (a + b) - 0.85) < 0.02, (a, b)
-    result = compare(leave_one_week_out(rows))
-    assert result["verdict"] == "fitted" and float(result["t"]) >= MIN_T, result
-    assert abs(float(result["w_sleeper_mean"]) - 0.85) < 0.02, result
-    # equal information: the fitted weight should sit near 0.5 and not be adopted
+
+    def frame(ours: np.ndarray, sleeper: np.ndarray, actual: np.ndarray) -> pl.DataFrame:
+        return pl.DataFrame({"week": week, "ours": ours, "sleeper": sleeper, "actual": actual})
+
+    ours = truth + rng.normal(0, 2.0, truth.size)
+    sleeper = truth + rng.normal(0, 2.0, truth.size)
+    y = 0.15 * ours + 0.85 * sleeper + rng.normal(0, 1.0, truth.size)
+    assert abs(fit_weight(ours, sleeper, y) - 0.85) < 0.02
+    known = compare(leave_one_week_out(frame(ours, sleeper, y)))
+    assert known["verdict"] == "fitted" and abs(float(known["w_mean"]) - 0.85) < 0.02, known
     y_even = truth + rng.normal(0, 3.0, truth.size)
-    even = rows.with_columns(actual=pl.Series(y_even))
-    result_even = compare(leave_one_week_out(even))
-    assert abs(float(result_even["w_sleeper_mean"]) - 0.5) < 0.05, result_even
-    assert result_even["verdict"] == f"keep {SLEEPER_WEIGHT}", result_even
-    # one week: nothing to hold out
-    assert leave_one_week_out(rows.filter(pl.col("week") == 1)).is_empty()
-    print("self-check passed: weight 0.85 recovered and adopted; 0.5 kept with no signal")
+    even = compare(leave_one_week_out(frame(ours, sleeper, y_even)))
+    assert abs(float(even["w_mean"]) - 0.5) < 0.05 and even["verdict"] == f"keep {SLEEPER_WEIGHT}", even
+    # both 15% high with equal information: an unconstrained fit would shrink both and "win"
+    high = compare(leave_one_week_out(frame(1.15 * ours, 1.15 * sleeper, y_even)))
+    assert abs(float(high["w_mean"]) - 0.5) < 0.05 and high["verdict"] == f"keep {SLEEPER_WEIGHT}", high
+    assert leave_one_week_out(frame(ours, sleeper, y).filter(pl.col("week") == 1)).is_empty()
+    # three weeks: the critical value is t(2), not 2
+    three = compare(leave_one_week_out(frame(ours, sleeper, y).filter(pl.col("week") <= 3)))
+    assert float(three["t_critical"]) > 4.0, three
+    print("self-check passed: 0.85 recovered; 0.5 kept with no signal and with a shared 15% over-projection")
 
 
 # ---------- data ----------
 
 
+def paired_sleeper(ours: pl.DataFrame, sleeper: pl.DataFrame, window: pl.DataFrame) -> pl.DataFrame:
+    """For each of our picked snapshots (KEY, fetched_at), the Sleeper value fetched before
+    kickoff nearest in time to ours."""
+    mine = ours.select(*KEY, _at().alias("_ours_at"))
+    return (
+        sleeper.with_columns(_at().alias("_at"))
+        .join(window.select(*KEY, "kickoff"), on=KEY)
+        .filter(pl.col("_at") < pl.col("kickoff"))
+        .join(mine, on=KEY)
+        .with_columns((pl.col("_at") - pl.col("_ours_at")).abs().alias("_gap"))
+        .sort("_gap")
+        .unique(KEY, keep="first")
+        .select(*KEY, "sleeper", pl.col("_gap").dt.total_minutes().alias("pair_gap_min"))
+    )
+
+
 def league_rows(league: dict) -> tuple[pl.DataFrame, dict[str, int], pl.DataFrame]:
-    """Scored rows (KEY, team, position, actual, learned, baseline, sleeper, status), the
-    scorecard's exclusion counts, and the Q/D Sleeper-0 rows of final games (actual 0 when the
-    player has no stat line)."""
+    """Scored rows (KEY, team, position, actual, ours, sleeper, status), the scorecard's
+    exclusion counts, and the Q/D Sleeper-0 rows of final games (actual 0 with no stat line)."""
     lid = league["league_id"]
     snaps = store.read_table("proj_snapshots", "archive").filter(pl.col("league_id") == lid)
     meta = store.read_table("proj_baseline").filter(pl.col("league_id") == lid)
@@ -142,22 +170,23 @@ def league_rows(league: dict) -> tuple[pl.DataFrame, dict[str, int], pl.DataFram
         .select("gsis_id", "season", "week", pl.col("report_status").alias("status"))
         .unique(["gsis_id", "season", "week"], keep="first")
     )
-    scored = scored.join(status, on=["gsis_id", "season", "week"], how="left")
-    # Q/D with a Sleeper 0, in games that are final (the team's game has a score)
-    final = (
-        store.read_table("team_games")
-        .filter(pl.col("points_for").is_not_null())
-        .select("season", "week", "team")
+    final = store.read_table("team_games").filter(pl.col("points_for").is_not_null()).select("season", "week", "team")
+    window = (
+        games.drop_nulls("position")
+        .join(final, on=["season", "week", "team"], how="semi")
+        .join(kick, on=["season", "week", "team"])
     )
-    window = games.join(final, on=["season", "week", "team"], how="semi").join(
-        kick, on=["season", "week", "team"]
+    picked = _last_before_kickoff(snaps, window.select(*KEY, "kickoff"))
+    ours = calibrated(
+        picked.join(window.select(*KEY, "position"), on=KEY).rename({"learned": "projection"})
+    ).select(*KEY, "fetched_at", pl.col("projection").alias("ours"))
+    pairs = ours.join(paired_sleeper(ours, sleeper, window), on=KEY, how="left").drop("fetched_at")
+    scored = scored.select(*KEY, "team", "position", "actual").join(pairs, on=KEY).join(
+        status, on=["gsis_id", "season", "week"], how="left"
     )
-    ours = _last_before_kickoff(snaps, window.select(*KEY, "kickoff")).select(*KEY, "learned")
-    theirs = _last_before_kickoff(sleeper, window.select(*KEY, "kickoff")).select(*KEY, "sleeper")
     zeroed = (
         window.select(*KEY, "position")
-        .join(ours, on=KEY)
-        .join(theirs, on=KEY)
+        .join(pairs, on=KEY)
         .join(status, on=["gsis_id", "season", "week"])
         .filter(pl.col("status").is_in(list(SLEEPER_ZEROED_STATUSES)) & (pl.col("sleeper") == 0))
         .join(points, on=KEY, how="left")
@@ -198,8 +227,8 @@ def score_zero_rule(zeroed: pl.DataFrame, rates: dict[str, float]) -> dict[str, 
     d = zeroed.join(avail, on=["gsis_id", "season", "week"], how="left").with_columns(
         p=pl.coalesce("p_play", pl.col("status").replace_strict(rates, default=None))
     )
-    rule = pl.col("p") * pl.col("learned")
-    mixed = pl.col("p") * (1 - SLEEPER_WEIGHT) * pl.col("learned")
+    rule = pl.col("p") * pl.col("ours")
+    mixed = pl.col("p") * (1 - SLEEPER_WEIGHT) * pl.col("ours")
     out = d.select(
         pl.len().alias("n"),
         ((rule - pl.col("actual")) ** 2).mean().sqrt().alias("rmse_rule"),
@@ -218,30 +247,37 @@ def main() -> None:
         scored, excluded, zeroed = league_rows(league)
         print(f"\n=== {name}: scorecard exclusions {excluded}")
         blendable = scored.filter(
-            pl.col("learned").is_not_null()
+            pl.col("ours").is_not_null()
             & pl.col("sleeper").is_not_null()
             & ~(pl.col("status").is_in(list(SLEEPER_ZEROED_STATUSES)) & (pl.col("sleeper") == 0))
         )
         print(f"rows with both projections (production blends them): {blendable.height}, "
               f"weeks {sorted(blendable['week'].unique().to_list())}")
         if blendable.height:
-            half = (1 - SLEEPER_WEIGHT) * pl.col("learned") + SLEEPER_WEIGHT * pl.col("sleeper")
+            print(f"pair gap, minutes: median {blendable['pair_gap_min'].median()}, max {blendable['pair_gap_min'].max()}")
+            half = (1 - SLEEPER_WEIGHT) * pl.col("ours") + SLEEPER_WEIGHT * pl.col("sleeper")
             print(
                 blendable.group_by("position")
                 .agg(
                     pl.len().alias("n"),
-                    ((pl.col("learned") - pl.col("actual")) ** 2).mean().sqrt().alias("rmse_learned"),
+                    ((pl.col("ours") - pl.col("actual")) ** 2).mean().sqrt().alias("rmse_ours"),
                     ((pl.col("sleeper") - pl.col("actual")) ** 2).mean().sqrt().alias("rmse_sleeper"),
                     ((half - pl.col("actual")) ** 2).mean().sqrt().alias("rmse_0.5"),
-                    (pl.col("learned") - pl.col("actual")).mean().alias("me_learned"),
+                    (pl.col("ours") - pl.col("actual")).mean().alias("me_ours"),
                     (pl.col("sleeper") - pl.col("actual")).mean().alias("me_sleeper"),
                 )
                 .sort("position")
             )
         results = []
-        for pos in [*sorted(blendable["position"].drop_nulls().unique().to_list()), "ALL"]:
-            rows = blendable if pos == "ALL" else blendable.filter(pl.col("position") == pos)
-            held = leave_one_week_out(rows.select("week", "learned", "sleeper", "actual"))
+        per_week = blendable.group_by("position", "week").len()
+        own_fit = [
+            p for (p,), g in per_week.group_by("position")
+            if g["len"].min() >= MIN_POSITION_WEEK_ROWS
+            and g.height == blendable["week"].n_unique()
+        ]
+        for pos in ["ALL (verdict)", *sorted(own_fit)]:
+            rows = blendable if pos.startswith("ALL") else blendable.filter(pl.col("position") == pos)
+            held = leave_one_week_out(rows.select("week", "ours", "sleeper", "actual"))
             results.append(
                 {"position": pos, **compare(held)}
                 if held.height
@@ -251,6 +287,7 @@ def main() -> None:
         rates = status_play_rates(league["league_id"])
         print(f"Q/D Sleeper-0 rule (status play rates {({k: round(v, 3) for k, v in rates.items()})}):",
               score_zero_rule(zeroed, rates))
+    print("\nThe two leagues score the same games: read their verdicts as one test, not two.")
 
 
 if __name__ == "__main__":

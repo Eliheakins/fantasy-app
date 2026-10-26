@@ -200,7 +200,9 @@ def part2(rows: pl.DataFrame) -> None:
         )
     print(
         "Training (expected_frame inner-joins player_points) and the scorecard (score_games marks "
-        "a game with no points row not_final) both drop these games."
+        "a game with no points row not_final) both drop these games. They differ elsewhere: "
+        "training also needs an nfl_ff_opportunity row, so player_points rows with every stat 0 "
+        "are scored by the scorecard but never trained on (part 6)."
     )
 
 
@@ -341,6 +343,117 @@ def part5(rows: pl.DataFrame) -> None:
         print(pos.sort("league", "position"))
 
 
+def scorecard_rows() -> pl.DataFrame:
+    """Every skill player_points row from 2021 on (the scorecard scores any such row) with the
+    learned projection where `proj_learned` has the game, else the player's previous projected
+    game as a stand-in. `no_opp` marks rows training never sees (no nfl_ff_opportunity row)."""
+    learned = store.read_table("proj_learned").filter(~pl.col("is_future"))
+    pts = store.read_table("player_points").filter(
+        (pl.col("season") >= FIRST_CLEAN) & pl.col("position").is_in(SKILL)
+    )
+    opp = (
+        store.read_table("nfl_ff_opportunity", "raw")
+        .select(pl.col("player_id").alias("gsis_id"), "season", "week")
+        .unique()
+        .with_columns(pl.lit(False).alias("no_opp"))
+    )
+    prev = learned.select("league_id", "gsis_id", store.week_index().alias("t"), "projection").sort(
+        "t"
+    )
+    return (
+        pts.select(*KEYS, "position", "points")
+        .join(learned.select(*KEYS, pl.col("projection").alias("learned")), on=KEYS, how="left")
+        .join(opp, on=["gsis_id", "season", "week"], how="left")
+        .with_columns(pl.col("no_opp").fill_null(True), store.week_index().alias("t"))
+        .sort("t")
+        .join_asof(
+            prev,
+            on="t",
+            by=["league_id", "gsis_id"],
+            strategy="backward",
+            allow_exact_matches=False,
+            check_sortedness=False,
+        )
+        .with_columns(pl.coalesce("learned", "projection").alias("proj"))
+        .drop("t", "projection")
+    )
+
+
+def part6(rows: pl.DataFrame) -> None:
+    print("\n== 6. Scorecard row set (any player_points row) against the protocol rows ==")
+    sc = scorecard_rows().with_columns(pl.col("league_id").replace_strict(league_names()).alias("league"))
+    no_opp = sc.filter(pl.col("no_opp"))
+    print(
+        f"rows with no opportunity row: {no_opp.height} (both leagues); mean points "
+        f"{no_opp['points'].mean():.3f}; by position "
+        f"{dict(no_opp.group_by('position').len().sort('position').iter_rows())}"
+    )
+    stats = store.read_table("nfl_player_stats", "raw").rename({"player_id": "gsis_id"})
+    numeric = [
+        c for c in stats.columns
+        if stats[c].dtype.is_numeric() and c not in ("season", "week", "fantasy_points", "fantasy_points_ppr")
+    ]
+    lid0 = sorted(league_names())[0]
+    one = no_opp.filter(pl.col("league_id") == lid0)
+    joined = one.join(stats, on=["gsis_id", "season", "week"], how="left")
+    any_stat = pl.any_horizontal([pl.col(c).fill_null(0) != 0 for c in numeric])
+    snaps = store.read_table("nfl_snaps", "raw").filter(pl.col("gsis_id").is_not_null()).unique(
+        ["gsis_id", "season", "week"]
+    )
+    with_snaps = one.join(snaps.select("gsis_id", "season", "week", "offense_snaps", "st_snaps"),
+                          on=["gsis_id", "season", "week"], how="left")
+    print(
+        f"one league: {one.height} rows; any nonzero stat column {int(joined.select(any_stat.sum()).item())}; "
+        f"offensive snaps > 0 {int((with_snaps['offense_snaps'] > 0).sum())} (median "
+        f"{with_snaps['offense_snaps'].median()}); special-teams snaps > 0 "
+        f"{int((with_snaps['st_snaps'] > 0).sum())}. They are nflverse weekly rows with every stat 0."
+    )
+    p = rows.filter(pl.col("protocol"))
+    table = []
+    for (league, season), g in sc.drop_nulls("proj").group_by("league", "season"):
+        pr = p.filter((pl.col("league") == league) & (pl.col("season") == season))
+        extra = g.filter(pl.col("no_opp"))
+        table.append({
+            "league": league,
+            "season": season,
+            "n_protocol": pr.height,
+            "me_protocol": float((pr["learned"] - pr["points"]).mean()),
+            "n_scorecard": g.height,
+            "me_scorecard": float((g["proj"] - g["points"]).mean()),
+            "n_no_opp": extra.height,
+            "me_no_opp": float((extra["proj"] - extra["points"]).mean()),
+            "n_no_opp_proj>3": int((extra["proj"] > MIN_PROJECTION).sum()),
+        })
+    print(pl.DataFrame(table).sort("league", "season"))
+
+
+def part7() -> None:
+    print("\n== 7. How unusual is +1.22 on about 185 games? Weekly mean error of the learned model ==")
+    sc = scorecard_rows().drop_nulls("proj").filter(
+        (pl.col("week") <= 18) & ~((pl.col("season") == 2026) & (pl.col("week") == 7))
+    )
+    rng = np.random.default_rng(0)
+    for lid, name in league_names().items():
+        g = sc.filter(pl.col("league_id") == lid).with_columns(
+            (pl.col("proj").clip(lower_bound=0.5) - pl.col("points")).alias("err")
+        )
+        weeks = g.partition_by("season", "week")
+        full = np.array([w["err"].mean() for w in weeks])
+        draws = np.array([
+            [rng.choice(w["err"].to_numpy(), 185, replace=False).mean() for w in weeks if w.height >= 185]
+            for _ in range(20)
+        ])
+        sd185 = float(draws.std(axis=1, ddof=1).mean())
+        print(
+            f"{name}: {len(full)} full weeks (scorecard rows, median {int(np.median([w.height for w in weeks]))} "
+            f"rows): mean {full.mean():+.2f}, sd {full.std(ddof=1):.2f}, max {full.max():+.2f}, "
+            f"weeks at or above +1.22: {int((full >= 1.22).sum())}. Random 185-row draws per week: "
+            f"sd {sd185:.2f}, z of +1.22 = {(1.22 - full.mean()) / sd185:.1f}. A part week (few NFL "
+            "games) shares more game-level error, so its sd is larger: +1.22 is not distinguishable "
+            "from noise, not shown to be noise."
+        )
+
+
 def main() -> None:
     names = league_names()
     rows = with_tiers(protocol_rows()).with_columns(
@@ -351,6 +464,8 @@ def main() -> None:
     part3()
     part4(rows)
     part5(rows)
+    part6(rows)
+    part7()
 
 
 if __name__ == "__main__":
