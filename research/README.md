@@ -73,6 +73,7 @@ not deterministic (see the 2026-10-25 entry).
 | `ecr_value.py` | Do FantasyPros weekly rankings help? | 0.02 RMSE, mostly QB and TE | Shipped (`nfl_ecr`, private use) | 10-23 |
 | `pbp_features_check.py` | Red-zone and goal-line shares, neutral pass rate, FTN, combine, contracts? | All within 0.11% and within their placebos | Rejected | 10-25 |
 | `td_redundancy_check.py` | Is goal-line share redundant with lagged expected TDs? | Correlated 0.85; both add nothing beyond lagged points | Explained | 10-25 |
+| `role_features_check.py` | Depth moves, team and coach tenure, weeks since IR or practice squad, pre-kickoff chart? | All under 0.06% overall (t below 2); a post-hoc pair flagged for retest | Rejected | 10-26 |
 | `weather_check.py` | Do temperature and wind help the learned model? | Within a random placebo | Rejected | 10-25 |
 | `avail_test.py` | Do line, safety or linebacker absences move points? | Only the opposing leading corner | Shipped, later switched off | 10-23 |
 | `epa_test.py`, `epa_test2.py` | Do defense and offense efficiency predict misses? | Offense efficiency a little; defense no | Shipped, later switched off | 10-23 |
@@ -82,11 +83,21 @@ not deterministic (see the 2026-10-25 entry).
 | `slot_test.py` | Does a slot corner being out help slot receivers? | Not measurable with free data | Rejected | 10-23 |
 | `h2h_test.py` | Does history against an opponent predict points? | No | Rejected | 10-23 |
 
+## Decisions (lineups, waivers, injuries, season odds)
+
+| Script | Question | Result | Status | Log |
+|---|---|---|---|---|
+| `questionable_swap_check.py` | Start a Questionable player by his full projection, or advise a swap at inactives? | Advice +0.18 to 0.27 points a team-week (t about 5); starting by full projection had holes | Swap advice shipped | 10-26 |
+| `ir_curve_check.py` | Measured IR return curve against 0 for four games then the chain? | Brier 0.25 to 0.13 and 0.11 | Shipped | 10-26 |
+| `season_calibration_check.py` | Are season odds calibrated on built seasons; tau, drift, roster churn? | Calibrated; win totals 10% narrow; no variant clears | Reported | 10-26 |
+| `waiver_rule_check.py` | Rest-of-season waiver rule against next-week and form rules (rolling priority)? | +0.94 wins a season over form (t 9.7) | Confirmed; digest ranking changed | 10-26 |
+
 ## Evaluation tools
 
 | Script | Question | Result | Status | Log |
 |---|---|---|---|---|
 | `regret.py` | Do candidates pick better lineups (start/sit regret, error near the flex cutoff)? | Learned beats baseline by 0.55 to 0.71 points a team-week; component average and reconciliation win against learned but not against a two-seed average | Report only (proposed as a second gate) | 10-26 |
+| `news_residual_check.py` | Do day-over-day Sleeper status changes predict the blend's residual? | Harness; archive started 2026-10-26 | Waiting for weeks | 10-26 |
 
 ## Spread, correlations and team totals
 
