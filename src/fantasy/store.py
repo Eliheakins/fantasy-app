@@ -239,7 +239,8 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         floats="projection context",
     )
     | {"has_history": _B, "is_future": _B},
-    # written by learn: the same columns as proj_baseline, so every consumer reads either one
+    # written by learn: the same columns as proj_baseline, so every consumer reads either one.
+    # With stat_line_model on, projection is E[points | active] (stages/stat_line.py)
     "proj_learned": _cols(
         strings="league_id gsis_id position team",
         ints="season week as_of_season as_of_week",

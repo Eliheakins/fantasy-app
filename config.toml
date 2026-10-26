@@ -5,6 +5,7 @@ user_id = "1385113153716641792"
 n_sims = 20000
 projection_model = "learned"  # or "baseline" (the rolling average); learned needs the learn stage
 environment_layer = false  # no held-out gain on the learned projections (docs/decisions.md)
+stat_line_model = true  # learned projection times P(stat line | active); see docs/decisions.md
 
 [leagues.colgate]
 id = "1394105943137992704"

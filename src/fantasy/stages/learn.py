@@ -12,8 +12,11 @@ model trained on everything played so far, with lines where they exist and witho
 not. Models are retrained in the stage; only predictions are written, to `proj_learned`, which
 has the schema of `proj_baseline` so every consumer reads either one.
 
-The model is gradient boosting on squared error, so its projection is the expected points when
-the player plays, the same meaning as the baseline's.
+The model is gradient boosting on squared error, trained on games with a stat line (an
+opportunity row), so its projection is the expected points when the player has a stat line, the
+same meaning as the baseline's. With `stat_line_model` on (config.toml) every projection is then
+multiplied by the chance of a stat line when active (`stages/stat_line.py`), so `proj_learned`
+holds the expected points of any game with a `player_points` row, stat-less appearances included.
 
 Run: uv run python -m fantasy.stages.learn
 """
@@ -27,7 +30,9 @@ import polars as pl
 from sklearn.ensemble import HistGradientBoostingRegressor
 
 from fantasy import store
+from fantasy.config import load_config
 from fantasy.sim.calibration import apply_curves
+from fantasy.stages import stat_line
 from fantasy.stages.distributions import estimate_curves, residual_frame
 from fantasy.stages.project import (
     GROUP,
@@ -442,13 +447,11 @@ def check_next_game_nulls(history: pl.DataFrame, future: pl.DataFrame) -> None:
 def run() -> dict[str, int]:
     leagues = store.read_table("leagues", "raw")
     opp = store.read_table("nfl_ff_opportunity", "raw")
-    exp = expected_frame(opp, store.read_table("player_points"), leagues)
-    games_all = games_frame(
-        exp,
-        opp,
-        store.read_table("nfl_snaps", "raw"),
-        store.read_table("nfl_player_stats", "raw"),
-    )
+    points = store.read_table("player_points")
+    snaps = store.read_table("nfl_snaps", "raw")
+    stats = store.read_table("nfl_player_stats", "raw")
+    exp = expected_frame(opp, points, leagues)
+    games_all = games_frame(exp, opp, snaps, stats)
     lines = store.read_table("team_games")
     extras = load_extras()
     current, rostered = current_and_rostered()
@@ -456,6 +459,10 @@ def run() -> dict[str, int]:
     future_all = future_targets(
         store.read_table("player_form"), current, rostered, lines, first_week=current_week
     )
+    chance = None
+    if load_config().stat_line_model:
+        raw = {"opp": opp, "snaps": snaps, "stats": stats, "depth": extras.depth}
+        chance = stat_line.chances(exp, points, raw, future_all, current_week)
     context = store.read_table("proj_baseline").select(*GROUP, "season", "week", "context")
     keep = [*GROUP, "season", "week", "position", "team", "as_of_season", "as_of_week"]
     keep += ["has_history", "is_future", "projection"]
@@ -473,6 +480,9 @@ def run() -> dict[str, int]:
         )
         check_next_game_nulls(history, future_features)
         future = predict_future(history, future_features).with_columns(is_future=pl.lit(True))
+        if chance is not None:  # E[points | stat line] becomes E[points | active]
+            past = stat_line.scale(past, chance[0], KEY)
+            future = stat_line.scale(future, chance[1], ["gsis_id"])
         out += [past.select(keep), future.select(keep)]
     joined = pl.concat(out).join(context, on=[*GROUP, "season", "week"], how="left")
     unmatched = int(joined["context"].is_null().sum())
