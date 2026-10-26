@@ -7,9 +7,10 @@ an effective depth rank (the game's chart rank minus teammates at his position l
 Doubtful who rank above him). A teammate's shares are his weighted averages (half-life 4 games)
 over games strictly before the target game (`lags.lag_asof`); the report is the game's own.
 
-History uses nflverse's final report (Friday, Saturday for a Monday game). For the next game
-only, a team whose final report has no game status yet uses Sleeper's Out players instead
-(`sleeper_report`, `with_stand_in`; practice unknown): Sleeper's Questionable and Doubtful agree
+History uses nflverse's final report (Friday, Saturday for a Monday game). Once a week's final
+reports are out (any team has a game status), a team with none is healthy. Before that, for the
+next game only, Sleeper's Out players stand in (`sleeper_report`, `with_stand_in`; practice
+unknown): Sleeper's Questionable and Doubtful agree
 too poorly with the final report to stand in for it, and IR, PUP and the other long-term
 designations are not game statuses, as in history. Weeks with no report are projected by a model
 without these columns (`learn.predict_future`). A teammate vacates only the usage he had with the
@@ -83,31 +84,33 @@ def unmapped_out(players: pl.DataFrame, id_map: pl.DataFrame) -> int:
     return out.join(mapped, on="sleeper_id", how="anti").height
 
 
-def _issued(report: pl.DataFrame, season: int, week: int) -> list[str]:
+def _published(report: pl.DataFrame, season: int, week: int) -> bool:
+    """Whether the week's final reports are out: some team has a game status. A team with none
+    then has nobody listed (healthy)."""
     this_week = (pl.col("season") == season) & (pl.col("week") == week)
-    return report.filter(this_week & pl.col("status").is_not_null())["team"].unique().to_list()
+    return report.filter(this_week & pl.col("status").is_not_null()).height > 0
 
 
 def report_sources(
     report: pl.DataFrame, season: int, week: int, teams: list[str]
 ) -> dict[str, str]:
-    """Team -> 'final' when its final report for the week has game statuses, else 'sleeper'."""
-    issued = set(_issued(report, season, week))
-    return {t: "final" if t in issued else "sleeper" for t in teams}
+    """Team -> 'final' once the week's final reports are out, else 'sleeper' (the stand-in)."""
+    source = "final" if _published(report, season, week) else "sleeper"
+    return dict.fromkeys(teams, source)
 
 
 def with_stand_in(
     report: pl.DataFrame, stand_in: pl.DataFrame, season: int, week: int
 ) -> pl.DataFrame:
-    """`report` with the week's rows of each team that has no game status on the final report
-    yet replaced by the stand-in's rows for that team."""
+    """`report` unchanged once the week's final reports are out; before that, with the
+    stand-in's rows added for the week (one row per player-week)."""
+    if _published(report, season, week):
+        return report
     this_week = (pl.col("season") == season) & (pl.col("week") == week)
-    issued = _issued(report, season, week)
-    keep = report.filter(~this_week | pl.col("team").is_in(issued))
-    added = stand_in.filter(this_week & ~pl.col("team").is_in(issued))
-    return pl.concat([keep, added.select(keep.columns)]).unique(
-        KEY, keep="first", maintain_order=True
-    )
+    added = stand_in.filter(this_week).select(report.columns)
+    # shortcut: a Thursday team's report counts as the week's, so Sunday teams have nobody
+    # listed from Wednesday to Friday; upgrade with report dates per team (not ingested yet)
+    return pl.concat([report, added]).unique(KEY, keep="first", maintain_order=True)
 
 
 def sit_weights(
