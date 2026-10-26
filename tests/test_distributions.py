@@ -91,6 +91,34 @@ def test_calibration_curve_finds_that_small_projections_over_promise() -> None:
     assert ordered["center"].to_list() == sorted(ordered["center"].to_list())
 
 
+def test_a_past_projection_with_no_scored_row_is_a_zero_point_game() -> None:
+    proj = pl.DataFrame(
+        {
+            "league_id": ["L", "L"],
+            "gsis_id": ["a", "b"],
+            "season": [2025] * 2,
+            "week": [1] * 2,
+            "projection": [5.0, 2.0],
+            "is_future": [False] * 2,
+            "has_history": [True] * 2,
+        }
+    )
+    points = pl.DataFrame(
+        {"league_id": ["L"], "gsis_id": ["a"], "season": [2025], "week": [1], "points": [7.0]}
+    )
+    out = d.residual_frame(proj, points).sort("gsis_id")
+    assert out["points"].to_list() == [7.0, 0.0] and out["resid"].to_list() == [2.0, -2.0]
+
+
+def test_size_tiers_are_cut_on_stat_line_rows_when_marked() -> None:
+    low = [("L", f"z{i}", 2025, 1, "WR", "KC", 1.0, -1.0) for i in range(300)]
+    rest = [("L", f"p{i}", 2025, 1, "WR", "KC", 2.0 + i / 10, 0.0) for i in range(300)]
+    frame = res(low + rest).with_columns(pl.Series("statline", [False] * 300 + [True] * 300))
+    edges = d.estimate_marginals(frame).filter(pl.col("tier") == 0)["proj_max"].unique()
+    expected = np.quantile([2.0 + i / 10 for i in range(300)], 1 / 3)
+    assert edges.to_list() == [pytest.approx(expected)]
+
+
 def test_shapes_are_fit_on_the_projection_the_simulation_uses() -> None:
     frame = _two_sizes()
     curves = d.estimate_curves(frame)

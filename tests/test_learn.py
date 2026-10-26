@@ -100,6 +100,83 @@ def test_each_season_is_scored_by_a_model_that_never_saw_it() -> None:
     assert learn.train_seasons(2020, [2019, 2020, 2021, 2022, 2023]) == [2019, 2021, 2022]
 
 
+def test_rows_without_a_stat_line_are_projected_but_never_trained_on(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr(learn, "design", lambda frame, lines: frame.select("x").to_numpy())
+    monkeypatch.setattr(learn, "fit_predict", lambda xt, yt, xs: np.full(len(xs), float(len(yt))))
+    history = pl.DataFrame(
+        {"season": [2019, 2020, 2021, 2021], "x": [1.0] * 4, "points": [5.0] * 4}
+    )
+    extra = pl.DataFrame({"season": [2021], "x": [0.0]})
+    out = learn.walk_forward(history, extra=extra)
+    assert out.height == 5
+    later = out.filter(pl.col("season") == 2021)
+    assert later["projection"].to_list() == [2.0, 2.0, 2.0]  # trained on the two earlier rows
+    assert later["points"].null_count() == 1
+
+
+def test_a_stat_less_game_takes_its_team_weeks_context_and_is_not_reported(capsys) -> None:  # type: ignore[no-untyped-def]
+    keys = {"league_id": ["L"] * 3, "season": [2025] * 3, "week": [5] * 3}
+    rows = pl.DataFrame(keys | {"gsis_id": ["A", "B", "C"], "team": ["KC", "KC", "SF"]})
+    baseline = pl.DataFrame(
+        {
+            "league_id": ["L"],
+            "gsis_id": ["A"],
+            "season": [2025],
+            "week": [5],
+            "team": ["KC"],
+            "context": [1.05],
+        }
+    )
+    statless = pl.DataFrame(
+        {"league_id": ["L", "L"], "gsis_id": ["B", "C"], "season": [2025] * 2, "week": [5, 5]}
+    )
+    out = learn.with_context(rows, baseline, statless).sort("gsis_id")
+    assert out["context"].to_list() == [1.05, 1.05, 1.0]  # SF's team-week has no baseline row
+    assert "no proj_baseline row" not in capsys.readouterr().out
+    learn.with_context(rows, baseline, None)
+    assert "2 projection rows have no proj_baseline row" in capsys.readouterr().out
+
+
+def test_a_team_weeks_context_is_the_mean_and_rows_without_one_are_counted(capsys) -> None:  # type: ignore[no-untyped-def]
+    rows = pl.DataFrame(
+        {
+            "league_id": ["L"] * 2,
+            "gsis_id": ["B", "C"],
+            "season": [2025] * 2,
+            "week": [5] * 2,
+            "team": ["KC", "SF"],
+        }
+    )
+    baseline = pl.DataFrame(
+        {
+            "league_id": ["L"] * 2,
+            "gsis_id": ["A", "D"],
+            "season": [2025] * 2,
+            "week": [5] * 2,
+            "team": ["KC", "KC"],
+            "context": [1.0, 1.1],
+        }
+    )
+    out = learn.with_context(rows, baseline, rows.drop("team")).sort("gsis_id")
+    assert out["context"].to_list() == [pytest.approx(1.05), 1.0]
+    assert "1 stat-less rows have no team-week context" in capsys.readouterr().out
+    assert learn.with_context(rows, baseline, None)["context"].to_list() == [1.0, 1.0]
+
+
+def test_the_stat_line_branch_scales_past_and_future_rows_by_game() -> None:
+    frame = pl.DataFrame(
+        {"gsis_id": ["A", "A"], "season": [2025, 2026], "week": [3, 8], "projection": [10.0, 10.0]}
+    )
+    past, future = frame.head(1), frame.tail(1)
+    chance = (
+        pl.DataFrame({"gsis_id": ["A"], "season": [2025], "week": [3], "q": [0.5]}),
+        pl.DataFrame({"gsis_id": ["A"], "season": [2026], "week": [8], "q": [0.9]}),
+    )
+    out = learn.stat_line_scaled(past, future, chance)
+    assert out[0]["projection"].to_list() == [5.0] and out[1]["projection"].to_list() == [9.0]
+    assert learn.stat_line_scaled(past, future, None) == (past, future)
+
+
 def test_the_model_is_deterministic_and_learns_a_simple_signal() -> None:
     rng = np.random.default_rng(0)
     x = rng.uniform(0.0, 10.0, size=(3500, 3))  # points cannot be negative, so neither is y

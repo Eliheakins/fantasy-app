@@ -110,6 +110,29 @@ def score_games(
     )
 
 
+def with_zero_point_games(
+    actuals: pl.DataFrame,
+    games: pl.DataFrame,
+    nfl_snaps: pl.DataFrame,
+    team_games: pl.DataFrame,
+) -> pl.DataFrame:
+    """`actuals` (KEY, points) plus 0 points for each game in `games` (KEY, team) that is final
+    (the team's game has a score) where the player had offensive snaps but has no
+    `player_points` row: he played and did nothing that scores. Without it such a game would read
+    as not final and drop out of the scorecard."""
+    final = team_games.filter(pl.col("points_for").is_not_null()).select("season", "week", "team")
+    snapped = nfl_snaps.filter(
+        pl.col("gsis_id").is_not_null() & (pl.col("offense_snaps") > 0)
+    ).select("gsis_id", "season", "week")
+    zero = (
+        games.join(actuals.select(KEY), on=KEY, how="anti")
+        .join(final, on=["season", "week", "team"], how="semi")
+        .join(snapped, on=["gsis_id", "season", "week"], how="semi")
+        .select(*KEY, pl.lit(0.0).alias("points"))
+    )
+    return pl.concat([actuals.select(*KEY, "points"), zero])
+
+
 def add_tiers(frame: pl.DataFrame, train: pl.DataFrame) -> pl.DataFrame:
     """A `tier` column (the baseline projection's third, as in the backtest), null for a league and
     position with no training rows. train: league_id, position, projection."""
@@ -228,6 +251,12 @@ def scorecard_of(league_id: str, data_dir: Path = store.DATA_DIR) -> Scorecard:
         store.read_table("player_points", "derived", data_dir)
         .filter(pl.col("league_id") == league_id)
         .select(*KEY, "points")
+    )
+    actuals = with_zero_point_games(
+        actuals,
+        games,
+        store.read_table("nfl_snaps", "raw", data_dir),
+        store.read_table("team_games", "derived", data_dir),
     )
     kick = _kickoff_frame(games, store.read_table("nfl_schedules", "raw", data_dir))
     league = (

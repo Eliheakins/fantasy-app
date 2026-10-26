@@ -12,8 +12,11 @@ model trained on everything played so far, with lines where they exist and witho
 not. Models are retrained in the stage; only predictions are written, to `proj_learned`, which
 has the schema of `proj_baseline` so every consumer reads either one.
 
-The model is gradient boosting on squared error, so its projection is the expected points when
-the player plays, the same meaning as the baseline's.
+The model is gradient boosting on squared error, trained on games with a stat line (an
+opportunity row), so its projection is the expected points when the player has a stat line, the
+same meaning as the baseline's. With `stat_line_model` on (config.toml) every projection is then
+multiplied by the chance of a stat line when active (`stages/stat_line.py`), so `proj_learned`
+holds the expected points of any game with a `player_points` row, stat-less appearances included.
 
 Run: uv run python -m fantasy.stages.learn
 """
@@ -26,9 +29,12 @@ import numpy as np
 import polars as pl
 from sklearn.ensemble import HistGradientBoostingRegressor
 
-from fantasy import store
+from fantasy import stat_line_table, store
+from fantasy.config import load_config
 from fantasy.sim.calibration import apply_curves
+from fantasy.stages import stat_line
 from fantasy.stages.distributions import estimate_curves, residual_frame
+from fantasy.stages.lags import lag_asof, latest_asof, train_seasons
 from fantasy.stages.project import (
     GROUP,
     current_and_rostered,
@@ -68,9 +74,6 @@ EXTRA_FEATURES = (
     + [f"adv_{c}" for c in ADVANCED_COLUMNS]
     + SCHEDULE_FEATURES
 )
-EXTRA_HALF_LIFE = 4.0  # games, for the lagged team and advanced stats
-MIN_TRAIN_SEASONS = 2  # a season with fewer earlier seasons is scored by leave-one-season-out
-EARLY_BLOCK = 4  # seasons in that early block
 FIRST_ACCEPTANCE_SEASON = 2024
 MIN_GAIN = 0.01  # the learned model must beat the calibrated baseline by this share of RMSE
 MIN_T = 2.0
@@ -194,58 +197,6 @@ def load_extras() -> Extras:
     )
 
 
-def lag_asof(
-    target: pl.DataFrame,
-    table: pl.DataFrame,
-    by: str,
-    cols: list[str],
-    prefix: str,
-    shift: int = 0,
-) -> pl.DataFrame:
-    """Each column's weighted average over the rows of `table` strictly before the target game
-    (`shift` weeks earlier, for a forecast made further ahead), as `<prefix>_<column>`. A value
-    missing in the latest row carries the earlier one forward."""
-    lagged = [f"{prefix}_{c}" for c in cols]
-    state = (
-        table.sort(by, "season", "week")
-        .with_columns(
-            *[
-                pl.col(c)
-                .forward_fill()
-                .ewm_mean(half_life=EXTRA_HALF_LIFE)
-                .over(by)
-                .alias(f"{prefix}_{c}")
-                for c in cols
-            ],
-            week_index().alias("t"),
-        )
-        .select(by, "t", *lagged)
-        .sort("t")
-    )
-    left = target.with_columns((week_index() - shift).alias("t")).sort("t")
-    return left.join_asof(
-        state,
-        on="t",
-        by=by,
-        strategy="backward",
-        allow_exact_matches=False,
-        check_sortedness=False,
-    ).drop("t")
-
-
-def latest_asof(
-    target: pl.DataFrame, table: pl.DataFrame, by: str, cols: list[str], shift: int = 0
-) -> pl.DataFrame:
-    """For attributes that hold until they change (age, draft pick, a depth chart): the latest
-    row of `table` at or before the target game, `shift` weeks earlier. A game beyond the
-    table's last week keeps the last known value."""
-    right = table.select(by, week_index().alias("t"), *cols).sort("t")
-    left = target.with_columns((week_index() - shift).alias("t")).sort("t")
-    return left.join_asof(right, on="t", by=by, strategy="backward", check_sortedness=False).drop(
-        "t"
-    )
-
-
 def with_schedule(frame: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
     """Rest days and an indoor flag for the game: both are known when the schedule is."""
     sched = games.select(
@@ -318,16 +269,6 @@ def design(frame: pl.DataFrame, lines: bool) -> np.ndarray:
     return out.select([pl.col(c).cast(pl.Float64) for c in columns]).to_numpy()
 
 
-def train_seasons(season: int, available: list[int]) -> list[int]:
-    """The seasons a model scoring `season` may train on: earlier ones, or for the first
-    seasons (too few earlier ones) the other seasons of the early block."""
-    ordered = sorted(available)
-    prior = [s for s in ordered if s < season]
-    if len(prior) >= MIN_TRAIN_SEASONS:
-        return prior
-    return [s for s in ordered[:EARLY_BLOCK] if s != season]
-
-
 def _varies(column: np.ndarray) -> bool:
     finite = column[np.isfinite(column)]
     return len(np.unique(finite)) > 1
@@ -351,14 +292,21 @@ def fit_predict(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray) ->
     return np.clip(model.predict(x_test), 0.0, None)
 
 
-def walk_forward(history: pl.DataFrame, lines: bool = True) -> pl.DataFrame:
+def walk_forward(
+    history: pl.DataFrame, lines: bool = True, extra: pl.DataFrame | None = None
+) -> pl.DataFrame:
     """history: feature rows with `points`. A projection for every row from a model that did not
-    see that row's season."""
+    see that row's season. `extra` rows (stat-less games) are projected by the same models but
+    never trained on."""
     seasons = sorted(history["season"].unique().to_list())
     parts = []
     for season in seasons:
         train = history.filter(pl.col("season").is_in(train_seasons(season, seasons)))
         test = history.filter(pl.col("season") == season)
+        if extra is not None:
+            test = pl.concat(
+                [test, extra.filter(pl.col("season") == season)], how="diagonal_relaxed"
+            )
         pred = fit_predict(design(train, lines), train["points"].to_numpy(), design(test, lines))
         parts.append(test.with_columns(pl.Series("projection", pred)))
     return pl.concat(parts)
@@ -441,16 +389,101 @@ def check_next_game_nulls(history: pl.DataFrame, future: pl.DataFrame) -> None:
         print(f"learn: WARNING next-game rows lack {worst_column} {worst:.0%} more than history")
 
 
+def with_context(
+    rows: pl.DataFrame, baseline: pl.DataFrame, statless: pl.DataFrame | None
+) -> pl.DataFrame:
+    """`rows` with proj_baseline's context: the row's own, or for a played game without a stat
+    line (`statless`: league_id, gsis_id, season, week), which has no baseline row, the mean of
+    his team-week's. 1.0 where neither exists. Rows other than stat-less ones without a baseline
+    row are reported, and so, separately, are stat-less rows with no team-week context."""
+    keys = [*GROUP, "season", "week"]
+    team_keys = ["league_id", "season", "week", "team"]
+    team = (
+        baseline.drop_nulls("team").group_by(team_keys).agg(pl.col("context").mean().alias("_team"))
+    )
+    joined = rows.join(baseline.select(*keys, "context"), on=keys, how="left")
+    if statless is None:
+        joined = joined.with_columns(pl.lit(None, pl.Boolean).alias("_statless"))
+    else:
+        flagged = statless.select(keys).unique().with_columns(pl.lit(True).alias("_statless"))
+        joined = (
+            joined.join(flagged, on=keys, how="left")
+            .join(team, on=team_keys, how="left")
+            .with_columns(
+                pl.when(pl.col("_statless"))
+                .then(pl.coalesce("context", "_team"))
+                .otherwise(pl.col("context"))
+                .alias("context")
+            )
+            .drop("_team")
+        )
+    missing = joined.filter(pl.col("context").is_null())
+    unmatched = missing.filter(pl.col("_statless").is_null()).height
+    if unmatched:
+        print(f"learn: {unmatched} projection rows have no proj_baseline row; context set to 1.0")
+    no_team = missing.height - unmatched
+    if no_team:
+        print(f"learn: {no_team} stat-less rows have no team-week context; context set to 1.0")
+    return joined.with_columns(pl.col("context").fill_null(1.0)).drop("_statless")
+
+
+def stat_line_scaled(
+    past: pl.DataFrame,
+    future: pl.DataFrame,
+    chance: tuple[pl.DataFrame, pl.DataFrame] | None,
+) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """With the stat-line model on (`chance`: past and future q by game), E[points | stat line]
+    becomes E[points | played]; otherwise both frames are returned unchanged."""
+    if chance is None:
+        return past, future
+    return stat_line_table.scale(past, chance[0], KEY), stat_line_table.scale(
+        future, chance[1], KEY
+    )
+
+
+@dataclass(frozen=True)
+class Inputs:
+    """The tables one `run` projects from."""
+
+    exp: pl.DataFrame
+    games: pl.DataFrame
+    lines: pl.DataFrame
+    extras: Extras
+    future: pl.DataFrame
+    played: pl.DataFrame | None  # every played game, when the stat-line model is on
+
+
+def league_projections(
+    lid: str, data: Inputs, chance: tuple[pl.DataFrame, pl.DataFrame] | None
+) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame | None]:
+    """Past and future projection rows for one league, and its stat-less targets (or None)."""
+    games = data.games.filter(pl.col("league_id") == lid)
+    state = state_frame(games)
+    targets = history_targets(data.exp.filter(pl.col("league_id") == lid))
+    history = build_features(targets, state, data.lines, data.extras).join(
+        games.select(*GROUP, "season", "week", "points"), on=[*GROUP, "season", "week"]
+    )
+    statless, extra = None, None  # stat-less games get a projection too, so the shapes see them
+    if data.played is not None:
+        statless = stat_line.statless_targets(data.played, lid)
+        extra = build_features(statless, state, data.lines, data.extras)
+    past = walk_forward(history, extra=extra).with_columns(is_future=pl.lit(False))
+    future_features = build_features(
+        data.future.filter(pl.col("league_id") == lid), state, data.lines, data.extras
+    )
+    check_next_game_nulls(history, future_features)
+    future = predict_future(history, future_features).with_columns(is_future=pl.lit(True))
+    past, future = stat_line_scaled(past, future, chance)
+    return past, future, statless
+
+
 def run() -> dict[str, int]:
     leagues = store.read_table("leagues", "raw")
     opp = store.read_table("nfl_ff_opportunity", "raw")
-    exp = expected_frame(opp, store.read_table("player_points"), leagues)
-    games_all = games_frame(
-        exp,
-        opp,
-        store.read_table("nfl_snaps", "raw"),
-        store.read_table("nfl_player_stats", "raw"),
-    )
+    points = store.read_table("player_points")
+    snaps = store.read_table("nfl_snaps", "raw")
+    stats = store.read_table("nfl_player_stats", "raw")
+    exp = expected_frame(opp, points, leagues)
     lines = store.read_table("team_games")
     extras = load_extras()
     current, rostered = current_and_rostered()
@@ -458,30 +491,24 @@ def run() -> dict[str, int]:
     future_all = future_targets(
         store.read_table("player_form"), current, rostered, lines, first_week=current_week
     )
-    context = store.read_table("proj_baseline").select(*GROUP, "season", "week", "context")
+    chance, played = None, None
+    if load_config().stat_line_model:
+        raw = {"opp": opp, "snaps": snaps, "stats": stats, "depth": extras.depth}
+        chance = stat_line.chances(exp, points, raw, future_all, current_week)
+        played = stat_line.played_rows(points, exp, snaps, opp)
+    data = Inputs(exp, games_frame(exp, opp, snaps, stats), lines, extras, future_all, played)
     keep = [*GROUP, "season", "week", "position", "team", "as_of_season", "as_of_week"]
     keep += ["has_history", "is_future", "projection"]
-    out = []
+    out, statless = [], []
     for lid in leagues["league_id"].to_list():
-        games = games_all.filter(pl.col("league_id") == lid)
-        state = state_frame(games)
-        targets = history_targets(exp.filter(pl.col("league_id") == lid))
-        history = build_features(targets, state, lines, extras).join(
-            games.select(*GROUP, "season", "week", "points"), on=[*GROUP, "season", "week"]
-        )
-        past = walk_forward(history).with_columns(is_future=pl.lit(False))
-        future_features = build_features(
-            future_all.filter(pl.col("league_id") == lid), state, lines, extras
-        )
-        check_next_game_nulls(history, future_features)
-        future = predict_future(history, future_features).with_columns(is_future=pl.lit(True))
+        past, future, extra = league_projections(lid, data, chance)
         out += [past.select(keep), future.select(keep)]
-    joined = pl.concat(out).join(context, on=[*GROUP, "season", "week"], how="left")
-    unmatched = int(joined["context"].is_null().sum())
-    if unmatched:
-        print(f"learn: {unmatched} projection rows have no proj_baseline row; context set to 1.0")
-    final = joined.with_columns(pl.col("context").fill_null(1.0))
+        statless += [] if extra is None else [extra.select(*GROUP, "season", "week")]
+    baseline = store.read_table("proj_baseline")
+    final = with_context(pl.concat(out), baseline, pl.concat(statless) if statless else None)
     store.write_table("proj_learned", final.select(*store.SCHEMAS["proj_learned"]))
+    # after proj_learned, so a table older than it is known to be stale
+    stat_line_table.sync(None if chance is None else pl.concat(chance))
     archive_snapshot(final, current_week, lines)
     return {
         "history": final.filter(~pl.col("is_future")).height,
@@ -543,9 +570,14 @@ def archive_snapshot(final: pl.DataFrame, current_week: int, games: pl.DataFrame
 def compare_to_baseline() -> pl.DataFrame:
     """Held-out check on the seasons from FIRST_ACCEPTANCE_SEASON: the learned projection against
     the baseline calibrated by size with curves fit on earlier seasons only, where the calibrated
-    baseline is above MIN_PROJECTION. Paired per-week t on the squared error."""
+    baseline is above MIN_PROJECTION. Paired per-week t on the squared error. With the stat-line
+    model on, q is taken back out, so both sides are points given a stat line (like for like);
+    `hurdle_on_played` scores the two-part projection."""
     baseline = store.read_table("proj_baseline").filter(~pl.col("is_future"))
     learned = store.read_table("proj_learned").filter(~pl.col("is_future"))
+    chance = stat_line_table.stored()
+    if chance is not None:
+        learned = stat_line_table.divide(learned, chance, KEY)
     points = store.read_table("player_points")
     history = residual_frame(baseline, points)
     learned_view = learned.select(*GROUP, "season", "week", pl.col("projection").alias("learned"))
@@ -596,11 +628,64 @@ def compare_to_baseline() -> pl.DataFrame:
     return pl.DataFrame(rows)
 
 
+def paired(by_week: pl.DataFrame) -> tuple[float, int]:
+    """Paired per-week t of `a` minus `b` (mean squared errors per week), and weeks `b` won."""
+    diff = (by_week["a"] - by_week["b"]).to_numpy()
+    return float(diff.mean() / (diff.std(ddof=1) / np.sqrt(len(diff)))), int((diff > 0).sum())
+
+
+def hurdle_on_played() -> pl.DataFrame | None:
+    """Held-out check of the stat-line model from FIRST_ACCEPTANCE_SEASON on every played game (a
+    played game with no `player_points` row scores 0): q * E against E. None when it is off."""
+    chance = stat_line_table.stored()
+    if chance is None:
+        return None
+    hurdle = store.read_table("proj_learned").filter(
+        ~pl.col("is_future") & (pl.col("season") >= FIRST_ACCEPTANCE_SEASON)
+    )
+    points = store.read_table("player_points").select(*GROUP, "season", "week", "points")
+    rows = (
+        stat_line_table.divide(hurdle, chance, KEY)
+        .select(*GROUP, "season", "week", pl.col("projection").alias("e"))
+        .join(
+            hurdle.select(*GROUP, "season", "week", pl.col("projection").alias("qe")),
+            on=[*GROUP, "season", "week"],
+        )
+        .join(points, on=[*GROUP, "season", "week"], how="left")
+        .with_columns(pl.col("points").fill_null(0.0))
+    )
+    out = []
+    for (league_id,), g in rows.group_by("league_id"):
+        by_week = g.group_by("season", "week").agg(
+            ((pl.col("e") - pl.col("points")) ** 2).mean().alias("a"),
+            ((pl.col("qe") - pl.col("points")) ** 2).mean().alias("b"),
+        )
+        t_stat, won = paired(by_week)
+        rmse_e = float(np.sqrt(((g["e"] - g["points"]) ** 2).to_numpy().mean()))
+        rmse_qe = float(np.sqrt(((g["qe"] - g["points"]) ** 2).to_numpy().mean()))
+        out.append(
+            {
+                "league_id": league_id,
+                "n": g.height,
+                "rmse_e": round(rmse_e, 4),
+                "rmse_q_e": round(rmse_qe, 4),
+                "gain_pct": round(100 * (rmse_e - rmse_qe) / rmse_e, 2),
+                "paired_t": round(t_stat, 2),
+                "weeks_better": f"{won}/{by_week.height}",
+            }
+        )
+    return pl.DataFrame(out)
+
+
 def main() -> None:
     for name, count in run().items():
         print(f"{name}: {count} rows")
     with pl.Config(tbl_cols=10, tbl_width_chars=160):
         print(compare_to_baseline())
+        hurdle = hurdle_on_played()
+        if hurdle is not None:
+            print("stat-line model on played games, q * E against E:")
+            print(hurdle)
 
 
 if __name__ == "__main__":

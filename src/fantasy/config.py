@@ -22,6 +22,7 @@ class Config:
     leagues: dict[str, str]  # league name -> Sleeper league id
     projection_model: str = "baseline"  # "learned" or "baseline"; learned falls back if missing
     environment_layer: bool = True  # opposing-corner and offense-efficiency adjustments
+    stat_line_model: bool = False  # learned projection times P(stat line | active)
     outside_sources: tuple[str, ...] = ()  # archived by outside_projections; empty disables
     blend_sources: tuple[str, ...] = ("sleeper",)  # empty: ours only
     prop_positions: tuple[str, ...] = ("RB", "WR")  # positions that get prop-implied points
@@ -57,6 +58,7 @@ def _load(path: Path, _mtime_ns: int) -> Config:
             leagues={name: league["id"] for name, league in raw["leagues"].items()},
             projection_model=model,
             environment_layer=bool(raw.get("environment_layer", True)),
+            stat_line_model=bool(raw.get("stat_line_model", False)),
             outside_sources=outside,
             blend_sources=sources,
             prop_positions=positions,

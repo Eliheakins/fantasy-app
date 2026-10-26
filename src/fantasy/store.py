@@ -252,13 +252,16 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         floats="projection context",
     )
     | {"has_history": _B, "is_future": _B},
-    # written by learn: the same columns as proj_baseline, so every consumer reads either one
+    # written by learn: the same columns as proj_baseline, so every consumer reads either one.
+    # With stat_line_model on, projection is E[points | active] (stages/stat_line.py)
     "proj_learned": _cols(
         strings="league_id gsis_id position team",
         ints="season week as_of_season as_of_week",
         floats="projection context",
     )
     | {"has_history": _B, "is_future": _B},
+    # written by learn when stat_line_model is on: P(stat line | active) per player-game
+    "stat_line": _cols(strings="gsis_id", ints="season week", floats="q"),
     # written by ingest_role (area: raw). Role and context data keyed by player and week.
     "nfl_rosters_weekly": _cols(
         strings="gsis_id", ints="season week", floats="age years_exp draft_pick"

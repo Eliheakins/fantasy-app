@@ -19,7 +19,8 @@ from sklearn.ensemble import HistGradientBoostingClassifier
 
 from fantasy import store
 from fantasy.config import load_config
-from fantasy.stages.learn import KEY, lag_asof, latest_asof
+from fantasy.stages.lags import lag_asof, latest_asof
+from fantasy.stages.learn import KEY
 from fantasy.store import SKILL, WEEK_STRIDE, week_index
 
 STATUSES = ["none", "Questionable", "Doubtful", "Out"]
