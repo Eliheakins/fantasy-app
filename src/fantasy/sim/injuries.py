@@ -12,10 +12,12 @@ Questionable, with a warning.
 """
 
 import warnings
+from collections.abc import Sequence
 
 import polars as pl
 
 from fantasy.sim.availability import HEALTHY_STATUSES, LONG_TERM, LONG_TERM_WEEKS
+from fantasy.sim.blend import blend_all
 
 Flag = tuple[str, str | None, str | None]  # report status, body part, practice participation
 DECAY = 0.5  # the play-through discount keeps this share of itself each week
@@ -86,42 +88,65 @@ def _steps(projections: pl.DataFrame, current_week: int) -> pl.DataFrame:
     )
 
 
-def without_stat_line(
+def _table_games(
     projections: pl.DataFrame,
     flagged: dict[str, Flag],
-    model: InjuryModel,
+    model: InjuryModel | None,
     current_week: int,
     first_game_chance: dict[str, float] | None,
-    stat_line: dict[tuple[str, int], float] | None,
-) -> pl.DataFrame:
-    """Our projection divided by q (stat_line: (gsis_id, week) -> q, the `stat_line` table)
-    for the games whose chance of playing will come from the injury table. That chance counts
-    games with touches or targets, the stat-line event itself, so those games use E, not q * E.
-    The classifier's first-game chance (any offensive snaps) and healthy games keep q. Apply it
-    before the Sleeper blend, so Sleeper's half is never divided by q. A game that needs q and
-    has none keeps its projection, with a warning."""
-    if not stat_line:
-        return projections
+) -> set[tuple[str, int]]:
+    """(gsis_id, week) of the games whose chance of playing `injury_projections` will take from
+    the injury table: a flagged player's next games along his curve, except the first one when
+    the classifier's chance replaces it. The curve's last entry ("healthy from then on") is not a
+    measured chance."""
+    if model is None:
+        return set()
     override = first_game_chance or {}
     curves = {g: _curve_or_questionable(model, f) for g, f in flagged.items()}
     rows = _steps(projections, current_week)
-    undo, missing = [], []
+    games = set()
     for gsis, week, k in zip(rows["gsis_id"], rows["week"], rows["_k"], strict=True):
         curve = curves.get(gsis)
-        # the curve's last entry is "healthy from then on", not a measured chance
-        from_table = curve is not None and 0 <= k < len(curve[0]) - 1
-        if k == 0 and gsis in override:
-            from_table = False
-        q = stat_line.get((gsis, week)) if from_table else None
-        if from_table and q is None:
-            missing.append(f"{gsis} week {week}")
-        undo.append(1.0 if q is None else 1.0 / q)
+        if curve is None or not 0 <= k < len(curve[0]) - 1 or (k == 0 and gsis in override):
+            continue
+        games.add((gsis, week))
+    return games
+
+
+def stat_line_blend(
+    ours: pl.DataFrame,
+    others: Sequence[pl.DataFrame],
+    flagged: dict[str, Flag],
+    model: InjuryModel | None,
+    current_week: int,
+    first_game_chance: dict[str, float] | None,
+    stat_line: dict[tuple[str, int], float] | None,
+    zero_is_missing: frozenset[str] = frozenset(),
+) -> pl.DataFrame:
+    """The source blend on the conditional scale. `ours` (gsis_id, week, projection) carries the
+    chance of a stat line q when `stat_line` ((gsis_id, week) -> q, the `stat_line` table) is
+    set: q comes out (E), E is blended with `others` (`blend_all`; an outside source is never
+    divided by q), and q goes back on, except for games whose chance of playing will come from
+    the injury table: that chance counts games with touches or targets, the stat-line event
+    itself. The classifier's first-game chance (any offensive snaps) and healthy games keep q.
+    A game with no q keeps ours as it is, with a warning."""
+    if not stat_line:
+        return blend_all(ours, others, "gsis_id", zero_is_missing)
+    keys = list(zip(ours["gsis_id"], ours["week"], strict=True))
+    missing = [f"{g} week {w}" for g, w in keys if (g, w) not in stat_line]
     if missing:
-        warnings.warn(
-            f"no stat-line chance for flagged games {missing}: their projection keeps q",
-            stacklevel=2,
-        )
-    return rows.with_columns(pl.col("projection") * pl.Series(undo, dtype=pl.Float64)).drop("_k")
+        warnings.warn(f"no stat-line chance for {missing}: q treated as 1", stacklevel=2)
+    table = _table_games(ours, flagged, model, current_week, first_game_chance)
+    q = [stat_line.get(k, 1.0) for k in keys]
+    again = [1.0 if k in table else qk for k, qk in zip(keys, q, strict=True)]
+    conditional = ours.with_columns(pl.col("projection") / pl.Series(q, dtype=pl.Float64))
+    blended = blend_all(
+        conditional.with_columns(pl.Series("_q", again, dtype=pl.Float64)),
+        others,
+        "gsis_id",
+        zero_is_missing,
+    )
+    return blended.with_columns(pl.col("projection") * pl.col("_q")).drop("_q")
 
 
 def injury_projections(

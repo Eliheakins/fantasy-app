@@ -18,10 +18,9 @@ import polars as pl
 from fantasy import stat_line_table, store
 from fantasy.config import load_config
 from fantasy.sim.availability import kickoffs, remaining_share, scale_projections
-from fantasy.sim.blend import blend_all
 from fantasy.sim.environment import Situation, apply_environment
 from fantasy.sim.environment import effects_dict as environment_effects
-from fantasy.sim.injuries import Flag, InjuryModel, injury_projections, without_stat_line
+from fantasy.sim.injuries import Flag, InjuryModel, injury_projections, stat_line_blend
 from fantasy.sim.lineup import Player
 from fantasy.sim.odds import CurrentWeek, LeagueData, build_inputs
 from fantasy.sim.outlook import apply_outlook, effects_dict
@@ -120,16 +119,10 @@ def live_clock(
 SLEEPER_ZEROED_STATUSES = frozenset({"Questionable", "Doubtful"})
 
 
-def _blend_sources(
-    projections: pl.DataFrame,
-    league_id: str,
-    id_map: pl.DataFrame,
-    flags: dict[str, Flag],
-    current: int,
-) -> pl.DataFrame:
-    """The equal mean of ours and each configured source a player has (`blend_sources`):
-    Sleeper for the weeks it projects (the next four), FFToday and prop lines for the current
-    week only. A missing table is skipped."""
+def _other_sources(league_id: str, id_map: pl.DataFrame, current: int) -> list[pl.DataFrame]:
+    """Each configured source's projections (`blend_sources`; gsis_id, week, other): Sleeper for
+    the weeks it projects (the next four), FFToday and prop lines for the current week only. A
+    missing table is skipped."""
     others = []
     for source in load_config().blend_sources:
         table = {"sleeper": "proj_sleeper", "props": "proj_props"}.get(source, "proj_outside")
@@ -144,9 +137,7 @@ def _blend_sources(
         if table == "proj_outside":
             theirs = theirs.filter(pl.col("source") == source)
         others.append(theirs.select("gsis_id", "week", other=pl.col("projection")))
-    # an outside 0 for a Questionable or Doubtful player is dropped like Sleeper's
-    zeroed = frozenset(g for g, f in flags.items() if f[0] in SLEEPER_ZEROED_STATUSES)
-    return blend_all(projections, others, "gsis_id", zeroed)
+    return others
 
 
 # effects measured in points, so they scale with a league's scoring; the rest are ratios
@@ -441,11 +432,19 @@ def _layered_projections(
     except FileNotFoundError:
         model = None
     first_game = _first_game_chance(current) if model is not None else {}
-    # our baseline is calibrated by size before it is blended with the other sources
-    ours = calibrated(future).select("gsis_id", "week", "position", "team", "projection")
-    if model is not None:
-        ours = without_stat_line(ours, flags, model, current, first_game, _stat_line(current))
-    blended = _blend_sources(ours, lid, id_map, flags, current)
+    # our baseline is calibrated by size before it is blended with the other sources; an outside
+    # 0 for a Questionable or Doubtful player is dropped like Sleeper's
+    zeroed = frozenset(g for g, f in flags.items() if f[0] in SLEEPER_ZEROED_STATUSES)
+    blended = stat_line_blend(
+        calibrated(future).select("gsis_id", "week", "position", "team", "projection"),
+        _other_sources(lid, id_map, current),
+        flags,
+        model,
+        current,
+        first_game,
+        _stat_line(current),
+        zeroed,
+    )
     # Sleeper zeroes Out and IR players, which the injury scaling also zeroes; any source's 0 for
     # Questionable and Doubtful players is dropped in the blend, so the scaling applies once
     if model is None:
