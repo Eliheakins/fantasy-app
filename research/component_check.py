@@ -27,6 +27,8 @@ Predictions are cached in research/scratch/component_preds.parquet (delete it to
 """
 
 import json
+import sys
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -36,6 +38,7 @@ from sklearn.ensemble import HistGradientBoostingRegressor
 
 from fantasy import store
 from fantasy.sim.calibration import apply_curves
+from fantasy.stages import backtest
 from fantasy.stages.distributions import estimate_curves, residual_frame
 from fantasy.stages.learn import (
     FIRST_ACCEPTANCE_SEASON,
@@ -49,7 +52,15 @@ from fantasy.stages.learn import (
     state_frame,
     train_seasons,
 )
-from fantasy.stages.project import GROUP, expected_frame, history_targets
+from fantasy.stages.project import (
+    FIRST_PROJECTED_SEASON,
+    GROUP,
+    build_form,
+    expected_frame,
+    history_targets,
+    position_prior,
+    project_targets,
+)
 
 KEY = [*GROUP, "season", "week"]
 SCRATCH = Path(__file__).parent / "scratch"
@@ -128,6 +139,7 @@ def fit_predict(
     x_test: np.ndarray,
     loss: str,
     weight: np.ndarray | None = None,
+    seed: int = 0,
 ) -> np.ndarray:
     """learn.fit_predict with a choice of loss and no clipping (components may be negative)."""
     usable = [j for j in range(x_train.shape[1]) if _varies(x_train[:, j])]
@@ -138,14 +150,19 @@ def fit_predict(
         max_leaf_nodes=15,
         min_samples_leaf=80,
         l2_regularization=5.0,
-        random_state=0,
+        random_state=seed,
     )
     model.fit(x_train[:, usable], y_train, sample_weight=weight)
     return model.predict(x_test[:, usable])
 
 
 def walk_forward(
-    seasons: np.ndarray, x: np.ndarray, y: np.ndarray, loss: str, weight: np.ndarray | None = None
+    seasons: np.ndarray,
+    x: np.ndarray,
+    y: np.ndarray,
+    loss: str,
+    weight: np.ndarray | None = None,
+    seed: int = 0,
 ) -> np.ndarray:
     """With `weight`, trains on rows of positive weight only, weighted (rates per opportunity)."""
     out = np.full(len(y), np.nan)
@@ -154,7 +171,7 @@ def walk_forward(
         train = np.isin(seasons, train_seasons(season, available))
         test = seasons == season
         if weight is None:
-            out[test] = fit_predict(x[train], y[train], x[test], loss)
+            out[test] = fit_predict(x[train], y[train], x[test], loss, seed=seed)
         else:
             train &= weight > 0
             out[test] = fit_predict(x[train], y[train], x[test], loss, weight[train])
@@ -162,20 +179,20 @@ def walk_forward(
 
 
 def league_history(
-    lid: str, scoring: dict[str, float], data: dict[str, pl.DataFrame]
+    lid: str, scoring: dict[str, float], data: dict[str, pl.DataFrame], horizon: int = 1
 ) -> tuple[pl.DataFrame, np.ndarray, np.ndarray]:
     """The direct model's training rows with component targets, and its matrix with and without
-    the component lags."""
+    the component lags (as learn.history_forecasts(horizon): no lines beyond one game ahead)."""
     games = data["games_all"].filter(pl.col("league_id") == lid)
     targets = history_targets(data["exp"].filter(pl.col("league_id") == lid))
-    features = build_features(targets, state_frame(games), data["lines"], data["extras"])
+    features = build_features(targets, state_frame(games), data["lines"], data["extras"], horizon)
     # the row order of learn.history_forecasts: HGB's automatic early stopping (over 10,000 rows)
     # draws its validation split by position, so the order changes the fit
     history = (
         features.join(games.select(*GROUP, "season", "week", "points"), on=[*GROUP, "season", "week"])
         .with_row_index("_row")
         .join(data["comp"], on=STAT_KEY, how="left")
-        .pipe(lag_asof, data["comp"], "gsis_id", list(COMPONENTS), LAG_PREFIX, 0)
+        .pipe(lag_asof, data["comp"], "gsis_id", list(COMPONENTS), LAG_PREFIX, horizon - 1)
         .sort("_row")
     )
     missing = history.filter(pl.col("rec").is_null()).height
@@ -183,13 +200,15 @@ def league_history(
     check_lag_has_no_leak(features, data["comp"])
     linear = sum(pl.col(c) * scoring.get(c, 0.0) for c in COMPONENTS)
     history = history.with_columns((pl.col("points") - linear).alias("misc"))  # type: ignore[operator]
-    x_base = design(history, lines=True)
+    x_base = design(history, lines=horizon == 1)
     x_wide = np.hstack([x_base, history.select(LAG_FEATURES).cast(pl.Float64).to_numpy()])
     return history, x_base, x_wide
 
 
-def league_predictions(lid: str, scoring: dict[str, float], data: dict[str, pl.DataFrame]) -> pl.DataFrame:
-    history, x_base, x_wide = league_history(lid, scoring, data)
+def league_predictions(
+    lid: str, scoring: dict[str, float], data: dict[str, pl.DataFrame], horizon: int = 1
+) -> pl.DataFrame:
+    history, x_base, x_wide = league_history(lid, scoring, data, horizon)
     seasons = history["season"].to_numpy()
     points = history["points"].to_numpy()
     out = history.select(*KEY, "position", "points", *COMPONENTS, "misc")
@@ -238,6 +257,17 @@ def league_reorder_control(lid: str, scoring: dict[str, float], data: dict[str, 
     out = np.empty_like(shuffled)
     out[perm] = shuffled
     return history.select(*KEY).with_columns(pl.Series("direct_shuffled", np.clip(out, 0.0, None)))
+
+
+def league_seed_null(
+    lid: str, scoring: dict[str, float], data: dict[str, pl.DataFrame], horizon: int = 1
+) -> pl.DataFrame:
+    """Null for the averages: a second direct fit with another random_state (early stopping on,
+    so its validation split differs), same rows and order."""
+    history, x_base, _ = league_history(lid, scoring, data, horizon)
+    seasons, points = history["season"].to_numpy(), history["points"].to_numpy()
+    pred = walk_forward(seasons, x_base, points, "squared_error", seed=1)
+    return history.select(*KEY).with_columns(pl.Series("direct_seed", np.clip(pred, 0.0, None)))
 
 
 def fit_all(cache: Path = CACHE, fit: object = league_predictions) -> pl.DataFrame:
@@ -357,7 +387,89 @@ def td_calibration(data: pl.DataFrame, scoring: dict[str, float]) -> None:
         print("   decile pred/actual: " + "  ".join(f"{p}/{a}" for p, a in zip(dec["pred"], dec["act"], strict=True)))
 
 
+def with_avgs(frame: pl.DataFrame) -> pl.DataFrame:
+    return frame.with_columns(
+        ((pl.col("direct") + pl.col("component")) / 2).alias("avg"),
+        ((pl.col("direct") + pl.col("direct_wide")) / 2).alias("avg_wide"),
+        ((pl.col("direct") + pl.col("direct_seed")) / 2).alias("avg_seed"),
+    )
+
+
+def rmse(frame: pl.DataFrame, col: str) -> float:
+    return float(np.sqrt(((frame[col] - frame["points"]) ** 2).mean()))  # type: ignore[operator]
+
+
+def null_table(data: pl.DataFrame, pairs: list[tuple[str, str]], by_season: bool = True) -> None:
+    """Pooled and per-season RMSE and paired weekly t of each (candidate, reference) pair."""
+    groups = [("all", data)] + (
+        [(str(s), data.filter(pl.col("season") == s)) for s in sorted(data["season"].unique())]
+        if by_season
+        else []
+    )
+    for cand, ref in pairs:
+        cells = []
+        for label, g in groups:
+            p = paired(g, cand, ref)
+            cells.append(f"{label}: {rmse(g, cand):.4f} vs {rmse(g, ref):.4f} t {p['t']} ({p['weeks_better']})")
+        print(f"  {cand} vs {ref}: " + " | ".join(cells))
+
+
+def horizon5_rows(h5: pl.DataFrame) -> pl.DataFrame:
+    """The backtest's rows at horizon 5 (baseline with history and a trailing mean) with the
+    walk-forward forecasts made five games ahead."""
+    leagues = store.read_table("leagues", "raw")
+    exp = expected_frame(
+        store.read_table("nfl_ff_opportunity", "raw"), store.read_table("player_points"), leagues
+    )
+    prior = position_prior(exp)
+    form = build_form(exp, prior)
+    targets = exp.filter(pl.col("season") >= FIRST_PROJECTED_SEASON).select(
+        *KEY, "position", "team", "points"
+    )
+    scored = project_targets(targets, form, prior, store.read_table("team_games"), 5).filter(
+        pl.col("has_history") & pl.col("ewma_actual").is_not_null()
+    )
+    cols = ["direct", "avg", "avg_wide", "avg_seed"]
+    return scored.join(with_avgs(h5).select(*KEY, *cols), on=KEY)
+
+
+def nulls_report() -> None:
+    """Review follow-up: the 50/50 average against two nulls (direct + direct_wide, direct + a
+    second direct fit with another random_state), per season, at horizon 5, and QB alone."""
+    h1 = with_avgs(fit_all().join(fit_all(SCRATCH / "component_seed_h1.parquet", league_seed_null), on=KEY))
+    h5 = fit_all(SCRATCH / "component_preds_h5.parquet", partial(league_predictions, horizon=5)).join(
+        fit_all(SCRATCH / "component_seed_h5.parquet", partial(league_seed_null, horizon=5)), on=KEY
+    )
+    data = h1.join(eval_keys(), on=KEY, how="semi")
+    rows5 = horizon5_rows(h5)
+    backtest.FORECASTERS = {c: c for c in ("direct", "avg", "avg_wide", "avg_seed")}
+    m5 = backtest.metrics(rows5, 5).filter(pl.col("tier") == backtest.ALL_TIERS)
+    for (lid,), d in data.group_by("league_id"):
+        print(f"\n=== {lid}: (a) horizon 1, compare_to_baseline rows ({d.height}) ===")
+        null_table(d, [("avg", "direct"), ("avg", "avg_wide"), ("avg", "avg_seed"), ("avg_wide", "direct"), ("avg_seed", "direct")])
+        print(" (c) QB only")
+        null_table(d.filter(pl.col("position") == "QB"), [("avg", "direct")])
+        test5 = rows5.filter((pl.col("league_id") == lid) & (pl.col("season") >= FIRST_ACCEPTANCE_SEASON))
+        print(f" (b) horizon 5, backtest rows 2024 on ({test5.height})")
+        null_table(test5, [("avg", "direct"), ("avg", "avg_wide"), ("avg", "avg_seed")], by_season=False)
+        weighted = (
+            m5.filter(pl.col("league_id") == lid)
+            .group_by("forecaster")
+            .agg(
+                ((pl.col("pinball") * pl.col("n")).sum() / pl.col("n").sum()).round(4).alias("pinball"),
+                ((pl.col("rmse") * pl.col("n")).sum() / pl.col("n").sum()).round(4).alias("rmse_pos_weighted"),
+            )
+            .sort("forecaster")
+        )
+        print(weighted)
+    print("\n(b) both leagues, backtest.verdict at horizon 5:")
+    print(backtest.verdict(backtest.metrics(rows5, 5)))
+
+
 def main() -> None:
+    if sys.argv[1:] == ["nulls"]:
+        nulls_report()
+        return
     preds = fit_all()
     learned = store.read_table("proj_learned").filter(~pl.col("is_future")).select(
         *KEY, pl.col("projection").alias("learned")
