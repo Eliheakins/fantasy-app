@@ -77,7 +77,7 @@ def test_each_season_is_scored_by_a_model_fit_on_earlier_seasons(monkeypatch) ->
     monkeypatch.setattr(
         stat_line,
         "fit_predict",
-        lambda train, test: np.full(test.height, float(train["season"].max())),
+        lambda train, test, *_: np.full(test.height, float(train["season"].max())),
     )
     out = stat_line.history_chance(pl.concat(frames))
     later = out.filter(pl.col("season") >= 2021)
@@ -87,7 +87,7 @@ def test_each_season_is_scored_by_a_model_fit_on_earlier_seasons(monkeypatch) ->
 
 def test_every_future_game_gets_the_chance_of_the_players_next_game(monkeypatch) -> None:  # type: ignore[no-untyped-def]
     monkeypatch.setattr(
-        stat_line, "fit_predict", lambda train, test: test["week"].cast(pl.Float64).to_numpy()
+        stat_line, "fit_predict", lambda train, test, *_: test["week"].cast(pl.Float64).to_numpy()
     )
     hist = stat_line.history_table(
         pl.concat([active([1, 1]), active([1, 1], player="B")]),

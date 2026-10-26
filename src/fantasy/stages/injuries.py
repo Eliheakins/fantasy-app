@@ -16,7 +16,9 @@ import polars as pl
 
 from fantasy import store
 from fantasy.sim.scoring_scale import reference_league
+from fantasy.stages import stat_line
 from fantasy.stages.distributions import calibrated
+from fantasy.stages.stat_line import stored as stat_line_table
 from fantasy.store import SKILL
 
 HORIZON = 4
@@ -227,6 +229,16 @@ def run() -> int:
     leagues = store.read_table("leagues", "raw")
     league_id = reference_league(leagues)  # point ratios only; the rest of the code uses this one
     season = int(leagues["season"].to_numpy().max())
+    projection = calibrated(
+        store.projection_table().filter(
+            (pl.col("league_id") == league_id) & ~pl.col("is_future") & pl.col("has_history")
+        )
+    ).select("gsis_id", "season", "week", "projection")
+    chance = stat_line_table()
+    if chance is not None:  # perf is measured on games with touches or targets: against E, not qE
+        projection = stat_line.scale(
+            projection, chance.with_columns(1.0 / pl.col("q")), ["gsis_id", "season", "week"]
+        )
     panel = build_panel(
         store.read_table("nfl_injuries", "raw").filter(pl.col("season") < season),
         store.read_table("nfl_player_stats", "raw"),
@@ -234,11 +246,7 @@ def run() -> int:
         store.read_table("player_points")
         .filter(pl.col("league_id") == league_id)
         .select("gsis_id", "season", "week", "points"),
-        calibrated(
-            store.projection_table().filter(
-                (pl.col("league_id") == league_id) & ~pl.col("is_future") & pl.col("has_history")
-            )
-        ).select("gsis_id", "season", "week", pl.col("projection").alias("proj")),
+        projection.rename({"projection": "proj"}),
     )
     table = estimate(panel)
     store.write_table("injury_effects", table)

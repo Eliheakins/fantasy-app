@@ -33,6 +33,7 @@ from fantasy.stages.distributions import calibrated
 from fantasy.stages.environment import live as environment_live
 from fantasy.stages.injuries import PRACTICE
 from fantasy.stages.outlook import live_context
+from fantasy.stages.stat_line import stored as stat_line_table
 from fantasy.store import SKILL
 
 K_HISTORY_YEARS = 3  # kicker scoring is fit on this many seasons before the current one
@@ -197,6 +198,16 @@ def _apply_environment(
         current,
     )
     return apply_environment(projections, Situation(team_z, cb_absent, opponent), effects, current)
+
+
+def _stat_line(current: int) -> dict[tuple[str, int], float] | None:
+    """(gsis id, week) -> chance of a stat line for this season's games from `current`, when the
+    learned projections carry it."""
+    table = stat_line_table()
+    if table is None:
+        return None
+    rows = table.filter((pl.col("season") == load_config().season) & (pl.col("week") >= current))
+    return {(g, w): q for g, w, q in rows.select("gsis_id", "week", "q").iter_rows()}
 
 
 def _first_game_chance(current: int) -> dict[str, float]:
@@ -435,7 +446,7 @@ def _layered_projections(
         projections = scale_projections(blended, {g: f[0] for g, f in flags.items()}, current)
     else:
         projections = injury_projections(
-            blended, flags, model, current, _first_game_chance(current)
+            blended, flags, model, current, _first_game_chance(current), _stat_line(current)
         )
     scale = _scale_to_league(lid, projection_table)
     projections = _apply_outlook(projections, current, scale)

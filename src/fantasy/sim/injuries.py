@@ -71,6 +71,7 @@ def injury_projections(
     model: InjuryModel,
     current_week: int,
     first_game_chance: dict[str, float] | None = None,
+    stat_line: dict[tuple[str, int], float] | None = None,
 ) -> pl.DataFrame:
     """`projections` (gsis_id, week, projection) with each flagged player's rows multiplied by
     the chance he plays and the play-through ratio, plus a `play_prob` column.
@@ -78,11 +79,17 @@ def injury_projections(
     `first_game_chance` replaces the table's chance of playing the next game for the players it
     holds (a classifier scored better on the next game); later games keep the table's curve.
 
+    `stat_line` ((gsis_id, week) -> q) is set when the projection already carries the chance of a
+    stat line (stages/stat_line.py). The table's chance counts games with touches or targets, the
+    same event, so a game whose chance comes from the table is divided by q first; the classifier's
+    first-game chance (any offensive snaps) and healthy games keep q.
+
     `projection` becomes the expected points counting the chance of not playing; dividing by
     `play_prob` gives his points when he plays. A player's k-th game counts only his team's games,
     so a bye week does not use up a step of the curve."""
     curves = {g: _curve_or_questionable(model, f) for g, f in flagged.items()}
     override = first_game_chance or {}
+    conditional = stat_line or {}
     rows = projections.sort("gsis_id", "week").with_columns(
         pl.col("week").rank("ordinal").over("gsis_id").alias("_game")
     )
@@ -98,11 +105,16 @@ def injury_projections(
             factor.append(1.0)
             continue
         probs, perf = curve
+        from_table = k < len(probs) - 1  # the curve's last entry is "healthy from then on"
         if k == 0 and gsis in override:
             chance.append(override[gsis])
+            from_table = False
         else:
             chance.append(probs[k] if k < len(probs) else 1.0)
-        factor.append(1.0 + (perf - 1.0) * DECAY**k)
+        undo = (
+            1.0 / conditional[(gsis, week)] if from_table and (gsis, week) in conditional else 1.0
+        )
+        factor.append((1.0 + (perf - 1.0) * DECAY**k) * undo)
     p = pl.Series("play_prob", chance, dtype=pl.Float64)
     f = pl.Series("_factor", factor, dtype=pl.Float64)
     return (

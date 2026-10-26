@@ -247,6 +247,8 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         floats="projection context",
     )
     | {"has_history": _B, "is_future": _B},
+    # written by learn when stat_line_model is on: P(stat line | active) per player-game
+    "stat_line": _cols(strings="gsis_id", ints="season week", floats="q"),
     # written by ingest_role (area: raw). Role and context data keyed by player and week.
     "nfl_rosters_weekly": _cols(
         strings="gsis_id", ints="season week", floats="age years_exp draft_pick"

@@ -354,14 +354,21 @@ def fit_predict(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray) ->
     return np.clip(model.predict(x_test), 0.0, None)
 
 
-def walk_forward(history: pl.DataFrame, lines: bool = True) -> pl.DataFrame:
+def walk_forward(
+    history: pl.DataFrame, lines: bool = True, extra: pl.DataFrame | None = None
+) -> pl.DataFrame:
     """history: feature rows with `points`. A projection for every row from a model that did not
-    see that row's season."""
+    see that row's season. `extra` rows (stat-less games) are projected by the same models but
+    never trained on."""
     seasons = sorted(history["season"].unique().to_list())
     parts = []
     for season in seasons:
         train = history.filter(pl.col("season").is_in(train_seasons(season, seasons)))
         test = history.filter(pl.col("season") == season)
+        if extra is not None:
+            test = pl.concat(
+                [test, extra.filter(pl.col("season") == season)], how="diagonal_relaxed"
+            )
         pred = fit_predict(design(train, lines), train["points"].to_numpy(), design(test, lines))
         parts.append(test.with_columns(pl.Series("projection", pred)))
     return pl.concat(parts)
@@ -463,6 +470,7 @@ def run() -> dict[str, int]:
     if load_config().stat_line_model:
         raw = {"opp": opp, "snaps": snaps, "stats": stats, "depth": extras.depth}
         chance = stat_line.chances(exp, points, raw, future_all, current_week)
+        store.write_table("stat_line", pl.concat(chance).select(*store.SCHEMAS["stat_line"]))
     context = store.read_table("proj_baseline").select(*GROUP, "season", "week", "context")
     keep = [*GROUP, "season", "week", "position", "team", "as_of_season", "as_of_week"]
     keep += ["has_history", "is_future", "projection"]
@@ -474,7 +482,11 @@ def run() -> dict[str, int]:
         history = build_features(targets, state, lines, extras).join(
             games.select(*GROUP, "season", "week", "points"), on=[*GROUP, "season", "week"]
         )
-        past = walk_forward(history).with_columns(is_future=pl.lit(False))
+        extra = None  # stat-less games get a projection too, so the shapes see them
+        if chance is not None:
+            statless = stat_line.statless_targets(points, exp, lid)
+            extra = build_features(statless, state, lines, extras)
+        past = walk_forward(history, extra=extra).with_columns(is_future=pl.lit(False))
         future_features = build_features(
             future_all.filter(pl.col("league_id") == lid), state, lines, extras
         )
@@ -482,7 +494,7 @@ def run() -> dict[str, int]:
         future = predict_future(history, future_features).with_columns(is_future=pl.lit(True))
         if chance is not None:  # E[points | stat line] becomes E[points | active]
             past = stat_line.scale(past, chance[0], KEY)
-            future = stat_line.scale(future, chance[1], ["gsis_id"])
+            future = stat_line.scale(future, chance[1], KEY)
         out += [past.select(keep), future.select(keep)]
     joined = pl.concat(out).join(context, on=[*GROUP, "season", "week"], how="left")
     unmatched = int(joined["context"].is_null().sum())
