@@ -21,7 +21,7 @@ from fantasy.sim.availability import kickoffs, remaining_share, scale_projection
 from fantasy.sim.blend import blend
 from fantasy.sim.environment import Situation, apply_environment
 from fantasy.sim.environment import effects_dict as environment_effects
-from fantasy.sim.injuries import Flag, InjuryModel, injury_projections
+from fantasy.sim.injuries import Flag, InjuryModel, injury_projections, without_stat_line
 from fantasy.sim.lineup import Player
 from fantasy.sim.odds import CurrentWeek, LeagueData, build_inputs
 from fantasy.sim.outlook import apply_outlook, effects_dict
@@ -429,25 +429,22 @@ def _layered_projections(
         .filter(pl.col("gsis_id").is_not_null())
     )
     flags = _injury_flags(flagged, current)
-    # our baseline is calibrated by size before it is blended with Sleeper's own projections
-    blended = _blend_sleeper(
-        calibrated(future).select("gsis_id", "week", "position", "team", "projection"),
-        lid,
-        id_map,
-        flags,
-    )
     try:
         model = InjuryModel(store.read_table("injury_effects"))
     except FileNotFoundError:
         model = None
+    first_game = _first_game_chance(current) if model is not None else {}
+    # our baseline is calibrated by size before it is blended with Sleeper's own projections
+    ours = calibrated(future).select("gsis_id", "week", "position", "team", "projection")
+    if model is not None:
+        ours = without_stat_line(ours, flags, model, current, first_game, _stat_line(current))
+    blended = _blend_sleeper(ours, lid, id_map, flags)
     # Sleeper zeroes Out and IR players, which the injury scaling also zeroes; its 0 for
     # Questionable and Doubtful players is dropped in the blend, so the scaling applies once
     if model is None:
         projections = scale_projections(blended, {g: f[0] for g, f in flags.items()}, current)
     else:
-        projections = injury_projections(
-            blended, flags, model, current, _first_game_chance(current), _stat_line(current)
-        )
+        projections = injury_projections(blended, flags, model, current, first_game)
     scale = _scale_to_league(lid, projection_table)
     projections = _apply_outlook(projections, current, scale)
     projections = _apply_environment(projections, current, model, scale)

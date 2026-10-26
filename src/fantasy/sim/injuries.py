@@ -65,13 +65,64 @@ def _curve_or_questionable(
     return model.curve(("Questionable", flag[1], flag[2]))
 
 
+def _steps(projections: pl.DataFrame, current_week: int) -> pl.DataFrame:
+    """`projections` sorted, with `_k`: the player's game count from his first game of the
+    current week on (0 is the next game), -1 for earlier weeks. Only his team's games count, so
+    a bye week does not use up a step of a curve."""
+    rows = projections.sort("gsis_id", "week").with_columns(
+        pl.col("week").rank("ordinal").over("gsis_id").alias("_game")
+    )
+    ahead = rows.filter(pl.col("week") >= current_week)
+    first = ahead.group_by("gsis_id").agg(pl.col("_game").min().alias("_first"))
+    return (
+        rows.join(first, on="gsis_id", how="left")
+        .with_columns(
+            pl.when(pl.col("week") >= current_week)
+            .then(pl.col("_game") - pl.col("_first"))
+            .otherwise(-1)
+            .alias("_k")
+        )
+        .drop("_game", "_first")
+    )
+
+
+def without_stat_line(
+    projections: pl.DataFrame,
+    flagged: dict[str, Flag],
+    model: InjuryModel,
+    current_week: int,
+    first_game_chance: dict[str, float] | None,
+    stat_line: dict[tuple[str, int], float] | None,
+) -> pl.DataFrame:
+    """Our projection divided by q (stat_line: (gsis_id, week) -> q, from stages/stat_line.py)
+    for the games whose chance of playing will come from the injury table. That chance counts
+    games with touches or targets, the stat-line event itself, so those games use E, not q * E.
+    The classifier's first-game chance (any offensive snaps) and healthy games keep q. Apply it
+    before the Sleeper blend, so Sleeper's half is never divided by q."""
+    if not stat_line:
+        return projections
+    override = first_game_chance or {}
+    curves = {g: _curve_or_questionable(model, f) for g, f in flagged.items()}
+    rows = _steps(projections, current_week)
+    undo = []
+    for gsis, week, k in zip(rows["gsis_id"], rows["week"], rows["_k"], strict=True):
+        curve = curves.get(gsis)
+        # the curve's last entry is "healthy from then on", not a measured chance
+        from_table = curve is not None and 0 <= k < len(curve[0]) - 1
+        if k == 0 and gsis in override:
+            from_table = False
+        undo.append(
+            1.0 / stat_line[(gsis, week)] if from_table and (gsis, week) in stat_line else 1.0
+        )
+    return rows.with_columns(pl.col("projection") * pl.Series(undo, dtype=pl.Float64)).drop("_k")
+
+
 def injury_projections(
     projections: pl.DataFrame,
     flagged: dict[str, Flag],
     model: InjuryModel,
     current_week: int,
     first_game_chance: dict[str, float] | None = None,
-    stat_line: dict[tuple[str, int], float] | None = None,
 ) -> pl.DataFrame:
     """`projections` (gsis_id, week, projection) with each flagged player's rows multiplied by
     the chance he plays and the play-through ratio, plus a `play_prob` column.
@@ -79,42 +130,25 @@ def injury_projections(
     `first_game_chance` replaces the table's chance of playing the next game for the players it
     holds (a classifier scored better on the next game); later games keep the table's curve.
 
-    `stat_line` ((gsis_id, week) -> q) is set when the projection already carries the chance of a
-    stat line (stages/stat_line.py). The table's chance counts games with touches or targets, the
-    same event, so a game whose chance comes from the table is divided by q first; the classifier's
-    first-game chance (any offensive snaps) and healthy games keep q.
-
     `projection` becomes the expected points counting the chance of not playing; dividing by
     `play_prob` gives his points when he plays. A player's k-th game counts only his team's games,
     so a bye week does not use up a step of the curve."""
     curves = {g: _curve_or_questionable(model, f) for g, f in flagged.items()}
     override = first_game_chance or {}
-    conditional = stat_line or {}
-    rows = projections.sort("gsis_id", "week").with_columns(
-        pl.col("week").rank("ordinal").over("gsis_id").alias("_game")
-    )
-    ahead = rows.filter(pl.col("week") >= current_week)
-    first = ahead.group_by("gsis_id").agg(pl.col("_game").min())
-    start = dict(zip(first["gsis_id"], first["_game"], strict=True))
+    rows = _steps(projections, current_week)
     chance, factor = [], []
-    for gsis, week, game in zip(rows["gsis_id"], rows["week"], rows["_game"], strict=True):
+    for gsis, k in zip(rows["gsis_id"], rows["_k"], strict=True):
         curve = curves.get(gsis)
-        k = game - start.get(gsis, game) if week >= current_week else -1
         if curve is None or k < 0:
             chance.append(1.0)
             factor.append(1.0)
             continue
         probs, perf = curve
-        from_table = k < len(probs) - 1  # the curve's last entry is "healthy from then on"
         if k == 0 and gsis in override:
             chance.append(override[gsis])
-            from_table = False
         else:
             chance.append(probs[k] if k < len(probs) else 1.0)
-        undo = (
-            1.0 / conditional[(gsis, week)] if from_table and (gsis, week) in conditional else 1.0
-        )
-        factor.append((1.0 + (perf - 1.0) * DECAY**k) * undo)
+        factor.append(1.0 + (perf - 1.0) * DECAY**k)
     p = pl.Series("play_prob", chance, dtype=pl.Float64)
     f = pl.Series("_factor", factor, dtype=pl.Float64)
     return (
@@ -122,5 +156,5 @@ def injury_projections(
         .with_columns(
             (pl.col("projection") * pl.col("_factor") * pl.col("play_prob")).alias("projection")
         )
-        .drop("_game", "_factor")
+        .drop("_k", "_factor")
     )

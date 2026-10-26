@@ -451,6 +451,37 @@ def check_next_game_nulls(history: pl.DataFrame, future: pl.DataFrame) -> None:
         print(f"learn: WARNING next-game rows lack {worst_column} {worst:.0%} more than history")
 
 
+def with_context(
+    rows: pl.DataFrame, baseline: pl.DataFrame, statless: pl.DataFrame
+) -> pl.DataFrame:
+    """`rows` with proj_baseline's context: the row's own, or for a stat-less game (`statless`:
+    league_id, gsis_id, season, week), which has no baseline row, his team-week's. 1.0 where
+    neither exists; only rows other than stat-less ones are reported."""
+    keys = [*GROUP, "season", "week"]
+    team_keys = ["league_id", "season", "week", "team"]
+    team = (
+        baseline.drop_nulls("team")
+        .group_by(team_keys)
+        .agg(pl.col("context").first().alias("_team"))
+    )
+    flagged = statless.select(keys).unique().with_columns(pl.lit(True).alias("_statless"))
+    joined = (
+        rows.join(baseline.select(*keys, "context"), on=keys, how="left")
+        .join(flagged, on=keys, how="left")
+        .join(team, on=team_keys, how="left")
+        .with_columns(
+            pl.when(pl.col("_statless"))
+            .then(pl.coalesce("context", "_team"))
+            .otherwise(pl.col("context"))
+            .alias("context")
+        )
+    )
+    unmatched = joined.filter(pl.col("context").is_null() & pl.col("_statless").is_null()).height
+    if unmatched:
+        print(f"learn: {unmatched} projection rows have no proj_baseline row; context set to 1.0")
+    return joined.with_columns(pl.col("context").fill_null(1.0)).drop("_statless", "_team")
+
+
 def run() -> dict[str, int]:
     leagues = store.read_table("leagues", "raw")
     opp = store.read_table("nfl_ff_opportunity", "raw")
@@ -471,7 +502,8 @@ def run() -> dict[str, int]:
         raw = {"opp": opp, "snaps": snaps, "stats": stats, "depth": extras.depth}
         chance = stat_line.chances(exp, points, raw, future_all, current_week)
         store.write_table("stat_line", pl.concat(chance).select(*store.SCHEMAS["stat_line"]))
-    context = store.read_table("proj_baseline").select(*GROUP, "season", "week", "context")
+    baseline = store.read_table("proj_baseline")
+    statless_keys = [baseline.select(*GROUP, "season", "week").head(0)]
     keep = [*GROUP, "season", "week", "position", "team", "as_of_season", "as_of_week"]
     keep += ["has_history", "is_future", "projection"]
     out = []
@@ -485,6 +517,7 @@ def run() -> dict[str, int]:
         extra = None  # stat-less games get a projection too, so the shapes see them
         if chance is not None:
             statless = stat_line.statless_targets(points, exp, lid)
+            statless_keys.append(statless.select(*GROUP, "season", "week"))
             extra = build_features(statless, state, lines, extras)
         past = walk_forward(history, extra=extra).with_columns(is_future=pl.lit(False))
         future_features = build_features(
@@ -496,11 +529,7 @@ def run() -> dict[str, int]:
             past = stat_line.scale(past, chance[0], KEY)
             future = stat_line.scale(future, chance[1], KEY)
         out += [past.select(keep), future.select(keep)]
-    joined = pl.concat(out).join(context, on=[*GROUP, "season", "week"], how="left")
-    unmatched = int(joined["context"].is_null().sum())
-    if unmatched:
-        print(f"learn: {unmatched} projection rows have no proj_baseline row; context set to 1.0")
-    final = joined.with_columns(pl.col("context").fill_null(1.0))
+    final = with_context(pl.concat(out), baseline, pl.concat(statless_keys, how="vertical_relaxed"))
     store.write_table("proj_learned", final.select(*store.SCHEMAS["proj_learned"]))
     archive_snapshot(final, current_week, lines)
     return {
