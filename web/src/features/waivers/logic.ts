@@ -30,11 +30,12 @@ export function barShare(value: number, rows: readonly StrengthRow[]): number {
   return max === 0 ? 0 : Math.min(1, Math.abs(value) / max);
 }
 
-export const STRENGTH_CAPTION =
-  "Your best lineup each week against the stand-in free agent at each position (the third-best or so on the wire, since the top ones are the adds). Rank 1 is the strongest team. Thin positions are where an add helps; deep ones are where a trade can come from.";
-export const ADDS_CAPTION =
-  "Free agents ranked by expected points over the rest of the season above what you would have anyway. Every slot can always be filled by a stand-in free agent (bye weeks, injuries and weak starters included), so a backup at a position with plenty of free agents adds almost nothing, and the drop is whoever costs least. Playoff and title changes re-run the season simulation with the move made, on the same random draws as the unchanged roster. The title change carries a Monte Carlo error of up to the value in the last column, so title changes smaller than that are noise. Injured players are scaled by their status.";
-export const TRENDING_CAPTION =
-  "Sleeper adds is how many users added the player in the latest trending pull, a rough sign of who else will bid. Select a row to see the next four weeks.";
-export const STREAM_CAPTION =
-  "Projected points over the next three weeks (a bye week counts as zero). The projection is recent form plus the game's implied total, and beats a plain league average only slightly for defenses (about 3% lower error) and not at all for kickers, so treat small gaps as noise. Your own player is marked.";
+export const STRENGTH_CAPTION = "Points a week the best lineup gains over a stand-in free agent at each position. Rank 1 is the strongest team.";
+export const STRENGTH_METHOD =
+  "The stand-in is the third-best or so free agent at the position, since the top ones are the adds. Thin positions are where an add helps; deep ones are where a trade can come from. Bars start at 0 and scale to the biggest position.";
+export const ADDS_CAPTION = "Free agents ranked by extra points over the rest of the season. Select a player to see the next four weeks.";
+export const ADDS_METHOD =
+  "Extra points are the expected points over the rest of the season above what the roster would have anyway. Every slot can always be filled by a stand-in free agent (bye weeks, injuries and weak starters included), so a backup at a position with plenty of free agents adds almost nothing, and the drop is whoever costs least. Playoff and title changes re-run the season simulation with the move made, on the same random draws as the unchanged roster. The title change carries a Monte Carlo error of up to the value in the Title error column, so title changes smaller than that are noise (shown as ~). Injured players are scaled by their status. Sleeper adds is how many users added the player in the latest trending pull, a rough sign of who else will bid.";
+export const STREAM_CAPTION = "Projected points over the next three weeks; a bye week counts as zero. Treat small gaps as noise.";
+export const STREAM_METHOD =
+  "The projection is recent form plus the game's implied total. It beats a plain league average only slightly for defenses (about 3% lower error) and not at all for kickers.";

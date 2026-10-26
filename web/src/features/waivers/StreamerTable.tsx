@@ -1,40 +1,36 @@
 import { ApiBoundary, NoData } from "@/components/ApiBoundary";
 import type { ApiState } from "@/api/envelope";
+import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { formatNumber } from "@/viz";
 import type { StreamerRow } from "./logic";
 
-export function StreamerTable({ label, state }: { label: string; state: ApiState<StreamerRow[]> }) {
-  const single = label.slice(0, -1);
+function columns(single: string, mineMarker: string): Column<StreamerRow>[] {
+  return [
+    { label: single, role: "primary", render: (r) => `${r.name ?? "–"}${r.is_mine ? ` ${mineMarker}` : ""}` },
+    { label: "Team", render: (r) => r.team ?? "–" },
+    { label: "This week (pts)", numeric: true, render: (r) => formatNumber(r.this_week) },
+    { label: "Next 3 weeks (pts)", numeric: true, render: (r) => formatNumber(r.next_three) },
+  ];
+}
+
+export function StreamerTable({ label, state, mineMarker }: { label: string; state: ApiState<StreamerRow[]>; mineMarker: string }) {
   return (
-    <section aria-label={label}>
+    <section aria-label={label} className="mt-6 first:mt-0">
       <h3 className="text-body font-semibold">{label}</h3>
       {state.kind === "no_data" ? (
         <NoData message="Run the streaming stage to see this." />
       ) : (
         <ApiBoundary state={state}>
           {(rows) => (
-            <table className="w-full text-body">
-              <thead>
-                <tr className="text-left text-caption text-muted">
-                  <th scope="col">{single}</th>
-                  <th scope="col">Team</th>
-                  <th scope="col">Mine</th>
-                  <th scope="col" className="text-right">This week</th>
-                  <th scope="col" className="text-right">Next 3 weeks</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={`${r.name}-${r.team}`}>
-                    <td>{r.name ?? "–"}</td>
-                    <td>{r.team ?? "–"}</td>
-                    <td>{r.is_mine ? "Mine" : ""}</td>
-                    <td className="text-right tabular-nums">{formatNumber(r.this_week)}</td>
-                    <td className="text-right tabular-nums">{formatNumber(r.next_three)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="max-w-2xl">
+              <ResponsiveTable
+                caption={label}
+                columns={columns(label.slice(0, -1), mineMarker)}
+                rows={rows}
+                rowKey={(r) => `${r.name}-${r.team}`}
+                isStrong={(r) => r.is_mine}
+              />
+            </div>
           )}
         </ApiBoundary>
       )}

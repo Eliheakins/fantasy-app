@@ -1,10 +1,15 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ApiState } from "@/api/envelope";
 import { ApiBoundary } from "@/components/ApiBoundary";
+import { Section } from "@/components/Section";
 import { useApi } from "@/hooks/useApi";
 import { useLeague, useLeagueApi } from "@/lib/league";
+import { type Who, useWho, whoFor } from "@/features/outlook/who";
 import { AddsTable } from "./AddsTable";
-import { ADDS_CAPTION, type PlayerWeekRow, STREAM_CAPTION, TRENDING_CAPTION, type StreamerRow, type StrengthRow, type WaiverRow } from "./logic";
+import {
+  ADDS_CAPTION, ADDS_METHOD, type PlayerWeekRow, STREAM_CAPTION, STREAM_METHOD, STRENGTH_CAPTION, STRENGTH_METHOD,
+  type StreamerRow, type StrengthRow, type WaiverRow,
+} from "./logic";
 import { PlayerWeeksChart } from "./PlayerWeeksChart";
 import { StreamerTable } from "./StreamerTable";
 import { StrengthList } from "./StrengthList";
@@ -17,54 +22,57 @@ type ViewProps = {
   weeks: ApiState<PlayerWeekRow[]>;
   selected: string | null;
   onSelect: (gsisId: string) => void;
+  who?: Who;
 };
 
+const CHART_HINT = "Select a player to see projected points for the next four weeks.";
+
 /** Presentational: all data comes in as props so tests can pass fixture states. */
-export function WaiversView({ adds, strength, def, kickers, weeks, selected, onSelect }: ViewProps) {
+export function WaiversView({ adds, strength, def, kickers, weeks, selected, onSelect, who = whoFor(null) }: ViewProps) {
+  const chartRef = useRef<HTMLDivElement>(null);
+  const mineMarker = who.name ? "(theirs)" : "(yours)";
+  // On a phone the chart sits below the cards, so bring it into view when a player is picked.
+  useEffect(() => {
+    if (selected !== null) chartRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [selected]);
   return (
     <div className="space-y-8">
-      <section>
-        <h2 className="text-body font-semibold">Adds</h2>
+      <Section title="Adds" caption={ADDS_CAPTION} howCalculated={ADDS_METHOD}>
         <ApiBoundary state={adds}>
           {(rows) =>
             rows.length === 0 ? (
-              <p className="py-6 text-muted">No free agent adds expected points to your team.</p>
+              <p className="py-6 text-muted">No free agent adds expected points for {who.name ?? "your team"}.</p>
             ) : (
-              <>
-                <p className="mb-2 text-caption text-muted">{ADDS_CAPTION}</p>
+              <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start xl:gap-6">
                 <AddsTable rows={rows} selected={selected} onSelect={onSelect} />
-                <p className="mt-2 text-caption text-muted">{TRENDING_CAPTION}</p>
-                {selected !== null && (
-                  <ApiBoundary state={weeks}>
-                    {(w) => (
-                      <PlayerWeeksChart
-                        name={rows.find((r) => r.gsis_id === selected)?.full_name ?? ""}
-                        weeks={w}
-                      />
-                    )}
-                  </ApiBoundary>
-                )}
-              </>
+                <div ref={chartRef} className="mt-4 xl:sticky xl:top-16 xl:mt-0">
+                  {selected === null ? (
+                    <p className="card-flat hidden text-caption text-muted xl:block">{CHART_HINT}</p>
+                  ) : (
+                    <ApiBoundary state={weeks}>
+                      {(w) => <PlayerWeeksChart name={rows.find((r) => r.gsis_id === selected)?.full_name ?? ""} weeks={w} />}
+                    </ApiBoundary>
+                  )}
+                </div>
+              </div>
             )
           }
         </ApiBoundary>
-      </section>
-      <section>
-        <h2 className="text-body font-semibold">Where your roster is strong or thin</h2>
+      </Section>
+      <Section title={`Where ${who.name ? `${who.name}'s` : "your"} roster is strong or thin`} caption={STRENGTH_CAPTION} howCalculated={STRENGTH_METHOD}>
         <ApiBoundary state={strength}>{(rows) => <StrengthList rows={rows} />}</ApiBoundary>
-      </section>
-      <section>
-        <h2 className="text-body font-semibold">Streaming: defense and kicker</h2>
-        <p className="mb-2 text-caption text-muted">{STREAM_CAPTION}</p>
-        <StreamerTable label="Defenses" state={def} />
-        <StreamerTable label="Kickers" state={kickers} />
-      </section>
+      </Section>
+      <Section title="Streaming: defense and kicker" caption={STREAM_CAPTION} howCalculated={STREAM_METHOD}>
+        <StreamerTable label="Defenses" state={def} mineMarker={mineMarker} />
+        <StreamerTable label="Kickers" state={kickers} mineMarker={mineMarker} />
+      </Section>
     </div>
   );
 }
 
 export function WaiversContent() {
   const { league } = useLeague();
+  const who = useWho();
   const [selection, setSelection] = useState<{ league: string | null; id: string } | null>(null);
   // A pick belongs to the league it was made in.
   const selected = selection && selection.league === league ? selection.id : null;
@@ -79,13 +87,8 @@ export function WaiversContent() {
   );
   return (
     <WaiversView
-      adds={adds}
-      strength={strength}
-      def={def}
-      kickers={kickers}
-      weeks={weeks}
-      selected={selected}
-      onSelect={(id) => setSelection({ league, id })}
+      adds={adds} strength={strength} def={def} kickers={kickers} weeks={weeks}
+      selected={selected} onSelect={(id) => setSelection({ league, id })} who={who}
     />
   );
 }
