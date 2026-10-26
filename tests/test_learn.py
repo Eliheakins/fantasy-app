@@ -110,6 +110,18 @@ def test_the_model_is_deterministic_and_learns_a_simple_signal() -> None:
     assert np.corrcoef(first, y[3000:])[0, 1] > 0.9
 
 
+def test_the_model_does_not_depend_on_the_order_of_the_training_rows() -> None:
+    # above 10,000 rows scikit-learn's default early stopping holds out a split that the row
+    # order decides, so a refit on the same rows in another order gave another model
+    rng = np.random.default_rng(1)
+    x = rng.uniform(0.0, 10.0, size=(12_500, 3))
+    y = 3.0 * x[:, 0] + rng.normal(scale=3.0, size=12_500)
+    order = rng.permutation(12_000)
+    first = learn.fit_predict(x[:12_000], y[:12_000], x[12_000:])
+    reordered = learn.fit_predict(x[order], y[order], x[12_000:])
+    np.testing.assert_allclose(first, reordered, atol=1e-9)
+
+
 def test_predictions_never_go_below_zero() -> None:
     x = np.array([[0.0], [1.0], [2.0], [3.0]] * 30)
     y = np.array([0.0, 0.0, 1.0, 2.0] * 30)

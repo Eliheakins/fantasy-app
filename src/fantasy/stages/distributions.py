@@ -172,14 +172,19 @@ def estimate_pairs(roled: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
     )
 
 
+def shape_frame(res: pl.DataFrame, curves: pl.DataFrame, projection_name: str) -> pl.DataFrame:
+    """The rows the spreads and correlations are fit on, around the projection the simulation
+    applies them to: calibrated for the baseline, unchanged for the learned model (`calibrated`)."""
+    base = res if projection_name == "proj_learned" else apply_curves(res, curves)
+    return base.with_columns((pl.col("points") - pl.col("projection")).alias("resid"))
+
+
 def run() -> dict[str, int]:
     res = residual_frame(store.projection_table(), store.read_table("player_points"))
     curves = estimate_curves(res)
-    calibrated = apply_curves(res, curves).with_columns(
-        (pl.col("points") - pl.col("projection")).alias("resid")
-    )
-    marginals = estimate_marginals(calibrated)
-    pairs = estimate_pairs(with_roles(calibrated), store.read_table("team_games"))
+    fitted = shape_frame(res, curves, store.projection_name())
+    marginals = estimate_marginals(fitted)
+    pairs = estimate_pairs(with_roles(fitted), store.read_table("team_games"))
     store.write_tables(
         {"projection_calibration": curves, "marginals": marginals, "correlation_pairs": pairs}
     )

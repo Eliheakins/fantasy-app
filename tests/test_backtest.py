@@ -98,6 +98,21 @@ def test_tier_edges_come_from_the_training_seasons() -> None:
     )
 
 
+def test_learned_spread_is_not_fit_on_its_lookahead_seasons() -> None:
+    rows = sized_rows().with_columns(pl.Series("season", [2019, 2022, 2025] * 2000))
+    spoiled = rows.with_columns(
+        pl.when(pl.col("season") < store.LEARNED_FIRST_CLEAN_SEASON)
+        .then(pl.col("learned") * 10.0)  # 2019 learned values saw later seasons
+        .otherwise(pl.col("learned"))
+        .alias("learned")
+    )
+
+    def learned(frame: pl.DataFrame) -> pl.DataFrame:
+        return b.metrics(frame, horizon=1).filter(pl.col("forecaster") == "learned")
+
+    assert learned(spoiled)["pinball"].to_list() == learned(rows)["pinball"].to_list()
+
+
 def test_coverage_by_tier_is_near_the_nominal_level() -> None:
     m = b.metrics(sized_rows(60000), horizon=1).filter(pl.col("forecaster") == "learned")
     assert all(0.74 < c < 0.86 for c in m["coverage80"].to_list())

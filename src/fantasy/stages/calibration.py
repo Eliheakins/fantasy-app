@@ -106,7 +106,8 @@ def run() -> pl.DataFrame:
         hist = store.projection_table().filter(
             (pl.col("league_id") == lid) & ~pl.col("is_future") & (pl.col("season") == season)
         )
-        hist = apply_curves(hist, estimate_curves(history.filter(pl.col("season") < season)))
+        if store.projection_name() != "proj_learned":  # used uncalibrated (`calibrated`)
+            hist = apply_curves(hist, estimate_curves(history.filter(pl.col("season") < season)))
         projections = {
             (r["gsis_id"], r["week"]): r["projection"] for r in hist.iter_rows(named=True)
         }
