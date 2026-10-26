@@ -587,6 +587,15 @@ Three audits (`.simplify-audit/`, gitignored) and their Tier 1 to 3 findings and
 - **Week selector** only appears on Lineup, the one page that uses it. Home, Players, Trades, Outlook and Waivers call `league_picker(show_week=False)` and get the league's current week.
 - **Rostered-player guards warn on the dashboard.** `load_league_data(league, strict=True)` still raises past `MAX_UNMAPPED` (2) and `MAX_NO_PROJECTION` (3) when a stage runs; the dashboard's `_league` passes `strict=False`, so those counts warn (in the server log) instead of blanking a league's page. The league-shape check (`playoff_teams`) still raises in both.
 
+## 2026-10-23: Refresh warnings triaged
+
+Of the warnings a full `make refresh` printed, one was a real data fault and two were noise:
+
+- **Raiders, 2018 and 2019 (fixed).** `streaming` reported 32 DEF team-games lost to team-code mismatches. All 32 were the Raiders: the schedules call them OAK in those seasons and the team stats call them LV. `defense_points_frame` now maps OAK to LV on the games side (`SCHEDULE_TEAM_CODES`), with a test that fails without it. Held-out DEF and K RMSE are unchanged to two decimals (Colgate DEF 5.60 against 5.74, YinzBurgh DEF 5.91 against 6.20).
+- **"13 and 11 rostered players have no nflverse id" (noise, fixed).** All of them were team defenses, which map by team code and have no nflverse id by design. The count now excludes DEF.
+- **Polars "Sortedness of columns cannot be checked when 'by' groups provided" (noise, silenced).** The `join_asof` calls predate this work (same calls at `a1a8ee2`, same polars 2.0.0). Polars skips the check whenever `by` is given, so `check_sortedness=False` changes nothing but the warning. Every call sorts on `t` first.
+- **Left as is:** the 716 `expected_frame` rows dropped per league (position labels differ between data sources; needs a mapping in `score.py`), and the `simulate` warning for one rostered skill player with no projection, which is Tyreek Hill (no team, on a rival's bench in league 1394).
+
 ## 2026-10-24: React front end next to Streamlit (epic #68)
 
 - **Decision.** One full rebuild of the UI in React, built beside Streamlit and retired in one commit after a parity check on live data (#66). The Streamlit Trades page stays until the React one is proven (trade deadline is week 11). Refresh stays manual (`make refresh`); no alerts and no AI assistant for now. Phone access only through `tailscale serve`, never funnel.
