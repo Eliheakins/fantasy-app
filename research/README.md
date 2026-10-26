@@ -59,6 +59,7 @@ not deterministic (see the 2026-10-25 entry).
 | Script | Question | Result | Status | Log |
 |---|---|---|---|---|
 | `bias_check.py` | Is the learned projection biased upward; does recalibration help? | Not on training rows (2026 weeks 1 to 6: -0.3); stat-less games put the scorecard at +0.2 to +0.65; recalibration does not help | Explained | 10-25 |
+| `hurdle_check.py`, `hurdle_followup_check.py`, `hurdle_played_check.py` | q = P(stat line \| played) times the learned model (first version, review follow-ups, final rerun on played games)? | All played games -3.03% and -2.51% (t 25); protocol rows -0.21% and -0.09% | Built, switched off (open decision) | 10-26 |
 | `union_check.py` | Train on stat-less `player_points` rows too? | Scorecard rows 1.2% better (t 10); Colgate training rows 0.17% worse | Rejected (superseded by the hurdle) | 10-25 |
 | `inj_explore.py` | How do status, practice and injury type predict playing? | | Became `stages/injuries.py` | 10-23 |
 | `availability_check.py` | Does a chance-of-playing classifier beat the injury table? | Brier 0.0980 against 0.1041 on listed player-weeks | Shipped (`stages/availability.py`) | 10-23 |
