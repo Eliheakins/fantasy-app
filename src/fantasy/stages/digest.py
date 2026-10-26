@@ -29,8 +29,10 @@ def ideas(
     waivers: pl.DataFrame,
     trades: pl.DataFrame | None,
 ) -> pl.DataFrame:
-    """One league's rows: the best waiver adds by playoff odds, then the first found trades."""
-    top = waivers.sort("playoff_delta", descending=True, nulls_last=True).head(TOP_WAIVERS)
+    """One league's rows: the best waiver adds by rest-of-season points (the Waivers page order;
+    it won more games than ranking by next-week points or form, research/waiver_rule_check.py),
+    then the first found trades."""
+    top = waivers.sort("delta_points", descending=True, nulls_last=True).head(TOP_WAIVERS)
     rows = [
         {
             "kind": "waiver", "partner": None, "give": r["drop_name"], "get": r["full_name"],

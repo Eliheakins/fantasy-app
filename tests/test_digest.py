@@ -241,7 +241,14 @@ def trades_frame(n: int) -> pl.DataFrame:
     )  # fmt: skip
 
 
-def test_ideas_keep_the_top_waivers_by_playoff_odds_and_the_first_trades() -> None:
+def test_ideas_rank_waivers_by_rest_of_season_points_not_playoff_odds() -> None:
+    # research/waiver_rule_check.py: adding by rest-of-season points won more games
+    flipped = waivers_frame(3).with_columns(pl.Series("playoff_delta", [0.01, 0.02, 0.03]))
+    out = stage.ideas(LID, 7, AT, flipped, None)
+    assert out["get"].to_list() == ["Add0", "Add1", "Add2"]
+
+
+def test_ideas_keep_the_top_waivers_and_the_first_trades() -> None:
     out = stage.ideas(LID, 7, AT, waivers_frame(8), trades_frame(8))
     waiver = out.filter(pl.col("kind") == "waiver")
     trade = out.filter(pl.col("kind") == "trade")
