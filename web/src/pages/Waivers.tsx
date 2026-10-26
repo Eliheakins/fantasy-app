@@ -3,9 +3,9 @@ import { WaiversContent } from "@/features/waivers/WaiversView";
 
 export default function Waivers() {
   return (
-    <div>
+    <section>
       <PageHeader title="Waivers" />
       <WaiversContent />
-    </div>
+    </section>
   );
 }

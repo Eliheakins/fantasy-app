@@ -48,7 +48,7 @@ describe("WaiversView", () => {
         strength={{ kind: "no_data", message: "Nothing here" }}
       />,
     );
-    expect(screen.getByText("No free agent adds expected points to your team.")).toBeInTheDocument();
+    expect(screen.getByText("No free agent adds expected points for your team.")).toBeInTheDocument();
     expect(screen.getByText("Nothing here")).toBeInTheDocument();
   });
   it("shows elapsed time while the job runs", () => {

@@ -84,7 +84,7 @@ describe("Players page", () => {
   });
   it("empty, loading, running, no_data, error", () => {
     const cases: [ApiState<unknown>, RegExp][] = [
-      [ready([]), /No players to show/],
+      [ready([]), /No players in this group/],
       [{ kind: "loading" }, /Loading/],
       [{ kind: "running", startedAt: null }, /Working/],
       [{ kind: "no_data", message: "No outlook yet." }, /No outlook yet/],
