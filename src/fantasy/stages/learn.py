@@ -214,12 +214,15 @@ def load_extras() -> Extras:
     )
 
 
-def with_sleeper_stand_in(extras: Extras, season: int, week: int, teams: list[str]) -> Extras:
+def with_sleeper_stand_in(
+    extras: Extras, games: pl.DataFrame, season: int, week: int, teams: list[str]
+) -> Extras:
     """`extras` for the future rows: the report uses Sleeper's Out players in `week` for the
-    teams whose final report has no game status yet. Prints each team's source."""
+    teams whose slate (gameday, from `games`) has no final report yet. Prints each team's
+    source."""
     players, id_map = store.read_table("sleeper_players", "raw"), store.read_table("id_map")
     stand_in = vacancy.sleeper_report(players, id_map, season, week)
-    sources = vacancy.report_sources(extras.report, season, week, teams)
+    sources = vacancy.report_sources(extras.report, games, season, week, teams)
     by_source = {s: sorted(t for t, v in sources.items() if v == s) for s in ("final", "sleeper")}
     print(
         f"learn: week {week} vacancy from the final report for {by_source['final']}, "
@@ -228,7 +231,9 @@ def with_sleeper_stand_in(extras: Extras, season: int, week: int, teams: list[st
     unmapped = vacancy.unmapped_out(players, id_map)
     if unmapped:
         print(f"learn: {unmapped} of Sleeper's Out players have no gsis id; left out of vacancy")
-    return replace(extras, report=vacancy.with_stand_in(extras.report, stand_in, season, week))
+    return replace(
+        extras, report=vacancy.with_stand_in(extras.report, stand_in, games, season, week)
+    )
 
 
 def with_schedule(frame: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
@@ -551,7 +556,9 @@ def run() -> dict[str, int]:
     # the next week with unplayed games, which is later than Sleeper's week once it is all played
     report_week = current_week if future_all.is_empty() else int(future_all["week"].min())  # type: ignore[arg-type]
     teams = future_all.filter(pl.col("week") == report_week)["team"].drop_nulls().unique()
-    future_extras = with_sleeper_stand_in(extras, season, report_week, sorted(teams.to_list()))
+    future_extras = with_sleeper_stand_in(
+        extras, lines, season, report_week, sorted(teams.to_list())
+    )
     chance, played = None, None
     if load_config().stat_line_model:
         raw = {"opp": opp, "snaps": snaps, "stats": stats, "depth": extras.depth}
