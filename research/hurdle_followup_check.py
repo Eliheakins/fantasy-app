@@ -27,13 +27,20 @@ import polars as pl
 
 from fantasy import store
 from fantasy.stages import stat_line
-from fantasy.stages.distributions import LEVELS, MIN_PROJECTION, estimate_marginals, residual_frame
+from fantasy.stages.distributions import (
+    LEVELS,
+    MIN_PROJECTION,
+    estimate_marginals,
+    residual_frame,
+    with_stat_line_flag,
+)
 from fantasy.stages.project import expected_frame
 
 KEYS = ["league_id", "gsis_id", "season", "week"]
 SCORED = (2024, 2025, 2026)
 FIT = (2021, 2023)
 LAST_2026_WEEK = 6
+REG_LAST_WEEK = 18
 pl.Config(tbl_rows=60, tbl_cols=14, tbl_width_chars=180, float_precision=4)
 
 
@@ -56,7 +63,7 @@ def seeds_part(off: pl.DataFrame, names: dict[str, str]) -> None:
         "depth": store.read_table("nfl_depth", "raw"),
     }
     exp = expected_frame(raw["opp"], points, leagues)
-    active = stat_line.active_rows(points, exp)
+    active = stat_line.played_rows(points, exp, raw["snaps"], raw["opp"])
     history = stat_line.history_table(active, stat_line.usage_frame(raw["opp"], raw["snaps"], raw["stats"]))
     feats = stat_line.features(active, history, raw["depth"]).filter(pl.col("season") >= 2019)
     protocol = bias_check.protocol_rows().filter(pl.col("protocol")).select(KEYS)
@@ -82,8 +89,15 @@ def seeds_part(off: pl.DataFrame, names: dict[str, str]) -> None:
         print(f"   seeds {seeds}: " + ", ".join(out))
 
 
-def shapes(proj: pl.DataFrame) -> pl.DataFrame:
+def fit_rows(proj: pl.DataFrame, statline_tiers: bool) -> pl.DataFrame:
+    """2021-2023 residuals; with `statline_tiers`, flagged so tiers are cut on stat-line games (as
+    distributions.run does with the stat-line model on)."""
     fit = residual_frame(proj.filter(pl.col("season").is_between(*FIT)), store.read_table("player_points"))
+    return with_stat_line_flag(fit, store.read_table("proj_baseline")) if statline_tiers else fit
+
+
+def shapes(proj: pl.DataFrame, statline_tiers: bool = False) -> pl.DataFrame:
+    fit = fit_rows(proj, statline_tiers)
     return estimate_marginals(fit)
 
 
@@ -108,8 +122,8 @@ def score_shapes(rows: pl.DataFrame, marg: pl.DataFrame) -> pl.DataFrame:
     return pl.concat(parts)
 
 
-def mean_ratio(proj: pl.DataFrame, marg: pl.DataFrame) -> pl.DataFrame:
-    fit = residual_frame(proj.filter(pl.col("season").is_between(*FIT)), store.read_table("player_points"))
+def mean_ratio(proj: pl.DataFrame, marg: pl.DataFrame, statline_tiers: bool = False) -> pl.DataFrame:
+    fit = fit_rows(proj, statline_tiers)
     fit = fit.filter(pl.col("projection") > MIN_PROJECTION).select(*KEYS, "position", "projection", "points")
     tiered = score_shapes(fit, marg)
     return tiered.group_by("league_id", "tier").agg(
@@ -122,9 +136,9 @@ def mean_ratio(proj: pl.DataFrame, marg: pl.DataFrame) -> pl.DataFrame:
 def shapes_part(off: pl.DataFrame, on: pl.DataFrame, names: dict[str, str]) -> None:
     points = store.read_table("player_points").select(*KEYS, "points")
     q = store.read_table("stat_line")
-    keep = lambda f: f.filter(~pl.col("is_future")).join(reg_keys(), on=KEYS, how="semi")  # noqa: E731
+    keep = lambda f: f.filter(~pl.col("is_future") & (pl.col("week") <= REG_LAST_WEEK))  # noqa: E731
     off, on = keep(off), keep(on)
-    m_off, m_on = shapes(off), shapes(on)
+    m_off, m_on = shapes(off), shapes(on, statline_tiers=True)
     statless = on.join(off.select(KEYS), on=KEYS, how="anti")
     e_statless = statless.join(q, on=["gsis_id", "season", "week"]).with_columns(
         pl.col("projection") / pl.col("q")
@@ -158,7 +172,7 @@ def shapes_part(off: pl.DataFrame, on: pl.DataFrame, names: dict[str, str]) -> N
     print("\n== mean ratio points / projection on the 2021-2023 fit rows, by tier ==")
     r = pl.concat([
         mean_ratio(off, m_off).with_columns(pl.lit("off").alias("arm")),
-        mean_ratio(on, m_on).with_columns(pl.lit("on").alias("arm")),
+        mean_ratio(on, m_on, statline_tiers=True).with_columns(pl.lit("on").alias("arm")),
     ]).with_columns(pl.col("league_id").replace_strict(names).alias("league"))
     print(r.pivot(on="arm", index=["league", "tier"], values=["mean_ratio", "sum_ratio", "n"]).sort("league", "tier"))
 
