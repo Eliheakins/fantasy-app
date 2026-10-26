@@ -5,6 +5,7 @@ user_id = "1385113153716641792"
 n_sims = 20000
 projection_model = "learned"  # or "baseline" (the rolling average); learned needs the learn stage
 environment_layer = false  # no held-out gain on the learned projections (docs/decisions.md)
+outside_sources = ["fftoday"]  # archived only, not blended; [] turns the fetch off
 
 [leagues.colgate]
 id = "1394105943137992704"

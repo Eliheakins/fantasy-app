@@ -81,8 +81,9 @@ def test_run_appends_to_the_archive_and_a_failing_position_does_not_stop_it(
 
     sources = {"fftoday": fake}
     assert op.run(tmp_path, ["fftoday"], sources, pause=0) == 6  # RB, WR, TE pages, 2 rows each
-    assert op.run(tmp_path, ["fftoday"], sources, pause=0) == 12  # appended, not replaced
+    assert op.run(tmp_path, ["fftoday"], sources, pause=0) == 6
     archive = store.read_table("outside_proj_snapshots", "archive", tmp_path)
+    assert archive.height == 12  # appended, not replaced
     assert set(archive["position"]) == {"RB", "WR", "TE"}
     assert archive["week"].unique().to_list() == [7]
     assert json.loads(archive["stats"][0])["rush_yd"] == 70.0
