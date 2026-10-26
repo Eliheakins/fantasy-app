@@ -102,7 +102,7 @@ def test_each_season_is_scored_by_a_model_that_never_saw_it() -> None:
 
 
 def test_rows_without_a_stat_line_are_projected_but_never_trained_on(monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    monkeypatch.setattr(learn, "design", lambda frame, lines: frame.select("x").to_numpy())
+    monkeypatch.setattr(learn, "design", lambda frame, lines, vac: frame.select("x").to_numpy())
     monkeypatch.setattr(learn, "fit_predict", lambda xt, yt, xs: np.full(len(xs), float(len(yt))))
     history = pl.DataFrame(
         {"season": [2019, 2020, 2021, 2021], "x": [1.0] * 4, "points": [5.0] * 4}

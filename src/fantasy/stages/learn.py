@@ -74,8 +74,9 @@ EXTRA_FEATURES = (
     + [f"pace_{c}" for c in PACE_COLUMNS]
     + [f"adv_{c}" for c in ADVANCED_COLUMNS]
     + SCHEDULE_FEATURES
-    + vacancy.VAC_COLUMNS  # the game's own report one game ahead; nobody listed further ahead
+    + vacancy.VAC_COLUMNS  # the game's own report; left out where there is none (design)
 )
+VAC_SET = frozenset(vacancy.VAC_COLUMNS)
 FIRST_ACCEPTANCE_SEASON = 2024
 MIN_GAIN = 0.01  # the learned model must beat the calibrated baseline by this share of RMSE
 MIN_T = 2.0
@@ -213,12 +214,20 @@ def load_extras() -> Extras:
     )
 
 
-def with_sleeper_stand_in(extras: Extras, season: int, week: int) -> Extras:
-    """`extras` whose report uses Sleeper's statuses for the teams whose final report for
-    `week` has no game status yet."""
-    stand_in = vacancy.sleeper_report(
-        store.read_table("sleeper_players", "raw"), store.read_table("id_map"), season, week
+def with_sleeper_stand_in(extras: Extras, season: int, week: int, teams: list[str]) -> Extras:
+    """`extras` for the future rows: the report uses Sleeper's Out players in `week` for the
+    teams whose final report has no game status yet. Prints each team's source."""
+    players, id_map = store.read_table("sleeper_players", "raw"), store.read_table("id_map")
+    stand_in = vacancy.sleeper_report(players, id_map, season, week)
+    sources = vacancy.report_sources(extras.report, season, week, teams)
+    by_source = {s: sorted(t for t, v in sources.items() if v == s) for s in ("final", "sleeper")}
+    print(
+        f"learn: week {week} vacancy from the final report for {by_source['final']}, "
+        f"from Sleeper's Out list for {by_source['sleeper']}"
     )
+    unmapped = vacancy.unmapped_out(players, id_map)
+    if unmapped:
+        print(f"learn: {unmapped} of Sleeper's Out players have no gsis id; left out of vacancy")
     return replace(extras, report=vacancy.with_stand_in(extras.report, stand_in, season, week))
 
 
@@ -283,11 +292,13 @@ def build_features(
     return with_lines(features, games) if horizon == 1 else features
 
 
-def design(frame: pl.DataFrame, lines: bool) -> np.ndarray:
+def design(frame: pl.DataFrame, lines: bool, vacancy: bool = True) -> np.ndarray:
+    """The feature matrix; without lines or without the vacancy columns for games that have no
+    lines or no injury report yet."""
     columns = [*STATE_FEATURES, "week", "is_qb", "is_rb", "is_wr"] + (
         LINE_FEATURES if lines else []
     )
-    columns += EXTRA_FEATURES
+    columns += EXTRA_FEATURES if vacancy else [c for c in EXTRA_FEATURES if c not in VAC_SET]
     out = frame.with_columns(
         *[
             (pl.col("position") == p).cast(pl.Float64).alias(f"is_{p.lower()}")
@@ -321,7 +332,10 @@ def fit_predict(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray) ->
 
 
 def walk_forward(
-    history: pl.DataFrame, lines: bool = True, extra: pl.DataFrame | None = None
+    history: pl.DataFrame,
+    lines: bool = True,
+    extra: pl.DataFrame | None = None,
+    vacancy: bool = True,
 ) -> pl.DataFrame:
     """history: feature rows with `points`. A projection for every row from a model that did not
     see that row's season. `extra` rows (stat-less games) are projected by the same models but
@@ -335,21 +349,29 @@ def walk_forward(
             test = pl.concat(
                 [test, extra.filter(pl.col("season") == season)], how="diagonal_relaxed"
             )
-        pred = fit_predict(design(train, lines), train["points"].to_numpy(), design(test, lines))
+        pred = fit_predict(
+            design(train, lines, vacancy), train["points"].to_numpy(), design(test, lines, vacancy)
+        )
         parts.append(test.with_columns(pl.Series("projection", pred)))
     return pl.concat(parts)
 
 
-def predict_future(history: pl.DataFrame, future: pl.DataFrame) -> pl.DataFrame:
+def predict_future(history: pl.DataFrame, future: pl.DataFrame, report_week: int) -> pl.DataFrame:
     """Future rows from a model trained on all history: with lines where the game has them, the
-    version without lines elsewhere."""
+    version without lines elsewhere; with the vacancy columns in `report_week` (the next week,
+    which has a report or Sleeper's stand-in), without them later (with no report an all-zero
+    vacancy would read as a fully healthy team, which is not the average state)."""
     has_line = pl.col("team_implied").is_not_null() & pl.col("total_line").is_not_null()
+    has_report = pl.col("week") == report_week
     parts = []
-    for lines, rows in ((True, future.filter(has_line)), (False, future.filter(~has_line))):
+    for lines, vac in ((True, True), (True, False), (False, True), (False, False)):
+        rows = future.filter(
+            (has_line if lines else ~has_line) & (has_report if vac else ~has_report)
+        )
         if rows.is_empty():
             continue
         pred = fit_predict(
-            design(history, lines), history["points"].to_numpy(), design(rows, lines)
+            design(history, lines, vac), history["points"].to_numpy(), design(rows, lines, vac)
         )
         parts.append(rows.with_columns(pl.Series("projection", pred)))
     return pl.concat(parts) if parts else future.with_columns(pl.lit(0.0).alias("projection"))
@@ -378,7 +400,9 @@ def history_forecasts(horizon: int = 1) -> pl.DataFrame:
             games.select(*GROUP, "season", "week", "points"), on=[*GROUP, "season", "week"]
         )
         parts.append(
-            walk_forward(history, lines=horizon == 1).select(*GROUP, "season", "week", "projection")
+            walk_forward(history, lines=horizon == 1, vacancy=horizon == 1).select(
+                *GROUP, "season", "week", "projection"
+            )
         )
     return pl.concat(parts)
 
@@ -479,6 +503,8 @@ class Inputs:
     extras: Extras
     future: pl.DataFrame
     played: pl.DataFrame | None  # every played game, when the stat-line model is on
+    future_extras: Extras  # with Sleeper's stand-in for the next week; history never sees it
+    report_week: int  # the first week with unplayed games
 
 
 def league_projections(
@@ -497,10 +523,12 @@ def league_projections(
         extra = build_features(statless, state, data.lines, data.extras)
     past = walk_forward(history, extra=extra).with_columns(is_future=pl.lit(False))
     future_features = build_features(
-        data.future.filter(pl.col("league_id") == lid), state, data.lines, data.extras
+        data.future.filter(pl.col("league_id") == lid), state, data.lines, data.future_extras
     )
     check_next_game_nulls(history, future_features)
-    future = predict_future(history, future_features).with_columns(is_future=pl.lit(True))
+    future = predict_future(history, future_features, data.report_week).with_columns(
+        is_future=pl.lit(True)
+    )
     past, future = stat_line_scaled(past, future, chance)
     return past, future, statless
 
@@ -516,16 +544,29 @@ def run() -> dict[str, int]:
     current, rostered = current_and_rostered()
     current_week = int(leagues["current_week"].max())  # type: ignore[arg-type]
     season = int(leagues["season"].max())  # type: ignore[arg-type]
-    extras = with_sleeper_stand_in(load_extras(), season, current_week)
+    extras = load_extras()
     future_all = future_targets(
         store.read_table("player_form"), current, rostered, lines, first_week=current_week
     )
+    # the next week with unplayed games, which is later than Sleeper's week once it is all played
+    report_week = current_week if future_all.is_empty() else int(future_all["week"].min())  # type: ignore[arg-type]
+    teams = future_all.filter(pl.col("week") == report_week)["team"].drop_nulls().unique()
+    future_extras = with_sleeper_stand_in(extras, season, report_week, sorted(teams.to_list()))
     chance, played = None, None
     if load_config().stat_line_model:
         raw = {"opp": opp, "snaps": snaps, "stats": stats, "depth": extras.depth}
         chance = stat_line.chances(exp, points, raw, future_all, current_week)
         played = stat_line.played_rows(points, exp, snaps, opp)
-    data = Inputs(exp, games_frame(exp, opp, snaps, stats), lines, extras, future_all, played)
+    data = Inputs(
+        exp,
+        games_frame(exp, opp, snaps, stats),
+        lines,
+        extras,
+        future_all,
+        played,
+        future_extras,
+        report_week,
+    )
     keep = [*GROUP, "season", "week", "position", "team", "as_of_season", "as_of_week"]
     keep += ["has_history", "is_future", "projection"]
     out, statless = [], []

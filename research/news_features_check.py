@@ -35,9 +35,13 @@ at least one, no league-season t <= -1, lower than its placebo in both leagues, 
 RMSE (raw E against raw base E) not worse by more than 0.05%.
 
 Serve-time check: the final nflverse report of a week appears Friday; before that the only status
-is Sleeper's `injury_status`. Mapped to the same categories (Out, Doubtful, Questionable; IR, PUP,
-NA and the rest are not on a game report, so none), practice unknown. Compared on 2026 week 7,
-the one week with both in this data copy.
+is Sleeper's `injury_status`. Compared on 2026 week 7, the one week with both in this data copy.
+
+Since the review (2026-10-26) the vac columns are the shipped ones (`stages/vacancy.py`, built by
+`learn.build_features`: a teammate vacates only the usage he had with the listed team), the base
+design is `learn.design(..., vacancy=False)`, the serve stand-in is Sleeper's Out list only, and
+`standin_check` scores 2026 week 7's played games with the stand-in in place of the final report.
+`--vac-only` runs the base and vac arms only.
 
 Each arm's predictions go to the scratchpad preds folder for research/regret.py.
 
@@ -60,7 +64,7 @@ import pbp_features_check as pbp  # noqa: E402
 from fantasy import store  # noqa: E402
 from fantasy.sim.injuries import InjuryModel  # noqa: E402
 from fantasy.stages import injuries as inj_stage  # noqa: E402
-from fantasy.stages import learn, stat_line  # noqa: E402
+from fantasy.stages import learn, stat_line, vacancy  # noqa: E402
 from fantasy.stages import outlook as out  # noqa: E402
 from fantasy.stages.lags import lag_asof, train_seasons  # noqa: E402
 from fantasy.stages.project import GROUP, expected_frame, history_targets  # noqa: E402
@@ -284,7 +288,7 @@ def walk_e(rows: pl.DataFrame, extra: list[str], seasons: list[int]) -> pl.DataF
     available = sorted(train_rows["season"].unique().to_list())
 
     def x(frame: pl.DataFrame) -> np.ndarray:
-        base = learn.design(frame, True)
+        base = learn.design(frame, True, vacancy=False)  # vac columns come in through `extra`
         if not extra:
             return base
         return np.hstack([base, frame.select(pl.col(extra).cast(pl.Float64)).to_numpy()])
@@ -434,8 +438,8 @@ def load() -> tuple[dict[str, pl.DataFrame], dict[str, pl.DataFrame], pl.DataFra
     games_all = learn.games_frame(exp, opp, snaps, stats)
     played = stat_line.played_rows(points, exp, snaps, opp)
     report = report_table(injuries)
-    usage = usage_table(stats, team_stats, snaps)
-    weights = sit_weights(report, snaps)
+    usage = extras.usage  # the shipped definitions
+    weights = extras.sit_weights
     raw = {"stats": stats, "team_stats": team_stats, "injuries": injuries, "team_games": team_games,
            "snaps": snaps, "usage": usage, "depth": extras.depth}  # fmt: skip
     raw["weights"] = pl.DataFrame({"practice": list(weights), "w": list(weights.values())})
@@ -448,7 +452,7 @@ def load() -> tuple[dict[str, pl.DataFrame], dict[str, pl.DataFrame], pl.DataFra
         less = learn.build_features(stat_line.statless_targets(played, lid), state, team_games, extras)
         less = less.with_columns(statline=pl.lit(0.0), points=pl.lit(None, pl.Float64))
         both = pl.concat([hist, less], how="diagonal_relaxed")
-        both = vacancy_features(both, report, usage, weights, extras.depth)
+        # vac columns: the shipped ones, already added by learn.build_features
         both = own_features(both, report)
         pp = points.filter(pl.col("league_id") == lid).select(*KEY, pl.col("points").alias("pp"))
         rows[lid] = both.join(pp, on=KEY, how="left").with_columns(
@@ -498,7 +502,9 @@ def serve_check(raw: dict[str, pl.DataFrame], report: pl.DataFrame, weights: dic
         snaps.sort("season", "week").group_by("gsis_id").agg(pl.col("team").last(), pl.col("position").last())
     )
     nfl = report.filter((pl.col("season") == season) & (pl.col("week") == week) & pl.col("position").is_in(SKILL))
-    slp = sleeper_report(sleeper, teams, season, week).filter(pl.col("position").is_in(SKILL))
+    slp = vacancy.sleeper_report(sleeper, store.read_table("id_map"), season, week).filter(
+        pl.col("position").is_in(SKILL)
+    )  # the shipped stand-in: Out only
     on_teams = nfl["team"].unique().to_list()
     both = (
         nfl.select("gsis_id", pl.col("status").fill_null("none").alias("nflverse"))
@@ -512,8 +518,8 @@ def serve_check(raw: dict[str, pl.DataFrame], report: pl.DataFrame, weights: dic
     print(f"game statuses agree on {agree} of {listed.height} players listed by either source")
     chart = raw["depth"].filter((pl.col("season") == season) & (pl.col("week") == week))
     targets = chart.join(teams, on="gsis_id", how="inner").filter(pl.col("team").is_in(on_teams))
-    a = vacancy_features(targets, nfl, raw["usage"], weights, raw["depth"])
-    b = vacancy_features(targets, slp, raw["usage"], weights, raw["depth"])
+    a = vacancy.vacancy_features(targets, nfl, raw["usage"], weights, raw["depth"])
+    b = vacancy.vacancy_features(targets, slp, raw["usage"], weights, raw["depth"])
     cmp = a.select(*KEY, *VAC_COLS).join(b.select(*KEY, *VAC_COLS), on=KEY, suffix="_s")
     stats = []
     for c in VAC_COLS:
@@ -523,10 +529,43 @@ def serve_check(raw: dict[str, pl.DataFrame], report: pl.DataFrame, weights: dic
                       "mean_nflverse": round(float(cmp[c].mean()), 4)})  # type: ignore[arg-type]
     print(pl.DataFrame(stats))
     own_a = own_features(targets, nfl).select(*KEY, "own_status", "own_practice")
-    own_b = own_features(targets, slp).select(*KEY, "own_status", "own_practice")
+    own_b = own_features(targets, slp.with_columns(pl.lit(None, pl.String).alias("body"))).select(*KEY, "own_status", "own_practice")
     j = own_a.join(own_b, on=KEY, suffix="_s")
     print(f"own_status differs on {int((j['own_status'] != j['own_status_s']).sum())} of {j.height} chart players; "
           f"own_practice known on {int(j['own_practice'].is_not_null().sum())} (nflverse) vs 0 (Sleeper)")
+
+
+def standin_check(rows: dict[str, pl.DataFrame]) -> None:
+    """2026 week 7 played games (those in this copy): RMSE of E from the 2026 model with the vac
+    columns from the final report, from Sleeper's Out-only stand-in, and of the model without them."""
+    season, week = 2026, 7
+    extras = learn.load_extras()
+    stand_in = vacancy.sleeper_report(
+        store.read_table("sleeper_players", "raw"), store.read_table("id_map"), season, week
+    )
+    is_week = (pl.col("season") == season) & (pl.col("week") == week)
+    alt_report = pl.concat([extras.report.filter(~is_week), stand_in.select(extras.report.columns)])
+    print(f"\n== stand-in check, {season} week {week} played games ==")
+    for lid, r in rows.items():
+        train = r.filter((pl.col("statline") == 1.0) & (pl.col("season") < season))
+        test = r.filter(is_week & (pl.col("statline") == 1.0))
+        if test.is_empty():
+            print(f"{lid}: no played week {week} games in this copy")
+            continue
+        alt = vacancy.vacancy_features(
+            test.drop(VAC_COLS), alt_report, extras.usage, extras.sit_weights, extras.depth
+        )
+        y = train["points"].to_numpy()
+        preds = {
+            "final": learn.fit_predict(learn.design(train, True), y, learn.design(test, True)),
+            "sleeper_out": learn.fit_predict(learn.design(train, True), y, learn.design(alt, True)),
+            "no_vac": learn.fit_predict(
+                learn.design(train, True, vacancy=False), y, learn.design(test, True, vacancy=False)
+            ),
+        }
+        pts = test["points"].to_numpy()
+        out = {k: round(float(np.sqrt(np.mean((pts - v) ** 2))), 4) for k, v in preds.items()}
+        print(f"{lid}: n {test.height}, RMSE {out}")
 
 
 # ---- main -------------------------------------------------------------------------------------
@@ -552,6 +591,7 @@ def main() -> None:
     rows, raw, report, qfeats = load()
     weights = dict(zip(raw["weights"]["practice"], raw["weights"]["w"], strict=True))
     serve_check(raw, report, weights)
+    standin_check(rows)
     if "--serve-only" in sys.argv:
         return
     seasons = list(range(FIRST_CLEAN, 2027))
@@ -594,7 +634,10 @@ def main() -> None:
             raw_l = {**raw, "pp": raw["pp_all"].filter(pl.col("league_id") == lid).select(*KEY, "points")}
             results[name][lid] = layered(frame, raw_l, report, outlook, perf)
 
+    vac_only = "--vac-only" in sys.argv
     for name, (e_cols, q_cols, outlook, perf) in ARMS.items():
+        if vac_only and name.startswith("own"):
+            continue
         print(f"arm {name}")
         run_arm(name, e_cols, "q_own" if q_cols else "q_base", outlook, perf, False)
 
@@ -607,10 +650,11 @@ def main() -> None:
     vac_layer = "vacoff" if mean_rmse("vac_b") < mean_rmse("vac_c") else "full"
     print(f"vac: (b) outlook without vacancy {mean_rmse('vac_b'):.4f}, (c) full {mean_rmse('vac_c'):.4f}; placebo uses {vac_layer}")
     run_arm("vac_pl", VAC_COLS, "q_base", vac_layer, True, True)
-    own_perf = mean_rmse("own_c") < mean_rmse("own_b")
-    run_arm("own_pl", OWN_COLS, "q_own_pl", "full", own_perf, True)
-    run_arm("both", [*VAC_COLS, *OWN_COLS], "q_own", vac_layer, own_perf, False)
-    run_arm("both_pl", [*VAC_COLS, *OWN_COLS], "q_own_pl", vac_layer, own_perf, True)
+    if not vac_only:
+        own_perf = mean_rmse("own_c") < mean_rmse("own_b")
+        run_arm("own_pl", OWN_COLS, "q_own_pl", "full", own_perf, True)
+        run_arm("both", [*VAC_COLS, *OWN_COLS], "q_own", vac_layer, own_perf, False)
+        run_arm("both_pl", [*VAC_COLS, *OWN_COLS], "q_own_pl", vac_layer, own_perf, True)
 
     PREDS.mkdir(parents=True, exist_ok=True)
     for name, by_league in results.items():
@@ -622,6 +666,7 @@ def main() -> None:
         ("own_b", "base"), ("own_c", "base"), ("own_pl", "base"), ("own_raw", "base_raw"),
         ("own_e_raw", "base_raw"), ("own_q_raw", "base_raw"), ("both", "base"), ("both_pl", "base"),
     ]  # fmt: skip
+    comparisons = [(c, r) for c, r in comparisons if c in results and r in results]
     for cand, ref in comparisons:
         for lid in rows:
             d = (
@@ -642,6 +687,8 @@ def main() -> None:
     proto_df.write_csv(SCRATCH / "protocol.csv")
     print("\n== ship rule ==")
     for cand, placebo in (("vac_b", "vac_pl"), ("vac_c", "vac_pl"), ("own_b", "own_pl"), ("own_c", "own_pl"), ("both", "both_pl")):
+        if cand not in results:
+            continue
         mine = played_df.filter((pl.col("cand") == cand) & (pl.col("ref") == "base"))
         plac = played_df.filter((pl.col("cand") == placebo) & (pl.col("ref") == "base"))
         prot = proto_df.filter((pl.col("cand") == cand) & (pl.col("ref") == "base"))
