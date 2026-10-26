@@ -97,7 +97,10 @@ not deterministic (see the 2026-10-25 entry).
 | `fd_panel.py`, `fd_tests.py` | What does an outside projection (FantasyData 2019 to 2021) tell us? | Beats ours 6.71 to 6.99; best weight on it about 0.8 | Reported; exponent changed | 10-23 |
 | `sleeper_proj.py` | How do Sleeper's projections compare? | Not clean: the endpoint re-stamps after games | Superseded by `blend_weight.py` | 10-23 |
 | `blend_weight.py` | What weight on Sleeper and other sources do clean pre-kickoff snapshots support (#40)? | Harness; 0 clean scored games on 2026-10-25 | Rerun after week 10 | 10-25 |
-| `props_check.py` | Do prop lines add information (free 2024 FanDuel archive)? | Equal blend -1.64 and -1.38% (t 5.2 and 4.3); -1.20 and -0.94% without games where a lead RB or WR sat | Passed; build in progress | 10-26 |
+| `props_check.py` | Do prop lines add information (free 2024 FanDuel archive)? | Equal blend -1.64 and -1.38% (t 5.2 and 4.3); -1.20 and -0.94% without games where a lead RB or WR sat | Shipped in the source blend (RB, WR) | 10-26 |
+| `prop_constants.py` | Yardage and receptions constants (r_m, sigma_m) for prop-implied points | Fit on the free 2024 to 2025 archive; used by `stages/prop_points.py` | Shipped | 10-26 |
+| `outside_history.py` | Is FFToday's served history clean, and does an equal mean with ours help? | Looks clean; equal mean -2.0% RMSE on 2025 to 2026 (t -5.5 and -5.7) | Shipped in the source blend | 10-26 |
+| `fftoday_bias.py` | Correct FFToday's per-position bias before the mean? | Fit on 2025 (WR +1.16); no worse on 2026 (t -0.4 to -0.6) | Shipped | 10-26 |
 | `props_td_check.py` | Is the anytime-TD market better than Sleeper and ours for touchdowns? | Harness; 0 scored games so far | Waiting for weeks | 10-26 |
 
 Left out on purpose: seven exploratory scripts that only inspected data shapes (participation
