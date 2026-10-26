@@ -8,6 +8,7 @@ players, so callers add their own value for them.
 """
 
 import itertools
+from datetime import datetime, timedelta
 from typing import NamedTuple
 
 ELIGIBLE: dict[str, frozenset[str]] = {
@@ -20,6 +21,7 @@ ELIGIBLE: dict[str, frozenset[str]] = {
 }
 CONSTANT_SLOTS = {"K", "DEF"}
 BENCH_SLOTS = {"BN", "IR", "TAXI"}
+INACTIVES_LEAD = timedelta(minutes=90)  # NFL inactive lists come out this long before kickoff
 
 
 class Player(NamedTuple):
@@ -89,6 +91,60 @@ def lineup_with_locks(
     return Lineup(
         pinned.total + rest.total, pinned.players | rest.players, (*pinned.slots, *rest.slots)
     )
+
+
+def _swap_option(
+    flagged: str,
+    lineup: Lineup,
+    players: list[Player],
+    kicks: dict[str, datetime],
+    locked: set[str],
+) -> str | None:
+    """The best bench player eligible for the flagged starter's slot whose game starts after
+    the flagged player's inactives release, or None."""
+    slot = next(s for s, pid in lineup.slots if pid == flagged)
+    release = kicks[flagged] - INACTIVES_LEAD
+    options = [
+        p
+        for p in players
+        if p.id not in lineup.players
+        and p.id not in locked
+        and p.position in ELIGIBLE[slot]
+        and p.id in kicks
+        and kicks[p.id] > release
+    ]
+    return max(options, key=lambda p: (p.value, p.id)).id if options else None
+
+
+def inactive_swap_lineup(
+    players: list[Player],
+    slots: list[str],
+    chance: dict[str, float],
+    kicks: dict[str, datetime],
+    locked: set[str],
+    starting: set[str],
+) -> tuple[Lineup, dict[str, str]]:
+    """Lineup when a Questionable or Doubtful player can be swapped out at the inactives release.
+
+    `players` carry expected points; `chance` holds the flagged players' chance of playing. A
+    flagged starter is valued at his points when he plays (value / chance) if a bench player
+    eligible for his slot kicks off after his inactives release; otherwise he keeps his expected
+    points. Returns the lineup (its total counts flagged starters at full value) and the plan:
+    flagged starter -> bench player to start if he is inactive. research/questionable_swap_check.py
+    measured this rule (policy C)."""
+    full = {
+        p.id: p.value / chance[p.id]
+        for p in players
+        if p.id in chance and chance[p.id] > 0 and p.id in kicks and p.id not in locked
+    }
+    while True:  # each pass drops a flagged starter with no option, so this ends
+        pool = [p._replace(value=full.get(p.id, p.value)) for p in players]
+        best = lineup_with_locks(pool, slots, locked, starting)
+        plan = {x: _swap_option(x, best, players, kicks, locked) for x in full if x in best.players}
+        stuck = {x for x, swap in plan.items() if swap is None}
+        if not stuck:
+            return best, {x: swap for x, swap in plan.items() if swap is not None}
+        full = {x: v for x, v in full.items() if x not in stuck}
 
 
 def top_lineups(players: list[Player], slots: list[str], k: int) -> list[Lineup]:

@@ -25,3 +25,14 @@ def test_an_edited_config_is_reloaded(tmp_path) -> None:  # type: ignore[no-unty
     assert load_config(path).n_sims == 10
     path.write_text(body.format(n=2000))
     assert load_config(path).n_sims == 2000
+
+
+def test_inactive_swap_and_ir_curve_are_off_unless_set(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+    body = 'season = 2026\nuser_id = "u"\nn_sims = 10\n{extra}[leagues.a]\nid = "1"\n'
+    path.write_text(body.format(extra=""))
+    off = load_config(path)
+    assert not off.inactive_swap and not off.ir_return_curve
+    path.write_text(body.format(extra="inactive_swap = true\nir_return_curve = true\n"))
+    on = load_config(path)
+    assert on.inactive_swap and on.ir_return_curve

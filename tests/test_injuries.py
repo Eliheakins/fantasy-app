@@ -4,7 +4,12 @@ import pytest
 
 from fantasy import store
 from fantasy.sim import odds
-from fantasy.sim.injuries import InjuryModel, injury_projections, stat_line_blend
+from fantasy.sim.injuries import (
+    IR_RETURN_CURVE,
+    InjuryModel,
+    injury_projections,
+    stat_line_blend,
+)
 from fantasy.sim.value import absence_probs, conditional_values, play_curves
 from fantasy.stages import injuries as stage
 
@@ -216,3 +221,15 @@ def test_a_status_with_no_rows_stores_no_cells_instead_of_never_plays() -> None:
 def test_a_root_cell_with_no_games_at_a_horizon_takes_the_previous_rate() -> None:
     cell = stage.Cell(10, (10, 10, 0, 0), (0.8, 0.6, 0.0, 0.0), 0, 0.0, 0.0)
     assert stage.shrink(cell, None).p == (0.8, 0.6, 0.6, 0.6)
+
+
+def test_ir_follows_the_measured_return_curve_when_given_one() -> None:
+    curve = (0.0, 0.04, 0.08, 0.13, 0.18, 0.2)
+    model = InjuryModel(_effects(), ir_curve=curve)
+    assert model.curve(("IR", "Knee", None)) == ((*curve, 1.0), 1.0)
+    assert model.curve(("PUP", None, None))[0] == (0.0, 0.0, 0.0, 0.0, 1.0)  # type: ignore[index]
+
+
+def test_the_measured_ir_curve_never_falls_and_stays_far_below_the_chain() -> None:
+    assert list(IR_RETURN_CURVE) == sorted(IR_RETURN_CURVE) and IR_RETURN_CURVE[0] == 0.0
+    assert len(IR_RETURN_CURVE) >= 17 and max(IR_RETURN_CURVE) < 0.5

@@ -21,12 +21,40 @@ from fantasy.sim.blend import blend_all
 
 Flag = tuple[str, str | None, str | None]  # report status, body part, practice participation
 DECAY = 0.5  # the play-through discount keeps this share of itself each week
+# Chance an IR player plays each of his team's next 18 games, counting from the week he is
+# listed: share of relevant skill players on nflverse IR (R01, R48) 2018 to 2023 who had a touch
+# or target, made non-decreasing (research/ir_curve_check.py). Season-ending injuries keep it
+# near 25%; the four games then chain (`odds.STAY_OUT`, `odds.HAZARD`) read 67% to 86%.
+IR_RETURN_CURVE = (
+    0.0,
+    0.0391,
+    0.0821,
+    0.1311,
+    0.1761,
+    0.2057,
+    0.2189,
+    0.231,
+    0.2484,
+    0.249,
+    0.2494,
+    0.2494,
+    0.2494,
+    0.2494,
+    0.2494,
+    0.2494,
+    0.2494,
+    0.2494,
+)
 
 
 class InjuryModel:
-    """Lookup over the injury_effects table with fallbacks from specific to general."""
+    """Lookup over the injury_effects table with fallbacks from specific to general.
 
-    def __init__(self, effects: pl.DataFrame) -> None:
+    `ir_curve` (the chance of playing each later game for a player on IR) replaces the four
+    zero games for IR when given; other long-term designations keep them."""
+
+    def __init__(self, effects: pl.DataFrame, ir_curve: tuple[float, ...] | None = None) -> None:
+        self.ir_curve = ir_curve
         self.cells = {
             (r["status"], r["practice"], r["body"]): (
                 (r["p0"], r["p1"], r["p2"], r["p3"]),
@@ -40,6 +68,8 @@ class InjuryModel:
         """Chances of playing games 0 to 3 then healthy (1.0), and the play-through ratio.
         None when the status is not one the table covers."""
         status, body, practice = flag
+        if status == "IR" and self.ir_curve is not None:
+            return (*self.ir_curve, 1.0), 1.0
         if status in LONG_TERM:
             return (0.0,) * LONG_TERM_WEEKS + (1.0,), 1.0
         group = body if body in self.bodies else "Other"

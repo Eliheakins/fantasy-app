@@ -20,6 +20,7 @@ ENGINE_SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "locked": _B,
         "actual": _F,
         "game": _S,
+        "swap_in": _S,
     },
     "win_probability": {
         "option": _S,

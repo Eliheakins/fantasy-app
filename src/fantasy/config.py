@@ -26,6 +26,8 @@ class Config:
     outside_sources: tuple[str, ...] = ()  # archived by outside_projections; empty disables
     blend_sources: tuple[str, ...] = ("sleeper",)  # empty: ours only
     prop_positions: tuple[str, ...] = ("RB", "WR")  # positions that get prop-implied points
+    inactive_swap: bool = False  # start a flagged player by E when a later bench swap exists
+    ir_return_curve: bool = False  # IR players follow the measured return curve, not 4 games
 
 
 def load_config(path: Path = ROOT / "config.toml") -> Config:
@@ -62,6 +64,8 @@ def _load(path: Path, _mtime_ns: int) -> Config:
             outside_sources=outside,
             blend_sources=sources,
             prop_positions=positions,
+            inactive_swap=bool(raw.get("inactive_swap", False)),
+            ir_return_curve=bool(raw.get("ir_return_curve", False)),
         )
     except KeyError as missing:
         raise ValueError(f"{path} is missing {missing}") from missing

@@ -1,4 +1,5 @@
 import random
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -60,3 +61,34 @@ def test_greedy_equals_exhaustive_search_on_random_rosters() -> None:
             greedy = lu.auto_lineup(players, slots).total
             exhaustive = lu.top_lineups(players, slots, 1)[0].total
             assert greedy == pytest.approx(exhaustive)
+
+
+SUNDAY = datetime(2026, 10, 25, 13, 0)
+
+
+def test_inactive_swap_starts_a_questionable_player_who_has_a_later_bench_option() -> None:
+    players = [Player("q", "WR", 10.0), Player("b", "WR", 12.0)]  # q: 50% to play, 20 if he does
+    kicks = {"q": SUNDAY, "b": SUNDAY + timedelta(hours=3)}
+    best, plan = lu.inactive_swap_lineup(players, ["WR"], {"q": 0.5}, kicks, set(), set())
+    assert best.players == {"q"} and plan == {"q": "b"}
+
+
+def test_inactive_swap_keeps_expected_points_when_the_bench_game_starts_first() -> None:
+    players = [Player("q", "WR", 10.0), Player("b", "WR", 12.0)]
+    kicks = {"q": SUNDAY, "b": SUNDAY - timedelta(minutes=90)}  # kicks off at q's inactives
+    best, plan = lu.inactive_swap_lineup(players, ["WR"], {"q": 0.5}, kicks, set(), set())
+    assert best.players == {"b"} and plan == {}
+
+
+def test_inactive_swap_names_the_best_eligible_bench_player_and_skips_locked_ones() -> None:
+    players = [
+        Player("q", "RB", 8.0),
+        Player("wr", "WR", 9.0),
+        Player("rb_low", "RB", 5.0),
+        Player("rb_locked", "RB", 7.0),
+    ]
+    kicks = {p.id: SUNDAY + timedelta(hours=3) for p in players} | {"q": SUNDAY}
+    best, plan = lu.inactive_swap_lineup(
+        players, ["RB", "WR"], {"q": 0.4}, kicks, {"rb_locked"}, set()
+    )
+    assert best.players == {"q", "wr"} and plan == {"q": "rb_low"}
