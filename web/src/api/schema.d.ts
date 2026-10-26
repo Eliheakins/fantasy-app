@@ -1200,6 +1200,8 @@ export interface components {
             game: string;
             /** Change */
             change: string;
+            /** Swap In */
+            swap_in?: string | null;
         };
         /** LiveRefreshData */
         LiveRefreshData: {

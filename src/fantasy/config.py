@@ -26,6 +26,16 @@ class Config:
     outside_sources: tuple[str, ...] = ()  # archived by outside_projections; empty disables
     blend_sources: tuple[str, ...] = ("sleeper",)  # empty: ours only
     prop_positions: tuple[str, ...] = ("RB", "WR")  # positions that get prop-implied points
+    inactive_swap: bool = False  # Lineup advice: bench player to start if a Q/D starter sits
+    ir_return_curve: bool = False  # IR players follow the measured return curve, not 4 games
+
+
+def _switch(raw: dict, key: str, path: Path) -> bool:
+    """An on/off setting, false when absent; anything but true or false (say "false") raises."""
+    value = raw.get(key, False)
+    if not isinstance(value, bool):
+        raise ValueError(f"{path}: {key} must be true or false, not {value!r}")
+    return value
 
 
 def load_config(path: Path = ROOT / "config.toml") -> Config:
@@ -62,6 +72,8 @@ def _load(path: Path, _mtime_ns: int) -> Config:
             outside_sources=outside,
             blend_sources=sources,
             prop_positions=positions,
+            inactive_swap=_switch(raw, "inactive_swap", path),
+            ir_return_curve=_switch(raw, "ir_return_curve", path),
         )
     except KeyError as missing:
         raise ValueError(f"{path} is missing {missing}") from missing

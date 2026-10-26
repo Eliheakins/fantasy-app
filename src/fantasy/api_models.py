@@ -199,6 +199,7 @@ class LineupRow(Row):
     actual: float
     game: str
     change: str
+    swap_in: str | None = None  # bench player to start if this flagged starter is inactive
 
 
 class ScheduleRow(Row):

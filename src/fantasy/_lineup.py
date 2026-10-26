@@ -5,12 +5,14 @@ from datetime import datetime
 import numpy as np
 import polars as pl
 
+from fantasy import store
 from fantasy._engine import (
     KD_SEED_OFFSET,
     LINEUP_SEED,
     PLAY_PROB_FLOOR,
     _constant_moments,
     _constant_points,
+    _id_map,
     _injury_note,
     _league,
     _marginals,
@@ -28,15 +30,17 @@ from fantasy._engine import (
     _week_values,
 )
 from fantasy._schemas import ENGINE_SCHEMAS
+from fantasy.config import load_config
 from fantasy.sim import moves
-from fantasy.sim.availability import LONG_TERM
-from fantasy.sim.lineup import Player, lineup_slots, lineup_with_locks
+from fantasy.sim.availability import LONG_TERM, kickoffs
+from fantasy.sim.lineup import Player, lineup_slots, lineup_with_locks, swap_plan
 from fantasy.sim.odds import LeagueData
 from fantasy.sim.winprob import choose, pick_by_quantile, search, swap_candidates
 
 LINEUP_SIMS = 20000
 UNDERDOG = 0.45  # below this chance to win with the best lineup, variance is an asset
 FAVORITE = 0.55  # above it, protect the floor
+SWAP_STATUSES = frozenset({"Questionable", "Doubtful"})  # game-day calls settled at inactives
 
 
 def _points_so_far(live: dict[str, tuple[float, float]], gsis_id: str) -> float:
@@ -69,9 +73,24 @@ def _ranged(p: Player, spread: float | None, live: dict[str, tuple[float, float]
     return spread if not 0.0 <= share < 1.0 else points + share * spread
 
 
-def _is_out(data: LeagueData, gsis_id: str) -> bool:
+def _flag_status(data: LeagueData, gsis_id: str) -> str:
     flag = data.injuries.get(gsis_id)
-    return flag is not None and (flag[0] == "Out" or flag[0] in LONG_TERM)
+    return flag[0] if flag is not None else ""
+
+
+def _is_out(data: LeagueData, gsis_id: str) -> bool:
+    status = _flag_status(data, gsis_id)
+    return status == "Out" or status in LONG_TERM
+
+
+def _kickoffs_by_player(week: int) -> dict[str, datetime]:
+    """Kickoff of each player's game this week, by nflverse id. Players with no team, or whose
+    team has no game this week, are left out."""
+    teams = _id_map("nfl_team").filter(pl.col("gsis_id").is_not_null())
+    kicks = kickoffs(store.read_table("nfl_schedules", "raw"), load_config().season, week)
+    return {
+        g: kicks[t] for g, t in zip(teams["gsis_id"], teams["nfl_team"], strict=True) if t in kicks
+    }
 
 
 def _spread(
@@ -122,12 +141,12 @@ def lineup(
     status, locked = _status_and_locks(week, data.current_week, now)
     # a player who is out is never slotted: an empty slot scores the same, and Sleeper shows blank
     available = [p for p in pool if not _is_out(data, p.id)]
-    best = lineup_with_locks(
-        available,
-        lineup_slots(data.roster_positions),
-        {p.id for p in available if p.id in locked},
-        starting,
-    )
+    pinned = {p.id for p in available if p.id in locked}
+    best = lineup_with_locks(available, lineup_slots(data.roster_positions), pinned, starting)
+    swap: dict[str, str] = {}
+    if current and load_config().inactive_swap:  # advice only: the lineup above is unchanged
+        flagged = {p.id for p in available if _flag_status(data, p.id) in SWAP_STATUSES}
+        swap = swap_plan(best, available, flagged, _kickoffs_by_player(week), pinned)
     slot_of = {pid: slot for slot, pid in best.slots}
     live = data.live if current else {}
     rows = [
@@ -146,6 +165,7 @@ def lineup(
             "locked": p.id in locked,
             "actual": _points_so_far(live, p.id),
             "game": _game_state(live, p.id),
+            "swap_in": names.get(swap[p.id], swap[p.id]) if p.id in swap else None,
         }
         for p in sorted(pool, key=lambda p: (p.id not in slot_of, -p.value))
     ]

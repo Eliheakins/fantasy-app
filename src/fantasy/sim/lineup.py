@@ -8,6 +8,7 @@ players, so callers add their own value for them.
 """
 
 import itertools
+from datetime import datetime, timedelta
 from typing import NamedTuple
 
 ELIGIBLE: dict[str, frozenset[str]] = {
@@ -20,6 +21,7 @@ ELIGIBLE: dict[str, frozenset[str]] = {
 }
 CONSTANT_SLOTS = {"K", "DEF"}
 BENCH_SLOTS = {"BN", "IR", "TAXI"}
+INACTIVES_LEAD = timedelta(minutes=90)  # NFL inactive lists come out this long before kickoff
 
 
 class Player(NamedTuple):
@@ -89,6 +91,45 @@ def lineup_with_locks(
     return Lineup(
         pinned.total + rest.total, pinned.players | rest.players, (*pinned.slots, *rest.slots)
     )
+
+
+def swap_plan(
+    lineup: Lineup,
+    players: list[Player],
+    flagged: set[str],
+    kicks: dict[str, datetime],
+    locked: set[str],
+) -> dict[str, str]:
+    """Advice for the inactives release, leaving `lineup` as it is: flagged starter -> the bench
+    player to start if he is inactive. Starters are taken in kickoff order; each gets the best
+    bench player eligible for his slot whose game kicks off after his inactives release, and a
+    bench player is promised to one starter at most. Players with no kickoff, or locked, take no
+    part. research/questionable_swap_check.py measured this (policy A+plan)."""
+    slot_of = {pid: slot for slot, pid in lineup.slots}
+    starters = sorted(
+        (x for x in flagged if x in slot_of and x in kicks and x not in locked),
+        key=lambda x: (kicks[x], x),
+    )
+    bench = sorted(
+        (p for p in players if p.id not in slot_of and p.id not in locked and p.id in kicks),
+        key=lambda p: (-p.value, p.id),
+    )
+    plan: dict[str, str] = {}
+    for x in starters:
+        release = kicks[x] - INACTIVES_LEAD
+        pick = next(
+            (
+                p
+                for p in bench
+                if p.id not in plan.values()
+                and p.position in ELIGIBLE[slot_of[x]]
+                and kicks[p.id] > release
+            ),
+            None,
+        )
+        if pick is not None:
+            plan[x] = pick.id
+    return plan
 
 
 def top_lineups(players: list[Player], slots: list[str], k: int) -> list[Lineup]:

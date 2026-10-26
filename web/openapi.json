@@ -4315,6 +4315,17 @@
           "change": {
             "type": "string",
             "title": "Change"
+          },
+          "swap_in": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Swap In"
           }
         },
         "additionalProperties": false,

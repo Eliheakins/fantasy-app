@@ -337,7 +337,7 @@ def _league_row(store_dir: Path) -> dict[str, Any]:
 
 LINEUP = {
     "slot", "gsis_id", "full_name", "position", "projection", "p10", "p90", "starting_now",
-    "recommended", "injury", "injury_note", "locked", "actual", "game", "change",
+    "recommended", "injury", "injury_note", "locked", "actual", "game", "change", "swap_in",
 }  # fmt: skip
 ROWS = {
     "/api/leagues/t/roster": {

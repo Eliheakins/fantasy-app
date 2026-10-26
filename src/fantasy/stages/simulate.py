@@ -20,7 +20,13 @@ from fantasy.config import load_config
 from fantasy.sim.availability import kickoffs, remaining_share, scale_projections
 from fantasy.sim.environment import Situation, apply_environment
 from fantasy.sim.environment import effects_dict as environment_effects
-from fantasy.sim.injuries import Flag, InjuryModel, injury_projections, stat_line_blend
+from fantasy.sim.injuries import (
+    IR_RETURN_CURVE,
+    Flag,
+    InjuryModel,
+    injury_projections,
+    stat_line_blend,
+)
 from fantasy.sim.lineup import Player
 from fantasy.sim.odds import CurrentWeek, LeagueData, build_inputs
 from fantasy.sim.outlook import apply_outlook, effects_dict
@@ -428,7 +434,8 @@ def _layered_projections(
     )
     flags = _injury_flags(flagged, current)
     try:
-        model = InjuryModel(store.read_table("injury_effects"))
+        ir_curve = IR_RETURN_CURVE if load_config().ir_return_curve else None
+        model = InjuryModel(store.read_table("injury_effects"), ir_curve)
     except FileNotFoundError:
         model = None
     first_game = _first_game_chance(current) if model is not None else {}

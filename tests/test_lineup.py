@@ -1,4 +1,5 @@
 import random
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -60,3 +61,58 @@ def test_greedy_equals_exhaustive_search_on_random_rosters() -> None:
             greedy = lu.auto_lineup(players, slots).total
             exhaustive = lu.top_lineups(players, slots, 1)[0].total
             assert greedy == pytest.approx(exhaustive)
+
+
+SUNDAY = datetime(2026, 10, 25, 13, 0)
+
+
+def _plan(
+    players: list[Player],
+    slots: list[str],
+    flagged: set[str],
+    kicks: dict[str, datetime],
+    locked: frozenset[str] = frozenset(),
+) -> tuple[lu.Lineup, dict[str, str]]:
+    lineup = lu.lineup_with_locks(players, slots, set(locked), set())
+    return lineup, lu.swap_plan(lineup, players, flagged, kicks, set(locked))
+
+
+def test_swap_plan_is_advice_only_and_names_a_bench_player_who_plays_later() -> None:
+    kicks = {"q": SUNDAY, "b": SUNDAY + timedelta(hours=3)}
+    benched = [Player("q", "WR", 10.0), Player("b", "WR", 12.0)]  # expected points: b starts
+    lineup, plan = _plan(benched, ["WR"], {"q"}, kicks)
+    assert lineup.players == {"b"} and plan == {}
+    started = [Player("q", "WR", 14.0), Player("b", "WR", 12.0)]
+    lineup, plan = _plan(started, ["WR"], {"q"}, kicks)
+    assert lineup.players == {"q"} and plan == {"q": "b"}
+
+
+def test_swap_plan_skips_bench_players_whose_game_starts_by_the_inactives_release() -> None:
+    players = [Player("q", "WR", 14.0), Player("b", "WR", 12.0)]
+    kicks = {"q": SUNDAY, "b": SUNDAY - timedelta(minutes=90)}  # kicks off at q's inactives
+    assert _plan(players, ["WR"], {"q"}, kicks)[1] == {}
+
+
+def test_swap_plan_names_the_best_eligible_bench_player_and_skips_locked_ones() -> None:
+    players = [
+        Player("q", "RB", 8.0),
+        Player("wr", "WR", 9.0),
+        Player("rb_low", "RB", 5.0),
+        Player("rb_locked", "RB", 7.0),
+        Player("wr_bench", "WR", 6.0),  # better, but not eligible for the RB slot
+    ]
+    kicks = {p.id: SUNDAY + timedelta(hours=3) for p in players} | {"q": SUNDAY}
+    assert _plan(players, ["RB", "WR"], {"q"}, kicks, frozenset({"rb_locked"}))[1] == {
+        "q": "rb_low"
+    }
+
+
+def test_swap_plan_promises_a_bench_player_to_one_starter_in_kickoff_order() -> None:
+    players = [Player("early", "WR", 15.0), Player("late", "WR", 14.0), Player("b", "WR", 6.0)]
+    kicks = {
+        "early": SUNDAY,
+        "late": SUNDAY + timedelta(hours=3),
+        "b": SUNDAY + timedelta(hours=7),
+    }
+    lineup, plan = _plan(players, ["WR", "WR"], {"early", "late"}, kicks)
+    assert lineup.players == {"early", "late"} and plan == {"early": "b"}
