@@ -36,3 +36,13 @@ def test_inactive_swap_and_ir_curve_are_off_unless_set(tmp_path: Path) -> None:
     path.write_text(body.format(extra="inactive_swap = true\nir_return_curve = true\n"))
     on = load_config(path)
     assert on.inactive_swap and on.ir_return_curve
+
+
+@pytest.mark.parametrize("key", ["inactive_swap", "ir_return_curve"])
+def test_a_switch_that_is_not_true_or_false_is_rejected(tmp_path: Path, key: str) -> None:
+    path = tmp_path / "config.toml"
+    path.write_text(
+        f'season = 2026\nuser_id = "u"\nn_sims = 10\n{key} = "false"\n[leagues.a]\nid = "1"\n'
+    )
+    with pytest.raises(ValueError, match=key):
+        load_config(path)

@@ -27,6 +27,8 @@ def rate(status: str | None, week: int, current_week: int) -> float:
         )
         status = "Questionable"
     if status in LONG_TERM:
+        # shortcut: only used without the injury table; keeps four zero games then full health,
+        # not IR_RETURN_CURVE (sim/injuries.py), which `ir_return_curve` applies with the table
         return 0.0 if week < current_week + LONG_TERM_WEEKS else 1.0
     if week == current_week:
         return STATUS_RATE.get(status or "", 1.0)

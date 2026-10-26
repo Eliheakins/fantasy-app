@@ -382,6 +382,31 @@ def main() -> None:
     )
     print(f"verdict fitted IR curve: {'SHIPS' if ships else 'no'}")
 
+    # Rule for the time-on-IR curve (review round 2): it replaces the plain curve if its Brier
+    # is no worse in both 2024 and 2025; the paired bootstrap interval is reported with it. The
+    # first run had already shown its point Brier a little above the plain curve's, so the
+    # literal reading (no higher point Brier) is the one applied.
+    versus = score_table(test, ["fitted", "by_time"], base="fitted")
+    print("\nby time on IR against the plain curve (gain: plain Brier minus by_time, 95% CI)")
+    print(versus)
+    by_time_brier = versus.filter(pl.col("curve") == "by_time")["brier"]
+    plain_brier = versus.filter(pl.col("curve") == "fitted")["brier"]
+    worse = bool((by_time_brier > plain_brier).any())
+    print(f"verdict by time on IR: {'no (higher Brier)' if worse else 'SHIPS'}")
+    print("\nheld out, played share against each curve by time on IR and k (k 0 to 8)")
+    print(
+        test.filter(pl.col("k") <= 8)
+        .group_by("time", "k")
+        .agg(
+            pl.len().alias("n"),
+            pl.col("played").mean().round(3),
+            pl.col("fitted").mean().round(3),
+            pl.col("by_time").mean().round(3),
+        )
+        .sort("time", "k")
+    )
+    print("by_time curves:", {t: tuple(round(float(p), 4) for p in c) for t, c in by_time.items()})
+
     print("\nSecondary: Out for the N-th game in a row (N >= 2), current = table curve + chain")
     print(streak_check(opp))
 

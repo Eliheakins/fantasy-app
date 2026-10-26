@@ -4,12 +4,16 @@ Today a Questionable (or Doubtful) player's lineup value is p * E (chance of pla
 when he plays), so he starts only if that beats the bench. A manager can instead start him and,
 when the inactives come out 90 minutes before his kickoff, swap him for a bench player whose game
 has not started yet. Policies, each scored on actual lineup points:
-  A   (current) start by p * E, no swap.
-  A+s start by p * E, re-set the lineup at each inactives release (information only).
-  B   start by E; at each flagged player's inactives release, if he is inactive, re-set the
-      lineup with every player whose game has started locked (`lineup_with_locks`).
-  C   B for flagged players who have a swap option (a bench player eligible for his slot whose
-      kickoff is after his inactives release), A (p * E) for those who have none.
+  A       start by p * E, no swap (the app before the swap plan).
+  A+plan  start by p * E; an inactive flagged starter is replaced by the bench player the app's
+          plan names for him (`sim.lineup.swap_plan`: kickoff order, best eligible bench player
+          kicking off after his inactives release, each promised once). What the app supports.
+  A+s     start by p * E, re-set the whole lineup at each inactives release (a manager who also
+          starts a benched flagged player once he is active; the plan does not advise that).
+  B       start by E; at each flagged player's inactives release, if he is inactive, re-set the
+          lineup with every player whose game has started locked (`lineup_with_locks`).
+  C       B for flagged starters the swap plan covers, A (p * E) for the others (reference: it
+          shipped in the first round and was withdrawn after review).
 
 Rosters, slots and the hindsight-best lineup come from `research/regret.py` (constructions A and
 B, 2024 and 2025 weeks 1 to 17; the real 2026 rosters for weeks 1 to 6). Its population (players
@@ -26,9 +30,9 @@ manager knows), as do unflagged players with no game.
   Kickoffs: `nfl_schedules` (US Eastern).
 
 Paired per week: per construction, league and week, the mean over every team-week of policy minus
-A points, t over weeks. Ship rule (fixed before the run): B or C ships if its actual lineup points
-are higher in both leagues, pooled weekly |t| >= 2 in at least one, and no league-season t <= -1,
-in both roster constructions A and B.
+A points, t over weeks. Ship rule (fixed before the first run): B or C ships if its actual lineup
+points are higher in both leagues, pooled weekly |t| >= 2 in at least one, and no league-season
+t <= -1, in both roster constructions A and B. The same rule is reported for A+plan and A+s.
 
 Run from the repo root:  OMP_NUM_THREADS=3 uv run python research/questionable_swap_check.py
 """
@@ -46,18 +50,19 @@ import regret as r  # noqa: E402
 
 from fantasy import store  # noqa: E402
 from fantasy.sim.lineup import (  # noqa: E402
-    ELIGIBLE,
+    INACTIVES_LEAD,
     Lineup,
     Player,
     auto_lineup,
     lineup_slots,
     lineup_with_locks,
+    swap_plan,
 )
 from fantasy.stages import availability as av  # noqa: E402
 
 FLAGS = ("Questionable", "Doubtful")
-INACTIVES = timedelta(minutes=90)
-POLICIES = ("A", "A+s", "B", "C")
+INACTIVES = INACTIVES_LEAD
+POLICIES = ("A", "A+plan", "A+s", "B", "C")
 SEASONS = tuple(r.LAST_WEEK)
 KEY3 = ["gsis_id", "season", "week"]
 
@@ -215,39 +220,35 @@ def _lineup(players: list[Slot], values: dict[str, float], slots: list[str]) -> 
     return auto_lineup([Player(p.id, p.position, values[p.id]) for p in players], slots)
 
 
-def has_option(x: Slot, lineup: Lineup, players: list[Slot]) -> bool:
-    """A bench player eligible for x's slot whose game starts after x's inactives release."""
-    slot = next(s for s, pid in lineup.slots if pid == x.id)
-    release = x.kick - INACTIVES
-    return any(
-        y.id not in lineup.players
-        and y.id != x.id
-        and y.position in ELIGIBLE[slot]
-        and y.kick > release
-        for y in players
-    )
+def plan_for(players: list[Slot], values: dict[str, float], lineup: Lineup) -> dict[str, str]:
+    """The app's swap plan (`sim.lineup.swap_plan`): kickoff order, no bench player reused."""
+    pool = [Player(p.id, p.position, values[p.id]) for p in players]
+    flagged = {p.id for p in players if p.flagged}
+    return swap_plan(lineup, pool, flagged, {p.id: p.kick for p in players}, set())
 
 
 def opening_values(players: list[Slot], policy: str, slots: list[str]) -> dict[str, float]:
-    """Values the lineup is first set by. C keeps E only for flagged starters with an option."""
+    """Values the lineup is first set by. C keeps E only for flagged starters the swap plan
+    covers (each bench player promised once)."""
     full = {p.id: p.e for p in players}
     discounted = {p.id: p.p * p.e for p in players}
-    if policy in ("A", "A+s"):
+    if policy in ("A", "A+plan", "A+s"):
         return discounted
     if policy == "B":
         return full
     values = dict(full)
-    for _ in range(5):  # converges in one or two passes
+    while True:  # each pass moves a flagged starter to p * E, so this ends
         lineup = _lineup(players, values, slots)
-        changed = False
-        for x in players:
-            if x.flagged and x.id in lineup.players and values[x.id] == x.e:
-                if not has_option(x, lineup, players):
-                    values[x.id] = discounted[x.id]
-                    changed = True
-        if not changed:
-            break
-    return values
+        plan = plan_for(players, values, lineup)
+        uncovered = [
+            x
+            for x in players
+            if x.flagged and x.id in lineup.players and values[x.id] == x.e and x.id not in plan
+        ]
+        if not uncovered:
+            return values
+        for x in uncovered:
+            values[x.id] = discounted[x.id]
 
 
 def play_week(players: list[Slot], policy: str, slots: list[str]) -> tuple[float, frozenset[str]]:
@@ -256,6 +257,12 @@ def play_week(players: list[Slot], policy: str, slots: list[str]) -> tuple[float
     lineup = _lineup(players, values, slots)
     if policy == "A":
         return sum(p.points for p in players if p.id in lineup.players), lineup.players
+    if policy == "A+plan":  # each inactive flagged starter is replaced by his planned player
+        plan = plan_for(players, values, lineup)
+        inactive = {p.id for p in players if p.flagged and not p.active}
+        final = {plan.get(i, i) if i in inactive else i for i in lineup.players}
+        final = frozenset(i for i in final if i not in inactive)
+        return sum(p.points for p in players if p.id in final), final
     gone: set[str] = set()
     for release in sorted({p.kick - INACTIVES for p in players if p.flagged}):
         news = [p for p in players if p.flagged and p.kick - INACTIVES == release]
@@ -394,6 +401,14 @@ def self_check() -> None:
     assert play_week([active, bench_late], "B", slots)[0] == 25.0
     assert play_week([active, bench_late], "A", slots)[0] == 9.0
     assert play_week([active, bench_late], "A+s", slots)[0] == 25.0  # known active at release
+    assert play_week([active, bench_late], "A+plan", slots)[0] == 9.0  # the plan only swaps out
+    likely = Slot("q", "WR", 20.0, 0.5, True, False, 0.0, sunday)  # 0.5 * 20 > 8: q starts
+    assert play_week([likely, bench_late], "A+plan", slots)[0] == 9.0
+    assert play_week([likely, bench_early], "A+plan", slots)[0] == 0.0
+    # two flagged starters, one bench option: only the earlier game is covered
+    late = Slot("q2", "WR", 20.0, 0.5, True, False, 0.0, sunday + timedelta(hours=3))
+    last = Slot("b", "WR", 8.0, 1.0, False, True, 9.0, sunday + timedelta(hours=7))
+    assert play_week([likely, late, last], "A+plan", ["WR", "WR"])[0] == 9.0
 
 
 def main() -> None:
@@ -411,10 +426,11 @@ def main() -> None:
     print("\nd_pts and t: policy minus A, actual lineup points per team-week (paired by week)")
     print("changed: team-weeks whose final lineup differs from A's; d_changed: mean gain there")
     print(table)
-    for policy in ("B", "C"):
+    for policy in ("A+plan", "A+s", "B", "C"):
         print(f"verdict {policy}: {verdict(table, policy)}")
-    print("\nC minus A+s (outside the ship rule)")
-    print(versus(scored, "C", "A+s"))
+    for cand, ref in (("C", "A+s"), ("A+plan", "A+s"), ("C", "A+plan")):
+        print(f"\n{cand} minus {ref}")
+        print(versus(scored, cand, ref))
 
 
 if __name__ == "__main__":
