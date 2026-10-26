@@ -92,6 +92,8 @@ not deterministic (see the 2026-10-25 entry).
 | `ir_curve_check.py` | Measured IR return curve against 0 for four games then the chain? | Brier 0.25 to 0.13 and 0.11 | Shipped | 10-26 |
 | `season_calibration_check.py` | Are season odds calibrated on built seasons; tau, drift, roster churn? | Calibrated; win totals 10% narrow; no variant clears | Reported | 10-26 |
 | `waiver_rule_check.py` | Rest-of-season waiver rule against next-week and form rules (rolling priority)? | +0.94 wins a season over form (t 9.7) | Confirmed; digest ranking changed | 10-26 |
+| `blend_regret_check.py` | Does the source blend pick better lineups? | FFToday -0.66 to -0.75 and props -0.37 to -0.47 points a team-week of regret | Confirmed | 10-26 |
+| `winprob_check.py` | Do win-probability or ceiling lineups win more games than max points? | 0.03 points of win rate or less, t under 0.7 | Display only | 10-26 |
 
 ## Evaluation tools
 
