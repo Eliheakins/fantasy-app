@@ -18,8 +18,8 @@ export default function Home() {
           return list.length === 0 ? (
             <p className="text-muted">No data yet. Run <code>make refresh</code>, then reload this page.</p>
           ) : (
-            <div className="grid gap-4 lg:grid-cols-2">
-              {list.map((l) => <LeagueCard key={l.league_key} league={asViewedTeam(l, viewed)} />)}
+            <div className="grid gap-4 xl:grid-cols-2">
+              {list.map((l) => <LeagueCard key={l.league_key} league={asViewedTeam(l, viewed)} mine={viewed === null} />)}
             </div>
           );
         }}

@@ -54,3 +54,11 @@ export const EMPTY_WEEK = (week: number) =>
 
 export const LIVE_NOTE =
   "Live points are only as fresh as the last refresh; win chances count the points already scored.";
+
+/** "Week 7: live" / "Week 7: final" / mixed weeks name each state once. */
+export function weekStatus(rows: readonly ScoreboardRow[]): string {
+  const states = [...new Set(rows.map((r) => r.status.toLowerCase()))];
+  return states.join(", ");
+}
+export const hasMixedStatus = (rows: readonly ScoreboardRow[]): boolean => new Set(rows.map((r) => r.status)).size > 1;
+export const RANGE_LEGEND = "Bars: projected final score, 10 to 90% range, with the median marked.";

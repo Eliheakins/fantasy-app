@@ -18,6 +18,11 @@ const odds: WinProbability = {
   summaries: { expected_points: { objective: "expected_points", shown_points: 10, sleeper_points: 10, gap: 0, win_prob: 0.5 } },
 };
 
+const differing: WinProbability = {
+  ...odds,
+  comparison: [cmp("Expected points"), cmp("Win probability"), { ...cmp("Max ceiling"), floor: 70, ceiling: 140 }],
+};
+
 describe("LineupView", () => {
   test("shows empty message with no rows", () => {
     render(<LineupView base={[]} odds={null} week={3} />);
@@ -30,16 +35,22 @@ describe("LineupView", () => {
     expect(screen.getAllByText("Locked").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Questionable").length).toBeGreaterThan(0);
   });
-  test("ok state with simulation shows switch, no-swap line and collapsed note", () => {
+  test("one distinct lineup hides the switch and the table", () => {
     render(<LineupView base={[row("a")]} odds={odds} week={0} />);
+    expect(screen.queryByRole("radiogroup")).toBeNull();
+    expect(screen.getByText(/Every way of choosing picks this lineup/)).toBeTruthy();
+    expect(screen.getByText(/No lineup change is recommended/)).toBeTruthy();
+  });
+  test("ok state with simulation shows switch, no-swap line and collapsed note", () => {
+    render(<LineupView base={[row("a")]} odds={differing} week={0} />);
     expect(screen.getByRole("radiogroup")).toBeTruthy();
-    expect(screen.getByText(/No swap raises/)).toBeTruthy();
+    expect(screen.getByText(/No lineup change is recommended/)).toBeTruthy();
     expect(screen.getByText(/share one row/)).toBeTruthy();
     expect(screen.getByText("You are a slight favourite")).toBeTruthy();
   });
   test("choosing an objective swaps in that objective's lineup", async () => {
     const withLineups: WinProbability = {
-      ...odds,
+      ...differing,
       lineups: { max_ceiling: [row("z", { full_name: "Boom Player" })] },
     };
     render(<LineupView base={[row("a")]} odds={withLineups} week={0} />);

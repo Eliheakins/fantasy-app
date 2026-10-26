@@ -32,3 +32,24 @@ describe("lineup logic", () => {
     expect(injuryLabel({ injury: null, injury_note: null })).toBeNull();
   });
 });
+
+import { gapIsNoise, hasRange, pointsSoFar, slotHidesPosition, slotLabel } from "./logic";
+
+describe("lineup display helpers", () => {
+  test("names slots and hides the position only for flex slots", () => {
+    expect(slotLabel("SUPER_FLEX")).toBe("Superflex");
+    expect(slotLabel("QB")).toBe("QB");
+    expect(slotHidesPosition("FLEX")).toBe(true);
+    expect(slotHidesPosition("RB")).toBe(false);
+  });
+  test("treats a small gap as the same lineup", () => {
+    expect(gapIsNoise(0.2)).toBe(true);
+    expect(gapIsNoise(-2)).toBe(false);
+  });
+  test("shows a dash for points not yet scored and no bar for a zero range", () => {
+    expect(pointsSoFar({ actual: 0, locked: false })).toBe("–");
+    expect(pointsSoFar({ actual: 0, locked: true })).toBe("0.0");
+    expect(hasRange({ p10: 0, p90: 0 })).toBe(false);
+    expect(hasRange({ p10: 4, p90: 18 })).toBe(true);
+  });
+});

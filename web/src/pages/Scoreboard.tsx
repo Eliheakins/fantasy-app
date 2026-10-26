@@ -8,6 +8,9 @@ import {
   FIRST_WEEK,
   LAST_WEEK,
   LIVE_NOTE,
+  RANGE_LEGEND,
+  hasMixedStatus,
+  weekStatus,
   type ScoreboardRow,
   clampWeek,
 } from "@/features/scoreboard/logic";
@@ -21,21 +24,20 @@ const STEP_CLASS = "min-h-[44px] min-w-[44px] rounded-md border border-border px
 export function ScoreboardView({ rows, week, asOf }: { rows: ScoreboardRow[]; week: number; asOf: string | null }) {
   if (rows.length === 0) return <p className="py-6 text-body text-muted">{EMPTY_WEEK(week)}</p>;
   const live = rows.some((r) => r.status !== "Final");
+  const mixed = hasMixedStatus(rows);
   return (
     <>
-      <ul aria-label={`Week ${week} matchups`} className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <p className="measure text-caption text-muted">
+        Week {week}: {weekStatus(rows)}. {live && (asOf ? `Points as of ${asOf}. ` : "")}
+        {live && `${LIVE_NOTE} ${RANGE_LEGEND}`}
+      </p>
+      <ul aria-label={`Week ${week} matchups`} className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
         {rows.map((row) => (
           <li key={`${row.week}-${row.a.roster_id}`}>
-            <MatchupCard row={row} />
+            <MatchupCard row={row} showStatus={mixed} />
           </li>
         ))}
       </ul>
-      {live && (
-        <p className="mt-4 text-caption text-muted">
-          {asOf ? `Points as of ${asOf}. ` : ""}
-          {LIVE_NOTE}
-        </p>
-      )}
     </>
   );
 }
@@ -56,7 +58,7 @@ export default function Scoreboard() {
         title="Scoreboard"
         actions={
         <div role="group" aria-label="Week" className="flex items-center gap-2">
-          <button type="button" className={STEP_CLASS} disabled={week <= FIRST_WEEK} onClick={() => go(week - 1)} aria-label="Previous week">
+          <button type="button" className={STEP_CLASS} disabled={week <= FIRST_WEEK} onClick={() => go(week - 1)} aria-label={`Previous week, ${week - 1}`}>
             ‹
           </button>
           <label className="flex items-center gap-2 text-body">
@@ -71,7 +73,7 @@ export default function Scoreboard() {
               ))}
             </select>
           </label>
-          <button type="button" className={STEP_CLASS} disabled={week >= LAST_WEEK} onClick={() => go(week + 1)} aria-label="Next week">
+          <button type="button" className={STEP_CLASS} disabled={week >= LAST_WEEK} onClick={() => go(week + 1)} aria-label={`Next week, ${week + 1}`}>
             ›
           </button>
         </div>

@@ -100,8 +100,8 @@ export const CAVEAT_BASE =
   "players on bye are left out. Players whose game has started are locked in place: locked " +
   "starters stay, locked bench players are not recommended. A game counts as over 200 " +
   "minutes after kickoff, and points are as fresh as the last refresh. The " +
-  "injury column shows the chance of playing this game and the next, measured from 2018 to " +
-  "2025 reports by injury type and practice (hamstrings and feet linger, a Questionable " +
+  "status column shows the chance of playing this game and the next, measured from injury " +
+  "reports in past seasons (hamstrings and feet linger, a Questionable " +
   "player who did not practice rarely plays), and players who play through an injury are " +
   "discounted a little. The range " +
   "is where about 80 percent of outcomes have landed for players like this. In the win " +
@@ -114,6 +114,31 @@ export const COMPARISON_CAPTION =
   "half the simulated games and scored on the other half.";
 
 export const NO_SWAP_TEXT =
-  "No swap raises the win probability enough to matter: one flex slot is a small part " +
+  "No lineup change is recommended: one flex slot is a small part " +
   "of a team score that spreads about 30 points, so trading expected points for " +
-  "upside rarely pays. The comparison below shows what each choice does.";
+  "upside rarely pays.";
+
+const SLOT_LABELS: Record<string, string> = { SUPER_FLEX: "Superflex", FLEX: "Flex", BN: "Bench" };
+const FLEX_SLOTS = new Set(["SUPER_FLEX", "FLEX", "BN"]);
+
+/** Readable slot name: "SUPER_FLEX" becomes "Superflex". */
+export const slotLabel = (slot: string): string => SLOT_LABELS[slot] ?? slot;
+/** The position is only news when the slot does not already say it. */
+export const slotHidesPosition = (slot: string): boolean => FLEX_SLOTS.has(slot);
+
+/** True when the four objectives would play different lineups, so the picker means something. */
+export const lineupsDiffer = (rows: readonly ComparisonRow[]): boolean => collapseComparison(rows).length > 1;
+
+const NOISE_GAP_POINTS = 0.5;
+/** A gap this small is the same lineup as far as the simulation can tell. */
+export const gapIsNoise = (gap: number): boolean => Math.abs(gap) < NOISE_GAP_POINTS;
+
+/** "–" for a game that has not produced points, else the points. */
+export function pointsSoFar(row: Pick<LineupRow, "actual" | "locked">): string {
+  return row.actual === 0 && !row.locked ? "–" : formatNumber(row.actual);
+}
+
+const MIN_SPREAD_POINTS = 0.05;
+/** A range with no spread is a finished game or a player with no outlook (out, bye): no bar. */
+export const hasRange = (row: Pick<LineupRow, "p10" | "p90">): boolean =>
+  row.p10 != null && row.p90 != null && row.p90 > 0 && row.p90 - row.p10 >= MIN_SPREAD_POINTS;
