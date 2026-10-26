@@ -19,6 +19,7 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 ## Where things are
 
 - Plan: `docs/one-pager.md`. Backlog: `docs/backlog.md` (canonical story IDs). Decisions log: `docs/decisions.md`.
+- Research: `research/README.md` indexes every test script by topic with its status; plans and surveys are in `research/notes/`.
 - Log every decision in `docs/decisions.md` as it is made.
 
 ## Conventions
@@ -51,7 +52,7 @@ A missing table for a layer in step 4, or for calibration or the Sleeper blend, 
 - My teams: Colgate "Lisan Al-Caleb", YinzBurgh "LaPorta Potty" (Sleeper's `is_me` flag, not the league's top team).
 - `data_api.py` (553 lines) re-exports entry points that live in private sibling modules (`_engine`, `_lineup`, `_market`, `_outlook`, `_schemas`, and others). Tests patch `data_api.leagues` (`tests/test_api.py`, `tests/test_data_api_engine.py`), so keep any function that calls `leagues` in `data_api.py`, and never call it from a `_`-module.
 - The learned model's past-game projections for 2019 and 2020 come from models that saw later seasons, so `store.projection_table()` drops them; never fit residual sizes or effects on them. Model features must use only games before the target game: pass a horizon shift to every lagged join (`learn.lag_asof`, `latest_asof`), and add a test.
-- FantasyPros weekly rankings (`nfl_ecr`) are private-use only: keep them under the gitignored `data/` and never commit or share them. No paid data (user decision, 2026-10-23).
+- FantasyPros weekly rankings (`nfl_ecr`) are private-use only: keep them under the gitignored `data/` and never commit or share them. No paid data (user decision, 2026-10-23). A free source may be scraped and stored unless its terms explicitly forbid it (user decision, 2026-10-26; sources checked so far are in `research/notes/2026-10-26-research-survey.md`); third-party data is never committed.
 - `make serve` also runs a live refresh every 10 minutes while a game of the current week is on (`live_refresh.py`: `sync_week` then `simulate.run(archive=False)`; `LIVE_REFRESH=off` disables it). Never let a live tick append to `sim_season_history`.
 - Team selector: `?team=<roster id>` on any `/api/leagues/{league}/...` route makes that team 'me' (`_engine.viewing_team`). Anything that decides 'my team' must go through `_league()` or `data_api._my_league`, never read `league_teams.is_me` directly.
 - Lineup values for the current week include players whose game is over at their actual points (`_engine._week_values`); do not read `moves.week_values` directly for a current-week lineup.
