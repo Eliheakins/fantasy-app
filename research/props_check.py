@@ -89,8 +89,9 @@ def norm_name(name: pl.Expr) -> pl.Expr:
 
 
 def poisson_lambda(line: float, p_over: float) -> float:
-    """lambda with P(X > line) = p_over; P(X <= k - 1) = Q(k, lambda) for k = ceil(line)."""
-    k = int(np.ceil(line))
+    """lambda with P(X > line) = p_over; P(X <= k - 1) = Q(k, lambda) for k = floor(line) + 1
+    (was ceil(line), off by one for an integer line; fixed 2026-10-26)."""
+    k = int(np.floor(line)) + 1
     return float(brentq(lambda lam: gammaincc(k, lam) - (1 - p_over), 1e-6, 60.0))
 
 

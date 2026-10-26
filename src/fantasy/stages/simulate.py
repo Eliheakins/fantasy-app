@@ -18,7 +18,7 @@ import polars as pl
 from fantasy import store
 from fantasy.config import load_config
 from fantasy.sim.availability import kickoffs, remaining_share, scale_projections
-from fantasy.sim.blend import blend
+from fantasy.sim.blend import blend_all
 from fantasy.sim.environment import Situation, apply_environment
 from fantasy.sim.environment import effects_dict as environment_effects
 from fantasy.sim.injuries import Flag, InjuryModel, injury_projections
@@ -120,25 +120,33 @@ def live_clock(
 SLEEPER_ZEROED_STATUSES = frozenset({"Questionable", "Doubtful"})
 
 
-def _blend_sleeper(
+def _blend_sources(
     projections: pl.DataFrame,
     league_id: str,
     id_map: pl.DataFrame,
     flags: dict[str, Flag],
+    current: int,
 ) -> pl.DataFrame:
-    """Mix in Sleeper's projections for the weeks it has them (the next few)."""
-    try:
-        theirs = store.read_table("proj_sleeper").filter(pl.col("league_id") == league_id)
-    except FileNotFoundError:
-        return projections
-    mapped = theirs.join(id_map, on="sleeper_id").drop_nulls("gsis_id")
+    """The equal mean of ours and each configured source a player has (`blend_sources`):
+    Sleeper for the weeks it projects (the next four), FFToday and prop lines for the current
+    week only. A missing table is skipped."""
+    others = []
+    for source in load_config().blend_sources:
+        table = {"sleeper": "proj_sleeper", "props": "proj_props"}.get(source, "proj_outside")
+        try:
+            theirs = store.read_table(table).filter(pl.col("league_id") == league_id)
+        except FileNotFoundError:
+            continue
+        if source == "sleeper":
+            theirs = theirs.join(id_map, on="sleeper_id").drop_nulls("gsis_id")
+        else:
+            theirs = theirs.filter(pl.col("week") == current)
+        if table == "proj_outside":
+            theirs = theirs.filter(pl.col("source") == source)
+        others.append(theirs.select("gsis_id", "week", other=pl.col("projection")))
+    # an outside 0 for a Questionable or Doubtful player is dropped like Sleeper's
     zeroed = frozenset(g for g, f in flags.items() if f[0] in SLEEPER_ZEROED_STATUSES)
-    return blend(
-        projections,
-        mapped.select("gsis_id", "week", other=pl.col("projection")),
-        "gsis_id",
-        zeroed,
-    )
+    return blend_all(projections, others, "gsis_id", zeroed)
 
 
 # effects measured in points, so they scale with a league's scoring; the rest are ratios
@@ -406,7 +414,7 @@ def _layered_projections(
     sleeper_players: pl.DataFrame,
     projection_table: pl.DataFrame,
 ) -> tuple[pl.DataFrame, dict[str, Flag]]:
-    """Future projections after calibration, the Sleeper blend and the injury, outlook and
+    """Future projections after calibration, the source blend and the injury, outlook and
     environment layers, and the injury flags they used."""
     future = projection_table.filter(
         (pl.col("league_id") == lid) & pl.col("is_future") & (pl.col("week") >= current)
@@ -418,18 +426,19 @@ def _layered_projections(
         .filter(pl.col("gsis_id").is_not_null())
     )
     flags = _injury_flags(flagged, current)
-    # our baseline is calibrated by size before it is blended with Sleeper's own projections
-    blended = _blend_sleeper(
+    # our baseline is calibrated by size before it is blended with the other sources
+    blended = _blend_sources(
         calibrated(future).select("gsis_id", "week", "position", "team", "projection"),
         lid,
         id_map,
         flags,
+        current,
     )
     try:
         model = InjuryModel(store.read_table("injury_effects"))
     except FileNotFoundError:
         model = None
-    # Sleeper zeroes Out and IR players, which the injury scaling also zeroes; its 0 for
+    # Sleeper zeroes Out and IR players, which the injury scaling also zeroes; any source's 0 for
     # Questionable and Doubtful players is dropped in the blend, so the scaling applies once
     if model is None:
         projections = scale_projections(blended, {g: f[0] for g, f in flags.items()}, current)

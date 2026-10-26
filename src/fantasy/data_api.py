@@ -523,11 +523,22 @@ def missing_layers(data_dir: Path = store.DATA_DIR) -> list[str]:
     ]
     if config.projection_model == "learned":
         layers.append(("learned projections", "proj_learned", "derived"))
-    return [
+    missing = [
         label
         for label, table, area in layers
         if not store.table_path(table, area, data_dir).exists()
     ]
+    # prop_points writes these for the current week only, so an empty table is a missing source
+    labels = {"fftoday": "FFToday projections", "props": "prop lines"}
+    for source in [s for s in config.blend_sources if s in labels]:
+        table = "proj_props" if source == "props" else "proj_outside"
+        path = store.table_path(table, "derived", data_dir)
+        rows = pl.scan_parquet(path) if path.exists() else None
+        if rows is not None and source != "props":
+            rows = rows.filter(pl.col("source") == source)
+        if rows is None or rows.select(pl.len()).collect().item() == 0:
+            missing.append(labels[source])
+    return missing
 
 
 def refresh_live() -> int:

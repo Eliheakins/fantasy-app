@@ -5,6 +5,10 @@ user_id = "1385113153716641792"
 n_sims = 20000
 projection_model = "learned"  # or "baseline" (the rolling average); learned needs the learn stage
 environment_layer = false  # no held-out gain on the learned projections (docs/decisions.md)
+outside_sources = ["fftoday"]  # archived each refresh; [] turns the fetch off
+# current week: equal mean of ours and these (Sleeper also weeks 2 to 4 ahead); [] = ours only
+blend_sources = ["sleeper", "fftoday", "props"]
+prop_positions = ["RB", "WR"]  # QB and TE props were not significant (docs/decisions.md)
 
 [leagues.colgate]
 id = "1394105943137992704"

@@ -177,6 +177,19 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     ),
     # written by sleeper_projections (area: archive, only ever appended)
     "sleeper_proj_snapshots": _cols(strings="fetched_at sleeper_id stats", ints="week"),
+    # written by outside_projections (area: archive, only ever appended): other sites' stat lines
+    # (JSON, Sleeper stat keys) by name, nflverse team code and position
+    "outside_proj_snapshots": _cols(
+        strings="source fetched_at source_id name team position stats", ints="season week"
+    ),
+    # written by prop_points (area: derived): the current week's points implied by prop lines, and
+    # each outside source's (FFToday) projection scored under the league, for the blend
+    "proj_props": _cols(
+        strings="league_id gsis_id fetched_at", ints="season week", floats="projection"
+    ),
+    "proj_outside": _cols(
+        strings="league_id gsis_id source fetched_at", ints="season week", floats="projection"
+    ),
     # written by sleeper_projections (area: derived): Sleeper's projections under each league
     "proj_sleeper": _cols(strings="league_id sleeper_id", ints="week", floats="projection"),
     # written by injuries (area: derived): chance of playing the next four games by injury report

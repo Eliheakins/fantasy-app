@@ -36,13 +36,13 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 Stages (`src/fantasy/stages/`, run by `make refresh` in this order) read and write parquet tables registered in `store.SCHEMAS`. `src/fantasy/sim/` holds the pure logic; `stages/simulate.py` builds a `LeagueData` from the tables and `data_api.py` serves it to the API in `src/fantasy/api*.py`, which the React app in `web/` calls.
 
 1. `sync_sleeper`, `sleeper_projections`, `ingest_nfl`, `crosswalk`: raw data and the Sleeper to nflverse ID map.
-2. `score`, `streaming`: points per league's scoring; K and DEF.
+2. `score`, `prop_points`, `streaming`: points per league's scoring; this week's prop-implied points (latest `make odds-slate` snapshot) and FFToday points (`proj_props`, `proj_outside`); K and DEF.
 3. `project`: rolling baseline (`proj_baseline`). `learn`: gradient-boosted model on lagged stats plus role data (`proj_learned`, same schema; `projection_model` in `config.toml` picks which one every later stage reads, through `store.projection_table()`). `availability`: chance of playing this week (`availability`). `distributions`: size calibration, per-tier marginals and spreads, correlations, fit on the chosen projections.
 4. `injuries`, `outlook`, `environment`: measured effects (tables `injury_effects`, `outlook_effects`, `environment_effects`).
-5. `simulate`: applies calibration, the Sleeper blend (`sim/blend.py`), injury (with the availability model for a flagged player's next game), outlook and, if `environment_layer` is on, environment layers, then season odds.
+5. `simulate`: applies calibration, the source blend (`sim/blend.py`: current week the equal mean of ours and each `blend_sources` entry a player has, the next three weeks ours and Sleeper), injury (with the availability model for a flagged player's next game), outlook and, if `environment_layer` is on, environment layers, then season odds.
 6. `digest`, `market_values`: the digest's stored waiver and trade ideas (`move_ideas`) and FantasyCalc market values, both after `simulate`.
 
-A missing table for a layer in step 4, or for calibration or the Sleeper blend, is skipped without error; the stale banner lists what is missing (`data_api.missing_layers`).
+A missing table for a layer in step 4, or for calibration or a blend source, is skipped without error; the stale banner lists what is missing (`data_api.missing_layers`).
 
 ## Gotchas
 
