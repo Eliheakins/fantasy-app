@@ -634,3 +634,13 @@ def test_scoreboard_returns_one_nested_row_per_matchup_and_follows_the_team(
     other = body(client.get("/api/leagues/t/scoreboard?team=5"))["data"][0]
     assert other["matchup_id"] == 3 and other["a"]["is_me"]
     assert client.get("/api/leagues/t/scoreboard?week=99").status_code == 422
+
+
+def test_scorecard_is_an_empty_ok_envelope_before_anything_is_archived(
+    client: TestClient,
+) -> None:
+    out = body(client.get("/api/leagues/t/scorecard"))
+    assert out["status"] == "ok", out
+    assert out["data"]["rows"] == [] and out["data"]["weeks_archived"] == []
+    assert out["data"]["has_quantiles"] is False
+    assert body(client.get("/api/leagues/nope/scorecard"))["error"]["code"] == "invalid"

@@ -333,6 +333,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/scorecard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Scorecard
+         * @description Archived pre-kickoff projections against actual points. An instant read of parquet.
+         */
+        get: operations["scorecard_api_leagues__league__scorecard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/trade-partners": {
         parameters: {
             query?: never;
@@ -590,6 +610,18 @@ export interface components {
              */
             status: "ok" | "running" | "error";
             data: components["schemas"]["RefreshData"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[ScorecardData] */
+        Envelope_ScorecardData_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["ScorecardData"] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -1372,6 +1404,57 @@ export interface components {
             points: number;
             /** Share Left */
             share_left: number;
+        };
+        /** ScorecardData */
+        ScorecardData: {
+            /** Rows */
+            rows: components["schemas"]["ScorecardRow"][];
+            excluded: components["schemas"]["ScorecardExcluded"];
+            /** Weeks Archived */
+            weeks_archived: number[];
+            /** Weeks Scored */
+            weeks_scored: number[];
+            /** Has Quantiles */
+            has_quantiles: boolean;
+            /** Sleeper First Fetch */
+            sleeper_first_fetch: string | null;
+        };
+        /** ScorecardExcluded */
+        ScorecardExcluded: {
+            /** Games */
+            games: number;
+            /** Scored */
+            scored: number;
+            /** Not Final */
+            not_final: number;
+            /** No Kickoff */
+            no_kickoff: number;
+            /** No Snapshot */
+            no_snapshot: number;
+            /** Sleeper Missing */
+            sleeper_missing: number;
+        };
+        /** ScorecardRow */
+        ScorecardRow: {
+            /** Week */
+            week: number | null;
+            /** Position */
+            position: string;
+            /** Tier */
+            tier: number;
+            /**
+             * Model
+             * @enum {string}
+             */
+            model: "learned" | "baseline" | "sleeper";
+            /** N */
+            n: number;
+            /** Mae */
+            mae: number | null;
+            /** Rmse */
+            rmse: number | null;
+            /** Bias */
+            bias: number | null;
         };
         /** SeasonOddsRow */
         SeasonOddsRow: {
@@ -2225,6 +2308,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_ScoreboardRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scorecard_api_leagues__league__scorecard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_ScorecardData_"];
                 };
             };
             /** @description Validation Error */
