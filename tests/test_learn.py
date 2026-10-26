@@ -3,7 +3,7 @@ import polars as pl
 import pytest
 
 from fantasy import store
-from fantasy.stages import learn
+from fantasy.stages import learn, vacancy
 
 GAME_SCHEMA = {
     "league_id": pl.String,
@@ -355,8 +355,9 @@ def test_vacancy_comes_from_the_games_report_one_game_ahead_and_nobody_further_a
         orient="row",
     )  # fmt: skip
     usage = pl.DataFrame(
-        {"gsis_id": ["B"], "season": [2025], "week": [4], "tgt": [0.3], "car": [0.0], "snap": [0.9]}
-    )
+        {"gsis_id": ["B"], "season": [2025], "week": [4], "team": ["KC"], "tgt": [0.3],
+         "car": [0.1], "snap": [0.9]}
+    )  # fmt: skip
     extras = learn.Extras(
         roster=_empty("nfl_rosters_weekly"),
         depth=_empty("nfl_depth"),
@@ -374,4 +375,28 @@ def test_vacancy_comes_from_the_games_report_one_game_ahead_and_nobody_further_a
     now = learn.attach_extras(target, extras, schedule, horizon=1)
     ahead = learn.attach_extras(target, extras, schedule, horizon=2)
     assert now["vac_out_tgt"].item() == pytest.approx(0.3)
-    assert ahead["vac_out_tgt"].item() == 0.0  # the week 5 report does not exist two weeks before
+    # the week 5 report does not exist two weeks before: nobody listed, the chart's own rank
+    assert [ahead[c].item() for c in vacancy.VAC_COLUMNS[:-1]] == [0.0] * 6
+    assert ahead["eff_depth"].item() == ahead["depth_rank"].item()
+
+
+def test_future_weeks_without_a_report_use_a_model_without_the_vacancy_columns(
+    monkeypatch,  # type: ignore[no-untyped-def]
+) -> None:
+    widths: dict[int, int] = {}
+
+    def record(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray) -> np.ndarray:
+        widths[len(widths)] = x_test.shape[1]
+        return np.zeros(x_test.shape[0])
+
+    monkeypatch.setattr(learn, "fit_predict", record)
+    columns = [*learn.STATE_FEATURES, *learn.LINE_FEATURES, *learn.EXTRA_FEATURES]
+    row = {c: 1.0 for c in columns} | {"position": "WR", "points": 5.0}
+    history = pl.DataFrame([row | {"week": 3}])
+    future = pl.DataFrame([row | {"week": 8}, row | {"week": 9}])
+    out = learn.predict_future(history, future, report_week=8)
+    assert sorted(out["week"].to_list()) == [8, 9]
+    with_vacancy = learn.design(history, True).shape[1]
+    without = learn.design(history, True, vacancy=False).shape[1]
+    assert with_vacancy - without == len(vacancy.VAC_COLUMNS)
+    assert sorted(widths.values()) == [without, with_vacancy]  # week 9 has no report yet

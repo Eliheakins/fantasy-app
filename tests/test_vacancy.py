@@ -9,13 +9,30 @@ REPORT = {**KEY, "team": pl.String, "position": pl.String, "status": pl.String,
 WEIGHTS = {"Full": 0.25, "Limited": 0.35, "DNP": 0.6, None: 0.4}
 
 
-def usage(rows: list[tuple[str, int, float, float, float]]) -> pl.DataFrame:
-    """(player, week, target share, carry share, snap share) in 2025."""
+def usage(rows: list[tuple[str, int, float, float, float]], team: str = "KC") -> pl.DataFrame:
+    """(player, week, target share, carry share, snap share) for `team` in 2025."""
     return pl.DataFrame(
-        [(g, 2025, w, t, c, s) for g, w, t, c, s in rows],
-        schema={**KEY, "tgt": pl.Float64, "car": pl.Float64, "snap": pl.Float64},
+        [(g, 2025, w, team, t, c, s) for g, w, t, c, s in rows],
+        schema={**KEY, "team": pl.String, "tgt": pl.Float64, "car": pl.Float64,
+                "snap": pl.Float64},
         orient="row",
+    )  # fmt: skip
+
+
+def sleeper(statuses: list[str | None], ids: list[str]) -> tuple[pl.DataFrame, pl.DataFrame]:
+    """Sleeper players (their own gsis_id column mostly null, as in the real file) and id_map."""
+    sleeper_ids = [str(i) for i in range(len(statuses))]
+    players = pl.DataFrame(
+        {
+            "sleeper_id": sleeper_ids,
+            "gsis_id": [None] * len(statuses),
+            "position": ["WR"] * len(statuses),
+            "team": ["KC"] * len(statuses),
+            "injury_status": statuses,
+        },
+        schema_overrides={"gsis_id": pl.String},
     )
+    return players, pl.DataFrame({"sleeper_id": sleeper_ids, "gsis_id": ids})
 
 
 def report(rows: list[tuple[str, int, str, str | None, str | None]]) -> pl.DataFrame:
@@ -114,49 +131,77 @@ def test_the_final_report_keeps_only_game_statuses_and_known_practice_labels() -
     assert out["practice"].to_list() == ["DNP", None, "Full"]
 
 
-def test_sleepers_status_maps_to_the_reports_categories_with_practice_unknown() -> None:
-    players = pl.DataFrame(
-        {
-            "sleeper_id": ["1", "2", "3", "4", "5"],
-            "position": ["WR", "RB", "TE", "WR", "WR"],
-            "team": ["KC", "LAR", "KC", "KC", "KC"],
-            "injury_status": ["Out", "Questionable", "IR", "Doubtful", None],
-        }
-    )
-    id_map = pl.DataFrame({"sleeper_id": ["1", "2", "3", "4", "5"], "gsis_id": list("BCDEF")})
-    out = vacancy.sleeper_report(players, id_map, 2025, 3).sort("gsis_id")
+def test_sleepers_out_status_stands_in_with_practice_unknown_and_nflverse_team_codes() -> None:
+    players, id_map = sleeper(["Out", "Questionable", "IR", "Doubtful", None], list("BCDEF"))
+    players = players.with_columns(pl.Series("team", ["LAR", "KC", "KC", "KC", "KC"]))
+    out = vacancy.sleeper_report(players, id_map, 2025, 3)
     assert out.columns == list(REPORT)
-    assert out["gsis_id"].to_list() == ["B", "C", "E"]  # IR is not a game status
-    assert out["status"].to_list() == ["Out", "Questionable", "Doubtful"]
-    assert out["team"].to_list() == ["KC", "LA", "KC"]  # nflverse team codes
-    assert out["practice"].null_count() == 3
+    # Questionable and Doubtful are unreliable before the final report; IR is not a game status
+    assert out["gsis_id"].to_list() == ["B"]
+    assert out["status"].to_list() == ["Out"]
+    assert out["team"].to_list() == ["LA"]
+    assert out["practice"].null_count() == 1
+
+
+def test_a_player_listed_twice_by_sleeper_stands_in_once() -> None:
+    players, id_map = sleeper(["Out", "Out"], ["B", "B"])
+    out = vacancy.sleeper_report(players, id_map, 2025, 3)
+    assert out["gsis_id"].to_list() == ["B"]
+
+
+def test_sleepers_unmapped_out_players_are_counted() -> None:
+    players, id_map = sleeper(["Out", "Out", "Questionable"], ["B", None, None])
+    assert vacancy.unmapped_out(players, id_map) == 1
 
 
 def test_the_stand_in_and_the_report_give_the_same_features_for_the_same_statuses() -> None:
     use = usage([("B", 2, 0.2, 0.1, 0.9), ("C", 2, 0.1, 0.0, 0.6)])
-    final = report([("B", 3, "WR", "Out", None), ("C", 3, "WR", "Questionable", None)])
-    players = pl.DataFrame(
-        {"sleeper_id": ["1", "2"], "position": ["WR", "WR"], "team": ["KC", "KC"],
-         "injury_status": ["Out", "Questionable"]}
-    )  # fmt: skip
-    stand_in = vacancy.sleeper_report(
-        players, pl.DataFrame({"sleeper_id": ["1", "2"], "gsis_id": ["B", "C"]}), 2025, 3
-    )
+    final = report([("B", 3, "WR", "Out", None)])
+    players, id_map = sleeper(["Out", None], ["B", "C"])
+    stand_in = vacancy.sleeper_report(players, id_map, 2025, 3)
     assert features(final, use) == features(stand_in, use)
 
 
 def test_a_teams_week_uses_the_final_report_once_it_has_game_statuses_else_the_stand_in() -> None:
     final = pl.concat(
         [
-            report([("B", 3, "WR", "Out", "DNP")]),
+            report([("B", 3, "WR", "Out", "DNP"), ("B", 2, "WR", "Out", "DNP")]),
             pl.DataFrame([("X", 2025, 3, "BUF", "WR", None, "Full")], schema=REPORT, orient="row"),
         ]
     )
     stand_in = pl.DataFrame(
-        [("C", 2025, 3, "KC", "WR", "Out", None), ("Y", 2025, 3, "BUF", "WR", "Out", None)],
+        [
+            ("B", 2025, 3, "KC", "WR", "Out", None),
+            ("C", 2025, 3, "KC", "WR", "Out", None),
+            ("Y", 2025, 3, "BUF", "WR", "Out", None),
+            ("Y", 2025, 3, "BUF", "WR", "Out", None),
+        ],
         schema=REPORT,
         orient="row",
     )
-    out = vacancy.with_stand_in(final, stand_in, 2025, 3).sort("gsis_id")
+    out = vacancy.with_stand_in(final, stand_in, 2025, 3)
     # KC has a game status on the final report; BUF has only a practice row, so Sleeper's is used
-    assert out.filter(pl.col("week") == 3)["gsis_id"].to_list() == ["B", "Y"]
+    assert sorted(out.filter(pl.col("week") == 3)["gsis_id"].to_list()) == ["B", "Y"]
+    assert out.filter(pl.col("week") == 2).height == 1  # other weeks are untouched
+    assert vacancy.report_sources(final, 2025, 3, ["KC", "BUF"]) == {
+        "KC": "final",
+        "BUF": "sleeper",
+    }
+
+
+def test_an_out_teammate_vacates_only_the_usage_he_had_with_this_team() -> None:
+    traded = pl.concat(
+        [usage([("B", 1, 0.3, 0.0, 0.9)], team="BUF"), usage([("B", 2, 0.1, 0.0, 0.4)])]
+    )
+    rep = report([("B", 3, "WR", "Out", None)])
+    assert features(rep, traded)["vac_out_tgt"] == pytest.approx(0.1)
+    only_buf = usage([("B", 1, 0.3, 0.0, 0.9)], team="BUF")
+    assert features(rep, only_buf)["vac_out_tgt"] == 0.0
+
+
+def test_no_questionable_history_gives_neutral_weights_with_a_warning(capsys) -> None:  # type: ignore[no-untyped-def]
+    empty = pl.DataFrame(schema=REPORT)
+    snaps = pl.DataFrame(schema={**KEY, "offense_snaps": pl.Float64})
+    weights = vacancy.sit_weights(empty, snaps, 2023)
+    assert weights == {None: 0.0}
+    assert "WARNING" in capsys.readouterr().out
