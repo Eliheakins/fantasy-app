@@ -134,6 +134,16 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "waiver_bid": _I,
     },
     "trending": {"fetched_at": _S, "kind": _S, "sleeper_id": _S, "count": _I},
+    # written by news_archive (area: archive, only ever appended): one snapshot a day of the
+    # players-file fields that change through the week; fetched_at is the file's fetch time
+    "sleeper_player_status": {
+        **_cols(
+            strings="sleeper_id team position status injury_status injury_body_part injury_notes "
+            "injury_start_date practice_participation depth_chart_position",
+            ints="depth_chart_order news_updated",
+        ),
+        **_cols(strings="team_changed_at fetched_at"),
+    },
     # written by crosswalk (area: derived)
     "id_map": {"sleeper_id": _S, "gsis_id": _S, "nfl_team": _S, "match_method": _S},
     # written by score (area: derived)
