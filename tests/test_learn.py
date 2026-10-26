@@ -114,6 +114,29 @@ def test_rows_without_a_stat_line_are_projected_but_never_trained_on(monkeypatch
     assert later["points"].null_count() == 1
 
 
+def test_a_stat_less_game_takes_its_team_weeks_context_and_is_not_reported(capsys) -> None:  # type: ignore[no-untyped-def]
+    keys = {"league_id": ["L"] * 3, "season": [2025] * 3, "week": [5] * 3}
+    rows = pl.DataFrame(keys | {"gsis_id": ["A", "B", "C"], "team": ["KC", "KC", "SF"]})
+    baseline = pl.DataFrame(
+        {
+            "league_id": ["L"],
+            "gsis_id": ["A"],
+            "season": [2025],
+            "week": [5],
+            "team": ["KC"],
+            "context": [1.05],
+        }
+    )
+    statless = pl.DataFrame(
+        {"league_id": ["L", "L"], "gsis_id": ["B", "C"], "season": [2025] * 2, "week": [5, 5]}
+    )
+    out = learn.with_context(rows, baseline, statless).sort("gsis_id")
+    assert out["context"].to_list() == [1.05, 1.05, 1.0]  # SF's team-week has no baseline row
+    assert "no proj_baseline row" not in capsys.readouterr().out
+    learn.with_context(rows, baseline, statless.head(0))
+    assert "2 projection rows have no proj_baseline row" in capsys.readouterr().out
+
+
 def test_the_model_is_deterministic_and_learns_a_simple_signal() -> None:
     rng = np.random.default_rng(0)
     x = rng.uniform(0.0, 10.0, size=(3500, 3))  # points cannot be negative, so neither is y
