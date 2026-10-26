@@ -1,4 +1,4 @@
-.PHONY: setup test lint fmt check refresh serve dev web-build
+.PHONY: setup test lint fmt check refresh serve dev web-build odds odds-slate
 
 refresh:
 	uv run python -m fantasy.stages.sync_sleeper
@@ -7,6 +7,7 @@ refresh:
 	uv run python -m fantasy.stages.ingest_nfl
 	uv run python -m fantasy.stages.crosswalk
 	uv run python -m fantasy.stages.score
+	uv run python -m fantasy.stages.prop_points
 	uv run python -m fantasy.stages.streaming
 	uv run python -m fantasy.stages.project
 	uv run python -m fantasy.stages.learn
@@ -51,3 +52,6 @@ check: lint
 
 odds:
 	uv run python -m fantasy.stages.snapshot_odds
+
+odds-slate:
+	uv run python -m fantasy.stages.snapshot_odds --slate

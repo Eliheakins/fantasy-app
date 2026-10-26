@@ -1,12 +1,48 @@
-"""Blend our baseline projection with Sleeper's (RotoWire) where Sleeper has one.
+"""Blend our projection with other sources: the equal-weight mean of every source a row has.
 
 Weeks 1 to 6 of 2026 (past weeks, not a clean test): RMSE 6.01 Sleeper, 6.26 ours, 5.94 for an
-even blend. Equal weight is the simple choice until clean pre-game snapshots can be tested.
+even blend. Equal weights also won with prop lines (2024 held out) and FFToday (2025, 2026 weeks 1
+to 6); with few evaluation weeks fitted weights rarely beat them (docs/decisions.md).
 """
+
+from collections.abc import Sequence
 
 import polars as pl
 
-SLEEPER_WEIGHT = 0.5
+SLEEPER_WEIGHT = 0.5  # Sleeper's weight when it is the only other source (research/blend_weight)
+
+
+def blend_all(
+    ours: pl.DataFrame,
+    others: Sequence[pl.DataFrame],
+    key: str,
+    zero_is_missing: frozenset[str] = frozenset(),
+) -> pl.DataFrame:
+    """`ours` has key, week, projection (more columns are kept); each of `others` has key, week,
+    other. `projection` becomes the mean of ours and every other source with a value for the row.
+    A 0 for a key in `zero_is_missing` counts as no value: Sleeper zeroes Questionable and
+    Doubtful players, whose chance of playing the injury layer already applies, so blending the 0
+    would discount them twice."""
+    joined, columns = ours, []
+    for i, theirs in enumerate(others):
+        column = f"_other{i}"
+        value = pl.col("other")
+        joined = joined.join(
+            theirs.unique([key, "week"], keep="first", maintain_order=True).select(
+                key,
+                "week",
+                pl.when(pl.col(key).is_in(zero_is_missing) & (value == 0))
+                .then(None)
+                .otherwise(value)
+                .alias(column),
+            ),
+            on=[key, "week"],
+            how="left",
+        )
+        columns.append(column)
+    return joined.with_columns(pl.mean_horizontal("projection", *columns).alias("projection")).drop(
+        columns
+    )
 
 
 def blend(
@@ -15,26 +51,5 @@ def blend(
     key: str,
     zero_is_missing: frozenset[str] = frozenset(),
 ) -> pl.DataFrame:
-    """`ours` has key, week, projection (more columns are kept); `theirs` has key, week, other.
-    Rows without a Sleeper projection keep ours. A Sleeper 0 for a key in `zero_is_missing` also
-    counts as no projection: Sleeper zeroes Questionable and Doubtful players, whose chance of
-    playing the injury layer already applies, so blending the 0 would discount them twice."""
-    joined = ours.join(
-        theirs.select(key, "week", "other").unique(
-            [key, "week"], keep="first", maintain_order=True
-        ),
-        on=[key, "week"],
-        how="left",
-    ).with_columns(
-        pl.when(pl.col(key).is_in(zero_is_missing) & (pl.col("other") == 0))
-        .then(None)
-        .otherwise(pl.col("other"))
-        .alias("other")
-    )
-    mixed = (1 - SLEEPER_WEIGHT) * pl.col("projection") + SLEEPER_WEIGHT * pl.col("other")
-    return joined.with_columns(
-        pl.when(pl.col("other").is_not_null())
-        .then(mixed)
-        .otherwise(pl.col("projection"))
-        .alias("projection")
-    ).drop("other")
+    """Ours and one other source (Sleeper) at SLEEPER_WEIGHT where it has a projection."""
+    return blend_all(ours, [theirs], key, zero_is_missing)

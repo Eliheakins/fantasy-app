@@ -4,7 +4,7 @@ Only sites whose terms do not forbid scraping and storage (decisions log, 2026-1
 FantasySharks' terms forbid robots ("Use any robot, spider ... to retrieve, index, 'data mine'"),
 so it is left out. One request per position per run, a few seconds apart, top 50 per position
 (FFToday's first page). Each position fails soft: a site change logs a warning and the rest of
-`make refresh` runs on. Nothing downstream reads the archive yet; `map_to_gsis` joins it to
+`make refresh` runs on. prop_points scores the current week for the blend; `map_to_gsis` joins it to
 nflverse IDs for research.
 
 Run: uv run python -m fantasy.stages.outside_projections

@@ -3,7 +3,7 @@
 Run: uv run python -m fantasy.stages.snapshot_odds [--dry-run] [--slate]
 --slate pulls only the coming slate, near kickoff: Thursday evening for that night's game, Sunday
 about 11:45 ET for Sunday and Monday (about 84 credits a week instead of one 7-day pull).
-Needs ODDS_API_KEY in the environment or in .env. Raw JSON only, nothing downstream reads it yet.
+Needs ODDS_API_KEY in the environment or in .env. Raw JSON; prop_points turns it into points.
 """
 
 import calendar
