@@ -63,7 +63,7 @@ A missing table for a layer in step 4, or for calibration or a blend source, is 
 
 ## Standard for model changes
 
-A change to a projection or distribution ships only if it improves held-out error (fit 2019 to 2023, score 2024 on) or has a clear t-statistic (|t| of 2 or more) and the stages and tests pass. Record every test, shipped or not, with numbers in `docs/decisions.md`. Scripts behind past tests are in `research/` (see its README). Rejected ideas are listed there; read them before re-proposing one.
+A change to a projection or distribution ships only if it improves held-out error (fit 2019 to 2023, score 2024 on) or has a clear t-statistic (|t| of 2 or more) and the stages and tests pass. Held-out error is judged on all played games (offensive snaps or a stat row; a played game with no stat row scores 0; `learn.hurdle_on_played`), with the `compare_to_baseline` rows reported alongside (user decision, 2026-10-26). Record every test, shipped or not, with numbers in `docs/decisions.md`. Scripts behind past tests are in `research/` (see its README). Rejected ideas are listed there; read them before re-proposing one.
 
 ## Dates that matter (2026 season)
 
