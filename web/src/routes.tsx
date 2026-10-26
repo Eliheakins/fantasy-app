@@ -9,6 +9,7 @@ import League from "@/pages/League";
 import Lineup from "@/pages/Lineup";
 import Outlook from "@/pages/Outlook";
 import Players from "@/pages/Players";
+import Scorecard from "@/pages/Scorecard";
 import Scoreboard from "@/pages/Scoreboard";
 import Trades from "@/pages/Trades";
 import Waivers from "@/pages/Waivers";
@@ -23,6 +24,7 @@ const PAGES: Record<(typeof NAV_ITEMS)[number]["path"], ReactNode> = {
   "/scoreboard": <Scoreboard />,
   "/league": <League />,
   "/players": <Players />,
+  "/scorecard": <Scorecard />,
 };
 
 export const router = createBrowserRouter([
