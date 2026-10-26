@@ -6,7 +6,7 @@ import type { PlayerWeekRow } from "./logic";
 export function PlayerWeeksChart({ name, weeks }: { name: string; weeks: readonly PlayerWeekRow[] }) {
   const data = weeks.map((w) => ({ week: String(w.week), projection: w.projection }));
   return (
-    <section aria-label={`${name}: next four weeks`} className="mt-4">
+    <section aria-label={`${name}: next four weeks`}>
       <h3 className="text-body font-semibold">{name}: next four weeks</h3>
       {data.length === 0 ? (
         <p className="text-muted">No projections for the next weeks.</p>

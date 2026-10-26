@@ -149,6 +149,7 @@ def test_simulate_run_archives_only_when_asked(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(simulate, "append_history", lambda latest: appended.append(1))
     monkeypatch.setattr(store, "read_table", lambda *a, **k: pl.DataFrame({"league_id": []}))
     monkeypatch.setattr(store, "write_table", lambda *a, **k: None)
+    monkeypatch.setattr(store, "write_tables", lambda *a, **k: None)  # else the real data dir
     simulate.run(n_sims=1, archive=False)
     assert appended == []
     simulate.run(n_sims=1)
