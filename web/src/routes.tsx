@@ -3,6 +3,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { NAV_ITEMS } from "@/nav";
 import DevViz from "@/pages/DevViz";
+import Digest from "@/pages/Digest";
 import Home from "@/pages/Home";
 import NotFound from "@/pages/NotFound";
 import League from "@/pages/League";
@@ -23,6 +24,7 @@ const PAGES: Record<(typeof NAV_ITEMS)[number]["path"], ReactNode> = {
   "/outlook": <Outlook />,
   "/scoreboard": <Scoreboard />,
   "/league": <League />,
+  "/digest": <Digest />,
   "/players": <Players />,
   "/scorecard": <Scorecard />,
 };

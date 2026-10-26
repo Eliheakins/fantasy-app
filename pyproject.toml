@@ -35,6 +35,10 @@ extend-exclude = ["research"]  # one-off analysis scripts, not maintained code
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/test_digest.py" = ["F811"]  # imported fixtures are used as arguments
+"tests/test_api_digest.py" = ["F811"]
+
 [tool.mypy]
 python_version = "3.12"
 ignore_missing_imports = true

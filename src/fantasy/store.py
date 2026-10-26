@@ -200,6 +200,15 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         ints="as_of_week week winner_id loser_id roster_id n_runs",
         floats="p_condition p_playoffs p_title",
     ),
+    # written by digest (area: derived): my top waiver adds and trade ideas as of the last refresh.
+    # Waivers: give is the player dropped, get the one added. Trades: my_playoff and my_title as
+    # playoff_delta and title_delta. delta_points is for waivers only
+    "move_ideas": {
+        **_cols(strings="league_id kind partner give get created_at", ints="as_of_week rank"),
+        "give_ids": pl.List(_S),
+        "get_ids": pl.List(_S),
+        **_cols(floats="playoff_delta title_delta se_title delta_points"),
+    },
     "sim_season_history": _cols(
         strings="league_id team_name run_at",
         ints="roster_id as_of_week n_sims",

@@ -18,6 +18,7 @@ from fantasy.api_jobs import Busy, JobKey, JobRunner
 from fantasy.api_models import (
     ActionRow,
     AssetRow,
+    DigestData,
     Envelope,
     FoundTradeRow,
     LeagueRow,
@@ -61,6 +62,7 @@ MAX_TRADE_EVALUATIONS = 2
 TRADE_SLOTS = threading.BoundedSemaphore(MAX_TRADE_EVALUATIONS)
 REFRESH_LOCK = threading.Lock()
 MAX_IDS_LENGTH = 4000
+IDEA_STAMPS = frozenset({"league_id", "created_at", "as_of_week"})  # in `ideas`, not per row
 Team = Annotated[
     int | None, Query(description="Roster id to view as; omitted means my team (Sleeper is_me)")
 ]
@@ -203,6 +205,43 @@ def power_rankings(league: str, team: Team = None) -> Any:
 @router.get("/leagues/{league}/team-grades", response_model=Envelope[list[TeamGradeRow]])
 def team_grades(league: str, team: Team = None) -> Any:
     return guarded(as_team(team, lambda: rows(data_api.team_grades(league, store.DATA_DIR))))
+
+
+@router.get("/leagues/{league}/digest", response_model=Envelope[DigestData])
+def digest(league: str, team: Team = None) -> Any:
+    """Last week, projection misses, odds change and stored move ideas in one read."""
+    return guarded(as_team(team, lambda: digest_data(league)))
+
+
+def digest_data(league: str) -> dict[str, Any]:
+    if not known_league(league):
+        raise ValueError(f"unknown league {league!r}")
+    d = store.DATA_DIR
+    last = rows(data_api.last_week(league, d))
+    waivers = rows(data_api.move_ideas(league, "waiver", d))
+    trades = rows(data_api.move_ideas(league, "trade", d))
+    stored = [*waivers, *trades]
+    week = rows(data_api.leagues(d).filter(pl.col("league_key") == league))[0]["current_week"]
+    deadline = view.trade_deadline(league, d)
+
+    def shown(ideas: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [{k: v for k, v in r.items() if k not in IDEA_STAMPS} for r in ideas]
+
+    return {
+        "last_week": last[0] if last else None,
+        "performance": rows(data_api.player_vs_projection(league, 0, d)),
+        "odds_change": rows(data_api.odds_change(league, d)),
+        "waivers": shown(waivers),
+        "trades": shown(trades),
+        "ideas": {
+            "is_mine": data_api.ideas_are_mine(league, d),
+            "created_at": stored[0]["created_at"] if stored else None,
+            "as_of_week": stored[0]["as_of_week"] if stored else None,
+            "current_week": week,
+            "trade_deadline": deadline,
+            "deadline_passed": deadline is not None and week is not None and week > deadline,
+        },
+    }
 
 
 @router.get("/leagues/{league}/luck", response_model=Envelope[list[LuckRow]])
@@ -355,12 +394,25 @@ def win_probability(league: str, runner: Runner, week: Week = 0, team: Team = No
 @router.get(
     "/leagues/{league}/actions", response_model=Envelope[list[ActionRow]], responses=JOB_RESPONSES
 )
-def actions(league: str, runner: Runner, team: Team = None) -> Any:
-    return run_job(runner, "actions", (league,), lambda: actions_data(league), team)
+def actions(
+    league: str,
+    runner: Runner,
+    team: Team = None,
+    stored_adds: Annotated[
+        bool, Query(description="Use the digest's stored waiver ideas instead of re-simulating")
+    ] = False,
+) -> Any:
+    return run_job(
+        runner, "actions", (league, stored_adds), lambda: actions_data(league, stored_adds), team
+    )
 
 
-def actions_data(league: str) -> list[dict[str, Any]]:
-    found = data_api.actions(league)
+def actions_data(league: str, stored_adds: bool = False) -> list[dict[str, Any]]:
+    found = (
+        data_api.actions(league, adds=data_api.stored_adds(league, store.DATA_DIR))
+        if stored_adds
+        else data_api.actions(league)
+    )
     needs_odds = "Win probability" in found["kind"].to_list()
     odds = data_api.win_probability(league) if needs_odds else None
     return clean(view.action_fields(found, odds))

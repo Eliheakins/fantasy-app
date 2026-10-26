@@ -177,6 +177,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/digest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Digest
+         * @description Last week, projection misses, odds change and stored move ideas in one read.
+         */
+        get: operations["digest_api_leagues__league__digest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/luck": {
         parameters: {
             query?: never;
@@ -601,6 +621,31 @@ export interface components {
             median: number;
             /** Ceiling */
             ceiling: number;
+        };
+        /** DigestData */
+        DigestData: {
+            last_week: components["schemas"]["LastWeekRow"] | null;
+            /** Performance */
+            performance: components["schemas"]["ProjectionMissRow"][];
+            /** Odds Change */
+            odds_change: components["schemas"]["OddsChangeRow"][];
+            /** Waivers */
+            waivers: components["schemas"]["MoveIdeaRow"][];
+            /** Trades */
+            trades: components["schemas"]["MoveIdeaRow"][];
+            ideas: components["schemas"]["IdeasInfo"];
+        };
+        /** Envelope[DigestData] */
+        Envelope_DigestData_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["DigestData"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
         };
         /** Envelope[RefreshData] */
         Envelope_RefreshData_: {
@@ -1053,6 +1098,45 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** IdeasInfo */
+        IdeasInfo: {
+            /** Is Mine */
+            is_mine: boolean;
+            /** Created At */
+            created_at: string | null;
+            /** As Of Week */
+            as_of_week: number | null;
+            /** Current Week */
+            current_week: number | null;
+            /** Trade Deadline */
+            trade_deadline: number | null;
+            /** Deadline Passed */
+            deadline_passed: boolean;
+        };
+        /** LastWeekRow */
+        LastWeekRow: {
+            /** Week */
+            week: number;
+            /** Roster Id */
+            roster_id: number;
+            /** Team Name */
+            team_name: string;
+            /** Opponent */
+            opponent: string | null;
+            /** Points */
+            points: number;
+            /** Opp Points */
+            opp_points: number;
+            /**
+             * Result
+             * @enum {string}
+             */
+            result: "W" | "L" | "T";
+            /** Bench Points Left */
+            bench_points_left: number | null;
+            /** Luck */
+            luck: number | null;
+        };
         /** LeagueRow */
         LeagueRow: {
             /** League Key */
@@ -1216,6 +1300,55 @@ export interface components {
             /** Fetched At */
             fetched_at: string;
         };
+        /** MoveIdeaRow */
+        MoveIdeaRow: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "waiver" | "trade";
+            /** Partner */
+            partner: string | null;
+            /** Give */
+            give: string;
+            /** Get */
+            get: string;
+            /** Give Ids */
+            give_ids: string[];
+            /** Get Ids */
+            get_ids: string[];
+            /** Rank */
+            rank: number;
+            /** Playoff Delta */
+            playoff_delta: number | null;
+            /** Title Delta */
+            title_delta: number | null;
+            /** Se Title */
+            se_title: number | null;
+            /** Delta Points */
+            delta_points: number | null;
+        };
+        /** OddsChangeRow */
+        OddsChangeRow: {
+            /** Roster Id */
+            roster_id: number;
+            /** Team Name */
+            team_name: string;
+            /** Is Me */
+            is_me: boolean;
+            /** As Of Week */
+            as_of_week: number;
+            /** Prev As Of Week */
+            prev_as_of_week: number | null;
+            /** P Playoffs */
+            p_playoffs: number | null;
+            /** P Title */
+            p_title: number | null;
+            /** D Playoffs */
+            d_playoffs: number | null;
+            /** D Title */
+            d_title: number | null;
+        };
         /** OddsHistoryRow */
         OddsHistoryRow: {
             /** Run At */
@@ -1321,6 +1454,21 @@ export interface components {
             sos_remaining: number | null;
             /** Sos Rank */
             sos_rank: number | null;
+        };
+        /** ProjectionMissRow */
+        ProjectionMissRow: {
+            /** Gsis Id */
+            gsis_id: string;
+            /** Full Name */
+            full_name: string | null;
+            /** Position */
+            position: string;
+            /** Points */
+            points: number | null;
+            /** Projection */
+            projection: number | null;
+            /** Diff */
+            diff: number | null;
         };
         /** RefreshData */
         RefreshData: {
@@ -2008,6 +2156,40 @@ export interface operations {
             };
         };
     };
+    digest_api_leagues__league__digest_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_DigestData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     luck_api_leagues__league__luck_get: {
         parameters: {
             query?: {
@@ -2574,6 +2756,8 @@ export interface operations {
             query?: {
                 /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
                 team?: number | null;
+                /** @description Use the digest's stored waiver ideas instead of re-simulating */
+                stored_adds?: boolean;
             };
             header?: never;
             path: {
