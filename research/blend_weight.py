@@ -22,12 +22,25 @@ exclusions come from the scorecard's helpers.
    with no stat line in a final game. p is the `availability` table's p_play where it has the
    week, else the historical share of report-listed regulars with that status who had a stat line.
 
+4. Outside sources (`outside_proj_snapshots`, archived by the outside_projections stage), each
+   mapped to gsis_id, scored under the league's rules plus the lagged fumble and two-point points
+   (`prop_points.outside_points`), and prop-implied points rebuilt from the archived Odds API
+   snapshots (each game's last snapshot before kickoff, `prop_points` functions, lags as of that
+   week), paired like Sleeper (fetched before kickoff, nearest to ours). The shipped current-week
+   blend, the equal-weight mean of every source a row has (ours, Sleeper, FFToday, props), is
+   scored against the old 0.5 blend and against ours alone, on the same rows, pooled and by
+   position (WR carried the gains). FFToday is less FFTODAY_BIAS, as shipped. Once the hurdle
+   model archives q and E, q * mean(E, others) is scored against mean(q * E, others). Paired weekly t
+   against the same critical value. Equal weights only: no weights are fit on so few weeks.
+
 Rows where production would not blend (Sleeper missing, or a Questionable or Doubtful Sleeper 0)
 are left out of the weight fit. Injury status is the nflverse game-week report, a stand-in for the
 Sleeper status that production reads.
 
 Run from the repo root: uv run python research/blend_weight.py
 """
+
+import json
 
 import numpy as np
 import polars as pl
@@ -36,6 +49,9 @@ from scipy.stats import t as student_t
 from fantasy import store
 from fantasy._scorecard import KEY, _at, _kickoff_frame, _last_before_kickoff, _sleeper_points, score_games
 from fantasy.sim.blend import SLEEPER_WEIGHT
+from fantasy.config import load_config
+from fantasy.stages import outside_projections as op
+from fantasy.stages import prop_points as pp
 from fantasy.stages.distributions import calibrated
 from fantasy.stages.simulate import SLEEPER_ZEROED_STATUSES
 
@@ -130,15 +146,57 @@ def self_check() -> None:
     # three weeks: the critical value is t(2), not 2
     three = compare(leave_one_week_out(frame(ours, sleeper, y).filter(pl.col("week") <= 3)))
     assert float(three["t_critical"]) > 4.0, three
-    print("self-check passed: 0.85 recovered; 0.5 kept with no signal and with a shared 15% over-projection")
+    # three equally informative sources: their equal mean beats the two-source 0.5 blend
+    third = truth + rng.normal(0, 2.0, truth.size)
+    eq = frame(ours, sleeper, y_even).with_columns(eq=pl.Series((ours + sleeper + third) / 3))
+    res = candidate(eq, "eq")
+    assert res["rmse_cand"] < res["rmse_0.5"] and res["t"] < -res["t_critical"], res
+    print("self-check passed: 0.85 recovered; 0.5 kept with no signal and with a shared 15% over-projection;"
+          " a third source's equal mean beats the 0.5 blend")
+
+
+def candidate(rows: pl.DataFrame, col: str, base: str = "half") -> dict[str, float | int | str]:
+    """rows: week, ours, sleeper, actual and `col`. RMSE of `base` (the 0.5 blend, or a column)
+    and of `col`, paired t over weeks on the squared-error difference (negative: `col` is better)."""
+    d = rows.with_columns(half=(1 - SLEEPER_WEIGHT) * pl.col("ours") + SLEEPER_WEIGHT * pl.col("sleeper"))
+    by_week = d.group_by("week").agg(
+        ((pl.col(col) - pl.col("actual")) ** 2 - (pl.col(base) - pl.col("actual")) ** 2).mean().alias("x")
+    )
+    x = by_week["x"].to_numpy()
+    ok = len(x) >= MIN_WEEKS and x.std(ddof=1) > 0
+    return {
+        "n": d.height,
+        "weeks": len(x),
+        "rmse_" + ("0.5" if base == "half" else base): round(float(((d[base] - d["actual"]) ** 2).mean() ** 0.5), 3),
+        "rmse_cand": round(float(((d[col] - d["actual"]) ** 2).mean() ** 0.5), 3),
+        "t": round(float(x.mean() / (x.std(ddof=1) / np.sqrt(len(x)))), 2) if ok else float("nan"),
+        "t_critical": round(float(student_t.ppf(1 - ALPHA / 2, len(x) - 1)), 2) if len(x) > 1 else float("nan"),
+        "weeks_better": f"{int((x < 0).sum())}/{len(x)}",
+    }
+
+
+def q_scale_check(eq: pl.DataFrame, sources: list[str]) -> None:
+    """Hurdle model (stat_line_model): q * mean(E, sleeper, outside) against
+    mean(q * E, sleeper, outside), E our points when he plays and q his chance of playing. Needs
+    archived q and E columns (`q`, `ours_cond`), which do not exist until that model ships."""
+    if not {"q", "ours_cond"} <= set(eq.columns):
+        print("q * mean vs mean(q * ours, ...): untestable until stat_line_model archives q and E")
+        return
+    d = eq.with_columns(
+        q_mean=pl.col("q") * pl.mean_horizontal("ours_cond", "sleeper", *sources),
+        mean_q=pl.mean_horizontal(pl.col("q") * pl.col("ours_cond"), "sleeper", *sources),
+    )
+    print(pl.DataFrame([{"position": "ALL", "against": "mean(q * ours)", **candidate(d, "q_mean", "mean_q")}]))
 
 
 # ---------- data ----------
 
 
-def paired_sleeper(ours: pl.DataFrame, sleeper: pl.DataFrame, window: pl.DataFrame) -> pl.DataFrame:
-    """For each of our picked snapshots (KEY, fetched_at), the Sleeper value fetched before
-    kickoff nearest in time to ours."""
+def paired_sleeper(
+    ours: pl.DataFrame, sleeper: pl.DataFrame, window: pl.DataFrame, col: str = "sleeper"
+) -> pl.DataFrame:
+    """For each of our picked snapshots (KEY, fetched_at), the Sleeper (or another source's
+    `col`) value fetched before kickoff nearest in time to ours."""
     mine = ours.select(*KEY, _at().alias("_ours_at"))
     return (
         sleeper.with_columns(_at().alias("_at"))
@@ -148,13 +206,73 @@ def paired_sleeper(ours: pl.DataFrame, sleeper: pl.DataFrame, window: pl.DataFra
         .with_columns((pl.col("_at") - pl.col("_ours_at")).abs().alias("_gap"))
         .sort("_gap")
         .unique(KEY, keep="first")
-        .select(*KEY, "sleeper", pl.col("_gap").dt.total_minutes().alias("pair_gap_min"))
+        .select(*KEY, col, pl.col("_gap").dt.total_minutes().alias("pair_gap_min"))
     )
 
 
-def league_rows(league: dict) -> tuple[pl.DataFrame, dict[str, int], pl.DataFrame]:
-    """Scored rows (KEY, team, position, actual, ours, sleeper, status), the scorecard's
-    exclusion counts, and the Q/D Sleeper-0 rows of final games (actual 0 with no stat line)."""
+def outside_points(league: dict, games: pl.DataFrame) -> dict[str, pl.DataFrame]:
+    """Each archived outside source for the games we track, scored under the league's rules, in
+    the shape `_sleeper_points` returns with the value column named after the source."""
+    try:
+        snaps = store.read_table("outside_proj_snapshots", "archive")
+    except FileNotFoundError:
+        return {}
+    snaps = snaps.filter(
+        (pl.col("season") == int(league["season"]))
+        & pl.col("week").is_in(games["week"].unique().to_list())
+    )
+    mapped = op.map_to_gsis(snaps, op.people()).drop_nulls("gsis_id")
+    scoring = json.loads(league["scoring_settings"])
+    points = store.read_table("player_points").filter(pl.col("league_id") == league["league_id"])
+    stats = store.read_table("nfl_player_stats", "raw")
+    out: dict[str, list[pl.DataFrame]] = {}
+    for (source, season, week, _), g in mapped.group_by("source", "season", "week", "fetched_at"):
+        lags = pp.lagged_means(points, stats, scoring, int(season), int(week))
+        scored = pp.outside_points(g.select("source", "fetched_at", "position", "gsis_id", "stats"), scoring, lags)
+        out.setdefault(str(source), []).append(tagged(league, season, week, scored, str(source)))
+    return {source: pl.concat(frames) for source, frames in out.items()}
+
+
+def tagged(league: dict, season: int, week: int, rows: pl.DataFrame, col: str) -> pl.DataFrame:
+    """rows (gsis_id, fetched_at, projection) in the shape `_sleeper_points` returns."""
+    return rows.select(
+        pl.lit(league["league_id"]).alias("league_id"), "gsis_id",
+        pl.lit(season, pl.Int64).alias("season"), pl.lit(week, pl.Int64).alias("week"), "fetched_at",
+        pl.col("projection").alias(col),
+    )
+
+
+def props_points(league: dict, games: pl.DataFrame) -> pl.DataFrame | None:
+    """Prop-implied points for each week we track, as the prop_points stage computes them for the
+    current week. shortcut: players are placed on their team now (Sleeper), so a player traded
+    since a past week drops out of that week; fine while the archive is a few weeks long."""
+    lines = pp.read_snapshots()
+    if lines.is_empty():
+        return None
+    scoring = json.loads(league["scoring_settings"])
+    schedule = store.read_table("nfl_schedules", "raw")
+    points = store.read_table("player_points").filter(pl.col("league_id") == league["league_id"])
+    stats = store.read_table("nfl_player_stats", "raw")
+    people = pp.current_people(store.DATA_DIR)
+    frames = []
+    for season, week in games.select("season", "week").unique().iter_rows():
+        week_games = schedule.filter((pl.col("season") == season) & (pl.col("week") == week))
+        props = pp.map_players(pp.week_lines(lines, week_games), people)
+        if props.is_empty():
+            continue
+        lags = pp.lagged_means(points, stats, scoring, season, week)
+        fetched = props.group_by("gsis_id").agg(
+            pl.col("stamp").max().dt.strftime("%Y-%m-%dT%H:%M:%S+00:00").alias("fetched_at")
+        )
+        implied = pp.implied_points(props, lags, scoring, load_config().prop_positions)
+        frames.append(tagged(league, season, week, implied.join(fetched, on="gsis_id"), "props"))
+    return pl.concat(frames) if frames else None
+
+
+def league_rows(league: dict) -> tuple[pl.DataFrame, dict[str, int], pl.DataFrame, list[str]]:
+    """Scored rows (KEY, team, position, actual, ours, sleeper, one column per outside source,
+    status), the scorecard's exclusion counts, the Q/D Sleeper-0 rows of final games (actual 0
+    with no stat line) and the outside sources found."""
     lid = league["league_id"]
     snaps = store.read_table("proj_snapshots", "archive").filter(pl.col("league_id") == lid)
     meta = store.read_table("proj_baseline").filter(pl.col("league_id") == lid)
@@ -180,7 +298,14 @@ def league_rows(league: dict) -> tuple[pl.DataFrame, dict[str, int], pl.DataFram
     ours = calibrated(
         picked.join(window.select(*KEY, "position"), on=KEY).rename({"learned": "projection"})
     ).select(*KEY, "fetched_at", pl.col("projection").alias("ours"))
-    pairs = ours.join(paired_sleeper(ours, sleeper, window), on=KEY, how="left").drop("fetched_at")
+    pairs = ours.join(paired_sleeper(ours, sleeper, window), on=KEY, how="left")
+    outside = outside_points(league, games)
+    props = props_points(league, games)
+    if props is not None:
+        outside["props"] = props
+    for source, frame in outside.items():
+        pairs = pairs.join(paired_sleeper(ours, frame, window, source).drop("pair_gap_min"), on=KEY, how="left")
+    pairs = pairs.drop("fetched_at")
     scored = scored.select(*KEY, "team", "position", "actual").join(pairs, on=KEY).join(
         status, on=["gsis_id", "season", "week"], how="left"
     )
@@ -192,7 +317,7 @@ def league_rows(league: dict) -> tuple[pl.DataFrame, dict[str, int], pl.DataFram
         .join(points, on=KEY, how="left")
         .with_columns(pl.col("points").fill_null(0.0).alias("actual"))
     )
-    return scored, excluded, zeroed
+    return scored, excluded, zeroed, sorted(outside)
 
 
 def status_play_rates(league_id: str) -> dict[str, float]:
@@ -244,7 +369,7 @@ def main() -> None:
     self_check()
     for league in store.read_table("leagues", "raw").iter_rows(named=True):
         name = league["name"].split()[0]
-        scored, excluded, zeroed = league_rows(league)
+        scored, excluded, zeroed, sources = league_rows(league)
         print(f"\n=== {name}: scorecard exclusions {excluded}")
         blendable = scored.filter(
             pl.col("ours").is_not_null()
@@ -284,6 +409,22 @@ def main() -> None:
                 else {"position": pos, "n": rows.height, "verdict": "untestable: fewer than 2 weeks"}
             )
         print(pl.DataFrame(results))
+        if sources and blendable.height:
+            eq = blendable.with_columns(pl.mean_horizontal("ours", "sleeper", *sources).alias("eq_all"))
+            counts = {s: int(eq[s].is_not_null().sum()) for s in sources}
+            print(f"shipped blend: equal-weight mean of every source a row has (rows with each source {counts})")
+            # by position (WR carried the prop and FFToday gains, and FFToday runs high there)
+            shipped = []
+            for pos in ["ALL", "WR", "RB", "QB", "TE"]:
+                g = eq if pos == "ALL" else eq.filter(pl.col("position") == pos)
+                if g.is_empty():
+                    continue
+                shipped += [
+                    {"position": pos, "against": "old 0.5", **candidate(g, "eq_all")},
+                    {"position": pos, "against": "ours", **candidate(g, "eq_all", "ours")},
+                ]
+            print(pl.DataFrame(shipped))
+            q_scale_check(eq, sources)
         rates = status_play_rates(league["league_id"])
         print(f"Q/D Sleeper-0 rule (status play rates {({k: round(v, 3) for k, v in rates.items()})}):",
               score_zero_rule(zeroed, rates))

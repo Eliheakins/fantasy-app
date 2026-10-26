@@ -80,6 +80,7 @@ MIN_T = 2.0
 MIN_PROJECTION = 3.0  # as in the other held-out checks
 NULL_WARN = 0.10  # next-game rows may lack depth or ranking this much more often than history
 NULL_FAIL = 0.30  # beyond this the model would be scoring features it was not trained on
+MAX_ITER = 160  # fixed, chosen on 2021 to 2023 (early stopping had stopped near 125 to 170)
 
 
 def games_frame(
@@ -279,7 +280,8 @@ def fit_predict(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray) ->
     x_train, x_test = x_train[:, usable], x_test[:, usable]
     model = HistGradientBoostingRegressor(
         loss="squared_error",
-        max_iter=400,
+        max_iter=MAX_ITER,
+        early_stopping=False,  # its validation split depends on the row order
         learning_rate=0.03,
         max_leaf_nodes=15,
         min_samples_leaf=80,

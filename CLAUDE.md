@@ -19,6 +19,7 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 ## Where things are
 
 - Plan: `docs/one-pager.md`. Backlog: `docs/backlog.md` (canonical story IDs). Decisions log: `docs/decisions.md`.
+- Research: `research/README.md` indexes every test script by topic with its status; plans and surveys are in `research/notes/`.
 - Log every decision in `docs/decisions.md` as it is made.
 
 ## Conventions
@@ -35,13 +36,13 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 Stages (`src/fantasy/stages/`, run by `make refresh` in this order) read and write parquet tables registered in `store.SCHEMAS`. `src/fantasy/sim/` holds the pure logic; `stages/simulate.py` builds a `LeagueData` from the tables and `data_api.py` serves it to the API in `src/fantasy/api*.py`, which the React app in `web/` calls.
 
 1. `sync_sleeper`, `sleeper_projections`, `ingest_nfl`, `crosswalk`: raw data and the Sleeper to nflverse ID map.
-2. `score`, `streaming`: points per league's scoring; K and DEF.
+2. `score`, `prop_points`, `streaming`: points per league's scoring; this week's prop-implied points (latest `make odds-slate` snapshot) and FFToday points (`proj_props`, `proj_outside`); K and DEF.
 3. `project`: rolling baseline (`proj_baseline`). `learn`: gradient-boosted model on lagged stats plus role data (`proj_learned`, same schema; `projection_model` in `config.toml` picks which one every later stage reads, through `store.projection_table()`; with `stat_line_model` on (off by default and in `config.toml`), `learn` multiplies by the chance of a stat line from `stages/stat_line.py`, so `proj_learned` is expected points given a played game (offensive snaps or a `player_points` row; no row scores 0), with past rows for games without a stat line too; q goes to the `stat_line` table (`stat_line_table.py`, written after `proj_learned`, deleted when off), which the injury layer and the `injuries` stage use to take q back out where the injury table's chance of playing already counts it). `availability`: chance of playing this week (`availability`). `distributions`: size calibration, per-tier marginals and spreads, correlations, fit on the chosen projections.
 4. `injuries`, `outlook`, `environment`: measured effects (tables `injury_effects`, `outlook_effects`, `environment_effects`).
-5. `simulate`: applies calibration, the Sleeper blend (`sim/blend.py`), injury (with the availability model for a flagged player's next game), outlook and, if `environment_layer` is on, environment layers, then season odds.
+5. `simulate`: applies calibration, the source blend (`sim/blend.py`: current week the equal mean of ours and each `blend_sources` entry a player has, the next three weeks ours and Sleeper), injury (with the availability model for a flagged player's next game), outlook and, if `environment_layer` is on, environment layers, then season odds.
 6. `digest`, `market_values`: the digest's stored waiver and trade ideas (`move_ideas`) and FantasyCalc market values, both after `simulate`.
 
-A missing table for a layer in step 4, or for calibration or the Sleeper blend, is skipped without error; the stale banner lists what is missing (`data_api.missing_layers`).
+A missing table for a layer in step 4, or for calibration or a blend source, is skipped without error; the stale banner lists what is missing (`data_api.missing_layers`).
 
 ## Gotchas
 
@@ -51,7 +52,7 @@ A missing table for a layer in step 4, or for calibration or the Sleeper blend, 
 - My teams: Colgate "Lisan Al-Caleb", YinzBurgh "LaPorta Potty" (Sleeper's `is_me` flag, not the league's top team).
 - `data_api.py` (553 lines) re-exports entry points that live in private sibling modules (`_engine`, `_lineup`, `_market`, `_outlook`, `_schemas`, and others). Tests patch `data_api.leagues` (`tests/test_api.py`, `tests/test_data_api_engine.py`), so keep any function that calls `leagues` in `data_api.py`, and never call it from a `_`-module.
 - The learned model's past-game projections for 2019 and 2020 come from models that saw later seasons, so `store.projection_table()` drops them; never fit residual sizes or effects on them. Model features must use only games before the target game: pass a horizon shift to every lagged join (`learn.lag_asof`, `latest_asof`), and add a test.
-- FantasyPros weekly rankings (`nfl_ecr`) are private-use only: keep them under the gitignored `data/` and never commit or share them. No paid data (user decision, 2026-10-23).
+- FantasyPros weekly rankings (`nfl_ecr`) are private-use only: keep them under the gitignored `data/` and never commit or share them. No paid data (user decision, 2026-10-23). A free source may be scraped and stored unless its terms explicitly forbid it (user decision, 2026-10-26; sources checked so far are in `research/notes/2026-10-26-research-survey.md`); third-party data is never committed.
 - `make serve` also runs a live refresh every 10 minutes while a game of the current week is on (`live_refresh.py`: `sync_week` then `simulate.run(archive=False)`; `LIVE_REFRESH=off` disables it). Never let a live tick append to `sim_season_history`.
 - Team selector: `?team=<roster id>` on any `/api/leagues/{league}/...` route makes that team 'me' (`_engine.viewing_team`). Anything that decides 'my team' must go through `_league()` or `data_api._my_league`, never read `league_teams.is_me` directly.
 - Lineup values for the current week include players whose game is over at their actual points (`_engine._week_values`); do not read `moves.week_values` directly for a current-week lineup.

@@ -1,9 +1,12 @@
 """Archive one week's NFL player-prop lines from The Odds API (free tier, 500 credits a month).
 
-Run: uv run python -m fantasy.stages.snapshot_odds [--dry-run]
-Needs ODDS_API_KEY in the environment or in .env. Raw JSON only, nothing downstream reads it yet.
+Run: uv run python -m fantasy.stages.snapshot_odds [--dry-run] [--slate]
+--slate pulls only the coming slate, near kickoff: Thursday evening for that night's game, Sunday
+about 11:45 ET for Sunday and Monday (about 84 credits a week instead of one 7-day pull).
+Needs ODDS_API_KEY in the environment or in .env. Raw JSON; prop_points turns it into points.
 """
 
+import calendar
 import json
 import os
 import re
@@ -12,6 +15,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -28,6 +32,9 @@ MARKETS = (
 )
 REGION = "us"
 WINDOW_DAYS = 7  # one week of games per snapshot
+EASTERN = ZoneInfo("America/New_York")
+SLATE_END_HOUR = 6
+SLATE_END_DAYS = (calendar.TUESDAY, calendar.FRIDAY)
 CREDIT_FLOOR = 100  # stop before the monthly allowance runs out
 PAUSE_SECONDS = 0.5
 EVENT_ID = re.compile(r"[A-Za-z0-9]+", re.ASCII)  # becomes a file name
@@ -70,8 +77,20 @@ def _get(url: str, params: dict[str, str]) -> httpx.Response:
     return resp
 
 
-def events_in_window(events: list[dict[str, Any]], now: datetime) -> list[dict[str, Any]]:
-    end = now + timedelta(days=WINDOW_DAYS)
+def slate_end(now: datetime) -> datetime:
+    """The next 06:00 Eastern on a Friday or Tuesday: a Thursday-evening pull covers that night's
+    game, a Sunday-morning pull covers Sunday and Monday."""
+    local = now.astimezone(EASTERN)
+    end = local.replace(hour=SLATE_END_HOUR, minute=0, second=0, microsecond=0)
+    while end <= local or end.weekday() not in SLATE_END_DAYS:
+        end += timedelta(days=1)  # wall-clock arithmetic in EASTERN, so 06:00 holds across DST
+    return end.astimezone(UTC)
+
+
+def events_in_window(
+    events: list[dict[str, Any]], now: datetime, end: datetime | None = None
+) -> list[dict[str, Any]]:
+    end = end or now + timedelta(days=WINDOW_DAYS)
     return [e for e in events if now <= datetime.fromisoformat(e["commence_time"]) <= end]
 
 
@@ -88,16 +107,23 @@ def log_credits(stamp: str, used: str | None, remaining: str | None, odds_dir: P
         f.write(f"{stamp},{used},{remaining}\n")
 
 
-def run(dry_run: bool = False, odds_dir: Path = ODDS_DIR, now: datetime | None = None) -> None:
+def run(
+    dry_run: bool = False,
+    odds_dir: Path = ODDS_DIR,
+    now: datetime | None = None,
+    slate: bool = False,
+) -> None:
+    """`slate`: only games up to `slate_end` (one pull near kickoff per slate) instead of 7 days."""
     now = now or datetime.now(UTC)
     key = api_key()
     listing = _get(f"{BASE}/events", {"apiKey": key})  # free call
-    events = events_in_window(listing.json(), now)
+    end = slate_end(now) if slate else now + timedelta(days=WINDOW_DAYS)
+    events = events_in_window(listing.json(), now, end)
     if not all(EVENT_ID.fullmatch(str(e["id"])) for e in events):
         raise RuntimeError("Odds API returned an event id that is not alphanumeric")
     cost = snapshot_cost(len(events))
     remaining = listing.headers.get("x-requests-remaining")
-    print(f"{len(events)} games in the next {WINDOW_DAYS} days, about {cost} credits")
+    print(f"{len(events)} games until {end:%Y-%m-%d %H:%M} UTC, about {cost} credits")
     print(f"credits remaining before: {remaining}")
     if dry_run or not events:
         return
@@ -132,4 +158,4 @@ def run(dry_run: bool = False, odds_dir: Path = ODDS_DIR, now: datetime | None =
 
 
 if __name__ == "__main__":
-    run(dry_run="--dry-run" in sys.argv)
+    run(dry_run="--dry-run" in sys.argv, slate="--slate" in sys.argv)
