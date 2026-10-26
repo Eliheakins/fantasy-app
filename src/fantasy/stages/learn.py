@@ -4,7 +4,8 @@ For a player and a target game the features use only games played BEFORE it (the
 rule as the rolling baseline): weighted averages at half-lives of 2, 4 and 8 games and the last
 value of points, expected points, targets, carries, pass attempts, snap share, target share and
 expected touchdowns, plus games played, the spread of recent points, position, week and the
-game's Vegas lines. History and future rows go through the same feature code.
+game's Vegas lines, and teammate vacancy from the game's injury report (`stages/vacancy.py`).
+History and future rows go through the same feature code.
 
 History is projected walk-forward: a season is scored by a model that never saw it (the first
 seasons, which have no earlier ones, leave one season out of an early block). Future weeks use a
@@ -21,7 +22,7 @@ holds the expected points of any game with a `player_points` row, stat-less appe
 Run: uv run python -m fantasy.stages.learn
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
@@ -32,7 +33,7 @@ from sklearn.ensemble import HistGradientBoostingRegressor
 from fantasy import stat_line_table, store
 from fantasy.config import load_config
 from fantasy.sim.calibration import apply_curves
-from fantasy.stages import stat_line
+from fantasy.stages import stat_line, vacancy
 from fantasy.stages.distributions import estimate_curves, residual_frame
 from fantasy.stages.lags import lag_asof, latest_asof, train_seasons
 from fantasy.stages.project import (
@@ -73,6 +74,7 @@ EXTRA_FEATURES = (
     + [f"pace_{c}" for c in PACE_COLUMNS]
     + [f"adv_{c}" for c in ADVANCED_COLUMNS]
     + SCHEDULE_FEATURES
+    + vacancy.VAC_COLUMNS  # the game's own report one game ahead; nobody listed further ahead
 )
 FIRST_ACCEPTANCE_SEASON = 2024
 MIN_GAIN = 0.01  # the learned model must beat the calibrated baseline by this share of RMSE
@@ -182,19 +184,42 @@ class Extras:
     ecr: pl.DataFrame
     pace: pl.DataFrame
     advanced: pl.DataFrame
+    report: pl.DataFrame  # `vacancy.report_table`, with the Sleeper stand-in in `run`
+    usage: pl.DataFrame  # `vacancy.usage_table`
+    sit_weights: dict[str | None, float]
 
 
 def load_extras() -> Extras:
     read = {
-        n: store.read_table(f"nfl_{n}", "raw") for n in ("depth", "ecr", "team_pace", "advanced")
+        n: store.read_table(f"nfl_{n}", "raw")
+        for n in ("depth", "ecr", "team_pace", "advanced", "snaps")
     }
+    report = vacancy.report_table(store.read_table("nfl_injuries", "raw"))
+    usage = vacancy.usage_table(
+        store.read_table("nfl_player_stats", "raw"),
+        store.read_table("nfl_team_stats", "raw"),
+        read["snaps"],
+    )
     return Extras(
         roster=store.read_table("nfl_rosters_weekly", "raw"),
         depth=read["depth"],
         ecr=read["ecr"],
         pace=read["team_pace"],
         advanced=read["advanced"],
+        report=report,
+        usage=usage,
+        # fit before the first held-out season, so the held-out check never saw its own rates
+        sit_weights=vacancy.sit_weights(report, read["snaps"], FIRST_ACCEPTANCE_SEASON - 1),
     )
+
+
+def with_sleeper_stand_in(extras: Extras, season: int, week: int) -> Extras:
+    """`extras` whose report uses Sleeper's statuses for the teams whose final report for
+    `week` has no game status yet."""
+    stand_in = vacancy.sleeper_report(
+        store.read_table("sleeper_players", "raw"), store.read_table("id_map"), season, week
+    )
+    return replace(extras, report=vacancy.with_stand_in(extras.report, stand_in, season, week))
 
 
 def with_schedule(frame: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
@@ -229,6 +254,9 @@ def attach_extras(
             horizon - 1,
         )
         out = out.with_columns([pl.lit(None, dtype=pl.Float64).alias(c) for c in ECR_COLUMNS])
+    # further ahead the game's report does not exist yet: nobody is listed
+    report = extras.report if horizon == 1 else extras.report.clear()
+    out = vacancy.vacancy_features(out, report, extras.usage, extras.sit_weights, extras.depth)
     out = latest_asof(
         out, extras.roster.unique(KEY, keep="first", maintain_order=True), "gsis_id", ROLE_COLUMNS
     )
@@ -485,9 +513,10 @@ def run() -> dict[str, int]:
     stats = store.read_table("nfl_player_stats", "raw")
     exp = expected_frame(opp, points, leagues)
     lines = store.read_table("team_games")
-    extras = load_extras()
     current, rostered = current_and_rostered()
     current_week = int(leagues["current_week"].max())  # type: ignore[arg-type]
+    season = int(leagues["season"].max())  # type: ignore[arg-type]
+    extras = with_sleeper_stand_in(load_extras(), season, current_week)
     future_all = future_targets(
         store.read_table("player_form"), current, rostered, lines, first_week=current_week
     )

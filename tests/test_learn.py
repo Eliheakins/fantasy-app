@@ -2,6 +2,7 @@ import numpy as np
 import polars as pl
 import pytest
 
+from fantasy import store
 from fantasy.stages import learn
 
 GAME_SCHEMA = {
@@ -340,3 +341,37 @@ def test_a_played_or_started_game_is_never_archived() -> None:
     )
     out = learn.unplayed(final, games, "2026-10-23")
     assert out["team"].to_list() == ["A"]
+
+
+def _empty(name: str) -> pl.DataFrame:
+    return pl.DataFrame(schema=store.SCHEMAS[name])
+
+
+def test_vacancy_comes_from_the_games_report_one_game_ahead_and_nobody_further_ahead() -> None:
+    report = pl.DataFrame(
+        [("B", 2025, 5, "KC", "WR", "Out", "DNP")],
+        schema={"gsis_id": pl.String, "season": pl.Int64, "week": pl.Int64, "team": pl.String,
+                "position": pl.String, "status": pl.String, "practice": pl.String},
+        orient="row",
+    )  # fmt: skip
+    usage = pl.DataFrame(
+        {"gsis_id": ["B"], "season": [2025], "week": [4], "tgt": [0.3], "car": [0.0], "snap": [0.9]}
+    )
+    extras = learn.Extras(
+        roster=_empty("nfl_rosters_weekly"),
+        depth=_empty("nfl_depth"),
+        ecr=_empty("nfl_ecr"),
+        pace=_empty("nfl_team_pace"),
+        advanced=_empty("nfl_advanced"),
+        report=report,
+        usage=usage,
+        sit_weights={None: 0.4},
+    )
+    schedule = pl.DataFrame(
+        {"season": [2025], "week": [5], "team": ["KC"], "rest": [7], "roof": ["outdoors"]}
+    )
+    target = targets("A", [5])
+    now = learn.attach_extras(target, extras, schedule, horizon=1)
+    ahead = learn.attach_extras(target, extras, schedule, horizon=2)
+    assert now["vac_out_tgt"].item() == pytest.approx(0.3)
+    assert ahead["vac_out_tgt"].item() == 0.0  # the week 5 report does not exist two weeks before
