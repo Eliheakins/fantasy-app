@@ -32,6 +32,7 @@ from fantasy._market import (
 from fantasy._outlook import live_score, player_outlook, schedule
 from fantasy._schemas import ENGINE_SCHEMAS
 from fantasy._scoreboard import SCOREBOARD_SIMS, scoreboard_of
+from fantasy._scorecard import Scorecard, scorecard_of
 from fantasy._values import market_values as _market_values
 from fantasy._values import trade_market as _trade_market
 from fantasy.config import load_config
@@ -61,6 +62,7 @@ __all__ = [
     "refresh_live",
     "roster",
     "schedule",
+    "scorecard",
     "scoreboard",
     "scoring_labels",
     "season_odds",
@@ -475,3 +477,11 @@ def scoreboard(league_key: str, week: int = 0, n_sims: int = SCOREBOARD_SIMS) ->
     first (see `_scoreboard`). `is_me` follows the viewed team."""
     data, mine = _league(league_key)
     return scoreboard_of(data, mine, week, n_sims)
+
+
+def scorecard(league_key: str, data_dir: Path = store.DATA_DIR) -> Scorecard:
+    """Our archived pre-kickoff projections scored against actual points (see `_scorecard`)."""
+    me = _my_league(league_key, data_dir)
+    if me is None:
+        raise ValueError(f"unknown league {league_key!r}")
+    return scorecard_of(me["league_id"], data_dir)

@@ -151,6 +151,19 @@ ENGINE_SCHEMAS["scoreboard"] = {
     **{f"{side}_{name}": kind for side in ("a", "b") for name, kind in _SIDE_COLUMNS.items()},
 }
 
+# One row per week (null = all weeks), position ("ALL" = every position), size tier (-1 = all) and
+# model: games scored and the error of the projection made before kickoff.
+ENGINE_SCHEMAS["scorecard"] = {
+    "week": _I,
+    "position": _S,
+    "tier": _I,
+    "model": _S,
+    "n": _I,
+    "mae": _F,
+    "rmse": _F,
+    "bias": _F,  # mean of projection minus actual: positive means the model runs high
+}
+
 OUTLOOK_SCHEMA: dict[str, pl.DataType | type[pl.DataType]] = {
     "gsis_id": _S,
     "full_name": _S,

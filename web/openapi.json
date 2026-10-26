@@ -1010,6 +1010,46 @@
         }
       }
     },
+    "/api/leagues/{league}/scorecard": {
+      "get": {
+        "summary": "Scorecard",
+        "description": "Archived pre-kickoff projections against actual points. An instant read of parquet.",
+        "operationId": "scorecard_api_leagues__league__scorecard_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_ScorecardData_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/trade-partners": {
       "get": {
         "summary": "Trade Partners",
@@ -1877,6 +1917,59 @@
           "started_at"
         ],
         "title": "Envelope[RefreshData]"
+      },
+      "Envelope_ScorecardData_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScorecardData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[ScorecardData]"
       },
       "Envelope_StatusData_": {
         "properties": {
@@ -4854,6 +4947,181 @@
           "share_left"
         ],
         "title": "ScoreboardSide"
+      },
+      "ScorecardData": {
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/ScorecardRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "excluded": {
+            "$ref": "#/components/schemas/ScorecardExcluded"
+          },
+          "weeks_archived": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Weeks Archived"
+          },
+          "weeks_scored": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Weeks Scored"
+          },
+          "has_quantiles": {
+            "type": "boolean",
+            "title": "Has Quantiles"
+          },
+          "sleeper_first_fetch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sleeper First Fetch"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rows",
+          "excluded",
+          "weeks_archived",
+          "weeks_scored",
+          "has_quantiles",
+          "sleeper_first_fetch"
+        ],
+        "title": "ScorecardData"
+      },
+      "ScorecardExcluded": {
+        "properties": {
+          "games": {
+            "type": "integer",
+            "title": "Games"
+          },
+          "scored": {
+            "type": "integer",
+            "title": "Scored"
+          },
+          "not_final": {
+            "type": "integer",
+            "title": "Not Final"
+          },
+          "no_kickoff": {
+            "type": "integer",
+            "title": "No Kickoff"
+          },
+          "no_snapshot": {
+            "type": "integer",
+            "title": "No Snapshot"
+          },
+          "sleeper_missing": {
+            "type": "integer",
+            "title": "Sleeper Missing"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "games",
+          "scored",
+          "not_final",
+          "no_kickoff",
+          "no_snapshot",
+          "sleeper_missing"
+        ],
+        "title": "ScorecardExcluded"
+      },
+      "ScorecardRow": {
+        "properties": {
+          "week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "tier": {
+            "type": "integer",
+            "title": "Tier"
+          },
+          "model": {
+            "type": "string",
+            "enum": [
+              "learned",
+              "baseline",
+              "sleeper"
+            ],
+            "title": "Model"
+          },
+          "n": {
+            "type": "integer",
+            "title": "N"
+          },
+          "mae": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mae"
+          },
+          "rmse": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rmse"
+          },
+          "bias": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bias"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "week",
+          "position",
+          "tier",
+          "model",
+          "n",
+          "mae",
+          "rmse",
+          "bias"
+        ],
+        "title": "ScorecardRow"
       },
       "SeasonOddsRow": {
         "properties": {

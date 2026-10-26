@@ -424,3 +424,32 @@ class ScoreboardRow(Row):
     status: Literal["Not started", "Live", "Final"]
     a: ScoreboardSide
     b: ScoreboardSide
+
+
+class ScorecardRow(Row):
+    week: int | None  # null = all weeks
+    position: str  # "ALL" = every position
+    tier: int  # 0 to 2 = projection third, -1 = all
+    model: Literal["learned", "baseline", "sleeper"]
+    n: int
+    mae: float | None
+    rmse: float | None
+    bias: float | None  # projection minus actual
+
+
+class ScorecardExcluded(Row):
+    games: int
+    scored: int
+    not_final: int
+    no_kickoff: int
+    no_snapshot: int
+    sleeper_missing: int
+
+
+class ScorecardData(Row):
+    rows: list[ScorecardRow]
+    excluded: ScorecardExcluded
+    weeks_archived: list[int]
+    weeks_scored: list[int]
+    has_quantiles: bool  # false: snapshots hold means only, so no interval coverage
+    sleeper_first_fetch: str | None

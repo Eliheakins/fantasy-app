@@ -35,6 +35,7 @@ from fantasy.api_models import (
     RosterRow,
     ScheduleRow,
     ScoreboardRow,
+    ScorecardData,
     SeasonOddsRow,
     SeedRow,
     StatusData,
@@ -255,6 +256,24 @@ def scoreboard_data(league: str, week: int) -> list[dict[str, Any]]:
 def scoreboard(league: str, week: Week = 0, team: Team = None) -> Any:
     """Every matchup of a week, my (or the viewed) team first. About 0.5 s, so not a job."""
     return guarded(as_team(team, lambda: scoreboard_data(league, week)))
+
+
+@router.get("/leagues/{league}/scorecard", response_model=Envelope[ScorecardData])
+def scorecard(league: str) -> Any:
+    """Archived pre-kickoff projections against actual points. An instant read of parquet."""
+
+    def build() -> dict[str, Any]:
+        card = data_api.scorecard(league)
+        return {
+            "rows": rows(card.rows),
+            "excluded": card.excluded,
+            "weeks_archived": card.weeks_archived,
+            "weeks_scored": card.weeks_scored,
+            "has_quantiles": card.has_quantiles,
+            "sleeper_first_fetch": card.sleeper_first_fetch,
+        }
+
+    return guarded(build)
 
 
 @router.get("/leagues/{league}/trade-partners", response_model=Envelope[list[PartnerRow]])
