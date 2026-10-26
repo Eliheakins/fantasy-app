@@ -129,7 +129,12 @@ def lineup_moments(
     return mean, var, persistent
 
 
-@lru_cache(maxsize=2048)
+# An entry is n_weeks x n_sims bytes (about 220 KB at 20000 sims); 768 entries is under 300 MB at
+# the longest horizon, and both leagues need about 500 (measured 2026-10-25).
+ABSENCE_CACHE_SIZE = 768
+
+
+@lru_cache(maxsize=ABSENCE_CACHE_SIZE)
 def absence_path(
     gsis_id: str,
     curve: tuple[float, ...],

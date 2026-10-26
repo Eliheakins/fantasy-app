@@ -71,3 +71,11 @@ def test_a_challenger_that_does_not_win_on_held_out_draws_is_not_recommended() -
     totals[other][:5_000] += 3.0  # better on the first half only
     verdict = choose([base, other], base, totals, 100 + 10 * rng.standard_normal(10_000))
     assert verdict.tag == "same as max points" and verdict.chosen == base
+
+
+def test_absence_cache_is_bounded_by_bytes() -> None:
+    from fantasy.sim.odds import ABSENCE_CACHE_SIZE, absence_path
+
+    worst_bytes = ABSENCE_CACHE_SIZE * 18 * 20000  # 18 weeks, 20000 sims
+    assert absence_path.cache_info().maxsize == ABSENCE_CACHE_SIZE
+    assert worst_bytes < 300e6
