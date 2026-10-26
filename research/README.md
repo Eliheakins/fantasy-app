@@ -53,6 +53,7 @@ baseline. A feature ships only if it improves held-out error.
 | `pbp_features_check.py` | Do red-zone and goal-line shares, neutral pass rate, FTN charting, combine or contracts help? | No: all within 0.11% RMSE and within their placebos |
 | `td_redundancy_check.py` | Is goal-line share redundant with lagged expected touchdowns? | Correlated (0.85), and both add nothing beyond lagged points |
 | `shrink_check.py` | Does shrinking low-game players toward a position-by-round prior help? | k/(k+n) picks k = 0; a variant formed after looking gains 0.05% overall (t 1.9 to 2.0), not shipped |
+| `variants_check.py` | Fixed iterations, seed bagging, Poisson loss, per-player residual shrinkage? | Fixed 160 iterations shipped (noise-level, removes row-order dependence); the rest below the ship rules |
 
 `wf_panel.py` is a shared helper for `stack_check.py` and `settings_check.py`. The plan behind the
 2026-10-25 tests is in `memo_projection_2026-10-25.md`.
