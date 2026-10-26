@@ -60,9 +60,15 @@ def monotone() -> np.ndarray:
 
 
 def fit(
-    train: pl.DataFrame, test: pl.DataFrame, cfg: tuple, mono: bool = False
+    train: pl.DataFrame,
+    test: pl.DataFrame,
+    cfg: tuple,
+    mono: bool = False,
+    early: bool | str = "auto",
 ) -> np.ndarray:
-    """`learn.fit_predict` with the settings in `cfg` (identical to it at CURRENT)."""
+    """`learn.fit_predict` with the settings in `cfg` (identical to it at CURRENT). `early`:
+    scikit-learn's early_stopping; "auto" turns it on only above 10,000 training rows, so pooled
+    models had it and most per-position models did not (the review's finding)."""
     x_train, x_test = design(train, True), design(test, True)
     assert x_train.shape[1] == len(COLUMNS)
     usable = [j for j in range(x_train.shape[1]) if _varies(x_train[:, j])]
@@ -76,18 +82,24 @@ def fit(
         l2_regularization=5.0,
         random_state=0,
         monotonic_cst=monotone()[usable] if mono else None,
+        early_stopping=early,
     )
     model.fit(x_train[:, usable], train["points"].to_numpy())
     return np.clip(model.predict(x_test[:, usable]), 0.0, None)
 
 
-def fit_by_position(train: pl.DataFrame, test: pl.DataFrame, cfgs: dict[str, tuple]) -> np.ndarray:
+def fit_by_position(
+    train: pl.DataFrame, test: pl.DataFrame, cfgs: dict[str, tuple], early: bool | str = "auto"
+) -> np.ndarray:
     out = np.zeros(test.height)
     for p in POSITIONS:
         mask = (test["position"] == p).to_numpy()
         if mask.any():
             out[mask] = fit(
-                train.filter(pl.col("position") == p), test.filter(pl.col("position") == p), cfgs[p]
+                train.filter(pl.col("position") == p),
+                test.filter(pl.col("position") == p),
+                cfgs[p],
+                early=early,
             )
     return out
 
@@ -183,5 +195,59 @@ def main() -> None:
     print(f"ship floor: gain >= {100 * MIN_GAIN}% of RMSE in both leagues with t >= 2")
 
 
+MATCHED_ITER = 150  # near where the pooled model's early stopping ends (141 to 149 of 400)
+
+
+def matched() -> None:
+    """Per position against pooled with early stopping the same in both arms:
+    (i) off, MATCHED_ITER iterations; (ii) on for every model (validation 0.1, random_state 0),
+    with the per-position grid choice redone on the inner seasons under (ii)."""
+    w.league_ids()
+    learned = w.learned_oof()
+    no_es = (*CURRENT[:3], MATCHED_ITER)
+    inner_cands = {
+        "es_pos_" + name(c): (
+            lambda tr, te, c=c: fit_by_position(tr, te, dict.fromkeys(POSITIONS, c), True)
+        )
+        for c in GRID
+    }
+    inner = w.scored_rows(
+        learned.join(run_candidates(inner_cands, INNER, "inner_es"), on=w.KEY),
+        w.calibrated_baseline(min(INNER)),
+    )
+    by_pos = mse_by(inner, list(inner_cands), "position")
+    chosen = {}
+    for p in POSITIONS:
+        row = by_pos.filter(pl.col("position") == p).drop("position").row(0, named=True)
+        chosen[p] = GRID[list(inner_cands).index(min(row, key=lambda k: row[k]))]
+    print(f"(ii) per-position choice on 2022-2023 with early stopping on: {chosen}")
+    outer_cands = {
+        "pool_noes150": lambda tr, te: fit(tr, te, no_es, early=False),
+        "pos_noes150": lambda tr, te: fit_by_position(
+            tr, te, dict.fromkeys(POSITIONS, no_es), False
+        ),
+        "pool_es": lambda tr, te: fit(tr, te, CURRENT, early=True),
+        "pos_es": lambda tr, te: fit_by_position(tr, te, dict.fromkeys(POSITIONS, CURRENT), True),
+        "pos_es_chosen": lambda tr, te: fit_by_position(tr, te, chosen, True),
+    }
+    outer = w.scored_rows(
+        learned.join(run_candidates(outer_cands, OUTER, "outer_matched"), on=w.KEY),
+        w.calibrated_baseline(min(OUTER)),
+    )
+    print(f"pool_es vs learned max abs diff {(outer['pool_es'] - outer['learned']).abs().max()}")
+    table = pl.concat(
+        [
+            w.report(outer, ["pos_noes150"], ref="pool_noes150").with_columns(ref=pl.lit("pool_noes150")),
+            w.report(outer, ["pos_es", "pos_es_chosen"], ref="pool_es").with_columns(
+                ref=pl.lit("pool_es")
+            ),
+            w.report(outer, ["pool_noes150"], ref="learned").with_columns(ref=pl.lit("learned")),
+        ]
+    )
+    with pl.Config(tbl_rows=400, tbl_cols=20, tbl_width_chars=220):
+        print(table)
+    table.write_csv(w.SCRATCH / "settings_matched_report.csv")
+
+
 if __name__ == "__main__":
-    main()
+    matched() if "--matched" in sys.argv else main()
