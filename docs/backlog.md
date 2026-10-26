@@ -4,9 +4,9 @@ One story is one working session. Engine and dashboard stories are merged per ep
 
 ## Status (2026-10-23, end of the second working session)
 
-**Dates:** trade deadline is week 11; issue #40 (retest the Sleeper blend weight on clean snapshots) is due around then. Open work is #40, #37 (post-MVP) and the cleanup follow-ups issue.
+**Dates:** trade deadline is week 11; issue #40 (retest the Sleeper blend weight on clean snapshots) is due around then. Open work on GitHub: #40, #37 (post-MVP), #65 and #66 (U17 and U18), and the #68 epic. #41 (cleanup follow-ups) is closed.
 
-**Done and verified on live data:** every story except E3-8 (35 of 36 issues closed). Added this session: E2-2 odds snapshots, E3-6 tau from history, E3-7 DEF scoring and K/DEF projections, E4-2 player sampler, E4-5 win-probability lineup, E4-7 locks and injuries, E5-2 waiver value by re-simulation, E5-5 K/DEF streaming, and the dashboard stories (footer, range bars, objective toggle, Home actions, Outlook seeds and schedule, waiver detail and trending).
+**Done and verified on live data:** every story except E3-8 (all 36 E-series issues are closed on GitHub, #18 included; the ECR check is not in the code). Added this session: E2-2 odds snapshots, E3-6 tau from history, E3-7 DEF scoring and K/DEF projections, E4-2 player sampler, E4-5 win-probability lineup, E4-7 locks and injuries, E5-2 waiver value by re-simulation, E5-5 K/DEF streaming, and the dashboard stories (footer, range bars, objective toggle, Home actions, Outlook seeds and schedule, waiver detail and trending).
 
 **Not done:** E3-8 (ECR rank-to-points check, blocked on the FantasyPros redistribution terms) and everything under Post-MVP below.
 
@@ -22,7 +22,7 @@ One story is one working session. Engine and dashboard stories are merged per ep
 - Injury status: measured by status, practice report and injury type for the next four games; IR and similar are zero for 4 games. Defender injury curves reuse the skill-player curves. Vacancy bumps are shared equally among a team's receivers or backs.
 - No slot-matchup modeling (free data has no alignment).
 - Simulated draws are shared only for an identical set of players, so comparisons that change the player set (a different opponent) do not share draws.
-- Live scoring uses a 200-minute game clock and the last refresh; nothing polls, and season odds on Home only update on `simulate`.
+- Live scoring uses a fixed 200-minute game window (`sim/availability.py`). `make serve` refreshes scores every 10 minutes during games, and the Refresh scores button re-pulls matchups on demand. Season odds on Home only update on `simulate`.
 - The trade finder searches each team's top 6 players only.
 - Win probability uses league-average K and DEF for what is left to play.
 - The Sleeper blend weight (50%) is untested on clean data: #40, around week 11. Also test the rule that a Sleeper 0 counts as missing for Questionable and Doubtful players (unvalidated, see decisions.md): score both rules on clean snapshots from week 8.
@@ -142,9 +142,9 @@ Plan from the `ecc:planner` agent, adjusted for the FantasyPros rankings now all
 
 Order: M1 (with the M4 features that passed testing), M2, M3, then M4 loaders for the live path, M5, M6. Cut first if short: M6, M5, then pace and advanced stats within M4. Participation data is skipped (no gain).
 
-## UI v2 (React): planned 2026-10-24; U1 to U10 built (API, shell, charts, six pages), the rest open
+## UI v2 (React): planned 2026-10-24; U1 to U16 and U19 closed on GitHub; U17 open; U18 done in 0cd914c (issue #66 still open)
 
-Epic #68. One switch from Streamlit to React, built next to Streamlit and retired in one commit after a parity check on live data. Decided: FastAPI over `data_api`; Vite, React 19, TypeScript, TanStack Query and Table; shadcn/ui on Tailwind 4; Recharts for line and bar charts; hand-drawn SVG for the range bar, sparkline, bullet bar and trade dumbbell (Tremor rejected: stale npm package, React 18 only); phone through `tailscale serve`; refresh stays manual; no alerts and no AI assistant for now. First new features: League page (power rankings, luck and all-play, manager grades, schedule strength, what-ifs), market trade values (FantasyCalc), Weekly digest. The Streamlit Trades page stays until the React one has parity (trade deadline is week 11).
+Epic #68. One switch from Streamlit to React, built next to Streamlit and retired in one commit after a parity check on live data. Decided: FastAPI over `data_api`; Vite, React 19, TypeScript, TanStack Query and Table; shadcn/ui on Tailwind 4; Recharts for line and bar charts; hand-drawn SVG for the range bar, sparkline, bullet bar and trade dumbbell (Tremor rejected: stale npm package, React 18 only); phone through `tailscale serve`; refresh stays manual; no alerts and no AI assistant for now. First new features: League page (power rankings, luck and all-play, manager grades, schedule strength, what-ifs), market trade values (FantasyCalc), Weekly digest. The Streamlit pages were removed in 0cd914c (U18).
 
 | ID | Story | Issue | Wave | Size | Depends on |
 |---|---|---|---|---|---|
@@ -166,8 +166,9 @@ Epic #68. One switch from Streamlit to React, built next to Streamlit and retire
 | U16 | Weekly digest page | #64 | 3 | M | U15, U5 |
 | U17 | Phone access (`tailscale serve`) | #65 | 4 | S | U6 to U10 |
 | U18 | Retire Streamlit in one commit | #66 | 4 | S | U17 and all pages |
-| U19 | Model scorecard page (optional, not chosen) | #67 | 5 | M | U3, U5 |
+| U19 | Model scorecard page (optional; built as the Model page, `/scorecard`) | #67 | 5 | M | U3, U5 |
+
 
 Critical path: U2, U4, U5, U6, U12, U17, U18. Before switching for good: U1 to U10, U17, U18. Cut first if short: the digest (U15, U16), then what-ifs, then lineup grades, then U12. Design details for U11 to U16 (tables `market_values`, `sim_team_weeks`, `sim_conditional`, `move_ideas`; functions `conditional_odds`, `all_play`, `best_actual`, `market_hint`) are in the issue bodies.
 
-Parked: phone alerts (needs a scheduler; user said not yet), an AI assistant over the data layer (skipped), draft assistant and lineup what-if (offseason), paid prop-line data, the Sleeper blend retest (#40), the rookies and returners check for the learned model, a chance-of-playing model for unflagged players, remaining #41 items (profiling, AppTest for the other pages).
+Parked: phone alerts (needs a scheduler; user said not yet), an AI assistant over the data layer (skipped), draft assistant and lineup what-if (offseason), paid prop-line data, the Sleeper blend retest (#40), the rookies and returners check for the learned model, a chance-of-playing model for unflagged players, remaining follow-ups from the closed #41 (profiling; the Streamlit AppTest item no longer applies).

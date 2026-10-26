@@ -1,5 +1,7 @@
 # Modeling spec: scoring, projections, simulation, optimizers (E3 to E5)
 
+> Status (2026-10-25): the learned projection (`stages/learn.py`, `projection_model = "learned"` in `config.toml`) is what the simulation reads; the rolling baseline is the fallback. Story IDs follow `docs/backlog.md`.
+
 Status: draft v1, 2026-10-22. Scope is decisions.md and one-pager.md; nothing here reopens them. Sections 10b and 10c are later revisions and override earlier sections. Story IDs in section 10 are superseded by docs/backlog.md.
 Bar: well thought out, rough execution. Every number is labeled **measured** (scratch experiment, below) or **provisional** (a starting guess to be replaced by the backtest). Upgrade paths are named, not built.
 

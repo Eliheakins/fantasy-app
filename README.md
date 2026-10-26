@@ -13,11 +13,15 @@ Every recommendation is scored by its effect on **win probability or title odds*
 | Page | Answers |
 |---|---|
 | **Home** | Season odds for both leagues (playoffs, bye, title), this week's score so far and chance to win, and a "Do this now" list across lineup, waivers and trades. Refresh scores during games. |
-| **Lineup** | Best lineup for the week, with floor, median and ceiling per player. Choose the objective: max points, win probability, ceiling (when you are the underdog), floor (when you are the favorite), or what Sleeper has set. Locked players (game started) are not suggested. |
+| **Lineup** | Best lineup for the week, with floor, median and ceiling per player. Choose the objective: expected points, win probability, max ceiling or max floor. The app labels whether you are the underdog or the favorite, and shows the lineup set in Sleeper now (current week only) for comparison. Locked players (game started) are not suggested. |
 | **Waivers** | Free agents ranked by how much they raise your odds over a replacement-level free agent, with the suggested drop. Streaming picks for defense and kicker. |
 | **Trades** | Evaluate any trade, or search for trades that raise both teams' odds: 1 for 1, 1 for 2, 2 for 1 and 2 for 2. Each shows the change in your playoff and title odds with a Monte Carlo error. |
 | **Outlook** | Playoff seed distribution and the remaining schedule with win chances. |
-| **Player outlook** | Who is likely to improve or regress: return from injury, teammates out, injury risk. |
+| **Scores** | This week's matchups with live scores and each team's chance to win. |
+| **League** | Power rankings, luck (all-play record), manager grades, schedule strength and what-ifs. |
+| **Digest** | Last week's results, plus my top waiver adds and trade ideas (built by `make refresh`). |
+| **Players** | Player outlook: who is likely to improve or regress (return from injury, teammates out, injury risk). |
+| **Model** | Scorecard of the learned, baseline and Sleeper projections against actual points. |
 
 ## How the numbers are made
 
@@ -30,14 +34,14 @@ Every recommendation is scored by its effect on **win probability or title odds*
 7. **Season simulation.** 20,000 runs of the rest of the season with a persistent per-player error, weekly roster drift, the playoff bracket (6 teams, byes for seeds 1 and 2, weeks 15 to 17), and common random numbers so that comparing two moves is low-noise.
 8. **Decisions.** Waivers, drops and trades are valued over a replacement-level free agent (a backup tight end is worth little when many are free; a quarterback in superflex is worth a lot). Lineups are picked on one half of the simulated draws and scored on the other half, and a win-probability pick is recommended only if it also wins on the held-out half.
 
-What was tried and **rejected** is as important as what shipped: per-player volatility, usage trends, opponent defense points allowed, rookie status, offensive and defensive line health, starting quarterback out, slot-corner matchups, a different Vegas exponent, head-to-head history against an opponent, and FantasyPros rankings. Each has numbers in [docs/decisions.md](docs/decisions.md), and the scripts are in [research/](research/).
+What was tried and **rejected** is as important as what shipped: per-player volatility, usage trends, opponent defense points allowed, rookie status, offensive and defensive line health, starting quarterback out, slot-corner matchups, a different Vegas exponent and head-to-head history against an opponent. FantasyPros rankings were first ruled out as a baseline, then tested as learned-model features, which they passed. Each has numbers in [docs/decisions.md](docs/decisions.md), and the scripts are in [research/](research/).
 
 ## Setup
 
 Requires [uv](https://docs.astral.sh/uv/) (it installs Python 3.12) and a network connection for the first load.
 
 ```sh
-make setup      # install dependencies, enable the pre-commit hook
+make setup      # install dependencies, enable the pre-commit hook (ruff only)
 make refresh    # pull Sleeper and nflverse and rebuild every table
 make serve      # build the web UI and open it at http://127.0.0.1:8000
 ```
@@ -55,23 +59,27 @@ Configure your own leagues in [config.toml](config.toml) (Sleeper username, user
 | Command | What it does |
 |---|---|
 | `make refresh` | Rebuild all tables in order (needs the network) |
-| `make check` | ruff, mypy and pytest. Run before committing. |
+| `make check` | ruff, mypy and pytest, plus the web typecheck and tests. Run before committing. |
 | `make fmt` | Auto-fix lint and formatting |
+| `make serve` | Build the web UI and serve it and the API at http://127.0.0.1:8000 |
+| `make dev` | API with reload plus the Vite dev server (hot reload for the UI) |
 | `make odds` | Archive one week of prop lines |
 | `uv run python -m fantasy.stages.validate_scoring` | Compare computed points with Sleeper's for a completed week |
 | `uv run python -m fantasy.stages.validate_standings` | Compare computed standings with Sleeper's |
 | `uv run python -m fantasy.stages.backtest` | Walk-forward backtest of the baseline against a trailing average |
 | `uv run python -m fantasy.stages.calibration` | Check team-score distributions against completed weeks |
 
-During the season, run `make refresh` after games and before setting a lineup. The app shows a banner when data is stale or when a projection layer's stage has not run. Home has a "Refresh scores" button for live games (it re-fetches Sleeper matchups; it does not poll).
+During the season, run `make refresh` after games and before setting a lineup. The app shows a banner when data is stale or when a projection layer's stage has not run. Home's "Refresh scores" button re-fetches Sleeper matchups on demand. While `make serve` runs, it also refreshes scores every 10 minutes while a game of the current week is on (`LIVE_REFRESH=off` turns that off).
 
 ## Layout
 
 ```
 config.toml            leagues and user (no secrets)
 src/fantasy/
-  data_api.py          the only module the API imports: reads over the parquet store
-  store.py             parquet store: atomic writes, schema checks
+  api.py, api_routes.py  FastAPI app and /api routes (`make serve`)
+  data_api.py          read layer over the parquet store (the API reads through it; _*.py hold the logic)
+  live_refresh.py      score refresh while `make serve` runs
+  store.py             parquet store: atomic writes, schema checks (store.SCHEMAS: 46 tables)
   scoring.py           Sleeper scoring settings applied to nflverse stat lines
   sources/             Sleeper client
   stages/              pipeline stages, each run as python -m fantasy.stages.<name>
@@ -83,12 +91,14 @@ overrides/id_map.csv   manual Sleeper to nflverse ID overrides
 docs/                  decisions log, backlog, one-pager, specs
 ```
 
-Pipeline order (`make refresh`): `sync_sleeper`, `sleeper_projections`, `ingest_nfl`, `crosswalk`, `score`, `streaming`, `project`, `distributions`, `injuries`, `outlook`, `environment`, `simulate`. Each stage reads and writes parquet tables under `data/` (`raw`, `derived`, `archive`) registered in `store.SCHEMAS`, so any stage can be replaced independently.
+Pipeline order (`make refresh`): `sync_sleeper`, `sleeper_projections`, `ingest_nfl`, `crosswalk`, `score`, `streaming`, `project`, `learn`, `availability`, `distributions`, `injuries`, `outlook`, `environment`, `simulate`, `digest`, `market_values`. Each stage reads and writes parquet tables under `data/` (`raw`, `derived`, `archive`) registered in `store.SCHEMAS`, so any stage can be replaced independently.
 
 ## Data sources
 
 - **Sleeper** (read-only API): leagues, rosters, matchups, transactions, trending, players, and weekly projections from an undocumented endpoint. Calls stay well under 1,000 a minute and the players file is fetched at most once a day. Please keep the "Data from Sleeper" attribution if you build on this.
 - **nflverse** (via `nflreadpy`): player stats, snaps, injury reports, schedules with Vegas lines, expected points, team stats and play-by-play efficiency.
+- **FantasyPros** (via nflverse): weekly expert rankings, used as learned-model features under private use only. Never committed or shared (`data/` is gitignored).
+- **FantasyCalc** (undocumented endpoint): market values for the Trades page, fetched at most once a day per league setting.
 - **The Odds API** (optional): prop lines, archive only.
 
 Back up `data/archive/` before wiping `data/`. It holds Sleeper projection snapshots, odds snapshots and season-odds history that cannot be regenerated.
@@ -101,7 +111,7 @@ Back up `data/archive/` before wiping `data/`. It holds Sleeper projection snaps
 - No slot-matchup modeling: free data has no alignment.
 - K and DEF use league-average values for the rest of the season in the season simulation.
 - Vegas lines exist only a few weeks ahead; later weeks use a neutral context.
-- `data_api.py` is large (1150 lines) and several pages recompute the league on each click. Follow-ups are in issue #41.
+- `data_api.py` is 553 lines. League inputs are cached per data version and cleared on each refresh. The cleanup follow-ups were issue #41 (closed).
 
 ## Documentation
 
@@ -113,4 +123,4 @@ Back up `data/archive/` before wiping `data/`. It holds Sleeper projection snaps
 
 ## Status
 
-Built and used during the 2026 season. Open work: issue #40 (retest the Sleeper blend weight on clean snapshots, around week 11, which is also the trade deadline), #41 (cleanup follow-ups) and #37 (post-MVP: FAAB, a 16-team FAAB league, dynasty, a draft assistant, an own model, a news model, a React UI).
+Built and used during the 2026 season. The React UI in `web/` is the only UI (the Streamlit app was removed in commit 0cd914c). Open work on GitHub: issue #40 (retest the Sleeper blend weight on clean snapshots, around week 11, which is also the trade deadline), #65 (phone access through `tailscale serve`), #66 (Streamlit removal, done in 0cd914c; the issue is still open), the #68 UI epic and #37 (post-MVP: FAAB, a 16-team FAAB league, dynasty, a draft assistant, an own model, a news model).

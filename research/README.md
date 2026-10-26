@@ -36,6 +36,11 @@ baseline. A feature ships only if it improves held-out error.
 | `h2h_test.py` | Does history against a specific opponent predict points, divisional or not? | No out-of-sample signal |
 | `inj_explore.py` | How do injury status, practice report and injury type predict playing? | Became `stages/injuries.py` |
 | `weather_check.py` | Do actual temperature and wind add held-out accuracy to the learned model, by position? | No: every variant is within a random-noise placebo (gain 0.04% or less overall, \|t\| below 2) |
+| `gbm_test.py` | Does a learned gradient-boosted model beat the rolling baseline on 2024 to 2026? | Yes, about 2% lower RMSE in both leagues (shipped as `proj_learned`) |
+| `ecr_value.py` | Do FantasyPros weekly expert rankings improve the learned model? | Shipped as features (`nfl_ecr`, private use) |
+| `ros_check.py` | Is the learned model better over the rest of the season (summed forecasts)? | Yes, about 1.6 to 1.9% lower RMSE than the baseline |
+| `layers_check.py` | Do the outlook and environment layers help on seasons they never saw? | Outlook layer kept (helps on average); environment layer no held-out gain, switched off |
+| `availability_check.py` | Does a chance-of-playing classifier beat the injury-status table? | Yes, Brier 0.0980 against 0.1041 on listed player-weeks (shipped as `stages/availability.py`) |
 | `sleeper_proj.py` | How do Sleeper's projections compare with ours? | Not clean: the endpoint re-stamps after games (issue #40 reruns it on clean snapshots) |
 
 Left out on purpose: seven exploratory scripts that only inspected data shapes (participation

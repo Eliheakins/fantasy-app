@@ -1,6 +1,6 @@
 # Fantasy app one-pager (v3, 2026-10-23)
 
-**Status:** every story except E3-8 is done and checked on live data (35 of 36 issues closed): Home with actions and odds, Lineup with win probability and locks, Waivers with re-simulated odds and K/DEF streaming, Trades, and Outlook with seeds and schedule. Since then: replacement-level valuation, multi-player trades, an injury model, ceiling and floor start/sit, size calibration, a Player outlook page and environment effects. Known gaps are listed at the top of `backlog.md`.
+**Status:** every story except E3-8 is done and checked on live data (GitHub closes #18, E3-8, as completed, but the ECR points check is not in the code; all 36 E-series issues are closed): Home with actions and odds, Lineup with win probability and locks, Waivers with re-simulated odds and K/DEF streaming, Trades, and Outlook with seeds and schedule. Since then: replacement-level valuation, multi-player trades, an injury model, ceiling and floor start/sit, size calibration, a Player outlook page and environment effects. Known gaps are listed at the top of `backlog.md`.
 
 **Goal:** a local dashboard that tells me each week, for Colgate and YinzBurgh (Sleeper redraft): who to start, who to add, and which trades raise my title odds.
 
@@ -8,7 +8,7 @@
 
 ## Architecture (Python, local on M5 Pro, $0)
 
-Sleeper (read-only) and nflverse feed parquet files, with DuckDB as in-memory views. Stages: `sync_sleeper`, `crosswalk`, `ingest_nfl`, `score`, `project`, `simulate`, `decide`. Each reads and writes named parquet files, so any stage can change language later. The dashboard reads one module, `data_api.py`. No optimization solver: lineups come from greedy slot fill. Details: `spec/architecture.md`.
+Sleeper (read-only) and nflverse feed parquet files, read with polars (no DuckDB). The stages are listed in the README (`make refresh` order). Each reads and writes named parquet files, so any stage can change language later. The API reads through `data_api.py`. No optimization solver: lineups come from greedy slot fill. Details: `spec/architecture.md`.
 
 ## Epics (Kanban, 36 stories, one session each: `backlog.md`)
 
@@ -21,13 +21,13 @@ Sleeper (read-only) and nflverse feed parquet files, with DuckDB as in-memory vi
 | E4 | Lineup fill, schedule and playoffs, season simulator, win-probability lineup, calibration, locks | Lineup, Home cards, Outlook |
 | E5 | Waiver ranking, trade evaluator, deadline guards | Waivers, Trades, Home actions |
 | **MVP line** | | |
-| After | Partner finder, Players search, own model, dynasty, news LLM, React UI, draft assistant | |
+| After | Players search, own model, dynasty, news LLM, draft assistant (partner finder and the React UI are built) | |
 
 **Fast path to a working trade evaluator** (week 11 deadline, no value after it), 17 stories: E0-1, E0-2, E1-1, E1-2, E1-3, E2-1, E3-1 to E3-5, E4-1, E4-3, E4-4, E5-1, E5-3, E5-D2. Whether it fits before week 11 is not estimated. Cut order is in `backlog.md`.
 
-## Dashboard (Streamlit, rough first)
+## Dashboard (Streamlit first, now React)
 
-A decision queue with evidence. League selector (Both only on Home). Home cards with win probability and range bars, Lineup with a points versus win-probability toggle, Waivers, Trades with an explicit Evaluate button, Outlook. Color only for change (green and red), amber for injury and stale data. No dark toggle, no live recompute, no hover tooltips, no market values. Details: `spec/dashboard.md`.
+The Streamlit app was removed in commit 0cd914c; the React UI in `web/` serves the pages (`web/src/nav.ts`). The original design: a decision queue with evidence. League selector (Both only on Home). Home cards with win probability and range bars, Lineup with a points versus win-probability toggle, Waivers, Trades with an explicit Evaluate button, Outlook. Color only for change (green and red), amber for injury and stale data. No dark toggle, no live recompute, no hover tooltips, no market values. Details: `spec/dashboard.md`.
 
 ## What the checks found
 
@@ -39,7 +39,7 @@ A decision queue with evidence. League selector (Both only on Home). Home cards 
 
 ## Open items
 
-- FantasyPros ECR via nflverse: redistribution terms unchecked, so nothing depends on it.
+- FantasyPros ECR via nflverse: used as learned-model features under private use (decision of 2026-10-23); it is never shared (`data/` is gitignored).
 - DEF scoring: 2 of 19 mismatched, cause not traced.
 - Sleeper future-week matchups and playoff settings: spike is the first part of E1-1.
 - Measured: tau, CVs, calibration, injury and outlook effects. Assumed: the weekly roster drift and the 50% Sleeper blend weight (retest around week 11, #40).

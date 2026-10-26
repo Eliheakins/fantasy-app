@@ -5,7 +5,7 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 ## Commands
 
 - `make setup`: install dependencies and enable the git hook
-- `make check`: ruff, mypy and pytest. Run before committing.
+- `make check`: ruff, mypy and pytest, plus web typecheck and tests. Run before committing.
 - `make fmt`: auto-fix lint and formatting
 
 ## Run it
@@ -24,7 +24,7 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 ## Conventions
 
 - Parquet under `data/` (gitignored) is the source of truth. Stages and `data_api.py` read it with polars; DuckDB is not a dependency (add it back only if a query needs it).
-- The API (`src/fantasy/api*.py`) imports only `fantasy.data_api`. `make check` also typechecks and tests `web/`.
+- The API (`src/fantasy/api*.py`) reads through `fantasy.data_api`; `api_routes.py` also imports `_engine` and `_view`. `make check` also typechecks and tests `web/`.
 - No secrets in the repo. API keys come from environment variables.
 - Lean MVP: simplest method that works, tests only for math and config, no CI.
 - Sleeper's API is read-only. Stay under 1,000 calls a minute and fetch the players file at most once a day.
@@ -39,6 +39,7 @@ Stages (`src/fantasy/stages/`, run by `make refresh` in this order) read and wri
 3. `project`: rolling baseline (`proj_baseline`). `learn`: gradient-boosted model on lagged stats plus role data (`proj_learned`, same schema; `projection_model` in `config.toml` picks which one every later stage reads, through `store.projection_table()`). `availability`: chance of playing this week (`availability`). `distributions`: size calibration, per-tier marginals and spreads, correlations, fit on the chosen projections.
 4. `injuries`, `outlook`, `environment`: measured effects (tables `injury_effects`, `outlook_effects`, `environment_effects`).
 5. `simulate`: applies calibration, the Sleeper blend (`sim/blend.py`), injury (with the availability model for a flagged player's next game), outlook and, if `environment_layer` is on, environment layers, then season odds.
+6. `digest`, `market_values`: the digest's stored waiver and trade ideas (`move_ideas`) and FantasyCalc market values, both after `simulate`.
 
 A missing table for a layer in step 4, or for calibration or the Sleeper blend, is skipped without error; the stale banner lists what is missing (`data_api.missing_layers`).
 
@@ -48,14 +49,14 @@ A missing table for a layer in step 4, or for calibration or the Sleeper blend, 
 - `data/archive/` cannot be regenerated: our own weekly projections for the next game (`proj_snapshots`, the clean test of the learned model), Sleeper projection snapshots (re-stamped by the endpoint after games, so only our own snapshots are clean), odds snapshots, season-odds history. Back it up before wiping `data/`. Issue #40 depends on it.
 - Point-valued effects are measured in the reference league (lowest league id) and scaled per league (`sim/scoring_scale.py`). Add a new point-valued effect to the `*_POINT_KINDS` sets in `stages/simulate.py`, or YinzBurgh (0.5 PPR) will be overstated.
 - My teams: Colgate "Lisan Al-Caleb", YinzBurgh "LaPorta Potty" (Sleeper's `is_me` flag, not the league's top team).
-- `data_api.py` (370 lines) re-exports entry points that live in private sibling modules (`_engine`, `_lineup`, `_market`, `_outlook`, `_schemas`). Tests patch only `data_api.leagues` (`tests/test_app_pages.py`, `tests/test_data_api_engine.py`), so keep any function that calls `leagues` in `data_api.py`, and never call it from a `_`-module.
+- `data_api.py` (553 lines) re-exports entry points that live in private sibling modules (`_engine`, `_lineup`, `_market`, `_outlook`, `_schemas`, and others). Tests patch `data_api.leagues` (`tests/test_api.py`, `tests/test_data_api_engine.py`), so keep any function that calls `leagues` in `data_api.py`, and never call it from a `_`-module.
 - The learned model's past-game projections for 2019 and 2020 come from models that saw later seasons, so `store.projection_table()` drops them; never fit residual sizes or effects on them. Model features must use only games before the target game: pass a horizon shift to every lagged join (`learn.lag_asof`, `latest_asof`), and add a test.
 - FantasyPros weekly rankings (`nfl_ecr`) are private-use only: keep them under the gitignored `data/` and never commit or share them. No paid data (user decision, 2026-10-23).
 - `make serve` also runs a live refresh every 10 minutes while a game of the current week is on (`live_refresh.py`: `sync_week` then `simulate.run(archive=False)`; `LIVE_REFRESH=off` disables it). Never let a live tick append to `sim_season_history`.
 - Team selector: `?team=<roster id>` on any `/api/leagues/{league}/...` route makes that team 'me' (`_engine.viewing_team`). Anything that decides 'my team' must go through `_league()` or `data_api._my_league`, never read `league_teams.is_me` directly.
 - Lineup values for the current week include players whose game is over at their actual points (`_engine._week_values`); do not read `moves.week_values` directly for a current-week lineup.
-- API: non-GET requests need the header `X-Requested-With: fantasy-app`; the server binds 127.0.0.1 and rejects unknown Host headers. Phone access only through `tailscale serve`, never funnel. `web/openapi.json` is generated; never put `nfl_ecr` data in it or in fixtures.
-- `project.future_targets` starts at the league's `current_week` and keeps only games with no score yet (a Thursday game in the data must not hide week N for other teams). Scores only enter data on `make refresh`: run it after Sunday and after Monday night.
+- API: non-GET requests need the header `X-Requested-With: fantasy-app`; the server binds 127.0.0.1 and rejects unknown Host headers (extra names come from `API_ALLOWED_HOSTS`, comma separated). Phone access only through `tailscale serve`, never funnel. `web/openapi.json` is generated (`uv run python -m fantasy.api --openapi`); never put `nfl_ecr` data in it or in fixtures.
+- `project.future_targets` starts at the league's `current_week` and keeps only games with no score yet (a Thursday game in the data must not hide week N for other teams). Scores enter data on `make refresh`, the Refresh scores button and the live refresh in `make serve` (during games). Run `make refresh` after Sunday and after Monday night.
 - `environment_layer = false` in `config.toml`: the corner and offense-efficiency adjustments had no held-out gain on the learned projections. The stage and code remain.
 - Held-out checks: `learn` prints the learned model against the size-calibrated baseline; `backtest` adds pinball and coverage by size tier; `research/ros_check.py` (rest-of-season sums), `layers_check.py`, `availability_check.py`. Run `uv run python -m fantasy.stages.learn`, `availability` and `backtest` after changing a feature.
 

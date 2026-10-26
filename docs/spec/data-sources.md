@@ -1,5 +1,7 @@
 # Data source spikes (measured 2026-10-22)
 
+> Status (2026-10-25): a dated spike. FantasyPros weekly rankings are now ingested as `nfl_ecr` under private use (decision of 2026-10-23, see `docs/backlog.md`, Modeling v2), so the licensing questions below are answered for private use only. Current loaders: `stages/ingest_nfl.py` and `stages/ingest_role.py`.
+
 Every number below was measured by running real calls. Scratch scripts and cached responses live in `/private/tmp/claude-501/-Users-eliheakins/f1c4f309-1847-4dfc-9529-f4531042b485/scratchpad/spikes`. Environment: Python 3.12 (uv), nflreadpy, polars, requests. At the time of the run the real calendar was NFL week 7, regular season, and week 7 Thursday night (NE at CHI) was final.
 
 Sleeper usage: 35 GET calls total, players file fetched once (12,229 entries, 0.5 s), no auth, no errors, no rate-limit signals.

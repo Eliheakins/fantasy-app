@@ -1,5 +1,7 @@
 # Dashboard design spec (v1, 2026-10-23)
 
+> Status (2026-10-25): superseded. The Streamlit dashboard was removed (issue #66, commit 0cd914c). The React UI in `web/` (pages listed in `web/src/nav.ts`) replaces it. The Streamlit-specific sections below are design history.
+
 Scope: the local dashboard for Colgate (1.0 PPR, superflex) and YinzBurgh (0.5 PPR). Decisions in `decisions.md` and epics in `one-pager.md` are taken as given. Bar: well thought out, rough execution. This spec is a design, not a build plan with dates.
 
 References read and applied: Stephen Few (one screen, no scrolling, data-ink, bullet graphs over gauges), Nielsen Norman Group dashboard guidance (chart choice follows the question), Geckoboard guide (hierarchy: the one number or action first, group by question), Qlik pre-attentive processing (position and length beat color; use one or two preattentive cues per screen), Tremor and shadcn blocks (KPI tile, table with badge, delta chip as the patterns to copy for a later React port). Prototype facts below were checked in a throwaway Streamlit 1.66.1 app, not guessed.

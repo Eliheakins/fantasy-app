@@ -1,6 +1,6 @@
 # Contrast of the design tokens
 
-WCAG 2.x ratios (relative luminance formula) computed from the hex values in `src/index.css`. Targets: text 4.5:1, marks 3:1. Borders are decoration only; no meaning rides on them.
+WCAG 2.x ratios (relative luminance formula) computed from the hex values in `web/src/index.css`. Targets: text 4.5:1, marks 3:1. Borders are decoration only; no meaning rides on them.
 
 The app uses the Graphite set. The `.theme-light` set used only by /dev/viz keeps the earlier measured values (text 15.80, muted 6.11, range/page 3.29, range/surface 3.09).
 
