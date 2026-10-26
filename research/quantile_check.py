@@ -6,8 +6,8 @@ mean floored at 0.5. Scored walk-forward on 2024, 2025 and 2026, each league sep
 Spreads compared (quantiles at the backtest's levels 0.05 to 0.95):
   tiers      the reference: learned mean times ratio quantiles (actual / mean) per league,
              position and size tier, fit on 2021 to 2023 (never on learned 2019 or 2020)
-  prod       as `distributions.run` builds them: ratios against the size-calibrated learned mean,
-             applied to the raw learned mean (as the simulation does)
+  prod       as `distributions.run` built them before 72620d8: ratios against the size-calibrated
+             learned mean, applied to the raw learned mean (as the simulation does)
   tiers_wf   (c) the reference refit walk-forward: ratios from 2021 to the season before
   qgbm       (a) HistGradientBoosting, loss quantile, one model per level, learn's features and
              settings, trained on every season before the scored one; quantiles sorted per row
@@ -16,8 +16,11 @@ Spreads compared (quantiles at the backtest's levels 0.05 to 0.95):
   cqr_split  (b) the textbook split: the model trained two seasons back, offset from the season
              between
 
-Size tiers for fitting and reporting are the backtest's: thirds of the baseline projection with
-edges from seasons up to 2023. Run: OMP_NUM_THREADS=3 uv run python research/quantile_check.py
+Size tiers for fitting and reporting are production's (`distributions.estimate_marginals`):
+thirds of the learned projection per league and position, edges from 2021 to 2023 rows with a
+learned projection above 0.5. Ratio fits keep only rows whose mean is above 0.5, as production
+does. (A first version cut tiers on the baseline projection, as the backtest does; that made the
+reference weaker than production and overstated qgbm's gain.) Run: OMP_NUM_THREADS=3 uv run python research/quantile_check.py
 (the quantile fits are cached in research/scratch; pass --refit to redo them).
 """
 
@@ -139,11 +142,13 @@ def scored_rows(feats: dict[str, pl.DataFrame]) -> pl.DataFrame:
 
 
 def with_tiers(rows: pl.DataFrame) -> pl.DataFrame:
-    """The backtest's tier per row: baseline-projection thirds, edges from seasons <= 2023."""
+    """Production's tier per row: learned-projection thirds, edges from 2021 to 2023."""
     parts = []
     for _, g in rows.group_by("league_id", "position"):
-        train = g.filter(pl.col("season") <= TRAIN_END)["projection"].to_numpy()
-        parts.append(g.with_columns(pl.Series("tier", size_tiers(train, g["projection"].to_numpy()))))
+        train = g.filter(
+            pl.col("season").is_between(FIRST_FIT, TRAIN_END) & (pl.col("learned") > MIN_MEAN)
+        )["learned"].to_numpy()
+        parts.append(g.with_columns(pl.Series("tier", size_tiers(train, g["learned"].to_numpy()))))
     return pl.concat(parts)
 
 
@@ -154,9 +159,12 @@ def ratio_quantiles(fit: pl.DataFrame, apply: pl.DataFrame, mean_col: str) -> np
     idx = apply.with_row_index("_i")
     for (lid, pos, tier), g in idx.group_by("league_id", "position", "tier"):
         f = fit.filter(
-            (pl.col("league_id") == lid) & (pl.col("position") == pos) & (pl.col("tier") == tier)
+            (pl.col("league_id") == lid)
+            & (pl.col("position") == pos)
+            & (pl.col("tier") == tier)
+            & (pl.col(mean_col) > MIN_MEAN)  # production's usable rows
         )
-        ratios = np.quantile(f["points"].to_numpy() / np.maximum(f[mean_col].to_numpy(), MIN_MEAN), LEVELS)
+        ratios = np.quantile(f["points"].to_numpy() / f[mean_col].to_numpy(), LEVELS)
         mu = np.maximum(g["learned"].to_numpy(), MIN_MEAN)
         out[g["_i"].to_numpy()] = mu[:, None] * np.interp(QUANTILES, LEVELS, ratios)[None, :]
     return out
