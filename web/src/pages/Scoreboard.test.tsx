@@ -16,7 +16,9 @@ describe("ScoreboardView", () => {
     render(<ScoreboardView rows={rows} week={7} asOf="Sun 1:00 PM" />);
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
     const mine = screen.getByRole("article", { name: "Lisan (you) versus Bowers" });
-    expect(within(mine).getByText("Live")).toBeTruthy();
+    expect(within(mine).queryByText("Live")).toBeNull();
+    expect(screen.getByText(/Week 7: live/)).toBeTruthy();
+    expect(within(mine).getAllByText("proj")).toHaveLength(2);
     expect(within(mine).getByText("Your matchup")).toBeTruthy();
     expect(mine.className).toContain("border-accent");
     expect(within(mine).getByRole("img", { name: "Chance to win: Lisan 60%, Bowers 40%" })).toBeTruthy();

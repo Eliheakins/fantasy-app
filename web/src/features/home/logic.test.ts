@@ -1,5 +1,5 @@
 import type { League } from "@/api/types";
-import { actionPoints, actionShare, myOdds, myRange, opponentRange, recordLine, titlePercent, winChance, type WinProbability } from "./logic";
+import { actionPoints, actionShare, myOdds, myRange, opponentRange, recordLine, oddsPercent, actionSentence, worthActing, splitRoster, winChance, type WinProbability } from "./logic";
 
 const league = {
   wins: 4, losses: 2, ties: 0, record: "4-2", points_for: 854.72, current_week: 7,
@@ -15,9 +15,26 @@ describe("home logic", () => {
       "no record yet · no PF · week unknown",
     );
   });
-  it("formats the title to one decimal", () => {
-    expect(titlePercent(0.1234)).toBe("12.3%");
-    expect(titlePercent(null)).toBe("–");
+  it("shows odds as whole percents, one decimal under 10%", () => {
+    expect(oddsPercent(0.1234)).toBe("12%");
+    expect(oddsPercent(0.079)).toBe("7.9%");
+    expect(oddsPercent(null)).toBe("–");
+  });
+  it("strips the confidence word and the point gain from an action sentence", () => {
+    expect(actionSentence("Lean: start A over B (98.6% vs 98.3% to win)")).toBe("start A over B (98.6% vs 98.3% to win)");
+    expect(actionSentence("Add X, drop Y: +0.7% playoff odds, +2.9 points")).toBe("Add X, drop Y: +0.7% playoff odds");
+  });
+  it("keeps only actions outside the noise band", () => {
+    const win = (t: string) => ({ kind: "Win probability", text: t });
+    expect(worthActing(win("Clear: a (98.6% vs 98.3% to win)"), 0.8)).toBe(false);
+    expect(worthActing(win("Clear: a (62.0% vs 60.0% to win)"), 0.8)).toBe(true);
+    expect(worthActing(win("Lean: a (62.0% vs 60.0% to win)"), 0.5)).toBe(false);
+    expect(worthActing({ kind: "Waiver", text: "Add X: +0.2 points", delta_points: 0.2 }, null)).toBe(false);
+    expect(worthActing({ kind: "Waiver", text: "Add X: +2.9 points", delta_points: 2.9 }, null)).toBe(true);
+  });
+  it("splits starters from bench", () => {
+    const r = [{ is_starter: true }, { is_starter: false }] as never;
+    expect(splitRoster(r).bench).toHaveLength(1);
   });
   it("picks my row and the max-points option", () => {
     expect(myOdds([{ is_me: false }, { is_me: true, team_name: "x" }] as never)?.team_name).toBe("x");

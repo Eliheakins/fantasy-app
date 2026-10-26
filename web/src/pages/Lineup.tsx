@@ -15,7 +15,9 @@ import {
   type LineupRow,
   type ObjectiveKey,
   type WinProbability,
+  gapIsNoise,
   headline,
+  lineupsDiffer,
   rowsFor,
   sleeperKnown,
   splitLineup,
@@ -46,10 +48,11 @@ export function LineupView({ base, odds, week }: { base: LineupRow[]; odds: WinP
   const { start, bench } = splitLineup(rows);
   const known = sleeperKnown(rows);
   const h = headline(rows, odds?.summaries[objective]);
+  const differ = hasOdds && lineupsDiffer(odds.comparison);
   return (
     <div>
-      {odds?.script && <h2 className="text-heading font-semibold">{odds.script}</h2>}
-      {hasOdds && (
+      {odds?.script && <p className="text-body font-semibold">{odds.script}</p>}
+      {differ && (
         <RadioGroup
           label="Optimize for"
           options={OBJECTIVES}
@@ -63,7 +66,10 @@ export function LineupView({ base, odds, week }: { base: LineupRow[]; odds: WinP
         <Metric label="Lineup shown">{formatNumber(h.shown)} pts</Metric>
         {h.now !== null && (
           <Metric label="Set in Sleeper now">
-            {formatNumber(h.now)} pts {h.gap !== null && <Delta points={h.gap} className="text-body" />}
+            {formatNumber(h.now)} pts{" "}
+            {h.gap !== null && (gapIsNoise(h.gap)
+              ? <span className="text-caption font-normal text-muted">same as shown</span>
+              : <Delta points={h.gap} className="text-body" />)}
           </Metric>
         )}
         {hasOdds && h.win !== null && <Metric label="Chance to win">{formatPercent(h.win)}</Metric>}
@@ -72,10 +78,17 @@ export function LineupView({ base, odds, week }: { base: LineupRow[]; odds: WinP
         <p role="note" className="mt-4 card-flat text-body">{odds.swap.text}</p>
       )}
       {hasOdds && odds.swap && !odds.swap.differs && <p className="mt-4 text-caption text-muted">{NO_SWAP_TEXT}</p>}
-      {hasOdds && <Comparison rows={odds.comparison} />}
-      <PlayerTable title="Start" rows={start} known={known} />
+      {hasOdds && <div className="mt-8"><Comparison rows={odds.comparison} /></div>}
+      <div className="mt-8">
+        <PlayerTable
+          title="Start"
+          rows={start}
+          known={known}
+          caption="Points are for this week; the bar is the 10 to 90% range with the median marked."
+          howCalculated={CAVEAT_BASE + (known ? "" : CAVEAT_UNKNOWN)}
+        />
+      </div>
       {bench.length > 0 && <PlayerTable title="Bench" rows={bench} known={known} />}
-      <p className="mt-6 text-caption text-muted">{CAVEAT_BASE + (known ? "" : CAVEAT_UNKNOWN)}</p>
     </div>
   );
 }

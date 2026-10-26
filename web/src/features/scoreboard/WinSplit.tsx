@@ -1,5 +1,6 @@
 import { formatPercent } from "@/viz";
 import type { ScoreboardSide } from "./logic";
+import { cn } from "@/lib/utils";
 import { winLabel } from "./logic";
 
 const WIDTH = 200;
@@ -15,14 +16,14 @@ export function WinSplit({ first, second }: { first: ScoreboardSide; second: Sco
   const weight = (side: ScoreboardSide) => (side.roster_id === lead ? "font-semibold" : "text-muted");
   return (
     <div className="flex items-center gap-2 tabular-nums">
-      <span className={weight(first)}>{formatPercent(first.win_prob)}</span>
+      <span className={cn("whitespace-nowrap", weight(first))}><span className="inline-block max-w-[7rem] truncate align-bottom">{first.team_name}</span> {formatPercent(first.win_prob)}</span>
       <svg role="img" aria-label={label} viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="h-2 min-w-0 flex-1" preserveAspectRatio="none">
         <title>{label}</title>
         <rect width={WIDTH} height={HEIGHT} rx={2} className="fill-border" />
         <rect width={share * WIDTH} height={HEIGHT} rx={2} className="fill-range" />
         <rect x={WIDTH / 2 - MID_TICK / 2} width={MID_TICK} height={HEIGHT} className="fill-tick" />
       </svg>
-      <span className={weight(second)}>{formatPercent(second.win_prob)}</span>
+      <span className={cn("whitespace-nowrap", weight(second))}>{formatPercent(second.win_prob)} <span className="inline-block max-w-[7rem] truncate align-bottom">{second.team_name}</span></span>
     </div>
   );
 }

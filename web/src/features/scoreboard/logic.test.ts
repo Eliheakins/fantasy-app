@@ -39,3 +39,13 @@ describe("scoreboard logic", () => {
     expect([clampWeek(0), clampWeek(7), clampWeek(30)]).toEqual([1, 7, 18]);
   });
 });
+
+import { hasMixedStatus, weekStatus } from "./logic";
+
+describe("scoreboard labels", () => {
+  test("names the week's state once and detects a mix", () => {
+    expect(weekStatus([row(), row()])).toBe("live");
+    expect(hasMixedStatus([row(), row({}, {}, { status: "Final" })])).toBe(true);
+    expect(hasMixedStatus([row(), row()])).toBe(false);
+  });
+});

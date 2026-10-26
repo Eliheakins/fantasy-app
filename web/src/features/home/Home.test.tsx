@@ -18,7 +18,7 @@ const routes: Record<string, unknown> = {
   "/roster": ok([{ sleeper_id: "1", full_name: "Josh Allen", position: "QB", team: "BUF", injury_status: "Q", is_starter: true }]),
   "/live-score": ok([{ side: "me", team_name: "Mine", points: 48.6, projected_final: 57 }]),
   "/win-probability": ok({ options: [option("max_points", 0.62), option("win_prob", 0.7)] }),
-  "/actions": ok([{ kind: "Win probability", text: "Start A over B (+4.1 points)" }]),
+  "/actions": ok([{ kind: "Win probability", text: "Clear: start A over B (62.0% vs 60.0% to win), +4.1 points" }]),
 };
 
 function mockFetch(overrides: Record<string, unknown> = {}) {
@@ -60,18 +60,24 @@ describe("Home", () => {
     const calls = mockFetch();
     renderHome();
     expect(await screen.findByText("71%")).toBeInTheDocument();
-    expect(screen.getByText("12.3%")).toBeInTheDocument();
+    expect(screen.getByText("12%")).toBeInTheDocument();
     expect(screen.getByText("9.4")).toBeInTheDocument();
     expect(screen.getByText("Odds assume current rosters.")).toBeInTheDocument();
     expect(await screen.findByText("62%")).toBeInTheDocument();
     expect(await screen.findByText("+4.1 ▲")).toBeInTheDocument();
     expect(screen.getByText("clear")).toBeInTheDocument();
+    expect(screen.getByText("start A over B (62.0% vs 60.0% to win)")).toBeInTheDocument();
     expect(screen.getByText("Josh Allen")).toBeInTheDocument();
     expect(screen.getByText("Q")).toBeInTheDocument();
-    expect(screen.getByText("Starting")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Starters" })).toBeInTheDocument();
     expect(screen.getByText("3 active players have no nflverse history yet.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Refresh scores" }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.url === "/api/live/refresh")).toBe(true));
+  });
+  it("hides an action whose edge is inside the noise", async () => {
+    mockFetch({ "/actions": ok([{ kind: "Win probability", text: "Clear: start A over B (98.6% vs 98.3% to win)" }]) });
+    renderHome();
+    expect(await screen.findByText(/Nothing stands out/)).toBeInTheDocument();
   });
   it("shows the empty-actions line", async () => {
     mockFetch({ "/actions": ok([]) });
