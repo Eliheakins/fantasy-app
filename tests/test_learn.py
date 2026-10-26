@@ -2,7 +2,8 @@ import numpy as np
 import polars as pl
 import pytest
 
-from fantasy.stages import learn
+from fantasy import store
+from fantasy.stages import learn, vacancy
 
 GAME_SCHEMA = {
     "league_id": pl.String,
@@ -101,7 +102,7 @@ def test_each_season_is_scored_by_a_model_that_never_saw_it() -> None:
 
 
 def test_rows_without_a_stat_line_are_projected_but_never_trained_on(monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    monkeypatch.setattr(learn, "design", lambda frame, lines: frame.select("x").to_numpy())
+    monkeypatch.setattr(learn, "design", lambda frame, lines, vac: frame.select("x").to_numpy())
     monkeypatch.setattr(learn, "fit_predict", lambda xt, yt, xs: np.full(len(xs), float(len(yt))))
     history = pl.DataFrame(
         {"season": [2019, 2020, 2021, 2021], "x": [1.0] * 4, "points": [5.0] * 4}
@@ -340,3 +341,62 @@ def test_a_played_or_started_game_is_never_archived() -> None:
     )
     out = learn.unplayed(final, games, "2026-10-23")
     assert out["team"].to_list() == ["A"]
+
+
+def _empty(name: str) -> pl.DataFrame:
+    return pl.DataFrame(schema=store.SCHEMAS[name])
+
+
+def test_vacancy_comes_from_the_games_report_one_game_ahead_and_nobody_further_ahead() -> None:
+    report = pl.DataFrame(
+        [("B", 2025, 5, "KC", "WR", "Out", "DNP")],
+        schema={"gsis_id": pl.String, "season": pl.Int64, "week": pl.Int64, "team": pl.String,
+                "position": pl.String, "status": pl.String, "practice": pl.String},
+        orient="row",
+    )  # fmt: skip
+    usage = pl.DataFrame(
+        {"gsis_id": ["B"], "season": [2025], "week": [4], "team": ["KC"], "tgt": [0.3],
+         "car": [0.1], "snap": [0.9]}
+    )  # fmt: skip
+    extras = learn.Extras(
+        roster=_empty("nfl_rosters_weekly"),
+        depth=_empty("nfl_depth"),
+        ecr=_empty("nfl_ecr"),
+        pace=_empty("nfl_team_pace"),
+        advanced=_empty("nfl_advanced"),
+        report=report,
+        usage=usage,
+        sit_weights={None: 0.4},
+    )
+    schedule = pl.DataFrame(
+        {"season": [2025], "week": [5], "team": ["KC"], "rest": [7], "roof": ["outdoors"]}
+    )
+    target = targets("A", [5])
+    now = learn.attach_extras(target, extras, schedule, horizon=1)
+    ahead = learn.attach_extras(target, extras, schedule, horizon=2)
+    assert now["vac_out_tgt"].item() == pytest.approx(0.3)
+    # the week 5 report does not exist two weeks before: nobody listed, the chart's own rank
+    assert [ahead[c].item() for c in vacancy.VAC_COLUMNS[:-1]] == [0.0] * 6
+    assert ahead["eff_depth"].item() == ahead["depth_rank"].item()
+
+
+def test_future_weeks_without_a_report_use_a_model_without_the_vacancy_columns(
+    monkeypatch,  # type: ignore[no-untyped-def]
+) -> None:
+    widths: dict[int, int] = {}
+
+    def record(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray) -> np.ndarray:
+        widths[len(widths)] = x_test.shape[1]
+        return np.zeros(x_test.shape[0])
+
+    monkeypatch.setattr(learn, "fit_predict", record)
+    columns = [*learn.STATE_FEATURES, *learn.LINE_FEATURES, *learn.EXTRA_FEATURES]
+    row = {c: 1.0 for c in columns} | {"position": "WR", "points": 5.0}
+    history = pl.DataFrame([row | {"week": 3}])
+    future = pl.DataFrame([row | {"week": 8}, row | {"week": 9}])
+    out = learn.predict_future(history, future, report_week=8)
+    assert sorted(out["week"].to_list()) == [8, 9]
+    with_vacancy = learn.design(history, True).shape[1]
+    without = learn.design(history, True, vacancy=False).shape[1]
+    assert with_vacancy - without == len(vacancy.VAC_COLUMNS)
+    assert sorted(widths.values()) == [without, with_vacancy]  # week 9 has no report yet
