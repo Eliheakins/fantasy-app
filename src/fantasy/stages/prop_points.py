@@ -1,7 +1,7 @@
 """The current week's prop-implied and FFToday points per league, for the blend in simulate.
 
 proj_props: for each of this week's games, the latest Odds API snapshot under data/archive/odds
-taken before its kickoff and no earlier than STALE_DAYS before the week's first kickoff. Method of
+taken before its kickoff, used only if it is at most MAX_LINE_AGE_HOURS old then. Method of
 research/props_check.py: de-vig each book's two-way prices; a yardage line L is a median, mean =
 r_m * (L + z * sigma_m) with z = Phi^-1(p_over) clamped to +/-Z_CLAMP; receptions by Poisson
 inversion, mean = r_m * lambda; books averaged. X (non-TD points) = league weights times those
@@ -10,15 +10,20 @@ other point (touchdowns, interceptions, fumbles, two-point conversions). Only `p
 (RB and WR) with every line of PRIMARY and at least one earlier game. 2024 held out: the equal
 blend with the learned projection cut RMSE 1.6% and 1.4% (docs/decisions.md).
 
-proj_outside: each outside source's latest snapshot of the current week (outside_projections),
-scored under the league's rules plus the player's lagged mean of fumble-lost and two-point points
-under that league's weights, which FFToday does not project (it ran 0.4 points high).
+proj_outside: each outside source's latest snapshot per position of the current week
+(outside_projections) fetched since the Tuesday before the week's first kickoff, scored under the
+league's rules plus the player's lagged mean of fumble-lost and two-point points under that
+league's weights (FFToday projects neither), less FFToday's 2025 mean error by position
+(FFTODAY_BIAS).
 
-No network; no snapshot or a stale one leaves the table empty with a log line.
+No network. No snapshot or a stale one, or any failure in the props half, leaves proj_props empty
+with a log line; a source's age and missing positions are logged.
 Run: uv run python -m fantasy.stages.prop_points
 """
 
+import calendar
 import json
+import math
 import re
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
@@ -40,7 +45,9 @@ from fantasy.stages.snapshot_odds import ODDS_DIR
 
 Z_CLAMP = 1.0
 LAG_GAMES = 8
-STALE_DAYS = 7
+# lines older than this at their game's kickoff are dropped; a Sunday 11:45 ET slate pull is
+# 32.5 hours before Monday night's kickoff
+MAX_LINE_AGE_HOURS = 36
 STAMP = re.compile(r"\d{8}T\d{6}Z")  # a finished snapshot folder (snapshot_odds)
 # market -> (nflverse stat, Sleeper scoring key)
 MARKETS = {
@@ -63,6 +70,10 @@ PRIMARY = {
     "WR": ("player_receptions", "player_reception_yds"),
     "TE": ("player_receptions", "player_reception_yds"),
 }
+# FFToday's mean error by position (projection after the lagged fumble and two-point points
+# minus actual): research/fftoday_bias.py, 2025 weeks 1 to 6, mean of the two leagues. On 2026
+# weeks 1 to 6 the corrected mean with ours was no worse at any position (pooled RMSE -0.005)
+FFTODAY_BIAS = {"QB": -0.59, "RB": -0.44, "WR": 1.16, "TE": 0.08}
 # Sleeper key -> nflverse columns of the points FFToday leaves out
 UNPROJECTED = {
     "fum_lost": ("sack_fumbles_lost", "rushing_fumbles_lost", "receiving_fumbles_lost"),
@@ -124,8 +135,9 @@ def implied(price: float) -> float:
 
 
 def poisson_lambda(line: float, p_over: float) -> float:
-    """lambda with P(X > line) = p_over; P(X <= k - 1) = Q(k, lambda) for k = ceil(line)."""
-    k = int(-(-line // 1))
+    """lambda with P(X > line) = p_over: P(X > line) = 1 - P(X <= floor(line)) and
+    P(X <= k - 1) = Q(k, lambda), so k = floor(line) + 1 (also right for an integer line)."""
+    k = math.floor(line) + 1
     return float(brentq(lambda lam: gammaincc(k, lam) - (1 - p_over), 1e-6, 60.0))
 
 
@@ -182,34 +194,41 @@ def read_snapshots(odds_dir: Path = ODDS_DIR) -> pl.DataFrame:
             continue
         stamp = datetime.strptime(folder.name, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
         for file in sorted(folder.glob("*.json")):
-            rows += event_lines(json.loads(file.read_text()), stamp)
+            try:
+                rows += event_lines(json.loads(file.read_text()), stamp)
+            except (ValueError, KeyError, TypeError) as err:  # one bad file skips one game
+                print(f"warning: odds file {file} skipped: {err!r}")
     return pl.DataFrame(rows, schema=LINE_SCHEMA)
 
 
 def week_lines(lines: pl.DataFrame, schedule: pl.DataFrame) -> pl.DataFrame:
-    """The week's games (`schedule`: one week's rows) from each game's latest snapshot before
-    kickoff and not stale: home, away, player, market, prop_mean (mean over books)."""
-    if schedule.is_empty():
-        return lines.clear().select(
-            "home", "away", "player", "market", prop_mean="line", stamp="stamp"
-        )
-    kicks = (schedule["gameday"] + "T" + schedule["gametime"]).to_list()
-    first = min(datetime.fromisoformat(k).replace(tzinfo=EASTERN) for k in kicks).astimezone(UTC)
-    games = schedule.select("gameday", home="home_team", away="away_team")
-    fresh = (
-        lines.filter(
-            (pl.col("stamp") < pl.col("kickoff"))
-            & (pl.col("stamp") >= first - timedelta(days=STALE_DAYS))
-        )
+    """The week's games (`schedule`: one week's rows; games without a date are left out), each
+    from its latest snapshot before kickoff if that is at most MAX_LINE_AGE_HOURS old: home, away,
+    player, market, prop_mean (mean over books), stamp."""
+    games = schedule.drop_nulls(["gameday", "home_team", "away_team"]).select(
+        "gameday", home="home_team", away="away_team"
+    )
+    before = (
+        lines.filter(pl.col("stamp") < pl.col("kickoff"))
         .with_columns(
             gameday=pl.col("kickoff").dt.convert_time_zone(str(EASTERN)).dt.strftime("%Y-%m-%d")
         )
         .join(games, on=["gameday", "home", "away"])
     )
-    latest = fresh.filter(pl.col("stamp") == pl.col("stamp").max().over("event_id"))
-    means = [prop_mean(*row) for row in latest.select("market", "line", "p_over").iter_rows()]
+    latest = before.filter(pl.col("stamp") == pl.col("stamp").max().over("event_id"))
+    age = (pl.col("kickoff") - pl.col("stamp")).dt.total_minutes() / 60
+    fresh = latest.filter(age <= MAX_LINE_AGE_HOURS)
+    if latest.height:
+        hours = fresh.select(age.min().alias("lo"), age.max().alias("hi")).row(0)
+        stale = latest["event_id"].n_unique() - fresh["event_id"].n_unique()
+        print(
+            f"prop lines for {fresh['event_id'].n_unique()} games, snapshots {hours[0] or 0:.0f} "
+            f"to {hours[1] or 0:.0f} hours before kickoff; {stale} games dropped (latest snapshot "
+            f"older than {MAX_LINE_AGE_HOURS} hours)"
+        )
+    means = [prop_mean(*row) for row in fresh.select("market", "line", "p_over").iter_rows()]
     return (
-        latest.with_columns(pl.Series("prop_mean", means, dtype=pl.Float64))
+        fresh.with_columns(pl.Series("prop_mean", means, dtype=pl.Float64))
         .group_by("home", "away", "player", "market")
         .agg(pl.col("prop_mean").mean(), pl.col("stamp").max())
     )
@@ -294,23 +313,31 @@ def implied_points(
 
 
 def outside_points(
-    snaps: pl.DataFrame, scoring: dict[str, float], lags: pl.DataFrame
+    snaps: pl.DataFrame,
+    scoring: dict[str, float],
+    lags: pl.DataFrame,
+    bias: dict[str, float] | None = None,
 ) -> pl.DataFrame:
-    """Each source's latest snapshot (`snaps`: source, fetched_at, gsis_id, stats JSON) scored
-    under `scoring`, plus the player's lagged `unprojected` points: source, gsis_id, fetched_at,
-    projection."""
-    latest = snaps.filter(pl.col("fetched_at") == pl.col("fetched_at").max().over("source"))
-    latest = latest.unique(["source", "gsis_id"], keep="first", maintain_order=True)
+    """Each source's latest snapshot per position (`snaps`: source, fetched_at, position, gsis_id,
+    stats JSON) scored under `scoring`, plus the player's lagged `unprojected` points, less the
+    position's `bias` (FFTODAY_BIAS by default; FFToday is the only source): source, gsis_id,
+    fetched_at, projection."""
+    bias = FFTODAY_BIAS if bias is None else bias
+    newest = pl.col("fetched_at").max().over("source", "position")
+    latest = snaps.filter(pl.col("fetched_at") == newest).unique(
+        ["source", "gsis_id"], keep="first", maintain_order=True
+    )
     scored = [score_stats(json.loads(s), scoring) for s in latest["stats"]]
+    level = pl.col("position").replace_strict(bias, default=0.0, return_dtype=pl.Float64)
     return (
-        latest.select("source", "gsis_id", "fetched_at")
+        latest.select("source", "gsis_id", "fetched_at", "position")
         .with_columns(pl.Series("projection", scored, dtype=pl.Float64))
         .join(lags.select("gsis_id", "unprojected"), on="gsis_id", how="left")
         .select(
             "source",
             "gsis_id",
             "fetched_at",
-            projection=pl.col("projection") + pl.col("unprojected").fill_null(0.0),
+            projection=pl.col("projection") + pl.col("unprojected").fill_null(0.0) - level,
         )
     )
 
@@ -328,25 +355,56 @@ def current_people(data_dir: Path) -> pl.DataFrame:
     )
 
 
-def _outside_snapshots(data_dir: Path, season: int, week: int) -> pl.DataFrame:
-    """This week's archived outside rows mapped to gsis_id (none: an empty frame)."""
+def window_start(schedule: pl.DataFrame) -> datetime | None:
+    """00:00 Eastern on the Tuesday on or before the week's first kickoff (None: no dated game)."""
+    days = schedule["gameday"].drop_nulls()
+    if days.is_empty():
+        return None
+    first = datetime.fromisoformat(str(days.min())).replace(tzinfo=EASTERN)
+    back = (first.weekday() - calendar.TUESDAY) % 7
+    return (first - timedelta(days=back)).astimezone(UTC)
+
+
+def _outside_snapshots(
+    data_dir: Path, season: int, week: int, since: datetime | None
+) -> pl.DataFrame:
+    """This week's archived outside rows fetched since `since`, mapped to gsis_id; logs each
+    source's age by position and warns about missing positions."""
     empty = pl.DataFrame(
-        schema={
-            "source": pl.String,
-            "fetched_at": pl.String,
-            "gsis_id": pl.String,
-            "stats": pl.String,
-        }
+        schema={s: pl.String for s in ("source", "fetched_at", "position", "gsis_id", "stats")}
     )
     try:
         snaps = store.read_table("outside_proj_snapshots", "archive", data_dir)
     except FileNotFoundError:
         return empty
+    at = pl.col("fetched_at").str.to_datetime(time_zone="UTC", time_unit="us")
     snaps = snaps.filter((pl.col("season") == season) & (pl.col("week") == week))
+    if since is not None:
+        snaps = snaps.filter(at >= since)
     if snaps.is_empty():
         return empty
+    now = datetime.now(UTC)
+    for (source,), g in snaps.group_by("source"):
+        ages = g.group_by("position").agg(at.max()).sort("position")
+        for position, fetched in ages.iter_rows():
+            hours = (now - fetched).total_seconds() / 3600
+            print(f"{source} {position} fetched {hours:.0f} hours ago")
+        missing = sorted(set(op.POSITIONS) - set(ages["position"]))
+        if missing:
+            print(f"warning: {source} has no rows for {missing} in week {week}")
     mapped = op.map_to_gsis(snaps, op.people(data_dir)).drop_nulls("gsis_id")
     return mapped.select(*empty.columns)
+
+
+def _week_props(data_dir: Path, odds_dir: Path, schedule: pl.DataFrame) -> pl.DataFrame:
+    """This week's mapped prop lines: gsis_id, position, market, prop_mean, stamp."""
+    lines = week_lines(read_snapshots(odds_dir), schedule)
+    if lines.is_empty():
+        print(
+            f"no odds snapshot taken within {MAX_LINE_AGE_HOURS} hours before kickoff for this "
+            "week's games: no prop points (run `make odds-slate` before kickoff)"
+        )
+    return map_players(lines, current_people(data_dir))
 
 
 def run(data_dir: Path = store.DATA_DIR, odds_dir: Path = ODDS_DIR) -> tuple[int, int]:
@@ -357,46 +415,59 @@ def run(data_dir: Path = store.DATA_DIR, odds_dir: Path = ODDS_DIR) -> tuple[int
     schedule = store.read_table("nfl_schedules", "raw", data_dir).filter(
         (pl.col("season") == season) & (pl.col("week") == week)
     )
-    lines = week_lines(read_snapshots(odds_dir), schedule)
-    if lines.is_empty():
-        print(
-            f"no odds snapshot for week {week} taken before kickoff in the last {STALE_DAYS} days "
-            "of the week: no prop points (run `make odds-slate` before kickoff)"
-        )
-    props = map_players(lines, current_people(data_dir))
-    fetched = props.group_by("gsis_id").agg(
-        pl.col("stamp").max().dt.strftime("%Y-%m-%dT%H:%M:%S+00:00").alias("fetched_at")
-    )
-    snaps = _outside_snapshots(data_dir, season, week)
+    snaps = _outside_snapshots(data_dir, season, week, window_start(schedule))
     if snaps.is_empty():
         print(f"no outside projections archived for week {week}: no FFToday points")
     points = store.read_table("player_points", "derived", data_dir)
     stats = store.read_table("nfl_player_stats", "raw", data_dir)
-    prop_rows, outside_rows = [], []
-    for league in leagues.iter_rows(named=True):
-        scoring = json.loads(league["scoring_settings"])
-        lags = lagged_means(
-            points.filter(pl.col("league_id") == league["league_id"]), stats, scoring, season, week
+    lags = {
+        lg["league_id"]: lagged_means(
+            points.filter(pl.col("league_id") == lg["league_id"]),
+            stats,
+            json.loads(lg["scoring_settings"]),
+            season,
+            week,
         )
-        stamp = {"league_id": league["league_id"], "season": season, "week": week}
-        prop_rows.append(
-            implied_points(props, lags, scoring, config.prop_positions)
-            .join(fetched, on="gsis_id", how="left")
-            .with_columns(**{k: pl.lit(v) for k, v in stamp.items()})
+        for lg in leagues.iter_rows(named=True)
+    }
+    stamp = {"season": season, "week": week}
+    outside = [
+        outside_points(
+            snaps, json.loads(lg["scoring_settings"]), lags[lg["league_id"]]
+        ).with_columns(pl.lit(lg["league_id"]).alias("league_id"))
+        for lg in leagues.iter_rows(named=True)
+    ]
+    try:
+        props = _week_props(data_dir, odds_dir, schedule)
+        fetched = props.group_by("gsis_id").agg(
+            pl.col("stamp").max().dt.strftime("%Y-%m-%dT%H:%M:%S+00:00").alias("fetched_at")
         )
-        outside_rows.append(
-            outside_points(snaps, scoring, lags).with_columns(
-                **{k: pl.lit(v) for k, v in stamp.items()}
+        implied = []
+        for lg in leagues.iter_rows(named=True):
+            scoring = json.loads(lg["scoring_settings"])
+            rows = implied_points(props, lags[lg["league_id"]], scoring, config.prop_positions)
+            implied.append(
+                rows.join(fetched, on="gsis_id", how="left").with_columns(
+                    pl.lit(lg["league_id"]).alias("league_id")
+                )
             )
-        )
+    except Exception as err:  # fail soft like outside_projections: the blend runs without props
+        print(f"warning: prop points skipped for week {week}: {err!r}")
+        implied = []
     tables = {
-        name: pl.concat(rows).select(
-            pl.col(column).cast(dtype) for column, dtype in store.SCHEMAS[name].items()
-        )
-        for name, rows in (("proj_props", prop_rows), ("proj_outside", outside_rows))
+        name: _typed(name, frames, stamp)
+        for name, frames in (("proj_props", implied), ("proj_outside", outside))
     }
     store.write_tables(tables, "derived", data_dir)
     return tables["proj_props"].height, tables["proj_outside"].height
+
+
+def _typed(name: str, frames: list[pl.DataFrame], stamp: dict[str, int]) -> pl.DataFrame:
+    schema = store.SCHEMAS[name]
+    if not frames:
+        return pl.DataFrame(schema=schema)
+    rows = pl.concat(frames).with_columns(**{k: pl.lit(v) for k, v in stamp.items()})
+    return rows.select(pl.col(column).cast(dtype) for column, dtype in schema.items())
 
 
 if __name__ == "__main__":

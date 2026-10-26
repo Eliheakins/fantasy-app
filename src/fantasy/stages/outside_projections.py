@@ -48,6 +48,20 @@ _ROW = re.compile(r"<TR[^>]*>(.*?)</TR>", re.S | re.I)
 _CELL = re.compile(r"<TD[^>]*>(.*?)</TD>", re.S | re.I)
 _PLAYER = re.compile(r'href="/stats/players/(\d+)/', re.I)
 _BOLD = re.compile(r"<B>(.*?)</B>", re.S | re.I)
+_LABEL = re.compile(r"<title>[^<]*?(\d{4}) Week (\d+)", re.I)  # FFToday's page title
+
+
+def check_week(page: str, season: int, week: int) -> str:
+    """`page` unchanged if its title names `season` and `week`, else ValueError (a site that
+    falls back to another week must not be archived as this one)."""
+    label = _LABEL.search(page)
+    if label is None:
+        raise ValueError("page has no season and week label")
+    if (int(label.group(1)), int(label.group(2))) != (season, week):
+        found = f"{label.group(1)} Week {label.group(2)}"
+        raise ValueError(f"page is for {found}, not {season} Week {week}")
+    return page
+
 
 Fetcher = Callable[[int, int, str], str]  # (season, week, position) -> page body
 
@@ -114,7 +128,7 @@ def snapshot(
         if i:
             time.sleep(pause)
         try:
-            parsed = parse(fetch(season, week, position), position)
+            parsed = parse(check_week(fetch(season, week, position), season, week), position)
         except Exception as err:  # fail soft: a site change must not stop make refresh
             print(f"warning: {source} {position} week {week} skipped: {err!r}")
             continue

@@ -28,7 +28,9 @@ exclusions come from the scorecard's helpers.
    snapshots (each game's last snapshot before kickoff, `prop_points` functions, lags as of that
    week), paired like Sleeper (fetched before kickoff, nearest to ours). The shipped current-week
    blend, the equal-weight mean of every source a row has (ours, Sleeper, FFToday, props), is
-   scored against the old 0.5 blend and against ours alone, on the same rows. Paired weekly t
+   scored against the old 0.5 blend and against ours alone, on the same rows, pooled and by
+   position (WR carried the gains). FFToday is less FFTODAY_BIAS, as shipped. Once the hurdle
+   model archives q and E, q * mean(E, others) is scored against mean(q * E, others). Paired weekly t
    against the same critical value. Equal weights only: no weights are fit on so few weeks.
 
 Rows where production would not blend (Sleeper missing, or a Questionable or Doubtful Sleeper 0)
@@ -173,6 +175,20 @@ def candidate(rows: pl.DataFrame, col: str, base: str = "half") -> dict[str, flo
     }
 
 
+def q_scale_check(eq: pl.DataFrame, sources: list[str]) -> None:
+    """Hurdle model (stat_line_model): q * mean(E, sleeper, outside) against
+    mean(q * E, sleeper, outside), E our points when he plays and q his chance of playing. Needs
+    archived q and E columns (`q`, `ours_cond`), which do not exist until that model ships."""
+    if not {"q", "ours_cond"} <= set(eq.columns):
+        print("q * mean vs mean(q * ours, ...): untestable until stat_line_model archives q and E")
+        return
+    d = eq.with_columns(
+        q_mean=pl.col("q") * pl.mean_horizontal("ours_cond", "sleeper", *sources),
+        mean_q=pl.mean_horizontal(pl.col("q") * pl.col("ours_cond"), "sleeper", *sources),
+    )
+    print(pl.DataFrame([{"position": "ALL", "against": "mean(q * ours)", **candidate(d, "q_mean", "mean_q")}]))
+
+
 # ---------- data ----------
 
 
@@ -212,7 +228,7 @@ def outside_points(league: dict, games: pl.DataFrame) -> dict[str, pl.DataFrame]
     out: dict[str, list[pl.DataFrame]] = {}
     for (source, season, week, _), g in mapped.group_by("source", "season", "week", "fetched_at"):
         lags = pp.lagged_means(points, stats, scoring, int(season), int(week))
-        scored = pp.outside_points(g.select("source", "fetched_at", "gsis_id", "stats"), scoring, lags)
+        scored = pp.outside_points(g.select("source", "fetched_at", "position", "gsis_id", "stats"), scoring, lags)
         out.setdefault(str(source), []).append(tagged(league, season, week, scored, str(source)))
     return {source: pl.concat(frames) for source, frames in out.items()}
 
@@ -397,8 +413,18 @@ def main() -> None:
             eq = blendable.with_columns(pl.mean_horizontal("ours", "sleeper", *sources).alias("eq_all"))
             counts = {s: int(eq[s].is_not_null().sum()) for s in sources}
             print(f"shipped blend: equal-weight mean of every source a row has (rows with each source {counts})")
-            print(pl.DataFrame([{"position": "ALL", "against": "old 0.5", **candidate(eq, "eq_all")}]))
-            print(pl.DataFrame([{"position": "ALL", "against": "ours", **candidate(eq, "eq_all", "ours")}]))
+            # by position (WR carried the prop and FFToday gains, and FFToday runs high there)
+            shipped = []
+            for pos in ["ALL", "WR", "RB", "QB", "TE"]:
+                g = eq if pos == "ALL" else eq.filter(pl.col("position") == pos)
+                if g.is_empty():
+                    continue
+                shipped += [
+                    {"position": pos, "against": "old 0.5", **candidate(g, "eq_all")},
+                    {"position": pos, "against": "ours", **candidate(g, "eq_all", "ours")},
+                ]
+            print(pl.DataFrame(shipped))
+            q_scale_check(eq, sources)
         rates = status_play_rates(league["league_id"])
         print(f"Q/D Sleeper-0 rule (status play rates {({k: round(v, 3) for k, v in rates.items()})}):",
               score_zero_rule(zeroed, rates))

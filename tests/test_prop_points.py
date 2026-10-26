@@ -60,6 +60,9 @@ def test_receptions_mean_inverts_the_poisson_over_probability() -> None:
     r, _ = pp.PROP_FIT["player_receptions"]
     p_over = 1 - gammaincc(4, 4.2)  # P(X > 3.5) for lambda 4.2
     assert pp.prop_mean("player_receptions", 3.5, p_over) == pytest.approx(r * 4.2)
+    # an integer line: Over means X >= 5, so P(X > 4) = 1 - P(X <= 4) = 1 - Q(5, lambda)
+    p_over = 1 - gammaincc(5, 4.2)
+    assert pp.prop_mean("player_receptions", 4.0, p_over) == pytest.approx(r * 4.2)
 
 
 def test_event_lines_devigs_paired_prices_and_skips_one_sided_lines() -> None:
@@ -91,12 +94,32 @@ def test_week_lines_keep_the_latest_snapshot_before_kickoff_and_average_books(
     assert out["prop_mean"].item() == pytest.approx(r * 70.5)
 
 
-def test_a_snapshot_older_than_a_week_before_the_first_kickoff_is_stale(tmp_path: Path) -> None:
-    write_snapshot(
-        tmp_path, "20261017T120000Z", event([market("player_rush_yds", "A B", 50.5, -110, -110)])
-    )
+def test_a_snapshot_taken_too_long_before_its_games_kickoff_is_stale(tmp_path: Path) -> None:
+    line = event([market("player_rush_yds", "A B", 50.5, -110, -110)])
+    write_snapshot(tmp_path, "20261024T040000Z", line)  # 37 hours before the 17:00Z kickoff
     assert pp.week_lines(pp.read_snapshots(tmp_path), SCHEDULE).is_empty()
+    write_snapshot(tmp_path, "20261024T060000Z", line)  # 35 hours: a Sunday pull for Monday night
+    assert pp.week_lines(pp.read_snapshots(tmp_path), SCHEDULE).height == 1
     assert pp.read_snapshots(tmp_path / "missing").is_empty()
+
+
+def test_a_game_without_a_kickoff_time_and_a_truncated_odds_file_do_not_raise(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_snapshot(
+        tmp_path, "20261025T163000Z", event([market("player_rush_yds", "A B", 70.5, -110, -110)])
+    )
+    (tmp_path / "20261025T163000Z" / "e2.json").write_text('{"id": "e2", "bookm')
+    (tmp_path / "20261025T163000Z" / "e3.json").write_text('{"id": "e3"}')
+    lines = pp.read_snapshots(tmp_path)
+    assert lines.height == 1
+    assert capsys.readouterr().out.count("warning: odds file") == 2
+    no_time = pl.concat([SCHEDULE, SCHEDULE.with_columns(gametime=pl.lit(None, pl.String))])
+    assert pp.week_lines(lines, no_time).height == 1  # the odds file has the kickoff
+    no_day = SCHEDULE.with_columns(
+        gameday=pl.lit(None, pl.String), gametime=pl.lit(None, pl.String)
+    )
+    assert pp.week_lines(lines, no_day).is_empty()
 
 
 def test_map_players_matches_a_unique_name_within_the_games_two_teams() -> None:
@@ -194,19 +217,80 @@ def test_implied_points_add_lagged_rest_and_fill_unlined_stats_from_lags() -> No
     assert got == pytest.approx({"rb": 8.0 + 5.0 + 6.0, "wr": 0.5 + 5.0 + 6.0 + 4.0})
 
 
-def test_outside_points_score_under_the_league_and_add_fumbles_and_two_point_tries() -> None:
+def test_outside_points_score_under_the_league_add_fumbles_and_remove_the_bias() -> None:
     snaps = pl.DataFrame(
         {
-            "source": ["fftoday"] * 2,
-            "fetched_at": ["t1", "t2"],
-            "gsis_id": ["g1", "g1"],
-            "stats": [json.dumps({"rec": 9.0}), json.dumps({"rec": 5.0, "rec_yd": 60.0})],
+            "source": ["fftoday"] * 3,
+            "fetched_at": ["t1", "t2", "t1"],
+            "position": ["WR", "WR", "RB"],
+            "gsis_id": ["g1", "g1", "g2"],
+            "stats": [
+                json.dumps({"rec": 9.0}),
+                json.dumps({"rec": 5.0, "rec_yd": 60.0}),
+                json.dumps({"rec": 2.0}),
+            ],
         }
     )
     lags = pl.DataFrame({"gsis_id": ["g1"], "unprojected": [-0.2]})
-    out = pp.outside_points(snaps, {"rec": 0.5, "rec_yd": 0.1}, lags)
-    assert out.select("source", "gsis_id", "fetched_at").row(0) == ("fftoday", "g1", "t2")
-    assert out["projection"].item() == pytest.approx(2.5 + 6.0 - 0.2)
+    out = pp.outside_points(snaps, {"rec": 0.5, "rec_yd": 0.1}, lags, bias={"WR": 1.5})
+    got = {r["gsis_id"]: r for r in out.iter_rows(named=True)}
+    # the latest fetch per position: WR from t2, RB keeps its only (earlier) fetch
+    assert (got["g1"]["fetched_at"], got["g2"]["fetched_at"]) == ("t2", "t1")
+    assert got["g1"]["projection"] == pytest.approx(2.5 + 6.0 - 0.2 - 1.5)
+    assert got["g2"]["projection"] == pytest.approx(1.0)
+
+
+def outside_store(tmp_path: Path) -> None:
+    write_rows(
+        tmp_path, "leagues", [{"league_id": "L1", "current_week": 7, "scoring_settings": "{}"}]
+    )
+    write_rows(tmp_path, "nfl_schedules", SCHEDULE.to_dicts())
+    write_rows(tmp_path, "player_points")
+    write_rows(tmp_path, "nfl_injuries")
+    players = (("1", "Wide Out", "WR"), ("2", "Run Back", "RB"))
+    write_rows(
+        tmp_path,
+        "sleeper_players",
+        [{"sleeper_id": s, "full_name": n, "position": p, "team": "BAL"} for s, n, p in players],
+    )
+    write_rows(tmp_path, "id_map", [{"sleeper_id": s, "gsis_id": f"g{s}"} for s in ("1", "2")])
+    stats = pl.DataFrame(schema=store.SCHEMAS["nfl_player_stats"])
+    store.write_table("nfl_player_stats", stats, "raw", tmp_path)
+
+
+def test_run_drops_outside_rows_fetched_before_the_weeks_window_and_warns(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    outside_store(tmp_path)
+    base = {"source": "fftoday", "season": 2026, "week": 7, "team": "BAL", "stats": "{}"}
+    snaps = [
+        {**base, "fetched_at": "2026-10-19T12:00:00+00:00", "position": "RB", "name": "Run Back"},
+        {**base, "fetched_at": "2026-10-23T12:00:00+00:00", "position": "WR", "name": "Wide Out"},
+    ]
+    store.write_table(
+        "outside_proj_snapshots",
+        pl.DataFrame(snaps, schema=store.SCHEMAS["outside_proj_snapshots"]),
+        "archive",
+        tmp_path,
+    )
+    assert pp.run(tmp_path, tmp_path / "odds") == (0, 1)
+    out = capsys.readouterr().out
+    assert "fftoday WR fetched" in out and "hours" in out
+    assert "warning: fftoday has no rows for ['QB', 'RB', 'TE']" in out
+
+
+def test_a_failure_in_the_props_half_leaves_props_empty_and_keeps_outside_points(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    outside_store(tmp_path)
+
+    def broken(*args: object) -> pl.DataFrame:
+        raise RuntimeError("bad snapshot")
+
+    monkeypatch.setattr(pp, "map_players", broken)
+    assert pp.run(tmp_path, tmp_path / "odds") == (0, 0)
+    assert "warning: prop points skipped" in capsys.readouterr().out
+    assert store.read_table("proj_props", "derived", tmp_path).is_empty()
 
 
 def test_run_without_odds_or_outside_snapshots_writes_empty_tables(

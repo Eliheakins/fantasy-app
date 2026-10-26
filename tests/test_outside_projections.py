@@ -21,13 +21,14 @@ ROW = (
 )
 
 
-def page(labels: str, rows: list[tuple[str, str, list[str]]]) -> str:
+def page(labels: str, rows: list[tuple[str, str, list[str]]], label: str = "2026 Week 7") -> str:
     head = HEAD.format("".join(f"<TD><B>{x}</B><BR></TD>" for x in labels.split()))
     body = "".join(
         ROW.format(pid=i + 100, name=name, cells="".join(f"<TD>{c}</TD>\n" for c in cells))
         for i, (name, _, cells) in enumerate(rows)
     )
-    return f"<html><TABLE>{head}{body}</TABLE></html>"
+    title = f"<title>Running Back Projections: {label} - FF Today</title>"
+    return f"<html><head>{title}</head><TABLE>{head}{body}</TABLE></html>"
 
 
 RB_PAGE = page(
@@ -87,6 +88,21 @@ def test_run_appends_to_the_archive_and_a_failing_position_does_not_stop_it(
     assert set(archive["position"]) == {"RB", "WR", "TE"}
     assert archive["week"].unique().to_list() == [7]
     assert json.loads(archive["stats"][0])["rush_yd"] == 70.0
+
+
+def test_a_page_for_another_week_or_without_a_label_is_skipped_with_a_warning(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    write_rows(tmp_path, "leagues", [{"league_id": "L", "current_week": 7}])
+    old = RB_PAGE.replace("2026 Week 7", "2026 Week 6")
+
+    def fake(season: int, week: int, position: str) -> str:
+        return old if position == "RB" else RB_PAGE
+
+    assert op.run(tmp_path, ["fftoday"], {"fftoday": fake}, pause=0) == 4  # WR and TE
+    assert "page is for 2026 Week 6" in capsys.readouterr().out
+    unlabelled = RB_PAGE.replace("<title>", "<x>")
+    assert op.run(tmp_path, ["fftoday"], {"fftoday": lambda *_: unlabelled}, pause=0) == 0
 
 
 def test_run_writes_nothing_when_every_fetch_fails_or_no_source_is_on(tmp_path: Path) -> None:
