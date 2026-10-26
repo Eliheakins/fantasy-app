@@ -441,6 +441,64 @@
         }
       }
     },
+    "/api/leagues/{league}/digest": {
+      "get": {
+        "summary": "Digest",
+        "description": "Last week, projection misses, odds change and stored move ideas in one read.",
+        "operationId": "digest_api_leagues__league__digest_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_DigestData_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/luck": {
       "get": {
         "summary": "Luck",
@@ -1446,6 +1504,18 @@
               "title": "Team"
             },
             "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          },
+          {
+            "name": "stored_adds",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Use the digest's stored waiver ideas instead of re-simulating",
+              "default": false,
+              "title": "Stored Adds"
+            },
+            "description": "Use the digest's stored waiver ideas instead of re-simulating"
           }
         ],
         "responses": {
@@ -1824,6 +1894,115 @@
           "ceiling"
         ],
         "title": "ComparisonRow"
+      },
+      "DigestData": {
+        "properties": {
+          "last_week": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastWeekRow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "performance": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectionMissRow"
+            },
+            "type": "array",
+            "title": "Performance"
+          },
+          "odds_change": {
+            "items": {
+              "$ref": "#/components/schemas/OddsChangeRow"
+            },
+            "type": "array",
+            "title": "Odds Change"
+          },
+          "waivers": {
+            "items": {
+              "$ref": "#/components/schemas/MoveIdeaRow"
+            },
+            "type": "array",
+            "title": "Waivers"
+          },
+          "trades": {
+            "items": {
+              "$ref": "#/components/schemas/MoveIdeaRow"
+            },
+            "type": "array",
+            "title": "Trades"
+          },
+          "ideas": {
+            "$ref": "#/components/schemas/IdeasInfo"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "last_week",
+          "performance",
+          "odds_change",
+          "waivers",
+          "trades",
+          "ideas"
+        ],
+        "title": "DigestData"
+      },
+      "Envelope_DigestData_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DigestData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[DigestData]"
       },
       "Envelope_RefreshData_": {
         "properties": {
@@ -3658,6 +3837,153 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "IdeasInfo": {
+        "properties": {
+          "is_mine": {
+            "type": "boolean",
+            "title": "Is Mine"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "as_of_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of Week"
+          },
+          "current_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Week"
+          },
+          "trade_deadline": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trade Deadline"
+          },
+          "deadline_passed": {
+            "type": "boolean",
+            "title": "Deadline Passed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "is_mine",
+          "created_at",
+          "as_of_week",
+          "current_week",
+          "trade_deadline",
+          "deadline_passed"
+        ],
+        "title": "IdeasInfo"
+      },
+      "LastWeekRow": {
+        "properties": {
+          "week": {
+            "type": "integer",
+            "title": "Week"
+          },
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "opponent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opponent"
+          },
+          "points": {
+            "type": "number",
+            "title": "Points"
+          },
+          "opp_points": {
+            "type": "number",
+            "title": "Opp Points"
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "W",
+              "L",
+              "T"
+            ],
+            "title": "Result"
+          },
+          "bench_points_left": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bench Points Left"
+          },
+          "luck": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Luck"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "week",
+          "roster_id",
+          "team_name",
+          "opponent",
+          "points",
+          "opp_points",
+          "result",
+          "bench_points_left",
+          "luck"
+        ],
+        "title": "LastWeekRow"
+      },
       "LeagueRow": {
         "properties": {
           "league_key": {
@@ -4204,6 +4530,204 @@
         ],
         "title": "MarketValueRow"
       },
+      "MoveIdeaRow": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "waiver",
+              "trade"
+            ],
+            "title": "Kind"
+          },
+          "partner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partner"
+          },
+          "give": {
+            "type": "string",
+            "title": "Give"
+          },
+          "get": {
+            "type": "string",
+            "title": "Get"
+          },
+          "give_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Give Ids"
+          },
+          "get_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Get Ids"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "playoff_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Delta"
+          },
+          "title_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Delta"
+          },
+          "se_title": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Se Title"
+          },
+          "delta_points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Points"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "partner",
+          "give",
+          "get",
+          "give_ids",
+          "get_ids",
+          "rank",
+          "playoff_delta",
+          "title_delta",
+          "se_title",
+          "delta_points"
+        ],
+        "title": "MoveIdeaRow"
+      },
+      "OddsChangeRow": {
+        "properties": {
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "is_me": {
+            "type": "boolean",
+            "title": "Is Me"
+          },
+          "as_of_week": {
+            "type": "integer",
+            "title": "As Of Week"
+          },
+          "prev_as_of_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prev As Of Week"
+          },
+          "p_playoffs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Playoffs"
+          },
+          "p_title": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Title"
+          },
+          "d_playoffs": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "D Playoffs"
+          },
+          "d_title": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "D Title"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "roster_id",
+          "team_name",
+          "is_me",
+          "as_of_week",
+          "prev_as_of_week",
+          "p_playoffs",
+          "p_title",
+          "d_playoffs",
+          "d_title"
+        ],
+        "title": "OddsChangeRow"
+      },
       "OddsHistoryRow": {
         "properties": {
           "run_at": {
@@ -4581,6 +5105,73 @@
           "sos_rank"
         ],
         "title": "PowerRankingRow"
+      },
+      "ProjectionMissRow": {
+        "properties": {
+          "gsis_id": {
+            "type": "string",
+            "title": "Gsis Id"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Points"
+          },
+          "projection": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projection"
+          },
+          "diff": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diff"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gsis_id",
+          "full_name",
+          "position",
+          "points",
+          "projection",
+          "diff"
+        ],
+        "title": "ProjectionMissRow"
       },
       "RefreshData": {
         "properties": {

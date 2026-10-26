@@ -14,7 +14,7 @@ from typing import Any
 
 import polars as pl
 
-from fantasy import _league_view, store
+from fantasy import _digest, _league_view, store
 from fantasy._engine import _league, _names, _read, viewed_team
 from fantasy._engine import _tier as _tier  # re-exported: tests import it from here
 from fantasy._engine import _tier_edges as _tier_edges
@@ -48,12 +48,17 @@ __all__ = [
     "trade_market",
     "lineup",
     "live_score",
+    "last_week",
     "luck",
     "manager_grades",
     "missing_layers",
+    "move_ideas",
     "moves",
+    "odds_change",
     "odds_history",
+    "ideas_are_mine",
     "player_outlook",
+    "player_vs_projection",
     "player_weeks",
     "position_strength",
     "power_rankings",
@@ -66,6 +71,7 @@ __all__ = [
     "season_odds",
     "seed_distribution",
     "simulation_behind_inputs",
+    "stored_adds",
     "streamers",
     "teams",
     "trade_assets",
@@ -272,6 +278,59 @@ def manager_grades(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataF
     return _league_view.manager_grades(me, data_dir)
 
 
+def last_week(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+    """The viewed team's game last week: opponent, points, result, bench points left and luck
+    that week. Empty in week 1."""
+    me = _my_league(league_key, data_dir)
+    if me is None:
+        return pl.DataFrame(schema=ENGINE_SCHEMAS["last_week"])
+    return _digest.last_week(me, data_dir)
+
+
+def player_vs_projection(
+    league_key: str, week: int = 0, data_dir: Path = store.DATA_DIR
+) -> pl.DataFrame:
+    """Points against the last projection snapshot for the viewed team's skill starters in a week
+    (0 is last week), biggest miss first; null projection where no snapshot exists."""
+    me = _my_league(league_key, data_dir)
+    if me is None:
+        return pl.DataFrame(schema=ENGINE_SCHEMAS["player_vs_projection"])
+    return _digest.player_vs_projection(me, week, data_dir)
+
+
+def odds_change(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+    """Season odds in the latest run against the last run of an earlier as_of_week; the change
+    columns are null when there is none."""
+    me = _my_league(league_key, data_dir)
+    if me is None:
+        return pl.DataFrame(schema=ENGINE_SCHEMAS["odds_change"])
+    history = _read("sim_season_history", data_dir, area="archive")
+    return _digest.odds_change(history, me["league_id"], me["roster_id"])
+
+
+def move_ideas(league_key: str, kind: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+    """Waiver ("waiver") or trade ("trade") ideas stored by the digest stage, best first. Empty
+    when another team is being viewed: the stage stores ideas for my team only."""
+    me = _my_league(league_key, data_dir)
+    if me is None:
+        return pl.DataFrame(schema=store.SCHEMAS["move_ideas"])
+    return _digest.move_ideas(me, kind, data_dir)
+
+
+def ideas_are_mine(league_key: str, data_dir: Path = store.DATA_DIR) -> bool:
+    """The viewed team is my own, so stored move ideas apply to it."""
+    me = _my_league(league_key, data_dir)
+    return me is not None and _digest.is_my_team(me, data_dir)
+
+
+def stored_adds(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+    """Stored waiver ideas shaped like `waivers`, to pass to `actions(adds=...)`."""
+    me = _my_league(league_key, data_dir)
+    if me is None:
+        return pl.DataFrame(schema=ENGINE_SCHEMAS["waivers"])
+    return _digest.stored_adds(me, data_dir)
+
+
 def what_if(league_key: str, week: int = 0, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
     """My change in playoff and title odds for each outcome of each matchup in a week (0 is the
     current week). Empty for completed and playoff weeks."""
@@ -348,11 +407,17 @@ LINEUP_GAP = 1.0  # expected points below the best lineup before the gap is wort
 WAIVER_PLAYOFF_GAIN = 0.005  # playoff odds change that makes an add worth mentioning
 
 
-def actions(league_key: str, n: int = 3, odds: pl.DataFrame | None = None) -> pl.DataFrame:
+def actions(
+    league_key: str,
+    n: int = 3,
+    odds: pl.DataFrame | None = None,
+    adds: pl.DataFrame | None = None,
+) -> pl.DataFrame:
     """The most useful things to do now, most urgent first: kind and text.
 
     Order: injured or out players in your lineup, a lineup change, then a waiver add. `odds` is a
-    `win_probability` result to reuse.
+    `win_probability` result to reuse; `adds` a `waivers`-shaped frame (see `stored_adds`) that
+    skips the waiver re-simulation.
     """
     loaded = _league(league_key)
     rows = lineup(league_key, loaded=loaded)
@@ -389,7 +454,8 @@ def actions(league_key: str, n: int = 3, odds: pl.DataFrame | None = None) -> pl
                     f"({pick['win_prob']:.1%} vs {best['win_prob']:.1%} to win)",
                 )
             )
-    adds = waivers(league_key, loaded=loaded)
+    if adds is None:
+        adds = waivers(league_key, loaded=loaded)
     if not adds.is_empty():
         top = adds.sort("playoff_delta", descending=True).row(0, named=True)
         if top["playoff_delta"] >= WAIVER_PLAYOFF_GAIN:
