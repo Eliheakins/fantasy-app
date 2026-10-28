@@ -96,7 +96,7 @@ export function tableDomain(rows: readonly LineupRow[]) {
 }
 
 export const CAVEAT_BASE =
-  "Best lineup by projected points for skill positions; K and DEF are not handled yet, and " +
+  "Best lineup by projected points for skill positions; K and DEF are not part of the lineup picker, and " +
   "players on bye are left out. Players whose game has started are locked in place: locked " +
   "starters stay, locked bench players are not recommended. A game counts as over 200 " +
   "minutes after kickoff, and points are as fresh as the last refresh. The " +
@@ -105,7 +105,7 @@ export const CAVEAT_BASE =
   "player who did not practice rarely plays), and players who play through an injury are " +
   "discounted a little. The range " +
   "is where about 80 percent of outcomes have landed for players like this. In the win " +
-  "probability, the opponent plays the lineup set in Sleeper and K and DEF are league averages.";
+  "probability, the opponent plays the lineup set in Sleeper and each team's K and DEF are its own projections.";
 export const CAVEAT_UNKNOWN = " Sleeper lineups are only known for the current week.";
 
 export const COMPARISON_CAPTION =

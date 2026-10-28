@@ -109,9 +109,9 @@ Back up `data/archive/` before wiping `data/`. It holds Sleeper projection snaps
 - Assumed, not measured: the weekly roster drift and the 50% Sleeper blend weight. The spread of season win totals is untested because the leagues have no history here.
 - Defender injury curves reuse skill-player curves. Vacancy bumps are shared equally among a team's receivers or backs.
 - No slot-matchup modeling: free data has no alignment.
-- K and DEF use league-average values for the rest of the season in the season simulation.
+- K and DEF use each team's own rostered unit projection in the season simulation, lineups and win probability (the league average where a team has none). Their spread is still league-wide, and past weeks in `calibration` use league means.
 - Vegas lines exist only a few weeks ahead; later weeks use a neutral context.
-- `data_api.py` is 553 lines. League inputs are cached per data version and cleared on each refresh. The cleanup follow-ups were issue #41 (closed).
+- `data_api.py` is 571 lines. League inputs are cached per data version and cleared on each refresh. The cleanup follow-ups were issue #41 (closed).
 
 ## Documentation
 

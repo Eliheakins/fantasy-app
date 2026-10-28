@@ -1,9 +1,10 @@
 """Roster moves: free agents, ranking adds, and applying and evaluating a trade.
 
 Everything here works on one league's LeagueData. Players are skill players (QB, RB, WR, TE) with
-projections; K and DEF are constants in the simulator. A trade keeps each team's roster size: a
-team that receives more players than it gives drops its lowest-value players, and one that
-receives fewer picks up the best free agents (an assumption, stated in decisions.md).
+projections; each team's K and DEF are its own projections (`LeagueData.kd_slot`), which a move
+leaves unchanged. A trade keeps each team's roster size: a team that receives more players than it
+gives drops its lowest-value players, and one that receives fewer picks up the best free agents
+(an assumption, stated in decisions.md).
 """
 
 from itertools import combinations

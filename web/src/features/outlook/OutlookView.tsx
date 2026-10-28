@@ -21,9 +21,9 @@ function Optional<T>({ state, children }: { state: ApiState<T[]>; children: (row
 }
 
 const ODDS_METHOD =
-  "Simulated rest of season, 20,000 runs, assuming current rosters: no waiver moves, trades or new injuries beyond the usual spread of game outcomes. Defenses are a league average for now.";
+  "Simulated rest of season, 20,000 runs, assuming current rosters: no waiver moves, trades or new injuries beyond the usual spread of game outcomes. Kicker and defense use each team's own projection.";
 const SCHEDULE_METHOD =
-  "Expected points are each team's best lineup this week, with kicker and defense at league averages. The win chance is a quick normal approximation, not the full simulation.";
+  "Expected points are each team's best lineup this week, with each team's own kicker and defense projection. The win chance is a quick normal approximation, not the full simulation.";
 
 export function OutlookView() {
   const who = useWho();
