@@ -37,8 +37,11 @@ def market_values(league_key: str, gsis_ids: list[str], data_dir: Path) -> pl.Da
 def past_trade_ratios(data_dir: Path) -> list[float]:
     """Market value received over value given, for each side of every completed trade in the
     leagues, at today's values (the old values are not kept). Sides with an unvalued player or
-    a zero total are left out."""
-    trades = _read("transactions", data_dir, "raw").filter(pl.col("type") == "trade")
+    a zero total are left out. Draft picks are not in the table, so a side that traded picks
+    looks smaller than it was."""
+    trades = _read("transactions", data_dir, "raw").filter(
+        (pl.col("type") == "trade") & (pl.col("status") == "complete")
+    )
     values = _read("market_values", data_dir, "raw")
     if trades.is_empty() or values.is_empty():
         return []

@@ -1,5 +1,10 @@
-import pytest
+from pathlib import Path
 
+import pytest
+from test_data_api_characterization import _engine_store
+from test_lineup_live import _with
+
+from fantasy import data_api
 from fantasy.sim.watch import ROLE_WINDOW, market_drop, role_drop
 
 
@@ -24,3 +29,20 @@ def test_market_drop_is_a_share_of_the_value_then_and_ignores_cheap_players() ->
     assert market_drop(900.0, -100.0) is None  # 10%
     assert market_drop(300.0, -300.0) is None  # under the value floor
     assert market_drop(2000.0, 300.0) is None  # rising
+
+
+def test_market_drop_ignores_a_player_without_a_value_or_a_trend() -> None:
+    assert market_drop(None, -300.0) is None
+    assert market_drop(800.0, None) is None
+
+
+def test_the_watchlist_lists_a_flagged_starter_with_the_reason(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _engine_store(tmp_path, monkeypatch)
+    _with(monkeypatch, injuries={"G_WR": ("Questionable", "Hamstring", None)})
+
+    out = data_api.watchlist("t", tmp_path)
+
+    reasons = dict(zip(out["gsis_id"], out["reasons"], strict=True))
+    assert reasons["G_WR"][0].startswith("Questionable")

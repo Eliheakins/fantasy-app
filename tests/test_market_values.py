@@ -236,6 +236,45 @@ def test_past_trade_ratios_use_each_leagues_values_and_skip_unvalued_sides(
     assert ratios == pytest.approx([900 / 7000, 7000 / 900])
 
 
+def test_trade_market_reports_the_share_from_the_partners_side_and_skips_unfinished_trades(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    use_store(monkeypatch, tmp_path)
+    write_rows(tmp_path, "leagues", [league("t", {}, ["QB"])])
+    seed_values(tmp_path)  # sleeper ids 1 (7000) and 2 (900)
+    write_rows(
+        tmp_path,
+        "id_map",
+        [{"sleeper_id": "1", "gsis_id": "00-1"}, {"sleeper_id": "2", "gsis_id": "00-2"}],
+    )
+    sides = []
+    for n in range(4):  # four finished 7000-for-900 trades, then one that failed
+        base = {"league_id": "t", "type": "trade", "status": "complete", "transaction_id": f"x{n}"}
+        sides += [
+            {**base, "roster_id": 1, "sleeper_id": "1", "action": "add"},
+            {**base, "roster_id": 1, "sleeper_id": "2", "action": "drop"},
+            {**base, "roster_id": 2, "sleeper_id": "2", "action": "add"},
+            {**base, "roster_id": 2, "sleeper_id": "1", "action": "drop"},
+        ]
+    failed = {"league_id": "t", "type": "trade", "status": "failed", "transaction_id": "f"}
+    sides += [
+        {**failed, "roster_id": 1, "sleeper_id": "2", "action": "add"},
+        {**failed, "roster_id": 1, "sleeper_id": "1", "action": "drop"},
+    ]
+    schema = store.SCHEMAS["transactions"]
+    frame = pl.DataFrame([{**dict.fromkeys(schema), **r} for r in sides], schema=schema)
+    store.write_table("transactions", frame, "raw", tmp_path)
+
+    overpay, underpay, unvalued = data_api.trade_market(
+        "t", [(["00-1"], ["00-2"]), (["00-2"], ["00-1"]), (["00-2"], ["00-9"])], tmp_path
+    )  # type: ignore[misc]
+
+    assert overpay["accepted_sides"] == 8  # the failed trade is not counted
+    assert overpay["accepted_share"] == 1.0  # the partner gets 7,000 for 900: nothing is worse
+    assert underpay["accepted_share"] == 0.5  # the partner gets 900 for 7,000: half took that
+    assert unvalued["accepted_share"] is None  # a player with no value
+
+
 PAYLOAD = {"partner_roster_id": 2, "give_ids": ["G_QB", "G_WR"], "get_ids": ["G_OPP"]}
 
 

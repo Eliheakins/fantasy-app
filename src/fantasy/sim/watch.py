@@ -20,8 +20,10 @@ def role_drop(snap_shares: list[float]) -> tuple[float, float] | None:
     return (before, lately) if before - lately >= ROLE_DROP else None
 
 
-def market_drop(value: float, trend_30_day: float) -> float | None:
+def market_drop(value: float | None, trend_30_day: float | None) -> float | None:
     """Fall in market value over 30 days as a share of the value then, if at least MARKET_DROP."""
+    if value is None or trend_30_day is None:
+        return None
     then = value - trend_30_day
     if value < MARKET_MIN_VALUE or then <= 0:
         return None

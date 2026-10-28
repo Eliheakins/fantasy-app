@@ -27,6 +27,7 @@ def watchlist(league_key: str, data_dir: Path) -> pl.DataFrame:
             & pl.col("gsis_id").is_in(ids)
             & (pl.col("offense_snaps") > 0)
         )
+        .unique(["gsis_id", "season", "week"], keep="first")
         .sort("week")
     )
     shares = {g: s["offense_pct"].to_list() for (g,), s in snaps.group_by("gsis_id")}
@@ -44,9 +45,8 @@ def watchlist(league_key: str, data_dir: Path) -> pl.DataFrame:
         if (note := _injury_note(data, gsis_id)) is not None:
             reasons.append(note)
         if reasons:
-            rows.append(
-                (gsis_id, names.get(gsis_id, gsis_id), positions[gsis_id], ros[gsis_id], reasons)
-            )
+            name, position = names.get(gsis_id, gsis_id), positions.get(gsis_id, "")
+            rows.append((gsis_id, name, position, ros[gsis_id], reasons))
     schema: dict[str, pl.DataType | type[pl.DataType]] = {
         "gsis_id": pl.String, "full_name": pl.String, "position": pl.String,
         "ros_points": pl.Float64, "reasons": pl.List(pl.String),
