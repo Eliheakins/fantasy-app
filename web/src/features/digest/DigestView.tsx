@@ -7,6 +7,7 @@ import { Delta } from "@/viz";
 import { AsOf, Ideas } from "./Ideas";
 import { nextLineupAction } from "./logic";
 import { LastWeek, OddsChange, Performance } from "./Results";
+import { Watch } from "./Watch";
 import type { ActionRow, DigestData } from "./types";
 
 function NextAction() {
@@ -71,6 +72,13 @@ function Body({ data }: { data: DigestData }) {
         howCalculated="Found over every roster in the league, so they are saved at refresh rather than found when the page opens."
       >
         <Ideas kind="trade" rows={data.trades} info={data.ideas} />
+      </Section>
+      <Section
+        title="Players to watch"
+        caption="Your players whose role or market value is falling, or who carry an injury flag, biggest rest-of-season projection first."
+        howCalculated="A player is listed when his offensive snap share over the last 3 games is at least 15 points below the 3 games before, when his FantasyCalc value fell at least 15% in 30 days (values of 500 or more), or when he has an injury status. These are facts to check, not forecasts: nothing here has been tested to predict a miss, and the projections already use snaps and injuries."
+      >
+        <Watch rows={data.watch} />
       </Section>
       <Section title="Next lineup action" caption="The most useful lineup change right now.">
         <NextAction />

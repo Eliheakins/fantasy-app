@@ -1954,6 +1954,13 @@
             "type": "array",
             "title": "Performance"
           },
+          "watch": {
+            "items": {
+              "$ref": "#/components/schemas/WatchRow"
+            },
+            "type": "array",
+            "title": "Watch"
+          },
           "odds_change": {
             "items": {
               "$ref": "#/components/schemas/OddsChangeRow"
@@ -1984,6 +1991,7 @@
         "required": [
           "last_week",
           "performance",
+          "watch",
           "odds_change",
           "waivers",
           "trades",
@@ -6501,6 +6509,43 @@
           "trending_adds"
         ],
         "title": "WaiverRow"
+      },
+      "WatchRow": {
+        "properties": {
+          "gsis_id": {
+            "type": "string",
+            "title": "Gsis Id"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "ros_points": {
+            "type": "number",
+            "title": "Ros Points"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gsis_id",
+          "full_name",
+          "position",
+          "ros_points",
+          "reasons"
+        ],
+        "title": "WatchRow"
       },
       "WhatIfRow": {
         "properties": {

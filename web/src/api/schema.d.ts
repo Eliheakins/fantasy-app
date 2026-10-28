@@ -627,6 +627,8 @@ export interface components {
             last_week: components["schemas"]["LastWeekRow"] | null;
             /** Performance */
             performance: components["schemas"]["ProjectionMissRow"][];
+            /** Watch */
+            watch: components["schemas"]["WatchRow"][];
             /** Odds Change */
             odds_change: components["schemas"]["OddsChangeRow"][];
             /** Waivers */
@@ -1821,6 +1823,19 @@ export interface components {
             se_title: number | null;
             /** Trending Adds */
             trending_adds: number | null;
+        };
+        /** WatchRow */
+        WatchRow: {
+            /** Gsis Id */
+            gsis_id: string;
+            /** Full Name */
+            full_name: string;
+            /** Position */
+            position: string;
+            /** Ros Points */
+            ros_points: number;
+            /** Reasons */
+            reasons: string[];
         };
         /** WhatIfRow */
         WhatIfRow: {

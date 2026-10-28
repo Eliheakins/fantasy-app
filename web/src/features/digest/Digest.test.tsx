@@ -23,6 +23,7 @@ const base: DigestData = {
     { gsis_id: "a", full_name: "Cook", position: "RB", points: 24.3, projection: 15, diff: 9.3 },
     { gsis_id: "b", full_name: "Darnold", position: "QB", points: 13, projection: null, diff: null },
   ],
+  watch: [{ gsis_id: "w", full_name: "Hampton", position: "RB", ros_points: 100, reasons: ["snap share 54% before, 38% in the last 3 games", "market value down 67% in 30 days"] }],
   odds_change: [odds()],
   waivers: [waiver],
   trades: [trade],
@@ -45,6 +46,17 @@ describe("Digest page", () => {
     expect(screen.getByText("Malik Willis")).toBeInTheDocument();
     expect(screen.getByText("The Pinheads")).toBeInTheDocument();
     expect(screen.getByText(/As of .*\(.* ago\), week 7 refresh/)).toBeInTheDocument();
+  });
+
+  it("lists the players to watch with every reason, and says so when no one is flagged", () => {
+    respond(ready(base));
+    const { unmount } = render(<Digest />);
+    expect(screen.getByText("Hampton (RB)")).toBeInTheDocument();
+    expect(screen.getByText(/snap share 54% before, 38% in the last 3 games; market value down 67%/)).toBeInTheDocument();
+    unmount();
+    respond(ready({ ...base, watch: [] }));
+    render(<Digest />);
+    expect(screen.getByText("No one on your roster is flagged.")).toBeInTheDocument();
   });
 
   it("shows signed odds changes when an earlier run exists", () => {

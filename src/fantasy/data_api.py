@@ -35,6 +35,7 @@ from fantasy._scoreboard import SCOREBOARD_SIMS, scoreboard_of
 from fantasy._scorecard import Scorecard, scorecard_of
 from fantasy._values import market_values as _market_values
 from fantasy._values import trade_market as _trade_market
+from fantasy._watch import watchlist as _watchlist
 from fantasy.config import load_config
 from fantasy.sim import moves as moves
 from fantasy.sim.depth import position_depth
@@ -47,6 +48,7 @@ __all__ = [
     "leagues",
     "market_values",
     "trade_market",
+    "watchlist",
     "lineup",
     "live_score",
     "last_week",
@@ -132,6 +134,11 @@ def leagues(data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
         "points_for",
         "scoring_labels",
     )
+
+
+def watchlist(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+    """My players with a falling snap share or market value, or an injury flag, and why."""
+    return _watchlist(league_key, data_dir)
 
 
 def market_values(

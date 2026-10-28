@@ -4,6 +4,7 @@ import logging
 import threading
 from collections.abc import Callable
 from dataclasses import asdict
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import httpx
@@ -213,6 +214,15 @@ def digest(league: str, team: Team = None) -> Any:
     return guarded(as_team(team, lambda: digest_data(league)))
 
 
+def watch_rows(league: str, data_dir: Path) -> list[dict[str, Any]]:
+    """The drop-risk watch; empty, with the reason logged, when the league has no engine data."""
+    try:
+        return rows(data_api.watchlist(league, data_dir))
+    except (ValueError, FileNotFoundError):
+        log.warning("no drop-risk watch for %s", league, exc_info=True)
+        return []
+
+
 def digest_data(league: str) -> dict[str, Any]:
     if not known_league(league):
         raise ValueError(f"unknown league {league!r}")
@@ -230,6 +240,7 @@ def digest_data(league: str) -> dict[str, Any]:
     return {
         "last_week": last[0] if last else None,
         "performance": rows(data_api.player_vs_projection(league, 0, d)),
+        "watch": watch_rows(league, d),
         "odds_change": rows(data_api.odds_change(league, d)),
         "waivers": shown(waivers),
         "trades": shown(trades),

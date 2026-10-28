@@ -514,9 +514,18 @@ class IdeasInfo(Row):
     deadline_passed: bool
 
 
+class WatchRow(Row):
+    gsis_id: str
+    full_name: str
+    position: str
+    ros_points: float
+    reasons: list[str]
+
+
 class DigestData(Row):
     last_week: LastWeekRow | None  # null in week 1
     performance: list[ProjectionMissRow]
+    watch: list[WatchRow]
     odds_change: list[OddsChangeRow]
     waivers: list[MoveIdeaRow]
     trades: list[MoveIdeaRow]
