@@ -1,4 +1,4 @@
-import { canEvaluate, formatSigned, formatValue, MAX_TRADE_IDS, sideMeasures, toggleId, toRequest, tradeKey } from "./logic";
+import { canEvaluate, formatSigned, formatValue, marketText, MAX_TRADE_IDS, sideMeasures, toggleId, toRequest, tradeKey } from "./logic";
 
 describe("toggleId", () => {
   it("adds, removes and never mutates", () => {
@@ -36,5 +36,17 @@ describe("formatting", () => {
   });
   it("never prints -0.0", () => {
     expect(formatSigned(-0.01, true)).toBe("0.0%");
+  });
+});
+
+describe("marketText", () => {
+  const base = { give_value: 5000, get_value: 2000, hint: "you overpay 150%", fetched_at: "2026-10-25T08:00:00+00:00" };
+  it("adds the share of past accepted deals this lopsided, worded as not a chance", () => {
+    const text = marketText({ ...base, accepted_share: 0.19, accepted_sides: 16 });
+    expect(text).toContain("19% of 16 past accepting managers");
+    expect(text).toContain("not a chance of acceptance");
+  });
+  it("leaves it out without enough past trades", () => {
+    expect(marketText({ ...base, accepted_share: null, accepted_sides: 3 })).not.toContain("past");
   });
 });

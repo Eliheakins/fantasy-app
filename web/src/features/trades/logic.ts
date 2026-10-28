@@ -52,7 +52,11 @@ export const points = (fraction: number): number => fraction * 100;
 /** "gives 5,000, gets 5,700, you receive 14% more": what the market says, nothing about acceptance. */
 export function marketText(m: MarketSummary): string {
   const n = (v: number) => Math.round(v).toLocaleString("en-US");
-  return `gives ${n(m.give_value)}, gets ${n(m.get_value)}, ${m.hint}`;
+  const past =
+    m.accepted_share == null
+      ? ""
+      : `; ${Math.round(m.accepted_share * 100)}% of ${m.accepted_sides} past accepting managers took a deal this lopsided or worse (not a chance of acceptance)`;
+  return `gives ${n(m.give_value)}, gets ${n(m.get_value)}, ${m.hint}${past}`;
 }
 
 /** The date part of the values' fetch time. */

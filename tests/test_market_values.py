@@ -10,7 +10,8 @@ from test_api import client, wait_ok  # noqa: F401  (fixture)
 from test_api import store_dir as store_dir  # noqa: F401  (fixture)
 
 from fantasy import api, data_api, store
-from fantasy.sim.value import market_hint
+from fantasy._values import past_trade_ratios
+from fantasy.sim.value import MIN_ACCEPTED_SIDES, accepted_share, market_hint
 from fantasy.stages import market_values as stage
 from fantasy.stages.market_values import Setting, fetch_values, setting_for, to_frame
 
@@ -197,9 +198,42 @@ def test_trade_market_sums_each_side_and_counts_players_without_a_value(
     [out] = data_api.trade_market("t", trades, tmp_path)
     assert out == {
         "give_value": 7000.0, "get_value": 7000.0, "fetched_at": TODAY,
-        "hint": "even; no value for 1 player",
+        "hint": "even; no value for 1 player", "accepted_share": None, "accepted_sides": 0,
     }  # fmt: skip
     assert data_api.trade_market("t", [], tmp_path) == []
+
+
+def test_accepted_share_counts_past_sides_at_least_as_lopsided_and_needs_enough_of_them() -> None:
+    past = [0.4, 0.6, 0.8, 0.9, 1.0, 1.1, 1.3, 1.6]
+    assert len(past) == MIN_ACCEPTED_SIDES
+    assert accepted_share(0.8, past) == 3 / 8  # 0.4, 0.6 and 0.8 were taken
+    assert accepted_share(0.1, past) == 0.0
+    assert accepted_share(3.0, past) == 1.0
+    assert accepted_share(0.8, past[:-1]) is None
+
+
+def test_past_trade_ratios_use_each_leagues_values_and_skip_unvalued_sides(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    use_store(monkeypatch, tmp_path)
+    write_rows(tmp_path, "leagues", [league("t", {}, ["QB"])])
+    seed_values(tmp_path)  # sleeper ids 1 (7000) and 2 (900)
+    base = {"league_id": "t", "type": "trade", "status": "complete", "transaction_id": "x"}
+    sides = [
+        {**base, "roster_id": 1, "sleeper_id": "1", "action": "add"},
+        {**base, "roster_id": 1, "sleeper_id": "2", "action": "drop"},
+        {**base, "roster_id": 2, "sleeper_id": "2", "action": "add"},
+        {**base, "roster_id": 2, "sleeper_id": "1", "action": "drop"},
+        {**base, "roster_id": 3, "sleeper_id": "9", "action": "add"},  # no value
+        {**base, "roster_id": 3, "sleeper_id": "2", "action": "drop"},
+    ]
+    schema = store.SCHEMAS["transactions"]
+    frame = pl.DataFrame([{**dict.fromkeys(schema), **r} for r in sides], schema=schema)
+    store.write_table("transactions", frame, "raw", tmp_path)
+
+    ratios = sorted(past_trade_ratios(tmp_path))
+
+    assert ratios == pytest.approx([900 / 7000, 7000 / 900])
 
 
 PAYLOAD = {"partner_roster_id": 2, "give_ids": ["G_QB", "G_WR"], "get_ids": ["G_OPP"]}

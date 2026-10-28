@@ -1286,6 +1286,13 @@ export interface components {
             hint: string;
             /** Fetched At */
             fetched_at: string;
+            /** Accepted Share */
+            accepted_share?: number | null;
+            /**
+             * Accepted Sides
+             * @default 0
+             */
+            accepted_sides: number;
         };
         /** MarketValueRow */
         MarketValueRow: {

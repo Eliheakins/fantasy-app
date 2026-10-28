@@ -141,6 +141,18 @@ def season_value(
 EVEN_BAND = 0.10  # arbitrary starting point (issue U12), not fitted to anything
 
 
+MIN_ACCEPTED_SIDES = 8  # fewer past accepting sides and no share is reported
+
+
+def accepted_share(partner_ratio: float, past_ratios: list[float]) -> float | None:
+    """Share of past accepting sides that took a deal at least as lopsided against them, by
+    market value received over given. This is a share of trades that happened, not a probability:
+    rejected offers are not recorded, so nothing here says how often a deal like it is refused."""
+    if len(past_ratios) < MIN_ACCEPTED_SIDES:
+        return None
+    return sum(r <= partner_ratio for r in past_ratios) / len(past_ratios)
+
+
 def market_hint(give: float, get: float, missing: int) -> str:
     """Which side the market favors, from summed market values. Says nothing about whether a
     leaguemate would accept. Shortcut: sums ignore the premium for turning two players into

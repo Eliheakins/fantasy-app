@@ -360,6 +360,8 @@ class MarketSummary(Row):
     get_value: float
     hint: str
     fetched_at: str
+    accepted_share: float | None = None  # share of past accepted trades this lopsided or worse
+    accepted_sides: int = 0  # past accepting sides the share is out of
 
 
 class TradeEvaluation(Row):
