@@ -15,11 +15,11 @@ Every recommendation is scored by its effect on **win probability or title odds*
 | **Home** | Season odds for both leagues (playoffs, bye, title), this week's score so far and chance to win, and a "Do this now" list across lineup, waivers and trades. Refresh scores during games. |
 | **Lineup** | Best lineup for the week, with floor, median and ceiling per player. Choose the objective: expected points, win probability, max ceiling or max floor. The app labels whether you are the underdog or the favorite, and shows the lineup set in Sleeper now (current week only) for comparison. Locked players (game started) are not suggested. |
 | **Waivers** | Free agents ranked by how much they raise your odds over a replacement-level free agent, with the suggested drop. Streaming picks for defense and kicker. |
-| **Trades** | Evaluate any trade, or search for trades that raise both teams' odds: 1 for 1, 1 for 2, 2 for 1 and 2 for 2. Each shows the change in your playoff and title odds with a Monte Carlo error. |
+| **Trades** | Evaluate any trade, or search for trades that raise both teams' odds: 1 for 1, 1 for 2, 2 for 1 and 2 for 2. Each shows the change in your playoff and title odds with a Monte Carlo error, the market-value balance, and how many past accepted trades in the leagues were as lopsided. |
 | **Outlook** | Playoff seed distribution and the remaining schedule with win chances. |
 | **Scores** | This week's matchups with live scores and each team's chance to win. |
 | **League** | Power rankings, luck (all-play record), manager grades, schedule strength and what-ifs. |
-| **Digest** | Last week's results, plus my top waiver adds and trade ideas (built by `make refresh`). |
+| **Digest** | Last week's results, projection misses, the odds change since the last run, my top waiver adds and trade ideas (built by `make refresh`), and players to watch (falling snap share or market value, injury flags). |
 | **Players** | Player outlook: who is likely to improve or regress (return from injury, teammates out, injury risk). |
 | **Model** | Scorecard of the learned, baseline and Sleeper projections against actual points. |
 
@@ -52,22 +52,38 @@ Configure your own leagues in [config.toml](config.toml) (Sleeper username, user
 
 ### Optional: prop-line snapshots
 
-`make odds` archives one week of player prop lines from [The Odds API](https://the-odds-api.com) (free tier, 500 credits a month; one snapshot is about 80). Put the key in `.env` as `ODDS_API_KEY=...` (gitignored) or the environment. Nothing downstream reads these snapshots yet.
+`make odds` archives one week of player prop lines from [The Odds API](https://the-odds-api.com) (free tier, 500 credits a month; one snapshot is about 80). Put the key in `.env` as `ODDS_API_KEY=...` (gitignored) or the environment. `make odds-slate` archives the current slate, and `prop_points` turns the latest snapshot into this week's prop-implied points.
 
 ## Commands
 
+<!-- AUTO-GENERATED from the Makefile; edit the Makefile, not this table -->
 | Command | What it does |
 |---|---|
-| `make refresh` | Rebuild all tables in order (needs the network) |
+| `make setup` | Install dependencies and enable the pre-commit hook |
+| `make refresh` | `make backup`, then rebuild all tables in order (needs the network) |
+| `make backup` | Copy `data/archive/` to `~/fantasy-app-backups` (newest 30 kept) |
 | `make check` | ruff, mypy and pytest, plus the web typecheck and tests. Run before committing. |
-| `make fmt` | Auto-fix lint and formatting |
+| `make test`, `make lint`, `make fmt` | pytest only; ruff and mypy only; auto-fix lint and formatting |
 | `make serve` | Build the web UI and serve it and the API at http://127.0.0.1:8000 |
 | `make dev` | API with reload plus the Vite dev server (hot reload for the UI) |
-| `make odds` | Archive one week of prop lines |
-| `uv run python -m fantasy.stages.validate_scoring` | Compare computed points with Sleeper's for a completed week |
-| `uv run python -m fantasy.stages.validate_standings` | Compare computed standings with Sleeper's |
-| `uv run python -m fantasy.stages.backtest` | Walk-forward backtest of the baseline against a trailing average |
-| `uv run python -m fantasy.stages.calibration` | Check team-score distributions against completed weeks |
+| `make web-build` | Build the web UI only |
+| `make odds`, `make odds-slate` | Archive one week of prop lines; archive the current slate |
+| `make schedule-install`, `make schedule-remove` | Set up or remove a macOS launchd job that runs `make refresh` Tuesday 06:00, Friday 18:00 and Sunday 08:00 (not installed by default) |
+<!-- END AUTO-GENERATED -->
+
+Checks against real data: `uv run python -m fantasy.stages.validate_scoring` (computed points against Sleeper's for a completed week), `validate_standings`, `backtest` (walk-forward baseline against a trailing average) and `calibration` (team-score distributions against completed weeks).
+
+### Environment variables
+
+<!-- AUTO-GENERATED from the os.environ reads in src/ and research/; edit the code, not this table -->
+| Variable | Required | Used by | Meaning |
+|---|---|---|---|
+| `ODDS_API_KEY` | For `make odds` only | `stages/snapshot_odds.py` | The Odds API key (`.env` or environment) |
+| `LIVE_REFRESH` | No | `live_refresh.py` | `off` stops the score refresh while `make serve` runs (default on) |
+| `API_ALLOWED_HOSTS` | No | `api.py` | Extra Host header names the server accepts, comma separated (phone access) |
+| `FANTASY_BACKUP_DIR` | No | `stages/backup.py` | Where `make backup` writes (default `~/fantasy-app-backups`) |
+| `ESPN_S2`, `ESPN_SWID` | Only for `research/espn_fetch.py` | research script | ESPN login cookies for the private YinzBurgh history (`.env` only) |
+<!-- END AUTO-GENERATED -->
 
 During the season, run `make refresh` after games and before setting a lineup. The app shows a banner when data is stale or when a projection layer's stage has not run. Home's "Refresh scores" button re-fetches Sleeper matchups on demand. While `make serve` runs, it also refreshes scores every 10 minutes while a game of the current week is on (`LIVE_REFRESH=off` turns that off).
 
@@ -79,7 +95,7 @@ src/fantasy/
   api.py, api_routes.py  FastAPI app and /api routes (`make serve`)
   data_api.py          read layer over the parquet store (the API reads through it; _*.py hold the logic)
   live_refresh.py      score refresh while `make serve` runs
-  store.py             parquet store: atomic writes, schema checks (store.SCHEMAS: 46 tables)
+  store.py             parquet store: atomic writes, schema checks (store.SCHEMAS: 52 tables)
   scoring.py           Sleeper scoring settings applied to nflverse stat lines
   sources/             Sleeper client
   stages/              pipeline stages, each run as python -m fantasy.stages.<name>
@@ -91,7 +107,7 @@ overrides/id_map.csv   manual Sleeper to nflverse ID overrides
 docs/                  decisions log, backlog, one-pager, specs
 ```
 
-Pipeline order (`make refresh`): `sync_sleeper`, `sleeper_projections`, `ingest_nfl`, `crosswalk`, `score`, `streaming`, `project`, `learn`, `availability`, `distributions`, `injuries`, `outlook`, `environment`, `simulate`, `digest`, `market_values`. Each stage reads and writes parquet tables under `data/` (`raw`, `derived`, `archive`) registered in `store.SCHEMAS`, so any stage can be replaced independently.
+Pipeline order (`make refresh`), <!-- AUTO-GENERATED from the Makefile --> `backup`, `sync_sleeper`, `news_archive`, `sleeper_projections`, `outside_projections`, `ingest_nfl`, `crosswalk`, `score`, `prop_points`, `streaming`, `project`, `learn`, `availability`, `distributions`, `injuries`, `outlook`, `environment`, `simulate`, `digest`, `market_values` <!-- END AUTO-GENERATED -->. Each stage reads and writes parquet tables under `data/` (`raw`, `derived`, `archive`) registered in `store.SCHEMAS`, so any stage can be replaced independently.
 
 ## Data sources
 
@@ -99,14 +115,18 @@ Pipeline order (`make refresh`): `sync_sleeper`, `sleeper_projections`, `ingest_
 - **nflverse** (via `nflreadpy`): player stats, snaps, injury reports, schedules with Vegas lines, expected points, team stats and play-by-play efficiency.
 - **FantasyPros** (via nflverse): weekly expert rankings, used as learned-model features under private use only. Never committed or shared (`data/` is gitignored).
 - **FantasyCalc** (undocumented endpoint): market values for the Trades page, fetched at most once a day per league setting.
-- **The Odds API** (optional): prop lines, archive only.
+- **The Odds API** (optional): prop lines, archived by `make odds` and used for this week's prop-implied points.
+- **FFToday** (free pages): weekly outside projections (`proj_outside`).
+- **ESPN** (private league, your cookies): YinzBurgh's 2023 to 2025 seasons, fetched by `research/espn_fetch.py` into the gitignored `research/scratch/espn/`. Not part of the pipeline yet.
 
-Back up `data/archive/` before wiping `data/`. It holds Sleeper projection snapshots, odds snapshots and season-odds history that cannot be regenerated.
+`data/archive/` cannot be regenerated: our projection snapshots (skill positions, and K and DEF in `streaming_snapshots`), Sleeper and outside projection snapshots, odds snapshots, season-odds history and daily player-status snapshots. `make refresh` copies it to `~/fantasy-app-backups` first; keep that folder out of any repository.
 
 ## Known limits
 
 - Win-probability lineups usually match max-points lineups, and the app says so instead of inventing a swap.
-- Assumed, not measured: the weekly roster drift and the 50% Sleeper blend weight. The spread of season win totals is untested because the leagues have no history here.
+- The trade acceptance figure is a share of past accepted trades that were as lopsided in market value, not a chance of acceptance: Sleeper keeps only completed trades (8 so far) and today's values.
+- The drop-risk watch on the Digest lists facts (snap share, market value, injury status); none is tested to predict a miss.
+- Assumed, not measured: the weekly roster drift and the 50% Sleeper blend weight. The spread of season win totals is untested: Colgate is new this year, and YinzBurgh's earlier seasons are on ESPN and not loaded yet.
 - Defender injury curves reuse skill-player curves. Vacancy bumps are shared equally among a team's receivers or backs.
 - No slot-matchup modeling: free data has no alignment.
 - K and DEF use each team's own rostered unit projection in the season simulation, lineups and win probability (the league average where a team has none). Their spread is still league-wide, and past weeks in `calibration` use league means.

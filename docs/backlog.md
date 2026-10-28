@@ -1,4 +1,4 @@
-# Backlog (2026-10-23)
+# Backlog (2026-10-23; known gaps and status refreshed 2026-10-28)
 
 One story is one working session. Engine and dashboard stories are merged per epic, so every epic ends with a usable panel. This file is canonical for story IDs and order. Story IDs in modeling.md and dashboard.md are superseded. modeling.md sections 10b and 10c override its earlier sections. Reference designs: spec/architecture.md, spec/modeling.md, spec/dashboard.md, spec/data-sources.md. Original brainstorm: archive/plan.md.
 
@@ -7,6 +7,8 @@ One story is one working session. Engine and dashboard stories are merged per ep
 **Dates:** trade deadline is week 11; issue #40 (retest the Sleeper blend weight on clean snapshots) is due around then. Open work on GitHub: #40, #37 (post-MVP), #65 and #66 (U17 and U18), and the #68 epic. #41 (cleanup follow-ups) is closed.
 
 **Done and verified on live data:** every story except E3-8 (all 36 E-series issues are closed on GitHub, #18 included; the ECR check is not in the code). Added this session: E2-2 odds snapshots, E3-6 tau from history, E3-7 DEF scoring and K/DEF projections, E4-2 player sampler, E4-5 win-probability lineup, E4-7 locks and injuries, E5-2 waiver value by re-simulation, E5-5 K/DEF streaming, and the dashboard stories (footer, range bars, objective toggle, Home actions, Outlook seeds and schedule, waiver detail and trending).
+
+**Since 2026-10-24:** the learned projection and chance-of-playing model, teammate vacancy, the weekly digest, per-team K and DEF, a ridge K and DEF model, a trade acceptance figure, a drop-risk watch, archive backups and K and DEF snapshots, and an optional scheduled refresh. Open on GitHub: #40, #65, #66, #37 and the #68 epic.
 
 **Not done:** E3-8 (ECR rank-to-points check, blocked on the FantasyPros redistribution terms) and everything under Post-MVP below.
 
@@ -23,11 +25,11 @@ One story is one working session. Engine and dashboard stories are merged per ep
 - No slot-matchup modeling (free data has no alignment).
 - Simulated draws are shared only for an identical set of players, so comparisons that change the player set (a different opponent) do not share draws.
 - Live scoring uses a fixed 200-minute game window (`sim/availability.py`). `make serve` refreshes scores every 10 minutes during games, and the Refresh scores button re-pulls matchups on demand. Season odds on Home only update on `simulate`.
-- The trade finder searches each team's top 6 players only.
-- Win probability uses league-average K and DEF for what is left to play.
+- The trade finder's points route searches each team's top 6 players; its need route adds each team's surplus bench players. Nothing models whether the partner accepts: the finder shows a share of past accepted trades as lopsided in market value (8 completed trades so far), not a chance.
+- Win probability, the lineup page and the season odds use each team's own K and DEF projection (best rostered unit; league mean where a team has none) with a league-wide spread. `calibration` still uses league means for past weeks, because only skill-position projections were archived before 2026-10-28; K and DEF snapshots now accumulate in `streaming_snapshots`.
 - The Sleeper blend weight (50%) is untested on clean data: #40, around week 11. Also test the rule that a Sleeper 0 counts as missing for Questionable and Doubtful players (unvalidated, see decisions.md): score both rules on clean snapshots from week 8.
-- DEF scoring matches Sleeper exactly in 52 of 60 (Colgate) and 41 of 60 (YinzBurgh) team-weeks; the rest are off by 1 to 2 points, likely special-teams recoveries. The K projection is no better than the league average; the DEF projection is about 3% better.
-- The season simulation still uses league-average K and DEF per slot (accepted).
+- DEF scoring matches Sleeper exactly in 52 of 60 (Colgate) and 41 of 60 (YinzBurgh) team-weeks; the rest are off by 1 to 2 points, likely special-teams recoveries. Held out (2024 to 2026 week 6), the ridge K projection is about 1.4% to 1.8% better than the league average (marginal) and DEF about 2.1% to 2.8% (`decisions.md`, 2026-10-27).
+- Weekly lineup shortfall of opponents (about 1.75 points) and the playoff-week weighting of player value were tested and not adopted (`decisions.md`, 2026-10-28).
 - tau is now estimated from history, but the spread of season win totals is untested (no league history).
 - The playoff bracket, byes and tiebreaks are assumptions; the user confirmed 6 teams, byes for seeds 1 and 2, weeks 15 to 17.
 - Top-player bias (#38) was investigated and not corrected: the effect is 0.2 to 0.3% of RMSE.
