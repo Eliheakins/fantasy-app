@@ -68,7 +68,7 @@ Configure your own leagues in [config.toml](config.toml) (Sleeper username, user
 | `make dev` | API with reload plus the Vite dev server (hot reload for the UI) |
 | `make web-build` | Build the web UI only |
 | `make odds`, `make odds-slate` | Archive one week of prop lines; archive the current slate |
-| `make schedule-install`, `make schedule-remove` | Set up or remove a macOS launchd job that runs `make refresh` Tuesday 06:00, Friday 18:00 and Sunday 08:00 (not installed by default) |
+| `make schedule-install`, `make schedule-remove` | Set up or remove a macOS launchd job that runs `make refresh` Tuesday 06:00, Friday 18:00 and Sunday 08:00 (installed on the main Mac on 2026-10-28) |
 <!-- END AUTO-GENERATED -->
 
 Checks against real data: `uv run python -m fantasy.stages.validate_scoring` (computed points against Sleeper's for a completed week), `validate_standings`, `backtest` (walk-forward baseline against a trailing average) and `calibration` (team-score distributions against completed weeks).

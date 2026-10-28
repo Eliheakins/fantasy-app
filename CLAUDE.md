@@ -12,7 +12,7 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 
 - `make refresh`: back up `data/archive/`, then pull Sleeper and nflverse and rebuild every table (needs the network)
 - `make serve`: build `web/` and serve the React UI plus the API at http://127.0.0.1:8000. `make dev`: API plus the Vite dev server (hot reload)
-- `make schedule-install` / `schedule-remove`: a macOS launchd job running `make refresh` Tuesday 06:00, Friday 18:00 and Sunday 08:00 (Mac awake; log in `data/refresh.log`). Not installed unless you run it.
+- `make schedule-install` / `schedule-remove`: a macOS launchd job running `make refresh` Tuesday 06:00, Friday 18:00 and Sunday 08:00 (Mac awake; log in `data/refresh.log`). Installed on the main Mac on 2026-10-28; `make schedule-remove` undoes it.
 - `make odds`: archive one week of prop lines (needs `ODDS_API_KEY` in env or `.env`, gitignored; free tier is 500 credits a month, a snapshot costs about 80)
 - Checks against real data: `uv run python -m fantasy.stages.validate_scoring`, `validate_standings`, `backtest`, `calibration`
 - Never pipe `make check` into `tail` before committing: the pipe hides a failing exit code
