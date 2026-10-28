@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 import pytest
-from store_fixture import write_rows
+from store_fixture import use_store, write_rows
 from test_data_api_characterization import NOW, _engine_store
 from test_simulate_load import LEAGUE, build_store
 
@@ -522,7 +522,7 @@ def test_constant_points_are_the_kicker_and_defense_scores_so_far_plus_a_draw_fo
     data, _ = _engine._league("t")
     data = replace(data, roster_positions=["QB", "K", "DEF"], k_mean=8.0, k_var=0.0)
     data = replace(data, def_mean=6.0, def_var=0.0)
-    fresh = _engine._constant_points(data, 100, 1, None)
+    fresh = _engine._constant_points(data, 100, 1, 1, 4, None)
     assert np.allclose(fresh, 14.0)  # nothing played: both slots at league average, no variance
     done = CurrentWeek(
         realized=9.0,
@@ -532,7 +532,21 @@ def test_constant_points_are_the_kicker_and_defense_scores_so_far_plus_a_draw_fo
         locked_starters=frozenset(),
         kd_actual=9.0,
     )
-    assert np.allclose(_engine._constant_points(data, 100, 1, done), 9.0 + 0.5 * 6.0)
+    assert np.allclose(_engine._constant_points(data, 100, 1, 1, 4, done), 9.0 + 0.5 * 6.0)
+
+
+def test_constant_points_use_the_teams_projection_where_it_has_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from dataclasses import replace
+
+    _engine_store(tmp_path, monkeypatch)
+    data, _ = _engine._league("t")
+    data = replace(data, roster_positions=["QB", "K", "DEF"], k_mean=8.0, k_var=0.0)
+    data = replace(data, def_mean=6.0, def_var=0.0, kd_slot={("K", 1, 4): 10.0, ("DEF", 1, 4): 0.0})
+    assert np.allclose(_engine._constant_points(data, 10, 1, 1, 4), 10.0)  # both from the team
+    assert np.allclose(_engine._constant_points(data, 10, 1, 2, 4), 14.0)  # no entry: league mean
+    assert np.allclose(_engine._constant_points(data, 10, 1, 1, 5), 14.0)  # a week with no entry
 
 
 # --- simulate.live_clock / current_state / load_league_data ----------------------------------
@@ -689,3 +703,42 @@ def test_the_lineup_route_returns_a_final_player_as_final(
     assert rows["G_WR"]["projection"] == 17.5
     assert rows["G_QB"]["game"] == "Live, 40% left"
     assert rows["G_RB"]["game"] == "Not started"
+
+
+def _roster(roster_id: int, sleeper_id: str) -> dict:
+    return {"league_id": "L1", "roster_id": roster_id, "sleeper_id": sleeper_id}
+
+
+def _stream(kind: str, unit: str, week: int, projection: float) -> dict:
+    return {"league_id": "L1", "kind": kind, "unit": unit, "week": week, "projection": projection}
+
+
+def test_kd_slot_projections_take_each_teams_best_rostered_unit_and_zero_for_a_bye(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    use_store(monkeypatch, tmp_path)
+    rosters = [_roster(1, "k1"), _roster(1, "k2"), _roster(1, "JAC"), _roster(2, "LAR")]
+    write_rows(tmp_path, "rosters", rosters)
+    write_rows(
+        tmp_path,
+        "streaming_projection",
+        [
+            _stream("K", "G1", 3, 7.0), _stream("K", "G2", 3, 9.0), _stream("K", "G1", 4, 6.0),
+            _stream("DEF", "JAX", 3, 5.0), _stream("DEF", "JAX", 4, 4.0),
+            _stream("DEF", "LA", 3, 8.0),
+        ],
+    )  # fmt: skip
+    ids = pl.DataFrame({"sleeper_id": ["k1", "k2"], "gsis_id": ["G1", "G2"]})
+
+    out = sim._kd_slot_projections("L1", ids, 3)
+
+    assert out[("K", 1, 3)] == 9.0 and out[("K", 1, 4)] == 6.0  # best of two kickers
+    assert out[("DEF", 1, 4)] == 4.0 and out[("DEF", 2, 3)] == 8.0  # Sleeper JAC is nflverse JAX
+    assert out[("DEF", 2, 4)] == 0.0  # no row for a rostered defense in a projected week: bye
+    assert ("K", 2, 3) not in out  # no kicker: the league mean applies
+    later = sim._kd_slot_projections("L1", ids, 4)
+    assert (
+        "DEF",
+        2,
+        4,
+    ) not in later  # the current week with no row may be a played game, not a bye

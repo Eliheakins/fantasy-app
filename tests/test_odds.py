@@ -78,6 +78,14 @@ def test_inputs_have_one_mean_per_team_and_week_including_playoff_weeks() -> Non
     assert set(inputs.pairs) == set(range(1, 8))
 
 
+def test_a_teams_own_kicker_and_defense_projection_replaces_the_league_mean() -> None:
+    data = replace(toy_league(), kd_slot={("K", 1, 1): 11.0, ("DEF", 1, 1): 2.0})
+    inputs = odds.build_inputs(data, None, n_sims=50, seed=0)
+    assert inputs.mean[0, 0] == pytest.approx(20 + 28 + 26 + 8 + 13)  # K 11 + DEF 2
+    assert inputs.mean[0, 1] == pytest.approx(20 + 28 + 26 + 8 + 16)  # no entry for week 2
+    assert inputs.mean[1, 0] == pytest.approx(20 + 28 + 26 + 8 + 16)  # nor for team 2
+
+
 def test_odds_sum_to_six_two_and_one_and_equal_teams_are_close() -> None:
     result = odds.league_odds(toy_league(), n_sims=8000)
     assert result.p_playoffs.sum() == pytest.approx(6.0)

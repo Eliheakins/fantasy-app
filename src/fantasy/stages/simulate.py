@@ -386,6 +386,51 @@ def _kicker_and_defense(
     }
 
 
+def _kd_slot_projections(
+    lid: str, id_map: pl.DataFrame, current: int
+) -> dict[tuple[str, int, int], float]:
+    """Projected points of each team's best rostered K and DEF per week, from `streaming`. A week
+    after `current` with no row for a team's units is a bye, worth 0 within the weeks `streaming`
+    projects (the current week has no row once a team's game is scored, so it is left out); a team
+    with no K or DEF keeps the league mean. Empty without the table."""
+    try:
+        proj = store.read_table("streaming_projection", "derived").filter(
+            pl.col("league_id") == lid
+        )
+    except FileNotFoundError:
+        return {}
+    rostered = store.read_table("rosters", "raw").filter(pl.col("league_id") == lid)
+    owned = {
+        "DEF": rostered.select(
+            "roster_id",
+            pl.col("sleeper_id")
+            .replace_strict(TEAM_MAP, default=pl.col("sleeper_id"))
+            .alias("unit"),
+        ),
+        "K": rostered.join(id_map.select("sleeper_id", "gsis_id"), on="sleeper_id").select(
+            "roster_id", pl.col("gsis_id").alias("unit")
+        ),
+    }
+    out: dict[tuple[str, int, int], float] = {}
+    for kind, units in owned.items():
+        rows = proj.filter(pl.col("kind") == kind)
+        if rows.is_empty():
+            continue
+        weeks = sorted(rows["week"].unique().to_list())
+        best = (
+            units.join(rows.select("unit", "week", "projection"), on="unit")
+            .group_by("roster_id", "week")
+            .agg(pl.col("projection").max())
+        )
+        have = {(int(r), int(w)): float(v) for r, w, v in best.iter_rows()}
+        for roster_id in units.join(rows.select("unit").unique(), on="unit")["roster_id"].unique():
+            for week in range(weeks[0], weeks[-1] + 1):
+                value = have.get((int(roster_id), week), 0.0 if week > current else None)
+                if value is not None:
+                    out[(kind, int(roster_id), week)] = value
+    return out
+
+
 def _spread_inputs(
     lid: str, marginals: pl.DataFrame
 ) -> tuple[dict[str, float], dict[tuple[str, str], float]]:
@@ -548,6 +593,7 @@ def load_league_data(league: dict[str, Any], strict: bool = True) -> LeagueData:
         positions=positions,
         trade_deadline=int(league["trade_deadline"] or 99),
         league_id=lid,
+        kd_slot=_kd_slot_projections(lid, id_map, current),
     )
 
 

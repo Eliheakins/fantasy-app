@@ -22,7 +22,7 @@ from fantasy.sim import moves
 from fantasy.sim.availability import LONG_TERM, games_on, kickoffs, locked_teams
 from fantasy.sim.calibration import tier_of
 from fantasy.sim.lineup import Player, auto_lineup, constant_slot_count
-from fantasy.sim.odds import CurrentWeek, LeagueData
+from fantasy.sim.odds import CurrentWeek, LeagueData, kd_slot_mean
 from fantasy.sim.sampler import LEVELS, Slate, correlation_matrix, sample_points
 
 PLAY_PROB_FLOOR = 1e-9  # guards the division by a chance of playing
@@ -280,22 +280,29 @@ def _play_probs(data: LeagueData, week: int) -> dict[str, float]:
     return dict(zip(rows["gsis_id"], rows["play_prob"], strict=True))
 
 
-def _constant_moments(data: LeagueData, state: CurrentWeek | None) -> tuple[float, float]:
-    """Mean and variance of the K and DEF slots: points already scored plus a league average for
-    what is left. `state` is None for a week not yet under way."""
+def _constant_moments(
+    data: LeagueData, state: CurrentWeek | None, roster_id: int, week: int
+) -> tuple[float, float]:
+    """Mean and variance of the K and DEF slots: points already scored plus the team's projection
+    for what is left. `state` is None for a week not yet under way."""
     counts = constant_slot_count(data.roster_positions)
     open_k = counts.get("K", 0) if state is None else state.open_k
     open_def = counts.get("DEF", 0) if state is None else state.open_def
     scored = 0.0 if state is None else state.kd_actual
-    mean = scored + open_k * data.k_mean + open_def * data.def_mean
+    mean = (
+        scored
+        + open_k * kd_slot_mean(data, "K", roster_id, week)
+        + open_def * kd_slot_mean(data, "DEF", roster_id, week)
+    )
     return mean, open_k * data.k_var + open_def * data.def_var
 
 
 def _constant_points(
-    data: LeagueData, n_sims: int, seed: int, state: CurrentWeek | None = None
-) -> np.ndarray:
-    """K and DEF slots as draws (their points are not projected yet)."""
-    mean, var = _constant_moments(data, state)
+    data: LeagueData, n_sims: int, seed: int, roster_id: int, week: int,
+    state: CurrentWeek | None = None,
+) -> np.ndarray:  # fmt: skip
+    """K and DEF slots as draws around the team's projection."""
+    mean, var = _constant_moments(data, state, roster_id, week)
     return mean + np.sqrt(var) * np.random.default_rng(seed).standard_normal(n_sims)
 
 

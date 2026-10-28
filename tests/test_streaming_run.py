@@ -44,6 +44,8 @@ def _inputs() -> dict[str, pl.DataFrame]:
                     "team_implied": implied,
                     "opp_implied": 45.0 - implied,
                     "is_home": team == "AAA",
+                    "points_for": 20 if played else None,
+                    "spread": 0.0,
                 }
             )
             if played:
@@ -54,6 +56,9 @@ def _inputs() -> dict[str, pl.DataFrame]:
                         "opponent_team": other,
                         "season": season,
                         "week": week,
+                        "sacks_suffered": 2.0,
+                        "passing_interceptions": 1.0,
+                        "attempts": 30.0,
                         "passing_yards": float(rng.integers(150, 350)),
                         "rushing_yards": float(rng.integers(50, 150)),
                         "def_sacks": float(rng.integers(0, 6)),
@@ -73,6 +78,8 @@ def _inputs() -> dict[str, pl.DataFrame]:
                         {
                             "league_id": "L1",
                             "gsis_id": "K1",
+                            "team": "AAA",
+                            "opponent_team": "BBB",
                             "season_type": "REG",
                             "position": "K",
                             "season": season,
@@ -94,6 +101,9 @@ def _inputs() -> dict[str, pl.DataFrame]:
         "team_games": pl.from_dicts(games, schema_overrides=_dtypes("team_games")),
         "nfl_team_stats": pl.from_dicts(stats, schema_overrides=_dtypes("nfl_team_stats")),
         "player_points": pl.from_dicts(kicks, schema_overrides=_dtypes("player_points")),
+        "nfl_team_efficiency": pl.DataFrame(schema=_dtypes("nfl_team_efficiency")),
+        "nfl_team_pace": pl.DataFrame(schema=_dtypes("nfl_team_pace")),
+        "nfl_player_stats": pl.DataFrame(schema=_dtypes("nfl_player_stats")),
         "leagues": pl.from_dicts([league]),
         "sleeper_players": pl.from_dicts([sleeper]),
         "id_map": pl.from_dicts([{"sleeper_id": "s1", "gsis_id": "K1", "nfl_team": "AAA"}]),

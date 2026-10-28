@@ -110,6 +110,7 @@ not deterministic (see the 2026-10-25 entry).
 | `quantile_check.py` | Quantile GBM or conformal quantiles instead of tier marginals? | 0.00 to 0.13% pinball against production's tiers | Rejected | 10-25 |
 | `reconcile_check.py` | Reconcile player projections with the Vegas team total (scale, MinT)? | Scale +0.08 and +0.11% (t 1.76 and 1.99); MinT worse | Rejected | 10-26 |
 | `kdef_pairs.py` | K and DEF correlations; do they improve team-total calibration? | Real (DEF with opposing QB -0.37 to -0.55) but CRPS change 0.02% or less, unstable | Measured, not used | 10-26 |
+| `kdef_features_check.py` | Do trailing team, kicker and ranking features beat form plus implied total for K and DEF? | DEF -2.1% and -2.8% RMSE from a joint refit (t -3.7, -4.6); K -1.4% and -1.8% with all features (t -2.1, -2.6); extra DEF groups and K rankings no gain | Shipped (`streaming_model.py`) | 10-27 |
 
 ## Outside sources and blending
 

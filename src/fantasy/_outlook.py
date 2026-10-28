@@ -8,6 +8,7 @@ from fantasy._schemas import OUTLOOK_SCHEMA
 from fantasy.config import load_config
 from fantasy.sim import moves
 from fantasy.sim.lineup import auto_lineup, constant_slot_count, lineup_slots
+from fantasy.sim.odds import kd_slot_mean
 
 OUTLOOK_RECENT_GAMES = 4
 OUTLOOK_THRESHOLD = 1.5  # points a game of expected change before a player is called improving
@@ -28,7 +29,7 @@ def schedule(league_key: str) -> pl.DataFrame:
     """My remaining regular-season games: opponent, both teams' expected points and my chance.
 
     The chance is a normal approximation from each lineup's mean and spread (injury-scaled
-    projections, K and DEF at league averages); the season simulation is the sharper number.
+    projections, K and DEF at each team's projection); the season simulation is the sharper number.
     """
     from scipy.stats import norm
 
@@ -38,7 +39,6 @@ def schedule(league_key: str) -> pl.DataFrame:
     positions, by_week = moves.position_of(data), moves.week_values(data)
     slots = lineup_slots(data.roster_positions)
     counts = constant_slot_count(data.roster_positions)
-    kd_mean = counts.get("K", 0) * data.k_mean + counts.get("DEF", 0) * data.def_mean
     kd_var = counts.get("K", 0) * data.k_var + counts.get("DEF", 0) * data.def_var
 
     def moments(roster_id: int, week: int) -> tuple[float, float]:
@@ -48,6 +48,9 @@ def schedule(league_key: str) -> pl.DataFrame:
         mean, var, _ = lineup_moments(
             chosen, data.cv, data.pair_rho, data.cv_tiers
         )  # var is already total
+        kd_mean = counts.get("K", 0) * kd_slot_mean(data, "K", roster_id, week) + counts.get(
+            "DEF", 0
+        ) * kd_slot_mean(data, "DEF", roster_id, week)
         return mean + kd_mean, var + kd_var + DRIFT_SD**2
 
     rows = []
@@ -79,8 +82,8 @@ def live_score(league_key: str) -> pl.DataFrame:
             continue
         left = (
             sum(p.value for p in state.open_players)
-            + state.open_k * data.k_mean
-            + state.open_def * data.def_mean
+            + state.open_k * kd_slot_mean(data, "K", rid, data.current_week)
+            + state.open_def * kd_slot_mean(data, "DEF", rid, data.current_week)
         )
         rows.append((side, data.team_names[rid], state.realized, state.realized + left))
     return pl.DataFrame(

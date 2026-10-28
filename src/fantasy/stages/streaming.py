@@ -21,6 +21,7 @@ import polars as pl
 
 from fantasy import store
 from fantasy.sim.blend import blend
+from fantasy.stages import streaming_model as sm
 from fantasy.stages.crosswalk import TEAM_MAP
 
 HALF_LIFE = 4.0  # games
@@ -211,17 +212,37 @@ def sleeper_by_unit(league_id: str, id_map: pl.DataFrame) -> pl.DataFrame:
 def _unit_projection(
     hist: pl.DataFrame,
     ahead: pl.DataFrame,
+    features: list[str],
     use_dome: bool,
     kind: str,
     league_id: str,
     id_map: pl.DataFrame,
 ) -> tuple[pl.DataFrame, tuple[float, float]]:
     """One league's projections for DEF or K, blended with Sleeper's and tagged, and the
-    walk-forward RMSE (model, league mean) from the same history."""
-    proj = project_units(hist, ahead, "unit", "implied", use_dome=use_dome)
+    walk-forward RMSE (model, league mean) from the same history. `hist` and `ahead` carry the
+    model's features; with too little complete history the plain form-plus-implied-total method
+    runs instead."""
+    ridge = sm.project(hist, ahead, features)
+    if ridge is None:
+        proj = project_units(hist, ahead, "unit", "implied", use_dome=use_dome)
+        rmse = backtest(hist, "unit", "implied", use_dome=use_dome)
+    else:
+        proj = ridge.select("unit", "team", "week", "projection")
+        try:
+            rmse = sm.backtest_rmse(hist, features, BACKTEST_FROM)
+        except ValueError:  # no scored week has enough complete earlier rows: report the plain one
+            rmse = backtest(hist, "unit", "implied", use_dome=use_dome)
     proj = blend(proj, sleeper_by_unit(league_id, id_map), "unit")
     tagged = proj.with_columns(pl.lit(league_id).alias("league_id"), pl.lit(kind).alias("kind"))
-    return tagged, backtest(hist, "unit", "implied", use_dome=use_dome)
+    return tagged, rmse
+
+
+def _with_k_features(rows: pl.DataFrame, teams: pl.DataFrame, usage: pl.DataFrame) -> pl.DataFrame:
+    """Kicker rows (unit, team, opponent_team, season, week, roof) with the K model's features."""
+    rows = rows.join(usage.rename({"gsis_id": "unit"}), on=["unit", "season", "week"], how="left")
+    return sm.add_team_features(rows, teams).with_columns(
+        pl.col("roof").is_in(DOMES).cast(pl.Float64).alias("dome")
+    )
 
 
 def run() -> dict[str, tuple[float, float]]:
@@ -234,6 +255,16 @@ def run() -> dict[str, tuple[float, float]]:
     )
     id_map = store.read_table("id_map").select("sleeper_id", "gsis_id", "nfl_team")
     active_k = sleeper.select("sleeper_id").join(id_map, on="sleeper_id").drop_nulls("gsis_id")
+    coded = games.with_columns(
+        pl.col("team").replace(SCHEDULE_TEAM_CODES), pl.col("opponent").replace(SCHEDULE_TEAM_CODES)
+    )
+    teams = sm.team_trailing(
+        stats,
+        store.read_table("nfl_team_efficiency", "raw"),
+        store.read_table("nfl_team_pace", "raw"),
+        coded,
+    )
+    player_stats = store.read_table("nfl_player_stats", "raw")
     defense_frames, projections, report = [], [], {}
     for lg in leagues.iter_rows(named=True):
         lid, current = lg["league_id"], int(lg["current_week"])
@@ -247,18 +278,29 @@ def run() -> dict[str, tuple[float, float]]:
         ahead = games.filter((pl.col("season") == season) & (pl.col("week") >= current)).select(
             pl.col("team").alias("unit"),
             "team",
+            "season",
             "week",
             pl.col("opp_implied").alias("implied"),
             "roof",
         )
         d_hist = past.rename({"team": "unit", "opp_implied": "implied"})
-        d_proj, d_rmse = _unit_projection(d_hist, ahead, False, "DEF", lid, id_map)
+        d_hist, d_ahead = sm.with_form(d_hist, ahead)
+        d_proj, d_rmse = _unit_projection(
+            d_hist, d_ahead, sm.DEF_FEATURES, False, "DEF", lid, id_map
+        )
         projections.append(d_proj)
         report[f"{lg['league_key']} DEF rmse (model, mean)"] = d_rmse
 
-        k_hist = kickers.filter((pl.col("league_id") == lid) & (pl.col("season") >= SCORED_FROM))
+        k_hist = kickers.filter(
+            (pl.col("league_id") == lid)
+            & (pl.col("season") >= SCORED_FROM)
+            & (pl.col("season_type") == "REG")
+            & ((pl.col("season") < season) | (pl.col("week") < current))
+        )
         k_hist = k_hist.select(
             pl.col("gsis_id").alias("unit"),
+            "team",
+            "opponent_team",
             "season",
             "week",
             "points",
@@ -266,17 +308,23 @@ def run() -> dict[str, tuple[float, float]]:
             "roof",
         )
         k_ahead = active_k.join(
-            games.filter((pl.col("season") == season) & (pl.col("week") >= current)),
+            coded.filter((pl.col("season") == season) & (pl.col("week") >= current)),
             left_on="nfl_team",
             right_on="team",
         ).select(
             pl.col("gsis_id").alias("unit"),
             pl.col("nfl_team").alias("team"),
+            pl.col("opponent").alias("opponent_team"),
+            "season",
             "week",
             pl.col("team_implied").alias("implied"),
             "roof",
         )
-        k_proj, k_rmse = _unit_projection(k_hist, k_ahead, True, "K", lid, id_map)
+        k_hist, k_ahead = sm.with_form(k_hist, k_ahead)
+        usage = sm.kicker_trailing(player_stats, k_ahead.rename({"unit": "gsis_id"}))
+        k_hist = _with_k_features(k_hist, teams, usage)
+        k_ahead = _with_k_features(k_ahead, teams, usage)
+        k_proj, k_rmse = _unit_projection(k_hist, k_ahead, sm.K_FEATURES, True, "K", lid, id_map)
         projections.append(k_proj)
         report[f"{lg['league_key']} K rmse (model, mean)"] = k_rmse
     store.write_table("defense_points", pl.concat(defense_frames))

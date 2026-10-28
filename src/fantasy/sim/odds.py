@@ -85,6 +85,14 @@ class LeagueData:
     )  # id -> (status, body, practice)
     cv_tiers: dict[str, tuple[tuple[float, float], ...]] = field(default_factory=dict)
     # position -> ((upper projection edge, cv), ...) by size tier; the starters' spread is smaller
+    kd_slot: dict[tuple[str, int, int], float] = field(default_factory=dict)
+    # (kind "K" or "DEF", roster id, week) -> projected points of the team's best rostered unit
+
+
+def kd_slot_mean(data: LeagueData, kind: str, roster_id: int, week: int) -> float:
+    """Expected points of one K or DEF slot: the team's own projection, else the league mean."""
+    league = data.k_mean if kind == "K" else data.def_mean
+    return data.kd_slot.get((kind, roster_id, week), league)
 
 
 def spread_cv(
@@ -266,7 +274,11 @@ def build_inputs(
             m, var, persistent = lineup_moments(lineup, data.cv, data.pair_rho, data.cv_tiers, left)
             weekly = max(var - persistent, 0.5 * var)
             fixed_var = k_open * data.k_var + def_open * data.def_var
-            mean[t, w] = offset + m + k_open * data.k_mean + def_open * data.def_mean
+            mean[t, w] = (
+                offset + m
+                + k_open * kd_slot_mean(data, "K", rid, week)
+                + def_open * kd_slot_mean(data, "DEF", rid, week)
+            )  # fmt: skip
             noise_sd[t, w] = np.sqrt(weekly + fixed_var + DRIFT_SD**2)
             for p in lineup:
                 if p.id not in errors:  # a stand-in free agent

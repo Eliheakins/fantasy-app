@@ -87,6 +87,8 @@ def _totals(
             data,
             n_sims,
             LINEUP_SEED + KD_SEED_OFFSET + team,
+            team,
+            week,
             data.current.get(team) if current else None,
         )
         for team, lineup in lineups.items()
