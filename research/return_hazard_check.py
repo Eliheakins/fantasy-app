@@ -3,7 +3,7 @@
 The season simulation's absence chain has "out stays out" (STAY_OUT) and a flat chance of a
 new absence (HAZARD) but no raised hazard for a player in his first game back. Universe: QB, RB,
 WR and TE who averaged 50% or more of offensive snaps in their earlier games of the season (at
-least 3), weeks 2 to 17 of 2019 onward. A missed game is any week with no offensive snaps, byes
+least 3), weeks 2 to 16 of 2019 onward (week 18 does not exist before 2021 and starters rest in it). A missed game is any week with no offensive snaps, byes
 included in both groups. State at week w: played w; compare those who also played w-1 against
 those who missed w-1, on missing w+1.
 
@@ -16,6 +16,7 @@ import polars as pl
 from fantasy import store
 
 MIN_PRIOR_GAMES = 3
+LAST_STATE_WEEK = 16  # the next game, week 17, exists in every season
 REGULAR_SHARE = 0.5
 
 
@@ -33,7 +34,7 @@ def main() -> None:
     for (_, _), g in snaps.group_by("gsis_id", "season"):
         played = dict(zip(g["week"], g["offense_snaps"] > 0, strict=True))
         share = dict(zip(g["week"], g["offense_pct"], strict=True))
-        for week in range(2, 18):
+        for week in range(2, LAST_STATE_WEEK + 1):
             prior = [share[w] for w in range(1, week) if w in share]
             if len(prior) < MIN_PRIOR_GAMES or np.mean(prior) < REGULAR_SHARE:
                 continue

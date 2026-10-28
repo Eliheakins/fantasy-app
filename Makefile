@@ -69,8 +69,9 @@ schedule-install:
 	mkdir -p $(HOME)/Library/LaunchAgents data
 	sed -e "s|__REPO__|$(CURDIR)|g" -e "s|__PATH__|$(LAUNCH_PATH)|g" ops/refresh.plist > $(PLIST)
 	plutil -lint $(PLIST)
+	-launchctl bootout gui/$$(id -u) $(PLIST)
 	launchctl bootstrap gui/$$(id -u) $(PLIST)
 
 schedule-remove:
-	launchctl bootout gui/$$(id -u) $(PLIST)
+	-launchctl bootout gui/$$(id -u) $(PLIST)
 	rm -f $(PLIST)

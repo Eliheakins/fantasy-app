@@ -36,3 +36,20 @@ def test_keeps_only_the_newest_copies_and_never_touches_other_folders(tmp_path: 
 def test_does_nothing_without_an_archive(tmp_path: Path) -> None:
     assert backup.run(tmp_path / "data", tmp_path / "out") is None
     assert not (tmp_path / "out").exists()
+
+
+def test_two_copies_in_one_second_both_survive_and_odd_folders_do_not_count(
+    tmp_path: Path,
+) -> None:
+    _archive(tmp_path / "data")
+    out = tmp_path / "out"
+    (out / "archive-notes").mkdir(parents=True)
+
+    first = backup.run(tmp_path / "data", out, keep=2)
+    second = backup.run(tmp_path / "data", out, keep=2)
+    third = backup.run(tmp_path / "data", out, keep=2)
+
+    assert first and second and third and len({first, second, third}) == 3
+    assert (out / "archive-notes").exists()
+    copies = [p for p in out.iterdir() if backup.COPY_NAME.match(p.name)]
+    assert len(copies) == 2 and not list(out.glob(".*.partial"))
