@@ -113,7 +113,10 @@ not deterministic (see the 2026-10-25 entry).
 | `kdef_features_check.py` | Do trailing team, kicker and ranking features beat form plus implied total for K and DEF? | DEF -2.1% and -2.8% RMSE from a joint refit (t -3.7, -4.6); K -1.4% and -1.8% with all features (t -2.1, -2.6); extra DEF groups and K rankings no gain | Shipped (`streaming_model.py`) | 10-27 |
 | `opponent_lineup_check.py` | Do managers set lineups worse than their best by projection, and does subtracting it predict their score better? | Mean shortfall 1.75 points (split-half r 0.60); subtracting it raises RMSE 21.42 to 21.99 (t +1.6), team-specific 22.14 (t +1.7) | Rejected | 10-28 |
 | `return_hazard_check.py` | Do regulars in their first game back miss the next game more often than others? | No: 13.2% after a return against 16.1% after two straight games (n 1,822 and 12,926; byes in both) | Rejected (no re-injury state needed) | 10-28 |
-| `espn_fetch.py` | Fetch YinzBurgh's 2023 to 2025 ESPN seasons (private; cookies in `.env`) into `research/scratch/espn/` | Not run yet: the league exists for 2023 to 2025 and answers 401 without cookies | Waiting on cookies | 10-28 |
+| `espn_fetch.py`, `espn_parse.py` | Fetch and parse YinzBurgh's 2023 to 2025 ESPN seasons (private; cookies in `.env`) into `research/scratch/espn/` | 117 JSON files; 6,930 lineup rows, skill players all map to gsis ids | Data (not committed) | 10-28 |
+| `espn_lineup_check.py` | The opponent-lineup test on 330 ESPN team-weeks | Shortfall 1.6 points; subtracting it raises RMSE 18.91 to 19.31 (t +3.5); no carry between seasons (r -0.22) | Rejected | 10-28 |
+| `espn_calibration_check.py` | Weekly team-score spread on 406 ESPN team-weeks | Mean z +0.20, sd z 0.86, 80% interval holds 85% | Range a little wide | 10-28 |
+| `spread_scale_check.py` | Does a fitted factor on the weekly spread beat the model as-is (leave one season out, 4 seasons)? | Log-score gain +0.014, t 1.86, 3 of 4 seasons | Not shipped (t under 2) | 10-28 |
 
 ## Outside sources and blending
 

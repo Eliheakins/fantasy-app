@@ -117,7 +117,7 @@ Pipeline order (`make refresh`), <!-- AUTO-GENERATED from the Makefile --> `back
 - **FantasyCalc** (undocumented endpoint): market values for the Trades page, fetched at most once a day per league setting.
 - **The Odds API** (optional): prop lines, archived by `make odds` and used for this week's prop-implied points.
 - **FFToday** (free pages): weekly outside projections (`proj_outside`).
-- **ESPN** (private league, your cookies): YinzBurgh's 2023 to 2025 seasons, fetched by `research/espn_fetch.py` into the gitignored `research/scratch/espn/`. Not part of the pipeline yet.
+- **ESPN** (private league, your cookies): YinzBurgh's 2023 to 2025 seasons, fetched by `research/espn_fetch.py` and parsed by `research/espn_parse.py` into the gitignored `research/scratch/espn/`. Used only for research checks (lineup shortfall, weekly spread); nothing in the pipeline reads it.
 
 `data/archive/` cannot be regenerated: our projection snapshots (skill positions, and K and DEF in `streaming_snapshots`), Sleeper and outside projection snapshots, odds snapshots, season-odds history and daily player-status snapshots. `make refresh` copies it to `~/fantasy-app-backups` first; keep that folder out of any repository.
 
@@ -126,7 +126,7 @@ Pipeline order (`make refresh`), <!-- AUTO-GENERATED from the Makefile --> `back
 - Win-probability lineups usually match max-points lineups, and the app says so instead of inventing a swap.
 - The trade acceptance figure is a share of past accepted trades that were as lopsided in market value, not a chance of acceptance: Sleeper keeps only completed trades (8 so far) and today's values.
 - The drop-risk watch on the Digest lists facts (snap share, market value, injury status); none is tested to predict a miss.
-- Assumed, not measured: the weekly roster drift and the 50% Sleeper blend weight. The spread of season win totals is untested: Colgate is new this year, and YinzBurgh's earlier seasons are on ESPN and not loaded yet.
+- Assumed, not measured: the weekly roster drift and the 50% Sleeper blend weight. The spread of season win totals is untested (Colgate is new this year; YinzBurgh's three ESPN seasons are loaded for weekly checks, but past mid-season forecasts were not kept). The weekly team-score range runs about 12% wide on 4 seasons of lineups; a correction missed the rule narrowly (t 1.86) and waits for more 2026 weeks.
 - Defender injury curves reuse skill-player curves. Vacancy bumps are shared equally among a team's receivers or backs.
 - No slot-matchup modeling: free data has no alignment.
 - K and DEF use each team's own rostered unit projection in the season simulation, lineups and win probability (the league average where a team has none). Their spread is still league-wide, and past weeks in `calibration` use league means.

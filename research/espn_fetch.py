@@ -3,7 +3,7 @@
 The league ran on ESPN in 2023 to 2025 (earlier years answer 404 under this id) and is private, so
 it needs the browser cookies `espn_s2` and `SWID`: put ESPN_S2 and ESPN_SWID (with its braces) in
 the gitignored `.env`, never in a command or a chat. Output goes to `research/scratch/espn/`,
-which is gitignored: it is third-party data and is never committed. Reads only, about 60 requests.
+which is gitignored: it is third-party data and is never committed. Reads only, about 110 requests.
 
     uv run python research/espn_fetch.py
 """
@@ -22,7 +22,7 @@ LEAGUE_ID = 1470881390
 SEASONS = (2023, 2024, 2025)
 WEEKS = range(1, 19)
 BASE = "https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/{season}/segments/0/leagues/{league}"
-SEASON_VIEWS = ("mSettings", "mTeam", "mRoster", "mTransactions2")
+SEASON_VIEWS = ("mSettings", "mTeam", "mRoster")
 WEEK_VIEWS = ("mMatchup", "mMatchupScore", "mBoxscore")
 PAUSE_SECONDS = 0.5
 OUT = store.ROOT / "research" / "scratch" / "espn"
@@ -62,6 +62,9 @@ def main() -> None:
             for week in WEEKS:
                 params: list[tuple[str, str | int]] = [("view", v) for v in WEEK_VIEWS]
                 fetch(client, season, f"week{week:02d}", [*params, ("scoringPeriodId", week)])
+                # transactions only come back for one scoring period at a time
+                tx = [("view", "mTransactions2"), ("scoringPeriodId", week)]
+                fetch(client, season, f"tx{week:02d}", tx)
     print(f"saved under {OUT}")
 
 
