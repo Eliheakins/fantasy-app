@@ -168,6 +168,11 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     "streaming_projection": _cols(
         strings="league_id kind unit team", ints="week", floats="projection"
     ),
+    # written by streaming (area: archive, only ever appended): each refresh's K and DEF
+    # projections for every week ahead, so a later check scores what was said before kickoff
+    "streaming_snapshots": _cols(
+        strings="league_id kind unit team fetched_at", ints="week", floats="projection"
+    ),
     # written by simulate (area: derived; the history copy is in archive and only ever appended)
     "sim_season": _cols(
         strings="league_id team_name",

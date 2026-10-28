@@ -12,6 +12,7 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 
 - `make refresh`: pull Sleeper and nflverse and rebuild every table (needs the network)
 - `make serve`: build `web/` and serve the React UI plus the API at http://127.0.0.1:8000. `make dev`: API plus the Vite dev server (hot reload)
+- `make schedule-install` / `schedule-remove`: a macOS launchd job running `make refresh` Tuesday 06:00, Friday 18:00 and Sunday 08:00 (Mac awake; log in `data/refresh.log`). Not installed unless you run it.
 - `make odds`: archive one week of prop lines (needs `ODDS_API_KEY` in env or `.env`, gitignored; free tier is 500 credits a month, a snapshot costs about 80)
 - Checks against real data: `uv run python -m fantasy.stages.validate_scoring`, `validate_standings`, `backtest`, `calibration`
 - Never pipe `make check` into `tail` before committing: the pipe hides a failing exit code
@@ -47,7 +48,7 @@ A missing table for a layer in step 4, or for calibration or a blend source, is 
 ## Gotchas
 
 - `data/` is gitignored. A fresh clone has no data: run `make setup`, then `make refresh` (needs the network).
-- `data/archive/` cannot be regenerated: our own weekly projections for the next game (`proj_snapshots`, the clean test of the learned model), Sleeper projection snapshots (re-stamped by the endpoint after games, so only our own snapshots are clean), odds snapshots, season-odds history, daily Sleeper status snapshots (`sleeper_player_status`, for `research/news_residual_check.py`). Back it up before wiping `data/`. Issue #40 depends on it.
+- `data/archive/` cannot be regenerated: our own weekly projections for the next game (`proj_snapshots`, the clean test of the learned model), Sleeper projection snapshots (re-stamped by the endpoint after games, so only our own snapshots are clean), odds snapshots, season-odds history, K and DEF projections (`streaming_snapshots`), daily Sleeper status snapshots (`sleeper_player_status`, for `research/news_residual_check.py`). `make backup` copies it to `~/fantasy-app-backups` (or `FANTASY_BACKUP_DIR`; keep 30) and `make refresh` runs it first. Never put the copy in a repository. Issue #40 depends on it.
 - Point-valued effects are measured in the reference league (lowest league id) and scaled per league (`sim/scoring_scale.py`). Add a new point-valued effect to the `*_POINT_KINDS` sets in `stages/simulate.py`, or YinzBurgh (0.5 PPR) will be overstated.
 - My teams: Colgate "Lisan Al-Caleb", YinzBurgh "LaPorta Potty" (Sleeper's `is_me` flag, not the league's top team).
 - `data_api.py` (553 lines) re-exports entry points that live in private sibling modules (`_engine`, `_lineup`, `_market`, `_outlook`, `_schemas`, and others). Tests patch `data_api.leagues` (`tests/test_api.py`, `tests/test_data_api_engine.py`), so keep any function that calls `leagues` in `data_api.py`, and never call it from a `_`-module.

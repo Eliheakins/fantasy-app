@@ -15,6 +15,7 @@ Run: uv run python -m fantasy.stages.streaming
 
 import json
 import re
+from datetime import UTC, datetime
 
 import numpy as np
 import polars as pl
@@ -330,6 +331,13 @@ def run() -> dict[str, tuple[float, float]]:
     store.write_table("defense_points", pl.concat(defense_frames))
     out = pl.concat(projections).select("league_id", "kind", "unit", "team", "week", "projection")
     store.write_table("streaming_projection", out)
+    stamp = datetime.now(UTC).isoformat(timespec="seconds")
+    snapshot = out.with_columns(pl.lit(stamp).alias("fetched_at")).select(
+        *store.SCHEMAS["streaming_snapshots"]
+    )
+    store.write_table(
+        "streaming_snapshots", store.with_archive("streaming_snapshots", snapshot), "archive"
+    )
     return report
 
 

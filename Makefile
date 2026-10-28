@@ -1,6 +1,9 @@
-.PHONY: setup test lint fmt check refresh serve dev web-build odds odds-slate
+.PHONY: setup test lint fmt check refresh backup schedule-install schedule-remove serve dev web-build odds odds-slate
 
-refresh:
+backup:
+	uv run python -m fantasy.stages.backup
+
+refresh: backup
 	uv run python -m fantasy.stages.sync_sleeper
 	uv run python -m fantasy.stages.news_archive
 	uv run python -m fantasy.stages.sleeper_projections
@@ -56,3 +59,18 @@ odds:
 
 odds-slate:
 	uv run python -m fantasy.stages.snapshot_odds --slate
+
+# Scheduled refresh (macOS launchd): Tuesday 06:00, Friday 18:00, Sunday 08:00, local time. The
+# Mac must be awake; a missed run is not repeated. Output goes to data/refresh.log.
+PLIST = $(HOME)/Library/LaunchAgents/com.fantasy-app.refresh.plist
+LAUNCH_PATH = $(dir $(shell command -v uv)):$(HOME)/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin
+
+schedule-install:
+	mkdir -p $(HOME)/Library/LaunchAgents data
+	sed -e "s|__REPO__|$(CURDIR)|g" -e "s|__PATH__|$(LAUNCH_PATH)|g" ops/refresh.plist > $(PLIST)
+	plutil -lint $(PLIST)
+	launchctl bootstrap gui/$$(id -u) $(PLIST)
+
+schedule-remove:
+	launchctl bootout gui/$$(id -u) $(PLIST)
+	rm -f $(PLIST)

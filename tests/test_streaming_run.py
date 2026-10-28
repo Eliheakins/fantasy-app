@@ -145,3 +145,14 @@ def test_run_projects_def_and_k_for_the_remaining_weeks(tables: dict[str, pl.Dat
     assert out["projection"].to_list() == pytest.approx(GOLDEN_PROJECTION)
     assert report["Test DEF rmse (model, mean)"] == pytest.approx(GOLDEN_DEF_RMSE)
     assert report["Test K rmse (model, mean)"] == pytest.approx(GOLDEN_K_RMSE)
+
+
+def test_run_archives_each_runs_projections_with_a_timestamp(
+    tables: dict[str, pl.DataFrame],
+) -> None:
+    streaming.run()
+
+    snapshot = tables["streaming_snapshots"]
+    assert snapshot.columns == list(store.SCHEMAS["streaming_snapshots"])
+    assert snapshot.height == tables["streaming_projection"].height
+    assert snapshot["fetched_at"].n_unique() == 1
