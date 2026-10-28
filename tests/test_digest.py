@@ -57,6 +57,26 @@ def test_last_week_is_empty_in_week_one_and_has_no_luck_in_the_playoffs(league: 
     assert playoffs.row(0, named=True)["luck"] is None
 
 
+def final_week_games(path: Path, scores: list[int | None]) -> None:
+    """Week 2 NFL games with the given home scores (None: not final)."""
+    games = [
+        {"season": 2026, "week": 2, "game_type": "REG", "home_team": f"H{i}", "away_team": f"A{i}"}
+        | {"home_score": score, "away_score": None if score is None else 0}
+        for i, score in enumerate(scores)
+    ]
+    write_rows(path, "nfl_schedules", games)
+
+
+def test_last_week_is_the_current_week_once_every_nfl_game_in_it_is_final(league: Path) -> None:
+    final_week_games(league, [24, 17])
+    assert _digest.last_week(me_row(league, 2), league).row(0, named=True)["week"] == 2
+
+
+def test_last_week_waits_for_the_last_nfl_game_of_the_current_week(league: Path) -> None:
+    final_week_games(league, [24, None])  # Monday night still to play
+    assert _digest.last_week(me_row(league, 2), league).row(0, named=True)["week"] == 1
+
+
 def test_data_api_last_week_follows_the_viewed_team(league: Path) -> None:
     with viewing_team(3):
         row = data_api.last_week("t", league).row(0, named=True)

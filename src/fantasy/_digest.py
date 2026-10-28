@@ -14,6 +14,7 @@ import polars as pl
 from fantasy import _league_view, store
 from fantasy._engine import _read
 from fantasy._schemas import ENGINE_SCHEMAS
+from fantasy.config import load_config
 from fantasy.sim.schedule import completed
 
 IDEA_KINDS = ("waiver", "trade")
@@ -40,9 +41,24 @@ def _week_figure(
     return now - (before or 0.0)
 
 
+def _nfl_week_over(me: dict[str, Any], week: int, data_dir: Path) -> bool:
+    """Every NFL game of the week has a score. False without schedule rows for the season."""
+    games = _read("nfl_schedules", data_dir).filter(
+        (pl.col("season") == load_config().season) & (pl.col("week") == week)
+    )
+    return not games.is_empty() and games["home_score"].null_count() == 0
+
+
+def last_scored_week(me: dict[str, Any], data_dir: Path) -> int:
+    """The latest finished week: the week before the current one, or the current week itself once
+    every NFL game in it is final (Sleeper keeps the old week until it rolls over midweek)."""
+    current = int(me["current_week"])
+    return current if _nfl_week_over(me, current, data_dir) else current - 1
+
+
 def last_week(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
-    """My game in the week before the current one; empty in week 1 or if it was not scored."""
-    week = int(me["current_week"]) - 1
+    """My game in the last finished week; empty in week 1 or if it was not scored."""
+    week = last_scored_week(me, data_dir)
     if week < 1:
         return _empty("last_week")
     settings = _league_view._settings(me, data_dir)
@@ -83,10 +99,10 @@ def last_week(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
 
 
 def player_vs_projection(me: dict[str, Any], week: int, data_dir: Path) -> pl.DataFrame:
-    """My starters at skill positions in a week (0 is last week): points against the last
+    """My starters at skill positions in a week (0: last finished week): points against the last
     `proj_snapshots` row for the player that week. The column follows `projection_model`; no
     Sleeper blend or injury layer, so not the number the app showed. Null where no snapshot."""
-    week = week or int(me["current_week"]) - 1
+    week = week or last_scored_week(me, data_dir)
     league = _read("leagues", data_dir).filter(pl.col("league_id") == me["league_id"])
     if week < 1 or league.is_empty():
         return _empty("player_vs_projection")
