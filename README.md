@@ -1,183 +1,96 @@
 # NFL Stat App — The Bridge
 
-A local NFL analytics workbench: a **FastAPI** backend serves a **player index** and **play-by-play Parquet shards**, while a **Vite + React** frontend (**The Bridge**) runs **DuckDB-WASM** in the browser to query those Parquets over HTTP.
+A local NFL stats workbench. Ask a question like "Mahomes passing yards and touchdowns in 2023" and get an answer and a table.
 
-The same codebase can run **locally** (disk-backed `backend/data/`) or **hosted on [Render](https://render.com/)** (API web service, static frontend, optional persistent disk for Parquet files). You can also serve Parquet from **object storage** (for example **Cloudflare R2**) using `DATA_SOURCE=r2`.
+- **Backend:** FastAPI serves a player index and play-by-play Parquet shards, and asks a local model to turn a question into stats and filters.
+- **Frontend:** Vite + React. DuckDB-WASM runs the queries in the browser against the shards. A local model never writes SQL and never sees player ids.
 
----
+Everything runs on your machine. Data lives in `backend/data/`.
 
-## Setup and build
+## How Ask works
 
-### Prerequisites
+1. Player names in the question are matched in the browser against the player dictionary (`GET /players/dictionary`). Namesakes are narrowed by the stats asked about, or you pick one.
+2. `POST /nlq/intent` sends the question and the stat/filter catalog to a local model, which returns `{stat_ids, filter_ids, granularity}`. The reply is validated, with one retry on a bad reply.
+3. The Explore query builder turns that into SQL and runs it in DuckDB-WASM. The answer text is built from the result rows, not by the model.
+4. Questions default to the regular season unless they mention the playoffs.
 
-- **Python 3.12+** (recommended) with `pip`
-- **Node.js 20+** and **npm** (for the frontend)
+## Setup
 
-### 1. Backend (Python)
-
-From the repository root:
-
-```bash
-python -m venv venv
-```
-
-Activate the virtual environment (Windows PowerShell):
+Prerequisites: [uv](https://docs.astral.sh/uv/), Node.js 20+, and an Apple Silicon Mac for the MLX model server.
 
 ```bash
-.\venv\Scripts\Activate.ps1
+uv sync                       # backend dependencies (add --group llm for the model server)
+cd frontend && npm install
 ```
 
-Install runtime dependencies:
+### Data
 
 ```bash
-pip install -r backend/requirements.txt
+uv run python backend/scripts/build_data.py            # NFL play-by-play + player index, 2021-2025
+uv run python backend/scripts/build_data.py --years 2023,2024
 ```
 
-For linting, tests, and typing as well:
+This writes `backend/data/player_index.parquet` and `nfl_pbp_YYYY.parquet`.
+
+## Run
+
+Three terminals, from the repository root:
 
 ```bash
-pip install -r backend/dev-requirements.txt
+# 1. Local model (first run downloads about 8 GB)
+uv run --group llm mlx_lm.server --model mlx-community/Qwen2.5-14B-Instruct-4bit --port 8080
+
+# 2. API
+cd backend && uv run uvicorn main:app --port 8100
+
+# 3. Frontend
+cd frontend && npm run dev
 ```
 
-### 2. Data files (local)
+Open `http://localhost:3000`. The API is `http://localhost:8100` (docs at `/docs`, health at `/health`). The API uses 8100 so it does not clash with other local servers on 8000.
 
-Generate Parquet shards, player index, and Rosetta outputs (writes into `backend/data/` by default):
+The API pings the model every 20 seconds to keep its weights in memory. Without that, the first question after a pause took 20 to 40 seconds while macOS paged the model back in.
+
+## Configuration
+
+Optional, in the environment or a `.env` file at the repository root.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LLM_BASE_URL` | `http://127.0.0.1:8080/v1` | OpenAI-compatible server (any local server works, for example LM Studio) |
+| `LLM_MODEL` | `mlx-community/Qwen2.5-14B-Instruct-4bit` | Must match the model the server loaded |
+| `LLM_TIMEOUT_SECONDS` | `120` | Per-request timeout |
+| `PIPELINE_GC` | `1` | Set `0` to skip `gc.collect()` between seasons in the data build |
+| `NFLVERSE_DOWNLOAD_BASE` | nflverse GitHub releases | Override the PBP download host |
+
+## Tests
 
 ```bash
-python backend/scripts/build_data.py
+uv run pytest --cov=backend           # backend unit and API tests
+uv run pytest -m eval -s              # intent accuracy against the live local model (needs step 1 above)
+cd frontend && npm test               # name matching, answer text, catalog sync
+cd frontend && npm run export:catalog # refresh backend/tests/eval/catalog.json after changing stats or filters
+uv run ruff check backend
 ```
 
-Use `python backend/scripts/build_data.py --help` for options (`--years`, `--rosetta-only`, `--skip-cfb`, etc.). [`backend/scripts/dataPipeline.py`](backend/scripts/dataPipeline.py) remains a thin alias that runs the same full build without CLI flags.
+`backend/tests/eval/cases.json` holds 40 questions with expected stats, filters and granularity. The last run passed 39 of 40.
 
-You should end up with:
-
-- `backend/data/player_index.parquet`
-- `backend/data/nfl_pbp_YYYY.parquet` (one file per season in the pipeline)
-
-### 3. Run the API (local)
-
-From the `backend` directory:
-
-```bash
-cd backend
-uvicorn main:app --reload --host 127.0.0.1 --port 8000
-```
-
-- API: `http://127.0.0.1:8000`
-- Health: `http://127.0.0.1:8000/health`
-- Interactive docs: `http://127.0.0.1:8000/docs`
-- Parquet files are exposed under `http://127.0.0.1:8000/data/...` when `DATA_SOURCE=local` (default)
-
-### 4. Frontend (Vite + React)
-
-In a second terminal:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-- App: `http://localhost:3000` (default Vite port in this project)
-- Optional: create `frontend/.env.local` with `VITE_API_BASE=http://127.0.0.1:8000` if your API URL differs
-
-**Production build:**
-
-```bash
-cd frontend
-npm run build
-npm run preview
-```
-
-Output is written to `frontend/dist/`. The `frontend/public/_redirects` file is copied into `dist/` for hosts that use it (for example Netlify-style `_redirects`); on **Render**, SPA fallback is configured in `render.yaml`.
-
----
-
-## Configuration (environment variables)
-
-### Backend (`backend/main.py`)
-
-| Variable | When | Description |
-|----------|------|-------------|
-| `DATA_LOCAL_DIR` | Optional | Absolute path to the directory containing `player_index.parquet` and `nfl_pbp_*.parquet` for local mode. Default: `backend/data` next to `main.py`. On Render, set to your persistent disk mount (for example `/data`) via `render.yaml`. |
-| `CORS_ORIGINS` | Always (optional) | Comma-separated browser origins allowed to call the API. Default: `http://localhost:3000,http://127.0.0.1:3000` (local Vite). In production, include your static site origin(s). **`CORSMiddleware`** also **exposes** `Content-Range`, `Content-Length`, and `Accept-Ranges` so the browser can read range responses for DuckDB-WASM Parquet over HTTP. |
-| `DATA_SOURCE` | Always (optional) | `local` (default) or `r2` |
-| `PLAYER_INDEX_PATH` | `DATA_SOURCE=local` | Path to `player_index.parquet`. Default: `<DATA_LOCAL_DIR or backend/data>/player_index.parquet` |
-| `PLAYER_INDEX_URL` | `DATA_SOURCE=r2` | **Required.** HTTPS URL to `player_index.parquet` (e.g. public object URL) |
-| `PUBLIC_PBP_BASE` | `DATA_SOURCE=r2` | **Required.** HTTPS base URL (no trailing slash) where `nfl_pbp_YYYY.parquet` objects are readable, e.g. `https://<bucket>.<account>.r2.cloudflarestorage.com` or a custom domain |
-| `PBP_YEARS` | `DATA_SOURCE=r2` | **Required.** Comma-separated seasons matching files in object storage, e.g. `2021,2022,2023,2024,2025` |
-| `OPENAI_API_KEY` | Optional | **NLQ (`POST /nlq`).** If unset, natural-language Ask in the UI returns 503. Use a server-side secret only (never `VITE_*`). Model: `gpt-4o-mini`. **Local:** `main.py` loads a `.env` file at the **repository root** (parent of `backend/`) via `python-dotenv`; put `OPENAI_API_KEY=...` there. Variables already set in the process environment are not overwritten. |
-
-With `DATA_SOURCE=r2`, the API does **not** mount `/data` from disk; shard `path` values in JSON are **absolute HTTPS URLs** so the browser (DuckDB-WASM) fetches Parquet **directly from storage**. Configure **CORS on the bucket** to allow `GET` from your static site origin.
-
-### Frontend (Vite)
-
-| Variable | Build-time | Description |
-|----------|------------|-------------|
-| `VITE_API_BASE` | Yes | Base URL of the FastAPI service (no trailing slash). Default in code: `http://localhost:8000`. All API fetches and Parquet URLs go through [`frontend/src/lib/api.ts`](frontend/src/lib/api.ts) (`API_BASE`, `shardParquetUrl`, `playerIndexParquetUrl`). **Render:** set at build time; after changing it, trigger a **new deploy** (e.g. **Clear build cache & deploy**) so Vite rebakes the bundle. **Local:** optional `frontend/.env.local` with `VITE_API_BASE=http://127.0.0.1:8000`. |
-
-**No boto3** is required for the current R2 mode: objects are addressed by public HTTPS URLs. If you later use a **private** bucket, you would add server-side presigned URLs (e.g. with `boto3`)—not implemented in this repo yet.
-
----
-
-## Hosted deployment (Render)
-
-Use the repo root [`render.yaml`](render.yaml) with [Render Blueprints](https://render.com/docs/infrastructure-as-code).
-
-1. **Create a Blueprint** from this repository. Render will provision:
-   - **nfl-stat-api** — Python web service (`rootDir: backend`), health check `GET /health`, persistent disk mounted at `/data` with `DATA_LOCAL_DIR=/data`.
-   - **nfl-stat-ui** — Static site (`rootDir: frontend`), publish directory `./dist` (Render paths are relative to `rootDir`, so this is `frontend/dist` in the repo), SPA rewrite `/*` → `/index.html`.
-
-2. When prompted, set **`VITE_API_BASE`** to your API’s public URL (for example `https://nfl-stat-api.onrender.com`, no trailing slash).
-
-3. Set **`CORS_ORIGINS`** on the API to your static site origin(s) (for example `https://nfl-stat-ui.onrender.com`, no trailing slash). You can update this in the Render dashboard after the first deploy when URLs are known.
-
-4. After changing **`VITE_API_BASE`**, run a **Manual Deploy** on the static site and use **Clear build cache** if needed so the new API URL is compiled into the assets.
-
-5. **Seed data on the persistent disk** (the disk starts empty). The API is configured with `DATA_LOCAL_DIR=/data` so both the app and the pipeline write to the same place. After seeding, **restart** the `nfl-stat-api` service so the in-memory player index reloads.
-
-### Render post-deploy checklist (vs. generic “AI deploy” advice)
-
-| Topic | This repo | Common mistake |
-|--------|-----------|----------------|
-| **Shell command** | With `rootDir: backend`, open **Shell** on `nfl-stat-api` and run: `python scripts/build_data.py` | The unified script is [`backend/scripts/build_data.py`](backend/scripts/build_data.py); [`dataPipeline.py`](backend/scripts/dataPipeline.py) is a compatibility alias. |
-| **Output path** | The pipeline reads **`DATA_LOCAL_DIR`** (set to `/data` in [`render.yaml`](render.yaml)), same as the API | Writing only under `backend/data` on the container disk would **not** land on the persistent volume. |
-| **Serving Parquet** | [`main.py`](backend/main.py) mounts `StaticFiles` at URL path **`/data`** from filesystem **`DATA_DIR`** (`backend/data` locally, `/data` on Render). Production API installs [`requirements-api.txt`](backend/requirements-api.txt); full local pipeline dev uses [`requirements.txt`](backend/requirements.txt) (API + pipeline). | Hard-coding `directory="/data"` only would break local dev; use **`DATA_LOCAL_DIR`** on Render. |
-| **Empty disk / first boot** | The API **starts** without `player_index.parquet`; `/health` reports `player_index_loaded: false` until you seed and restart | — |
-| **Tuesday “cron on Render”** | A **Cron Job** is a **separate** service: it does **not** share the web service’s persistent disk, so `python …/build_data.py` there would not update the API’s `/data` unless you upload elsewhere (e.g. R2) | For updates on the **same** disk, re-run the pipeline in **Shell** on the API and restart, or use **`DATA_SOURCE=r2`** and automate uploads to object storage. |
-| **CORS** | Set **`CORS_ORIGINS`** to your static site origin (no trailing slash), e.g. `https://nfl-stat-ui.onrender.com` | Mismatch here shows up as browser “failed to fetch” / CORS errors. |
-| **Frontend + DuckDB** | [`index.html`](frontend/index.html) loads the app with **`<script type="module" src="/src/main.tsx">`**. Use **`shardParquetUrl`** / **`playerIndexParquetUrl`** so Parquet URLs are always `${VITE_API_BASE}/data/...` (works locally and on Render). | — |
-| **Pipeline memory** | PBP is read from **nflverse GitHub Parquet** via `pl.read_parquet(..., columns=…)` (see `get_nfl_url` in [`nfl_pipeline.py`](backend/pipeline/nfl_pipeline.py)), not `nfl.load_pbp`. [`render.yaml`](render.yaml) sets **`POLARS_MAX_THREADS=1`** and **`RAYON_NUM_THREADS=1`**. NGS loads stay **one at a time** with explicit `del`. | Override base URL with **`NFLVERSE_DOWNLOAD_BASE`** if needed. Set **`PIPELINE_GC=0`** to skip `gc.collect()` between seasons. |
-
-**Verify after seeding:** `ls /data` in Shell should list `player_index.parquet`, `nfl_pbp_*.parquet`, and (if you ran the Rosetta step) `player_hub.parquet`, `gold_unified_performance.parquet`, `hub_dictionary.json`, and `manifests/`. Hit `GET /health` and confirm `player_index_loaded` is `true` after restart.
-
-**Alternative:** Skip the disk entirely — set **`DATA_SOURCE=r2`**, `PLAYER_INDEX_URL`, `PUBLIC_PBP_BASE`, and `PBP_YEARS` in the dashboard (and CORS on the bucket).
-
----
-
-## Object storage (optional, `DATA_SOURCE=r2`)
-
-1. Upload the same files as local `backend/data/`: `player_index.parquet`, `nfl_pbp_YYYY.parquet`.
-2. Expose them over **HTTPS** (public bucket, custom domain, or worker). The values of `PLAYER_INDEX_URL` and `PUBLIC_PBP_BASE` must match how objects are reachable.
-3. **CORS**: allow your **static site** origin for `GET` (and headers your browser sends for range requests if needed).
-
----
-
-## Project layout
+## Layout
 
 | Path | Role |
 |------|------|
-| `backend/main.py` | FastAPI app: `/health`, `/search`, `/player/{gsis_id}`, `POST /nlq`, optional static `/data` |
-| `backend/data/` | Local `player_index.parquet`, `nfl_pbp_*.parquet`, Rosetta outputs (`gold_unified_performance.parquet`, `hub_dictionary.json`, …) |
-| `backend/scripts/build_data.py` | **Single entry:** NFL/CFB PBP shards, `player_index`, Rosetta gold + manifests (`--help` for partial runs) |
-| `backend/scripts/dataPipeline.py` | Compatibility alias for a full `build_data` run (no CLI) |
-| `backend/pipeline/` | Python package: `nfl_pipeline`, `college_data`, `rosetta_layer`, `cli` (invoked via `build_data.py`) |
-| `frontend/` | Vite + React + DuckDB-WASM workbench |
-| `frontend/public/_redirects` | SPA fallback for hosts that honor `_redirects` |
-| `render.yaml` | Render Blueprint (API + static site) |
+| `backend/main.py` | App factory: routers, CORS for the local Vite port, static `/data` |
+| `backend/api/routers/` | `health`, `pbp`, `players` (search, detail, dictionary), `nlq` (intent) |
+| `backend/services/` | `nlq_intent` (prompt, validation, retry), `llm_client`, `llm_warmup`, catalogs |
+| `backend/pipeline/` | Data build from nflverse (`build_data.py` is the entry point) |
+| `frontend/src/features/nlq/` | Ask: name matching, hook, answer text, panel |
+| `frontend/src/features/explore/` | Query builder and results canvas (also runs Ask's query) |
+| `frontend/src/shared/config/` | Stat dictionary and filter chips, the source for the model's catalog |
 
----
+## Known limits
 
-## DuckDB-WASM / headers (optional)
-
-If you enable **cross-origin isolation** (COOP/COEP) for threaded WASM, configure matching headers on your **static host** and ensure Parquet responses from object storage (or your CDN) satisfy **Cross-Origin Resource Policy** requirements. The default setup uses the non-COI bundle unless you change [`frontend/vite.config.ts`](frontend/vite.config.ts).
+- Passing yards count sack yardage against the passer (Mahomes 2023 regular season shows 3,997; the official 4,183 excludes sacks). Completion percentage has the same issue. This comes from the stat definitions in `statDictionary.ts`.
+- No league-wide leaderboards ("who led the league in..."); Ask needs a named player.
+- Name matching is exact on surnames and full names, so typos are not corrected.
+- Receiving and rushing totals can differ slightly from official lines (play-by-play data).
+- `mlx_lm.server` is not hardened for production; keep it on localhost.
