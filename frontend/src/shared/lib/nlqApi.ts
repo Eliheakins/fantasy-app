@@ -1,51 +1,36 @@
 import { API_BASE } from "@/shared/lib/api";
-import { unifiedNlqResponseSchema } from "@/shared/lib/schemas/nlqUnified";
+import { buildIntentCatalog } from "@/shared/lib/nlqCatalog";
+import { type QueryIntent, queryIntentSchema } from "@/shared/lib/schemas/nlqIntent";
+
+export type { QueryIntent };
 
 async function parseErrorDetail(res: Response): Promise<string> {
-  let detail = res.statusText;
   try {
-    const body = (await res.json()) as { detail?: string | unknown };
+    const body = (await res.json()) as { detail?: unknown };
     if (typeof body.detail === "string") {
-      detail = body.detail;
-    } else if (body.detail != null) {
-      detail = JSON.stringify(body.detail);
+      return body.detail;
+    }
+    if (body.detail != null) {
+      return JSON.stringify(body.detail);
     }
   } catch {
-    try {
-      detail = await res.text();
-    } catch {
-      /* ignore */
-    }
+    // Body was not JSON; fall through to the status line.
   }
-  return detail || `HTTP ${res.status}`;
+  return res.statusText || `HTTP ${res.status}`;
 }
 
-export type UnifiedNlqEntity = {
-  display_name: string;
-  bridge_id?: number | null;
-  nfl_gsis_id?: string | null;
-  cfb_espn_id?: string | null;
-};
-
-export type UnifiedNlqResponse = import("@/shared/lib/schemas/nlqUnified").UnifiedNlqResponseParsed;
-
-export async function requestUnifiedNlq(
-  question: string,
-  entities: UnifiedNlqEntity[],
-): Promise<UnifiedNlqResponse> {
-  const base = API_BASE.replace(/\/$/, "");
-  const res = await fetch(`${base}/nlq/unified`, {
+export async function requestIntent(question: string): Promise<QueryIntent> {
+  const res = await fetch(`${API_BASE}/nlq/intent`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, entities }),
+    body: JSON.stringify({ question, ...buildIntentCatalog() }),
   });
   if (!res.ok) {
     throw new Error(await parseErrorDetail(res));
   }
-  const raw: unknown = await res.json();
-  const parsed = unifiedNlqResponseSchema.safeParse(raw);
+  const parsed = queryIntentSchema.safeParse(await res.json());
   if (!parsed.success) {
-    throw new Error(`NLQ unified response: invalid shape (${parsed.error.message})`);
+    throw new Error(`Unexpected /nlq/intent response (${parsed.error.message})`);
   }
   return parsed.data;
 }

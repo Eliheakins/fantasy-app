@@ -1,1 +1,1 @@
-"""Data pipeline: Parquet shards, Rosetta layer, manifests (no FastAPI)."""
+"""Data pipeline: NFL play-by-play Parquet shards and the player index (no FastAPI)."""

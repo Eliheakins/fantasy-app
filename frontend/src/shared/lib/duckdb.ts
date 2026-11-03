@@ -135,15 +135,6 @@ export function initDB(bundle: DuckDBBundleKind = "mvp"): Promise<void> {
  */
 
 /**
- * Mount Rosetta Telescope layer: `player_hub` and `gold_unified_performance` (static Parquet URLs).
- * Call once per run when using Unified/Career SQL; IDs are baked into gold for `WHERE nfl_id IN (...)`.
- */
-export async function mountGoldLayer(playerHubUrl: string, goldUnifiedUrl: string): Promise<void> {
-  await mountRemoteShard(playerHubUrl, "player_hub");
-  await mountRemoteShard(goldUnifiedUrl, "gold_unified_performance");
-}
-
-/**
  * Register a remote Parquet URL and expose it as a view `tableName` (safe identifier).
  */
 export async function mountRemoteShard(url: string, tableName: string): Promise<void> {
@@ -165,61 +156,6 @@ export async function mountRemoteShard(url: string, tableName: string): Promise<
   const conn = await getConnection();
   await conn.query(
     `CREATE OR REPLACE VIEW "${safeView}" AS SELECT * FROM read_parquet('${logicalFile}');`,
-  );
-}
-
-const MICROSCOPE_VIEW = "nfl_pbp_all";
-const MICROSCOPE_CFB_VIEW = "cfb_pbp_all";
-
-/**
- * Union all PBP season Parquets as `nfl_pbp_all` (matches microscope manifest primary_view).
- * Uses union_by_name and filename=true for multi-year schema drift and debugging.
- */
-export async function mountMicroscopePbpView(httpParquetUrls: string[]): Promise<void> {
-  if (httpParquetUrls.length === 0) {
-    throw new Error("mountMicroscopePbpView: no Parquet URLs");
-  }
-  const sig = [...httpParquetUrls].sort().join("\0");
-  if (mountUnchanged(`union:${MICROSCOPE_VIEW}`, sig)) {
-    return;
-  }
-  const db = getDb();
-  const logicalNames: string[] = [];
-  for (let i = 0; i < httpParquetUrls.length; i++) {
-    const logical = `nlq_pbp_${i}.parquet`;
-    logicalNames.push(logical);
-    await db.registerFileURL(logical, httpParquetUrls[i], duckdb.DuckDBDataProtocol.HTTP, false);
-  }
-  const listLiteral = logicalNames.map((n) => `'${n.replace(/'/g, "''")}'`).join(", ");
-  const conn = await getConnection();
-  await conn.query(
-    `CREATE OR REPLACE VIEW "${MICROSCOPE_VIEW}" AS SELECT * FROM read_parquet([${listLiteral}], union_by_name=true, filename=true);`,
-  );
-}
-
-/**
- * Union all CFB PBP season Parquets as `cfb_pbp_all` (matches CFB microscope manifest primary_view).
- * Uses union_by_name and filename=true for multi-year schema drift and debugging.
- */
-export async function mountMicroscopeCfbPbpView(httpParquetUrls: string[]): Promise<void> {
-  if (httpParquetUrls.length === 0) {
-    throw new Error("mountMicroscopeCfbPbpView: no Parquet URLs");
-  }
-  const sig = [...httpParquetUrls].sort().join("\0");
-  if (mountUnchanged(`union:${MICROSCOPE_CFB_VIEW}`, sig)) {
-    return;
-  }
-  const db = getDb();
-  const logicalNames: string[] = [];
-  for (let i = 0; i < httpParquetUrls.length; i++) {
-    const logical = `nlq_cfb_pbp_${i}.parquet`;
-    logicalNames.push(logical);
-    await db.registerFileURL(logical, httpParquetUrls[i], duckdb.DuckDBDataProtocol.HTTP, false);
-  }
-  const listLiteral = logicalNames.map((n) => `'${n.replace(/'/g, "''")}'`).join(", ");
-  const conn = await getConnection();
-  await conn.query(
-    `CREATE OR REPLACE VIEW "${MICROSCOPE_CFB_VIEW}" AS SELECT * FROM read_parquet([${listLiteral}], union_by_name=true, filename=true);`,
   );
 }
 

@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, URL } from "node:url";
@@ -88,5 +89,8 @@ export default defineConfig({
   },
   worker: {
     format: "es",
+  },
+  test: {
+    include: ["src/**/*.test.ts"],
   },
 });

@@ -25,7 +25,10 @@ def get_player_index_df(
     if state.player_index is None:
         raise HTTPException(
             status_code=503,
-            detail="Player index not loaded. Seed data (e.g. python scripts/build_data.py with DATA_LOCAL_DIR) and restart the service.",
+            detail=(
+                "Player index not loaded. "
+                "Run `uv run python backend/scripts/build_data.py` and restart the API."
+            ),
         )
     return state.player_index
 
@@ -34,22 +37,7 @@ def get_nfl_pbp_shards(state: Annotated[AppState, Depends(get_app_state)]) -> li
     return list(state.pbp_shards)
 
 
-def get_cfb_pbp_shards(state: Annotated[AppState, Depends(get_app_state)]) -> list[PbpShard]:
-    return list(state.cfb_pbp_shards)
-
-
-def get_openai_client(
-    state: Annotated[AppState, Depends(get_app_state)],
-    settings: Annotated[AppSettings, Depends(get_settings_dep)],
-) -> AsyncOpenAI:
-    if not settings.openai_api_key.strip():
-        raise HTTPException(
-            status_code=503,
-            detail="NLQ is not configured: set OPENAI_API_KEY on the API service.",
-        )
-    if state.openai_client is None:
-        raise HTTPException(
-            status_code=503,
-            detail="OpenAI client is not initialized.",
-        )
-    return state.openai_client
+def get_llm_client(state: Annotated[AppState, Depends(get_app_state)]) -> AsyncOpenAI:
+    if state.llm_client is None:
+        raise HTTPException(status_code=503, detail="LLM client is not initialized.")
+    return state.llm_client

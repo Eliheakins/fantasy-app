@@ -11,8 +11,10 @@ Joins:
 from __future__ import annotations
 
 import os
+import tempfile
 from pathlib import Path
 from urllib.parse import urljoin
+from urllib.request import urlretrieve
 
 import nflreadpy as nfl
 import polars as pl
@@ -97,15 +99,18 @@ def get_nfl_url(year: int, kind: str) -> str:
 def _load_pbp_parquet_pruned(year: int) -> pl.DataFrame:
     """Read PBP from nflverse Parquet with column pruning (lower RAM than full `load_pbp`)."""
     url = get_nfl_url(year, "pbp")
-    schema = pl.scan_parquet(url).collect_schema()
-    names = set(schema.names())
-    cols = [c for c in PBP_COLS if c in names]
-    missing = [c for c in PBP_COLS if c not in names]
-    if missing:
-        print(f"⚠️  PBP URL missing columns (omitted): {missing}")
-    if "play_type" not in cols:
-        raise ValueError(f"PBP file for {year} has no play_type column (url={url})")
-    return pl.read_parquet(url, columns=cols)
+    # GitHub's release CDN answers Polars' remote range requests with 501, so download the file first.
+    with tempfile.TemporaryDirectory() as tmp:
+        local_path = Path(tmp) / f"play_by_play_{year}.parquet"
+        urlretrieve(url, local_path)
+        names = set(pl.scan_parquet(local_path).collect_schema().names())
+        cols = [c for c in PBP_COLS if c in names]
+        missing = [c for c in PBP_COLS if c not in names]
+        if missing:
+            print(f"⚠️  PBP URL missing columns (omitted): {missing}")
+        if "play_type" not in cols:
+            raise ValueError(f"PBP file for {year} has no play_type column (url={url})")
+        return pl.read_parquet(local_path, columns=cols)
 
 
 def create_player_index(data_dir: Path, years: list[int]) -> None:

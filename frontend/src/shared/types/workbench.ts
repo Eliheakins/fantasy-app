@@ -12,7 +12,7 @@ export interface NFLPlayer {
 }
 
 /**
- * Normalized result from `runQuery` for UI and Formula Lab.
+ * Normalized result from `runQuery` for the UI.
  */
 export interface QueryResult {
   /** Result rows as plain objects (column name → value). */

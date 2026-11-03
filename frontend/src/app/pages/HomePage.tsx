@@ -7,8 +7,8 @@ export function HomePage() {
     <main className="mx-auto flex max-w-lg flex-1 flex-col justify-center px-4 py-16">
       <h1 className="text-3xl font-bold tracking-tight text-ink">The Bridge</h1>
       <p className="mt-3 text-sm text-ink-muted">
-        Football analytics in the browser. This landing page is a placeholder — open the workbench to explore data, ask
-        questions, or run formulas.
+        Football analytics in the browser. This landing page is a placeholder — open the workbench to explore data or ask
+        questions.
       </p>
       <div className="mt-8">
         <Link

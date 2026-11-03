@@ -5,7 +5,7 @@ import { initDB } from "@/shared/lib/duckdb";
 import { useWorkbenchStore } from "@/stores/useWorkbenchStore";
 
 /**
- * Boots DuckDB-WASM once for Explore / Ask / Formulas routes.
+ * Boots DuckDB-WASM once for the Explore and Ask routes.
  */
 export function WorkbenchLayout() {
   const isEngineReady = useWorkbenchStore((s) => s.isEngineReady);

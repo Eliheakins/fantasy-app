@@ -1,0 +1,396 @@
+{
+  "stats": [
+    {
+      "id": "pass_any_a",
+      "label": "ANY/A",
+      "category": "passing"
+    },
+    {
+      "id": "pass_sack_rate",
+      "label": "Sack rate",
+      "category": "passing"
+    },
+    {
+      "id": "pass_p2s",
+      "label": "P2S%",
+      "category": "passing"
+    },
+    {
+      "id": "pass_adot",
+      "label": "ADOT",
+      "category": "passing"
+    },
+    {
+      "id": "pass_yards",
+      "label": "Pass yards",
+      "category": "passing"
+    },
+    {
+      "id": "pass_tds",
+      "label": "Pass TDs",
+      "category": "passing"
+    },
+    {
+      "id": "cmp_pct",
+      "label": "Cmp %",
+      "category": "passing"
+    },
+    {
+      "id": "int_rate",
+      "label": "INT rate",
+      "category": "passing"
+    },
+    {
+      "id": "rec_catch_rate",
+      "label": "Catch rate",
+      "category": "receiving"
+    },
+    {
+      "id": "rec_yac_share",
+      "label": "YAC share %",
+      "category": "receiving"
+    },
+    {
+      "id": "rec_explosive",
+      "label": "Explosive play rate",
+      "category": "receiving"
+    },
+    {
+      "id": "rec_receptions",
+      "label": "Receptions",
+      "category": "receiving"
+    },
+    {
+      "id": "rec_yards",
+      "label": "Rec yards",
+      "category": "receiving"
+    },
+    {
+      "id": "rec_yac",
+      "label": "YAC",
+      "category": "receiving"
+    },
+    {
+      "id": "rush_yac_share",
+      "label": "YAC share %",
+      "category": "rushing"
+    },
+    {
+      "id": "rush_explosive",
+      "label": "Explosive play rate",
+      "category": "rushing"
+    },
+    {
+      "id": "rush_yards",
+      "label": "Rush yards",
+      "category": "rushing"
+    },
+    {
+      "id": "rush_tds",
+      "label": "Rush TDs",
+      "category": "rushing"
+    },
+    {
+      "id": "ypc",
+      "label": "YPC",
+      "category": "rushing"
+    },
+    {
+      "id": "eff_epa",
+      "label": "EPA/Play",
+      "category": "efficiency"
+    },
+    {
+      "id": "eff_success",
+      "label": "Success rate",
+      "category": "efficiency"
+    },
+    {
+      "id": "eff_cpoe",
+      "label": "CPOE",
+      "category": "efficiency"
+    },
+    {
+      "id": "eff_wpa",
+      "label": "WPA",
+      "category": "efficiency"
+    },
+    {
+      "id": "eff_first_down",
+      "label": "1st down rate",
+      "category": "efficiency"
+    },
+    {
+      "id": "eff_qb_epa",
+      "label": "QB EPA",
+      "category": "efficiency"
+    },
+    {
+      "id": "eff_xpass",
+      "label": "Expected pass",
+      "category": "efficiency"
+    },
+    {
+      "id": "eff_xyac_epa",
+      "label": "xYAC EPA",
+      "category": "efficiency"
+    },
+    {
+      "id": "ctx_wpa_rush",
+      "label": "WPA",
+      "category": "efficiency"
+    },
+    {
+      "id": "ctx_vwpa_pass",
+      "label": "Vegas WPA",
+      "category": "efficiency"
+    },
+    {
+      "id": "ctx_vwpa_rush",
+      "label": "Vegas WPA",
+      "category": "efficiency"
+    },
+    {
+      "id": "ngs_p_time_throw",
+      "label": "Time to throw",
+      "category": "ngs_passing"
+    },
+    {
+      "id": "ngs_p_intended_air",
+      "label": "Intended air yards",
+      "category": "ngs_passing"
+    },
+    {
+      "id": "ngs_p_rating",
+      "label": "Passer rating",
+      "category": "ngs_passing"
+    },
+    {
+      "id": "ngs_r_sep",
+      "label": "Separation",
+      "category": "ngs_receiving"
+    },
+    {
+      "id": "ngs_r_cushion",
+      "label": "Cushion",
+      "category": "ngs_receiving"
+    },
+    {
+      "id": "ngs_r_xyac",
+      "label": "Expected YAC",
+      "category": "ngs_receiving"
+    },
+    {
+      "id": "ngs_u_tlos",
+      "label": "Time to LOS",
+      "category": "ngs_rushing"
+    },
+    {
+      "id": "ngs_u_exp_yards",
+      "label": "Expected rush yards",
+      "category": "ngs_rushing"
+    },
+    {
+      "id": "ngs_u_eff",
+      "label": "Rush efficiency",
+      "category": "ngs_rushing"
+    }
+  ],
+  "filters": [
+    {
+      "id": "down-1",
+      "label": "1st",
+      "group": "Down"
+    },
+    {
+      "id": "down-2",
+      "label": "2nd",
+      "group": "Down"
+    },
+    {
+      "id": "down-3",
+      "label": "3rd",
+      "group": "Down"
+    },
+    {
+      "id": "down-4",
+      "label": "4th",
+      "group": "Down"
+    },
+    {
+      "id": "ytg-short",
+      "label": "Short (≤3)",
+      "group": "Distance to go"
+    },
+    {
+      "id": "ytg-long",
+      "label": "Long (≥8)",
+      "group": "Distance to go"
+    },
+    {
+      "id": "season-2021",
+      "label": "2021",
+      "group": "Season"
+    },
+    {
+      "id": "season-2022",
+      "label": "2022",
+      "group": "Season"
+    },
+    {
+      "id": "season-2023",
+      "label": "2023",
+      "group": "Season"
+    },
+    {
+      "id": "season-2024",
+      "label": "2024",
+      "group": "Season"
+    },
+    {
+      "id": "season-2025",
+      "label": "2025",
+      "group": "Season"
+    },
+    {
+      "id": "week-early",
+      "label": "Early (≤6)",
+      "group": "Week"
+    },
+    {
+      "id": "week-mid",
+      "label": "Mid (7–12)",
+      "group": "Week"
+    },
+    {
+      "id": "week-late",
+      "label": "Late (≥13)",
+      "group": "Week"
+    },
+    {
+      "id": "loc-home",
+      "label": "Home",
+      "group": "Location"
+    },
+    {
+      "id": "loc-away",
+      "label": "Away",
+      "group": "Location"
+    },
+    {
+      "id": "field-redzone",
+      "label": "Red zone",
+      "group": "Field position"
+    },
+    {
+      "id": "rz-flag",
+      "label": "Red zone play",
+      "group": "Red zone (flag)"
+    },
+    {
+      "id": "gtg-yes",
+      "label": "Goal to go",
+      "group": "Goal to go"
+    },
+    {
+      "id": "stype-reg",
+      "label": "Regular season",
+      "group": "Season type"
+    },
+    {
+      "id": "stype-post",
+      "label": "Playoffs",
+      "group": "Season type"
+    },
+    {
+      "id": "qtr-1",
+      "label": "Q1",
+      "group": "Quarter"
+    },
+    {
+      "id": "qtr-2",
+      "label": "Q2",
+      "group": "Quarter"
+    },
+    {
+      "id": "qtr-3",
+      "label": "Q3",
+      "group": "Quarter"
+    },
+    {
+      "id": "qtr-4",
+      "label": "Q4",
+      "group": "Quarter"
+    },
+    {
+      "id": "gclk-first-half",
+      "label": "1st half",
+      "group": "Game clock"
+    },
+    {
+      "id": "gclk-second-half",
+      "label": "2nd half",
+      "group": "Game clock"
+    },
+    {
+      "id": "score-leading",
+      "label": "Leading",
+      "group": "Game state"
+    },
+    {
+      "id": "score-trailing",
+      "label": "Trailing",
+      "group": "Game state"
+    },
+    {
+      "id": "pers-11",
+      "label": "11 (1·1·3)",
+      "group": "Offense personnel"
+    },
+    {
+      "id": "pers-12",
+      "label": "12 (1·2·2)",
+      "group": "Offense personnel"
+    },
+    {
+      "id": "pers-21",
+      "label": "21 (2·1·2)",
+      "group": "Offense personnel"
+    },
+    {
+      "id": "pers-10",
+      "label": "10 (0·1·4)",
+      "group": "Offense personnel"
+    },
+    {
+      "id": "dib-lte6",
+      "label": "Light box (≤6)",
+      "group": "Defenders in box"
+    },
+    {
+      "id": "dib-gte7",
+      "label": "Heavy box (≥7)",
+      "group": "Defenders in box"
+    },
+    {
+      "id": "pr-lte3",
+      "label": "≤3 rushers",
+      "group": "Pass rushers"
+    },
+    {
+      "id": "pr-gte4",
+      "label": "≥4 rushers",
+      "group": "Pass rushers"
+    },
+    {
+      "id": "wind-gte15",
+      "label": "Wind ≥ 15 mph",
+      "group": "Weather"
+    },
+    {
+      "id": "temp-lte32",
+      "label": "Cold ≤ 32°F",
+      "group": "Weather"
+    }
+  ]
+}

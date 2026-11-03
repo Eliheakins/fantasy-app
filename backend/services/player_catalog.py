@@ -4,7 +4,7 @@ from pathlib import Path
 
 import polars as pl
 
-from schemas.api import PlayerRecord
+from schemas.api import PlayerDictionaryRow, PlayerRecord
 
 
 def normalize_gsis_id_expr(col: pl.Expr) -> pl.Expr:
@@ -16,10 +16,6 @@ def load_player_index_from_path(path: Path) -> pl.DataFrame:
     if not path.is_file():
         raise FileNotFoundError(f"Player index not found: {path}")
     return pl.read_parquet(path)
-
-
-def load_player_index_from_url(url: str) -> pl.DataFrame:
-    return pl.read_parquet(url)
 
 
 def search_players_by_name(df: pl.DataFrame, q: str, *, limit: int = 10) -> list[PlayerRecord]:
@@ -43,3 +39,24 @@ def get_player_row(df: pl.DataFrame, gsis_id: str) -> PlayerRecord | None:
     if match.height == 0:
         return None
     return PlayerRecord.model_validate(match.to_dicts()[0])
+
+
+def player_dictionary(df: pl.DataFrame) -> list[PlayerDictionaryRow]:
+    """Players with an id and a name; position/team let the UI tell namesakes apart."""
+    wanted = [c for c in ("gsis_id", "full_name", "position", "team") if c in df.columns]
+    rows: list[PlayerDictionaryRow] = []
+    for r in df.select(wanted).iter_rows(named=True):
+        gsis_id = str(r.get("gsis_id") or "").strip()
+        name = str(r.get("full_name") or "").strip()
+        if not gsis_id or not name:
+            continue
+        rows.append(
+            PlayerDictionaryRow(
+                gsis_id=gsis_id,
+                display_name=name,
+                search_key=name.lower(),
+                position=r.get("position"),
+                team=r.get("team"),
+            )
+        )
+    return rows

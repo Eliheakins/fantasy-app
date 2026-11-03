@@ -27,9 +27,6 @@ export function AppNav() {
           <NavLink to="/ask" className={({ isActive }) => cn(linkClass, isActive && activeClass)}>
             Ask
           </NavLink>
-          <NavLink to="/formulas" className={({ isActive }) => cn(linkClass, isActive && activeClass)}>
-            Formulas
-          </NavLink>
         </nav>
       </div>
     </header>

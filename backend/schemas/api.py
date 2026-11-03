@@ -26,12 +26,17 @@ class PlayerRecord(BaseModel):
     years_exp: int | float | None = None
 
 
+class PlayerDictionaryRow(BaseModel):
+    gsis_id: str
+    display_name: str
+    search_key: str = Field(..., description="Lowercased name used for fuzzy matching")
+    position: str | None = None
+    team: str | None = None
+
+
 class PbpShard(BaseModel):
     year: int = Field(..., description="Season year from the parquet filename")
-    path: str = Field(
-        ...,
-        description="Relative URL under the API (/data/...) or absolute HTTPS URL (e.g. R2 public URL)",
-    )
+    path: str = Field(..., description="URL path under the API (/data/...)")
 
 
 class PlayerDetailResponse(BaseModel):
@@ -41,5 +46,4 @@ class PlayerDetailResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
-    data_source: str
     player_index_loaded: bool

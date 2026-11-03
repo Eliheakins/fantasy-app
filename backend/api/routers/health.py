@@ -15,6 +15,5 @@ router = APIRouter(tags=["health"])
 async def health(state: Annotated[AppState, Depends(get_app_state)]) -> HealthResponse:
     return HealthResponse(
         status="ok" if state.player_index is not None else "degraded",
-        data_source=state.data_source,
         player_index_loaded=state.player_index is not None,
     )

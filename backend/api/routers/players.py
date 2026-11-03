@@ -6,8 +6,8 @@ import polars as pl
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.deps import get_nfl_pbp_shards, get_player_index_df
-from schemas.api import PbpShard, PlayerDetailResponse, PlayerRecord
-from services.player_catalog import get_player_row, search_players_by_name
+from schemas.api import PbpShard, PlayerDetailResponse, PlayerDictionaryRow, PlayerRecord
+from services.player_catalog import get_player_row, player_dictionary, search_players_by_name
 
 router = APIRouter(tags=["players"])
 
@@ -18,6 +18,14 @@ async def search_players(
     df: Annotated[pl.DataFrame, Depends(get_player_index_df)],
 ) -> list[PlayerRecord]:
     return search_players_by_name(df, q, limit=10)
+
+
+@router.get("/players/dictionary", response_model=list[PlayerDictionaryRow])
+async def players_dictionary(
+    df: Annotated[pl.DataFrame, Depends(get_player_index_df)],
+) -> list[PlayerDictionaryRow]:
+    """Every indexed player, for in-browser name matching in Ask."""
+    return player_dictionary(df)
 
 
 @router.get("/player/{gsis_id}", response_model=PlayerDetailResponse)

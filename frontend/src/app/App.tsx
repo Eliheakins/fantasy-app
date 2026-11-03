@@ -2,7 +2,6 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { QueryBuilderPanel } from "@/features/explore/QueryBuilderPanel";
 import { AskPage } from "@/app/pages/AskPage";
-import { FormulasPage } from "@/app/pages/FormulasPage";
 import { HomePage } from "@/app/pages/HomePage";
 import { RootLayout } from "@/app/layouts/RootLayout";
 import { WorkbenchLayout } from "@/app/layouts/WorkbenchLayout";
@@ -16,7 +15,6 @@ export default function App() {
           <Route element={<WorkbenchLayout />}>
             <Route path="explore" element={<QueryBuilderPanel />} />
             <Route path="ask" element={<AskPage />} />
-            <Route path="formulas" element={<FormulasPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

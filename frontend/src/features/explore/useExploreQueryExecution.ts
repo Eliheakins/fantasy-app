@@ -5,7 +5,7 @@ import {
   mergeStatQueryResults,
 } from "@/shared/lib/queryBuilderSql";
 import { runQuery } from "@/shared/lib/duckdb";
-import { ensureExploreOrFormulaPbpMounted } from "@/shared/lib/workbenchDuckdb";
+import { ensurePbpMounted } from "@/shared/lib/workbenchDuckdb";
 import { mergeShardMap } from "@/shared/lib/mergeShards";
 import { shardParquetUrl } from "@/shared/lib/api";
 import type { QueryResult } from "@/shared/types/workbench";
@@ -70,7 +70,7 @@ export function useExploreQueryExecution() {
     setRunning(true);
     setLastSql(plans.map((p) => p.sql).join("\n\n-- —— next query ——\n\n"));
     try {
-      await ensureExploreOrFormulaPbpMounted(shards, shardParquetUrl);
+      await ensurePbpMounted(shards, shardParquetUrl);
       const rawResults: QueryResult[] = [];
       for (const plan of plans) {
         rawResults.push(await runQuery(plan.sql));

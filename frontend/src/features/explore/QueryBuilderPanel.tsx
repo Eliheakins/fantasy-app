@@ -56,11 +56,7 @@ export function QueryBuilderPanel() {
                 <Link to="/ask" className="font-medium text-ink underline-offset-2 hover:underline">
                   Ask
                 </Link>{" "}
-                for natural language or{" "}
-                <Link to="/formulas" className="font-medium text-ink underline-offset-2 hover:underline">
-                  Formulas
-                </Link>{" "}
-                for custom SQL.
+                for natural language.
               </>
             }
           />

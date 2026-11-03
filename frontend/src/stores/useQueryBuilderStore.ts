@@ -34,6 +34,8 @@ export interface QueryBuilderState {
   setMinPlays: (n: number) => void;
   toggleFilterChip: (id: string) => void;
   applyFilterGroup: (group: FilterChipGroup, selectedIds: string[]) => void;
+  /** Replace stats, filters and granularity in one update (Ask), so only one query runs. */
+  applyIntent: (intent: { statIds: string[]; filterIds: string[]; granularity: GranularityMode }) => void;
   resetQueryBuilder: () => void;
 }
 
@@ -70,6 +72,18 @@ export const useQueryBuilderStore = create<QueryBuilderState>((set) => ({
         next[opt.id] = selectedIds.includes(opt.id);
       }
       return { filterChipState: next };
+    }),
+  applyIntent: ({ statIds, filterIds, granularity }) =>
+    set(() => {
+      const next = sanitizeSelectedStatIds(statIds).slice(0, MAX_SELECTED_STATS);
+      return {
+        selectedStatIds: next,
+        activeGranularity: clampGranularityForStats(next, granularity),
+        minPlays: 0,
+        filterChipState: Object.fromEntries(
+          getAllFilterChipIds().map((id) => [id, filterIds.includes(id)]),
+        ),
+      };
     }),
   resetQueryBuilder: () =>
     set({
