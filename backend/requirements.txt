@@ -1,2 +1,0 @@
-# Full install (API + pipeline). For production API only, use requirements-api.txt
--r requirements-pipeline.txt
