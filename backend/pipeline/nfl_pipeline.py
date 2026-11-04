@@ -83,6 +83,13 @@ NGS_RUSH = ["avg_time_to_los", "expected_rush_yards", "efficiency"]
 # After join: expose NGS rushing expected yards under the prompt’s name
 EXPECTED_RUN_YARDS_ALIAS = "expected_run_yards"
 
+NGS_COLS = [*NGS_PASS, *NGS_REC, "avg_time_to_los", EXPECTED_RUN_YARDS_ALIAS, "efficiency"]
+PART_DTYPES: dict[str, pl.DataType | type[pl.DataType]] = {
+    "offense_personnel": pl.Utf8,
+    "defenders_in_box": pl.Int32,
+    "number_of_pass_rushers": pl.Int32,
+}
+
 
 def get_nfl_url(year: int, kind: str) -> str:
     """Public nflverse-data release URL (same paths as nflreadpy `downloader.download`)."""
@@ -169,7 +176,7 @@ def _join_participation_for_year(pbp: pl.DataFrame, year: int) -> pl.DataFrame:
     max_part_season = get_current_season(roster=True) - 1
     if year > max_part_season:
         print(f"Skipping participation for {year} (max participation season {max_part_season}).")
-        return pbp.with_columns([pl.lit(None).alias(c) for c in PART_COLS])
+        return pbp.with_columns([pl.lit(None, dtype=PART_DTYPES[c]).alias(c) for c in PART_COLS])
 
     need = ["old_game_id", "play_id", *PART_COLS]
     print(f"Loading participation for {year}…")
@@ -199,7 +206,7 @@ def _prepare_ngs_slice(df: pl.DataFrame, stat_names: list[str], label: str) -> p
     if miss_k:
         raise ValueError(f"NGS {label} missing keys: {miss_k}")
     if miss_s:
-        print(f"⚠️  NGS {label} missing stats (filled later): {miss_s}")
+        print(f"⚠️  NGS {label} missing stats (left null): {miss_s}")
     sub = df.select(cols + stats).unique()
     sub = sub.with_columns(
         [
@@ -232,30 +239,39 @@ def _join_ngs_weekly(
     return out
 
 
-def _fill_and_cast(out: pl.DataFrame) -> pl.DataFrame:
-    """Null-safe defaults for participation + NGS numerics; empty string for personnel."""
-    exprs: list[pl.Expr] = []
-    if "offense_personnel" in out.columns:
-        exprs.append(pl.col("offense_personnel").fill_null(""))
-    for c in ("defenders_in_box", "number_of_pass_rushers"):
-        if c in out.columns:
-            exprs.append(pl.col(c).fill_null(0))
-    for c in NGS_PASS + NGS_REC + ["avg_time_to_los", EXPECTED_RUN_YARDS_ALIAS, "efficiency"]:
-        if c in out.columns:
-            exprs.append(pl.col(c).fill_null(0))
-    if exprs:
-        out = out.with_columns(exprs)
+def finalize_columns(out: pl.DataFrame) -> pl.DataFrame:
+    """
+    Cast to storage types.
 
-    out = out.with_columns(
-        [
-            pl.col("season").cast(pl.Int32),
-            pl.col("week").cast(pl.Int32),
-        ]
-    )
-    for role in ("passer_player_id", "rusher_player_id", "receiver_player_id"):
-        if role in out.columns:
-            out = out.with_columns(pl.col(role).cast(pl.Utf8))
-    return out
+    Missing participation and NGS values stay null. Filling them with 0 would turn "not measured"
+    into a real value, and averages and filters would then count it.
+    """
+    casts: list[pl.Expr] = [
+        pl.col(c).cast(dtype) for c, dtype in PART_DTYPES.items() if c in out.columns
+    ]
+    casts += [pl.col(c).cast(pl.Float64) for c in NGS_COLS if c in out.columns]
+    casts += [pl.col(c).cast(pl.Int32) for c in ("season", "week") if c in out.columns]
+    casts += [
+        pl.col(c).cast(pl.Utf8)
+        for c in ("passer_player_id", "rusher_player_id", "receiver_player_id")
+        if c in out.columns
+    ]
+    return out.with_columns(casts) if casts else out
+
+
+def null_report(df: pl.DataFrame) -> dict[str, float]:
+    """Share of missing values for each participation and NGS column present in the frame."""
+    if df.height == 0:
+        return {}
+    return {c: df[c].null_count() / df.height for c in [*PART_COLS, *NGS_COLS] if c in df.columns}
+
+
+def format_null_report(report: dict[str, float]) -> str:
+    """One line per column, most-missing first, for the end of a season build."""
+    lines = [
+        f"  {c}: {rate:.0%} missing" for c, rate in sorted(report.items(), key=lambda x: -x[1])
+    ]
+    return "\n".join(lines)
 
 
 def build_stitched_for_year(year: int) -> pl.DataFrame:
@@ -293,4 +309,4 @@ def build_stitched_for_year(year: int) -> pl.DataFrame:
 
     pbp = pbp.with_columns((pl.col("yardline_100") <= 20).alias("is_red_zone"))
 
-    return _fill_and_cast(pbp)
+    return finalize_columns(pbp)

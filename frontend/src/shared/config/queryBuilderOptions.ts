@@ -173,7 +173,12 @@ export const FILTER_CHIP_GROUPS: FilterChipGroup[] = [
     label: "Pass rushers",
     combine: "or",
     options: [
-      { id: "pr-lte3", label: "≤3 rushers", predicate: "number_of_pass_rushers <= 3" },
+      // Run plays carry a real 0 here, so restrict to pass plays or the chip matches nearly every run.
+      {
+        id: "pr-lte3",
+        label: "≤3 rushers",
+        predicate: "play_type = 'pass' AND number_of_pass_rushers <= 3",
+      },
       { id: "pr-gte4", label: "≥4 rushers", predicate: "number_of_pass_rushers >= 4" },
     ],
   },

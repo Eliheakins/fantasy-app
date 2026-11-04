@@ -12,7 +12,12 @@ import gc
 import os
 from pathlib import Path
 
-from pipeline.nfl_pipeline import build_stitched_for_year, create_player_index
+from pipeline.nfl_pipeline import (
+    build_stitched_for_year,
+    create_player_index,
+    format_null_report,
+    null_report,
+)
 
 _backend_root = Path(__file__).resolve().parent.parent
 _default_data = _backend_root / "data"
@@ -51,6 +56,7 @@ def run_build(data_dir: Path, years: list[int]) -> None:
         path = data_dir / f"nfl_pbp_{year}.parquet"
         shard.write_parquet(path)
         print(f"✅ Shard saved: {path} ({shard.height} rows)")
+        print(f"Missing values (kept as null):\n{format_null_report(null_report(shard))}")
         del shard
         _maybe_gc()
 
