@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import polars as pl
 
-from pipeline.players import merge_player_index
+from pipeline.players import merge_player_index, read_player_index
 
 
 def _index(rows: list[tuple[str | None, str, str, int | None]]) -> pl.DataFrame:
@@ -71,3 +73,26 @@ def test_rows_without_an_id_are_dropped():
     new = _index([(None, "No Id", "KC", 2026), ("a", "A A", "KC", 2026)])
 
     assert set(_by_id(merge_player_index(None, new))) == {"a"}
+
+
+def test_a_missing_or_corrupt_existing_index_counts_as_no_index(tmp_path: Path):
+    assert read_player_index(tmp_path / "player_index.parquet") is None
+
+    (tmp_path / "player_index.parquet").write_bytes(b"not a parquet file")
+
+    assert read_player_index(tmp_path / "player_index.parquet") is None
+
+
+def test_a_readable_existing_index_is_returned(tmp_path: Path):
+    _index([("a", "A A", "KC", 2026)]).write_parquet(tmp_path / "player_index.parquet")
+
+    loaded = read_player_index(tmp_path / "player_index.parquet")
+
+    assert loaded is not None and loaded.height == 1
+
+
+def test_columns_with_different_integer_widths_still_merge():
+    existing = _index([("b", "B B", "KC", 2025)]).with_columns(pl.col("season").cast(pl.Int64))
+    new = _index([("a", "A A", "KC", 2026)])
+
+    assert set(_by_id(merge_player_index(existing, new))) == {"a", "b"}

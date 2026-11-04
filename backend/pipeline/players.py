@@ -48,6 +48,14 @@ def _iso_date(value: object) -> str | None:
     return _text(value)
 
 
+def read_player_index(path: Path) -> pl.DataFrame | None:
+    """The existing index, or None if there is none or it cannot be read (a build then replaces it)."""
+    try:
+        return pl.read_parquet(path)
+    except (OSError, pl.exceptions.PolarsError):
+        return None
+
+
 def merge_player_index(existing: pl.DataFrame | None, new: pl.DataFrame) -> pl.DataFrame:
     """Fold a rebuild into the existing index, keeping the most recent season per player.
 

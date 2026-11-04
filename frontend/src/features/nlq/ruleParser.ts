@@ -46,7 +46,7 @@ interface Phrase {
 const FILLER = new Set([
   "a", "an", "the", "in", "on", "at", "of", "for", "and", "vs", "versus", "compare", "what", "whats",
   "was", "were", "is", "are", "how", "many", "much", "did", "do", "does", "had", "has", "have", "his",
-  "their", "with", "during", "season", "me", "show", "tell", "give", "get", "got", "s",
+  "their", "during", "season", "me", "show", "tell", "give", "get", "got", "s",
 ]);
 
 const GENERIC_WORDS: Readonly<Record<string, "yards" | "touchdowns">> = {
@@ -84,6 +84,12 @@ const ROLE_BY_CATEGORY: Readonly<Record<string, PlayerRole>> = {
 const THROW_WORDS = new Set(["throw", "throws", "threw", "thrown"]);
 
 const YEAR = /^(19|20)\d\d$/;
+
+/** Words that make a number a season ("in 2019"), as opposed to a count ("reach 2000 yards"). */
+const SEASON_CONTEXT = new Set(["in", "of", "during", "from", "for", "through", "to", "and", "season"]);
+
+/** Chip groups where naming two chips means a contrast (home vs away), which one query cannot split. */
+const CONTRAST_GROUPS = new Set(["location", "season_type", "game_clock", "game_state"]);
 
 function buildPhrases(chipIds: ReadonlySet<string>): Phrase[] {
   const phrases: Phrase[] = [];
@@ -177,13 +183,25 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
   }
 
   const years: { at: number; year: number }[] = [];
+  let missingYear: { at: number; year: number } | undefined;
   tokens.forEach((token, at) => {
-    if (!used[at] && YEAR.test(token)) {
-      used[at] = true;
-      years.push({ at, year: Number(token) });
+    if (used[at] || !YEAR.test(token)) {
+      return;
+    }
+    const year = Number(token);
+    const readsAsSeason =
+      seasons.includes(year) || SEASON_CONTEXT.has(tokens[at - 1] ?? "") || tokens[at + 1] === "season";
+    // An unrelated number is left alone, so it counts as a word the parser did not understand.
+    if (!readsAsSeason) {
+      return;
+    }
+    used[at] = true;
+    if (seasons.includes(year)) {
+      years.push({ at, year });
+    } else {
+      missingYear ??= { at, year };
     }
   });
-  const missingYear = years.find((y) => !seasons.includes(y.year));
   if (missingYear) {
     const first = Math.min(...seasons);
     const last = Math.max(...seasons);
@@ -248,6 +266,11 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
     return { status: "ambiguous", reason: `That names more than ${MAX_SELECTED_STATS} stats.` };
   }
 
+  const statRoles = unique(statIds.flatMap((id) => getStatById(id)?.playerRole ?? []));
+  if (matches.length > 1 && statRoles.length > 1) {
+    return { status: "ambiguous", reason: "It mixes players with different kinds of stat." };
+  }
+
   const asked = unique(found.flatMap((f) => (f.piece.kind === "granularity" ? [f.piece.value] : [])));
   if (asked.length > 1) {
     return { status: "ambiguous", reason: "It asks for more than one of total, per game and per play." };
@@ -256,6 +279,20 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
   const requested = asked[0];
   if (anyRate && requested !== undefined && requested !== "per_play") {
     return { status: "ambiguous", reason: "A rate stat has no total or per-game form." };
+  }
+
+  const groupOf = new Map(chipGroups.flatMap((g) => g.options.map((o): [string, string] => [o.id, g.id])));
+  const namedByGroup = new Map<string, Set<string>>();
+  for (const f of found) {
+    for (const id of f.piece.kind === "chips" ? f.piece.ids : []) {
+      const group = groupOf.get(id);
+      if (group && CONTRAST_GROUPS.has(group)) {
+        namedByGroup.set(group, (namedByGroup.get(group) ?? new Set()).add(id));
+      }
+    }
+  }
+  if ([...namedByGroup.values()].some((ids) => ids.size > 1)) {
+    return { status: "ambiguous", reason: "It sets two cases side by side (like home and away), which one query can't split." };
   }
 
   const filterAt: { at: number; id: string }[] = [

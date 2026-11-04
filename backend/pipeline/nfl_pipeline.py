@@ -21,7 +21,7 @@ import polars as pl
 from nflreadpy.utils_date import get_current_season
 
 from pipeline.atomic import atomic_path
-from pipeline.players import merge_player_index
+from pipeline.players import merge_player_index, read_player_index
 
 # Same release host as nflreadpy downloader; override with NFLVERSE_DOWNLOAD_BASE.
 _DEFAULT_NFLVERSE_DL = "https://github.com/nflverse/nflverse-data/releases/download/"
@@ -144,8 +144,7 @@ def create_player_index(data_dir: Path, years: list[int]) -> None:
         ]
     ).with_columns(pl.col("gsis_id").cast(pl.Utf8), pl.col("season").cast(pl.Int32))
     out_path = data_dir / "player_index.parquet"
-    existing = pl.read_parquet(out_path) if out_path.is_file() else None
-    merged = merge_player_index(existing, player_index)
+    merged = merge_player_index(read_player_index(out_path), player_index)
     with atomic_path(out_path) as tmp:
         merged.write_parquet(tmp)
     print(f"✅ Player index: {out_path}")

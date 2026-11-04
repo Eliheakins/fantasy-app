@@ -151,6 +151,36 @@ describe("generic words need a clear role", () => {
   });
 });
 
+describe("parseRules does not misread joins and contrasts", () => {
+  it("does not treat 'with' as a comparison of two players", () => {
+    expect(parse("Patrick Mahomes passing yards with Travis Kelce in 2023").status).not.toBe("resolved");
+  });
+
+  it("does not take a number that is not a season for a missing season", () => {
+    expect(parse("Did Derrick Henry reach 2000 rushing yards").status).toBe("ambiguous");
+    expect(parse("Joe Burrow passing yards in 2000").status).toBe("unsupported");
+  });
+
+  it("does not merge a contrast into one query: home vs away, regular season vs playoffs", () => {
+    expect(parse("Travis Kelce receiving yards at home vs away in 2023").status).toBe("ambiguous");
+    expect(parse("Patrick Mahomes passing yards in the regular season vs the playoffs in 2023").status).toBe("ambiguous");
+  });
+
+  it("still combines chips from different groups and neighbouring downs", () => {
+    expect(resolved("Patrick Mahomes passing yards on third down and in the red zone in 2023").filter_ids).toEqual(
+      expect.arrayContaining(["down-3", "field-redzone"]),
+    );
+  });
+
+  it("does not cross different players with different kinds of stat", () => {
+    expect(parse("Patrick Mahomes passing yards and Travis Kelce receptions in 2023").status).toBe("ambiguous");
+  });
+
+  it("still compares players on the same kind of stat", () => {
+    expect(resolved("Travis Kelce and George Kittle receptions per game in 2023").stat_ids).toEqual(["rec_receptions"]);
+  });
+});
+
 describe("parseRules hands over what it does not fully understand", () => {
   it("defers when a word is left over, and names it", () => {
     const result = parse("Patrick Mahomes net yards per attempt in 2023");
