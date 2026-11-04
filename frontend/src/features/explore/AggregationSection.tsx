@@ -3,10 +3,11 @@ import { useQueryState } from "@/shared/lib/useQueryState";
 import { GranularitySelector } from "@/features/explore/GranularitySelector";
 import { MinPlaysSlider } from "@/features/explore/MinPlaysSlider";
 import { RankingControl } from "@/features/explore/RankingControl";
+import { SplitControl } from "@/features/explore/SplitControl";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/shared/components/ui/accordion";
 
 /**
- * Granularity, min plays and ranking in one collapsible block (sidebar height).
+ * Granularity, min plays, ranking and split in one collapsible block (sidebar height).
  */
 export function AggregationSection() {
   const { state } = useQueryState();
@@ -14,7 +15,8 @@ export function AggregationSection() {
   const minPlays = state.minPlays;
 
   const ranking = state.order && state.limit !== null ? ` · ${state.order.direction === "desc" ? "top" : "bottom"} ${state.limit}` : "";
-  const summary = `${activeGranularity.replace(/_/g, " ")} · min ${minPlays} plays${ranking}`;
+  const split = state.split ? ` · by ${state.split}` : "";
+  const summary = `${activeGranularity.replace(/_/g, " ")} · min ${minPlays} plays${ranking}${split}`;
 
   return (
     <section className="rounded-xl border border-border bg-input/30 p-4">
@@ -31,6 +33,7 @@ export function AggregationSection() {
               <GranularitySelector embedded />
               <MinPlaysSlider embedded />
               <RankingControl />
+              <SplitControl />
             </div>
           </AccordionContent>
         </AccordionItem>

@@ -1,5 +1,12 @@
 import { getStatById, type PlayerRole, type StatDefinition } from "@/shared/config/statDictionary";
-import { buildFilterWhereSql, mergeStatQueryResults, metricSelectAlias } from "@/shared/lib/queryBuilder";
+import {
+  buildFilterWhereSql,
+  mergeStatQueryResults,
+  metricSelectAlias,
+  splitColumns,
+  splitKeyer,
+  splitValues,
+} from "@/shared/lib/queryBuilder";
 import type { QueryResult } from "@/shared/types/workbench";
 
 import type { ColumnSource, ColumnStore } from "./columns";
@@ -64,7 +71,8 @@ export async function runPlayerGameQuery(
     byRole.set(stat.playerRole, [...(byRole.get(stat.playerRole) ?? []), stat]);
   }
 
-  const needed = new Set(["gsis_id", ...(whereNode ? columnsIn(whereNode) : [])]);
+  const groupColumns = splitColumns(params.split);
+  const needed = new Set(["gsis_id", ...groupColumns, ...(whereNode ? columnsIn(whereNode) : [])]);
   for (const [role, roleStats] of byRole) {
     needed.add(VOLUME_COLUMN[role]);
     roleStats.forEach((s) => needed.add(s.playerGameColumn!));
@@ -75,11 +83,15 @@ export async function runPlayerGameQuery(
   const keep = whereNode ? compileRowExpression(whereNode, table.cols) : null;
   const wanted = wantedPlayers(params.gsisIds);
   const ids = table.cols.gsis_id!;
-  const rowsByPlayer = new Map<string, number[]>();
+  const keyOf = splitKeyer(table.cols, params.split);
+  const rowsByGroup = new Map<string, { playerId: string; games: number[] }>();
   for (let i = 0; i < table.rowCount; i++) {
     const id = ids[i];
     if (typeof id === "string" && wanted(id) && (!keep || keep(i) === true)) {
-      rowsByPlayer.set(id, [...(rowsByPlayer.get(id) ?? []), i]);
+      const key = keyOf(id, i);
+      const group = rowsByGroup.get(key) ?? { playerId: id, games: [] };
+      group.games.push(i);
+      rowsByGroup.set(key, group);
     }
   }
 
@@ -87,13 +99,13 @@ export async function runPlayerGameQuery(
   const results = [...byRole].map(([role, roleStats]): QueryResult => {
     const volume = table.cols[VOLUME_COLUMN[role]]!;
     const rows: Record<string, unknown>[] = [];
-    for (const [playerId, games] of rowsByPlayer) {
+    for (const { playerId, games } of rowsByGroup.values()) {
       const played = games.filter((g) => numberAt(volume, g) > 0);
       const plays = played.reduce((n, g) => n + numberAt(volume, g), 0);
       if (plays === 0 || plays < minPlays) {
         continue;
       }
-      const row: Record<string, unknown> = { player_id: playerId };
+      const row: Record<string, unknown> = { player_id: playerId, ...splitValues(table.cols, params.split, games[0]!) };
       for (const stat of roleStats) {
         const column = table.cols[stat.playerGameColumn!]!;
         const total = games.reduce((n, g) => n + numberAt(column, g), 0);
@@ -102,8 +114,8 @@ export async function runPlayerGameQuery(
       }
       rows.push(row);
     }
-    return { columns: ["player_id", ...roleStats.map((s) => metricSelectAlias(s.id))], rows };
+    return { columns: ["player_id", ...groupColumns, ...roleStats.map((s) => metricSelectAlias(s.id))], rows };
   });
 
-  return mergeStatQueryResults(results, params.statIds);
+  return mergeStatQueryResults(results, params.statIds, params.split);
 }

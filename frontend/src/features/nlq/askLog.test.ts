@@ -19,6 +19,7 @@ const query = (over: Partial<LoggedQuery> = {}): LoggedQuery => ({
   granularity: "total",
   order: null,
   limit: null,
+  split: null,
   ...over,
 });
 
@@ -111,6 +112,15 @@ describe("loadLog and saveLog", () => {
     saveLog(storage, entries);
 
     expect(loadLog(storage)).toEqual(entries);
+  });
+
+  it("reads an entry logged before splits existed as having none", () => {
+    const { split: _split, ...old } = query();
+    const storage = memoryStorage({ "bridge.askLog.v1": JSON.stringify([{ ...entry("a"), outcome: { kind: "answered", query: old } }]) });
+
+    const [loaded] = loadLog(storage);
+
+    expect(loaded?.outcome.kind === "answered" && loaded.outcome.query.split).toBeNull();
   });
 
   it("is empty when nothing was saved or the saved text is not JSON", () => {

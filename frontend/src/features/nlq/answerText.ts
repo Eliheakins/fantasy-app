@@ -18,7 +18,7 @@ export interface AnswerInput {
 export interface Answer {
   /** What the numbers cover, e.g. "2023, Playoffs". */
   context: string;
-  /** One line per player. */
+  /** One line per player, or per player and season or week when split. */
   lines: string[];
 }
 
@@ -57,11 +57,13 @@ export function buildAnswer({
   const lines = result.rows.map((row, rank) => {
     const pid = String(row.player_id ?? "");
     const name = nameByGsis.get(pid) ?? pid;
+    const when = [row.season, row.week === undefined ? undefined : `week ${String(row.week)}`].filter((v) => v !== undefined);
+    const who = when.length > 0 ? `${name}, ${when.join(" ")}` : name;
     const metrics = statIds.map((id) => {
       const header = formatMetricValueHeader(getStatById(id), granularity);
       return `${header}: ${formatQueryValue(row[metricSelectAlias(id)])}`;
     });
-    return `${ranked ? `${rank + 1}. ` : ""}${name} — ${metrics.join(" · ")}`;
+    return `${ranked ? `${rank + 1}. ` : ""}${who} — ${metrics.join(" · ")}`;
   });
   return { context: labels.length > 0 ? labels.join(", ") : NO_FILTERS_CONTEXT, lines };
 }

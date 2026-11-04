@@ -6,9 +6,12 @@ import {
   groupStatsByRows,
   mergeStatQueryResults,
   metricSelectAlias,
+  splitColumns,
+  splitKeyer,
+  splitValues,
 } from "@/shared/lib/queryBuilder";
 import type { QueryOrder } from "@/shared/lib/queryUrl";
-import type { GranularityMode } from "@/shared/types/queryBuilder";
+import type { GranularityMode, Split } from "@/shared/types/queryBuilder";
 import type { QueryResult } from "@/shared/types/workbench";
 
 import type { ColumnSource, ColumnStore } from "./columns";
@@ -48,6 +51,8 @@ export interface StatQueryParams {
   order?: QueryOrder | null;
   /** Keeps the first rows after sorting. */
   limit?: number | null;
+  /** One row per player and season or week instead of one per player. */
+  split?: Split | null;
 }
 
 type Metric = (rows: ArrayLike<number>, games: number) => Value;
@@ -112,11 +117,13 @@ export function orderAndLimit(result: QueryResult, order: QueryOrder | null, lim
   return { ...result, rows: limit === null ? rows : rows.slice(0, limit) };
 }
 
+/** Distinct games per group key (a player, or a player in a season or week). */
 function gamesPlayed(
   cols: Columns,
   rowCount: number,
   wanted: (id: string) => boolean,
   scope: ((row: number) => Value) | null,
+  keyOf: (playerId: string, row: number) => string,
 ): Map<string, number> {
   const games = new Map<string, Set<unknown>>();
   const gameId = cols.game_id!;
@@ -127,10 +134,11 @@ function gamesPlayed(
     for (const role of ROLE_COLUMNS) {
       const pid = cols[role]![i];
       if (typeof pid === "string" && wanted(pid)) {
-        let set = games.get(pid);
+        const key = keyOf(pid, i);
+        let set = games.get(key);
         if (!set) {
           set = new Set();
-          games.set(pid, set);
+          games.set(key, set);
         }
         set.add(gameId[i]);
       }
@@ -166,7 +174,8 @@ async function runUnordered(
   if (groups.length === 0) {
     throw new Error("Select at least one stat.");
   }
-  const columns = ["player_id", ...params.statIds.filter((id) => getStatById(id)).map(metricSelectAlias)];
+  const groupColumns = splitColumns(params.split);
+  const columns = ["player_id", ...groupColumns, ...params.statIds.filter((id) => getStatById(id)).map(metricSelectAlias)];
 
   const chipYears = seasonsSelectedByChips(params);
   const sources = chipYears.size > 0 ? params.sources.filter((s) => chipYears.has(s.year)) : params.sources;
@@ -202,6 +211,7 @@ async function runUnordered(
   if (chipNode) {
     add(columnsIn(chipNode));
   }
+  add(groupColumns);
   if (needGames) {
     add(["game_id", ...ROLE_COLUMNS]);
     if (scopeNode) {
@@ -213,9 +223,10 @@ async function runUnordered(
   signal?.throwIfAborted();
 
   const wanted = wantedPlayers(params.gsisIds);
+  const keyOf = splitKeyer(table.cols, params.split);
   const chip = chipNode ? compileRowExpression(chipNode, table.cols) : null;
   const games = needGames
-    ? gamesPlayed(table.cols, table.rowCount, wanted, scopeNode ? compileRowExpression(scopeNode, table.cols) : null)
+    ? gamesPlayed(table.cols, table.rowCount, wanted, scopeNode ? compileRowExpression(scopeNode, table.cols) : null, keyOf)
     : new Map<string, number>();
   const minPlays = Math.floor(params.minPlays);
 
@@ -226,7 +237,7 @@ async function runUnordered(
     const rowFilter = filterNodes[k] ? compileRowExpression(filterNodes[k]!, table.cols) : null;
     const metrics = stats.map((s) => compileMetric(s, params.granularity, table.cols));
 
-    const rowsByPlayer = new Map<string, number[]>();
+    const rowsByGroup = new Map<string, { pid: string; rows: number[] }>();
     for (let i = 0; i < table.rowCount; i++) {
       const pid = ids[i];
       if (typeof pid !== "string" || !wanted(pid)) {
@@ -241,27 +252,28 @@ async function runUnordered(
       if (chip && chip(i) !== true) {
         continue;
       }
-      let rows = rowsByPlayer.get(pid);
-      if (!rows) {
-        rows = [];
-        rowsByPlayer.set(pid, rows);
+      const key = keyOf(pid, i);
+      let group = rowsByGroup.get(key);
+      if (!group) {
+        group = { pid, rows: [] };
+        rowsByGroup.set(key, group);
       }
-      rows.push(i);
+      group.rows.push(i);
     }
 
     const out: Record<string, unknown>[] = [];
-    for (const [pid, rows] of rowsByPlayer) {
+    for (const [key, { pid, rows }] of rowsByGroup) {
       if (minPlays > 0 && rows.length < minPlays) {
         continue;
       }
-      const row: Record<string, unknown> = { player_id: pid };
+      const row: Record<string, unknown> = { player_id: pid, ...splitValues(table.cols, params.split, rows[0]!) };
       stats.forEach((stat, m) => {
-        row[metricSelectAlias(stat.id)] = metrics[m]!(rows, games.get(pid) ?? 0);
+        row[metricSelectAlias(stat.id)] = metrics[m]!(rows, games.get(key) ?? 0);
       });
       out.push(row);
     }
-    return { columns: ["player_id", ...stats.map((s) => metricSelectAlias(s.id))], rows: out };
+    return { columns: ["player_id", ...groupColumns, ...stats.map((s) => metricSelectAlias(s.id))], rows: out };
   });
 
-  return mergeStatQueryResults(results, params.statIds.filter((id) => knownIds.includes(id)));
+  return mergeStatQueryResults(results, params.statIds.filter((id) => knownIds.includes(id)), params.split);
 }

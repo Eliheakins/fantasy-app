@@ -79,3 +79,26 @@ describe("buildAnswer for a leaderboard", () => {
     ]);
   });
 });
+
+describe("buildAnswer for a split", () => {
+  it("names the season, or the season and week, on each line", () => {
+    const answer = buildAnswer({
+      result: {
+        columns: ["player_id", "season", "week", passYards],
+        rows: [
+          { player_id: "m", season: 2023, week: 1, [passYards]: 226 },
+          { player_id: "m", season: 2023, week: 2, [passYards]: 305 },
+        ],
+      },
+      statIds: ["pass_yards"],
+      granularity: "total",
+      filterIds: ["season-2023"],
+      nameByGsis: NAMES,
+    });
+
+    expect(answer.lines).toEqual([
+      "Patrick Mahomes, 2023 week 1 — Pass yards (total): 226",
+      "Patrick Mahomes, 2023 week 2 — Pass yards (total): 305",
+    ]);
+  });
+});

@@ -14,12 +14,13 @@ import {
   setGranularity,
   setMinPlays,
   setRanking,
+  setSplit,
   toggleFilter,
   toggleStat,
   unpinPlayer,
   writeQuery,
 } from "@/shared/lib/queryUrl";
-import type { GranularityMode } from "@/shared/types/queryBuilder";
+import type { GranularityMode, Split } from "@/shared/types/queryBuilder";
 
 /**
  * The query shown on this page, read from and written to the URL. Every change is a navigation, so
@@ -75,6 +76,7 @@ export function useQueryState() {
       (order: QueryOrder | null, limit?: number) => update((s) => setRanking(s, order, limit)),
       [update],
     ),
+    setSplit: useCallback((split: Split | null) => update((s) => setSplit(s, split)), [update]),
     toggleFilterId: useCallback((id: string) => update((s) => toggleFilter(s, id)), [update]),
     pinPlayer: useCallback((id: string) => update((s) => pinPlayer(s, id)), [update]),
     unpinPlayer: useCallback((id: string) => update((s) => unpinPlayer(s, id)), [update]),

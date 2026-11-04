@@ -18,6 +18,7 @@ import {
   setGranularity,
   setMinPlays,
   setRanking,
+  setSplit,
   toggleFilter,
   toggleStat,
   unpinPlayer,
@@ -36,6 +37,7 @@ const FULL: QueryState = {
   minPlays: 25,
   order: null,
   limit: null,
+  split: null,
 };
 
 describe("serializeQuery and parseQuery", () => {
@@ -322,5 +324,29 @@ describe("leaderboard parts of the URL", () => {
   it("tells a leaderboard from the same query without one", () => {
     expect(queryKey(board)).not.toBe(queryKey({ ...board, limit: null, order: null }));
     expect(queryKey(board)).not.toBe(queryKey({ ...board, limit: 5 }));
+  });
+});
+
+describe("splitting by season or week in the URL", () => {
+  const split = { ...FULL, split: "season" as const };
+
+  it("writes the split as by and reads it back", () => {
+    expect(serializeQuery(split).get("by")).toBe("season");
+    expect(parse(serializeQuery(split).toString())).toEqual(split);
+    expect(parse(serializeQuery({ ...FULL, split: "week" }).toString()).split).toBe("week");
+  });
+
+  it("reads anything else as no split", () => {
+    expect(parse("s=pass_yards&by=quarter").split).toBeNull();
+    expect(parse("s=pass_yards").split).toBeNull();
+  });
+
+  it("tells a split query from the same query without one", () => {
+    expect(queryKey(split)).not.toBe(queryKey(FULL));
+  });
+
+  it("sets and clears the split", () => {
+    expect(setSplit(FULL, "week").split).toBe("week");
+    expect(setSplit(split, null).split).toBeNull();
   });
 });
