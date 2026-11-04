@@ -94,6 +94,10 @@ PART_DTYPES: dict[str, pl.DataType | type[pl.DataType]] = {
 def get_nfl_url(year: int, kind: str) -> str:
     """Public nflverse-data release URL (same paths as nflreadpy `downloader.download`)."""
     base = os.environ.get("NFLVERSE_DOWNLOAD_BASE", _DEFAULT_NFLVERSE_DL).strip()
+    if not base.startswith(("https://", "http://")):
+        raise ValueError(
+            f"NFLVERSE_DOWNLOAD_BASE must start with https:// or http://, got {base!r}"
+        )
     if not base.endswith("/"):
         base = f"{base}/"
     if kind == "pbp":

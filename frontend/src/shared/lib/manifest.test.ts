@@ -41,6 +41,18 @@ describe("manifestSchema", () => {
   it("rejects a manifest without seasons", () => {
     expect(manifestSchema.safeParse({ ...VALID, seasons: "nope" }).success).toBe(false);
   });
+
+  it("rejects a manifest version it does not know", () => {
+    expect(manifestSchema.safeParse({ ...VALID, schema_version: 2 }).success).toBe(false);
+  });
+
+  it("rejects file paths that could leave the data folder", () => {
+    for (const path of ["../x.parquet", "/etc/x.parquet", "//evil.example/x.parquet", "a/b.parquet"]) {
+      const tampered = { ...VALID, seasons: [{ ...VALID.seasons[0], path }] };
+
+      expect(manifestSchema.safeParse(tampered).success).toBe(false);
+    }
+  });
 });
 
 describe("fetchManifest", () => {
@@ -66,9 +78,31 @@ describe("fetchManifest", () => {
     await expect(fetchManifest()).rejects.toThrow(/not reachable/);
   });
 
-  it("names the problem when the manifest has the wrong shape", async () => {
-    vi.stubGlobal("fetch", respond({ seasons: "nope" }));
+  it("names the first problem in plain words when the manifest has the wrong shape", async () => {
+    vi.stubGlobal("fetch", respond({ ...VALID, seasons: "nope" }));
 
-    await expect(fetchManifest()).rejects.toThrow(/manifest/i);
+    const error = await fetchManifest().catch((e: Error) => e);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toMatch(/unexpected shape.*seasons/i);
+    expect((error as Error).message).not.toContain("\n");
+  });
+
+  it("explains a response that is not JSON instead of leaking a parse error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("<!doctype html><html></html>", { status: 200 })),
+    );
+
+    await expect(fetchManifest()).rejects.toThrow(/not JSON/);
+  });
+
+  it("never reuses a cached manifest, so a rebuild shows up on the next load", async () => {
+    const fetchMock = respond(VALID);
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchManifest();
+
+    expect(fetchMock.mock.calls[0]![1]).toMatchObject({ cache: "no-store" });
   });
 });

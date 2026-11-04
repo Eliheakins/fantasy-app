@@ -24,8 +24,8 @@ async def lifespan(app: FastAPI):
 
     try:
         app_state.manifest = read_manifest(settings.data_dir)
-    except ValueError:
-        # A bad manifest must not stop the API; /health then reports no freshness info.
+    except (ValueError, OSError):
+        # A bad or unreadable manifest must not stop the API; /health then reports no freshness.
         logger.exception("Ignoring unreadable manifest in %s", settings.data_dir)
         app_state.manifest = None
 

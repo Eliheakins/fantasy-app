@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import re
 from datetime import UTC, datetime
 from importlib.metadata import version
@@ -11,11 +10,12 @@ from pathlib import Path
 import polars as pl
 import pyarrow.parquet as pq
 
+from pipeline.atomic import atomic_path
+from pipeline.player_game import PLAYER_GAME_FILENAME
 from schemas.manifest import MANIFEST_FILENAME, FileEntry, Manifest, SeasonEntry
 
 SHARD_PATTERN = re.compile(r"^nfl_pbp_(\d{4})\.parquet$")
 PLAYER_INDEX_FILENAME = "player_index.parquet"
-PLAYER_GAME_FILENAME = "player_game.parquet"
 
 
 def _summarize_shard(path: Path, season: int) -> SeasonEntry:
@@ -28,7 +28,9 @@ def _summarize_shard(path: Path, season: int) -> SeasonEntry:
         path=path.name,
         rows=df.height,
         max_week=df["week"].max(),
-        has_participation=df["defenders_in_box"].null_count() < df.height,
+        # A real play always has at least one defender in the box. Shards built before missing
+        # values were kept null hold 0 instead, so a column of zeros also means "no data".
+        has_participation=bool((df["defenders_in_box"] > 0).any()),
     )
 
 
@@ -43,10 +45,12 @@ def build_manifest(data_dir: Path, *, built_at: datetime | None = None) -> Manif
     shards = sorted(
         (int(m.group(1)), p) for p in data_dir.iterdir() if (m := SHARD_PATTERN.match(p.name))
     )
+    # A shard with no plays (built before a season's first game) is not a season yet.
+    seasons = [s for s in (_summarize_shard(p, season) for season, p in shards) if s.rows > 0]
     return Manifest(
         built_at=(built_at or datetime.now(UTC)).isoformat(),
         nflreadpy_version=version("nflreadpy"),
-        seasons=[_summarize_shard(p, season) for season, p in shards],
+        seasons=seasons,
         player_index=_file_entry(data_dir / PLAYER_INDEX_FILENAME),
         player_game=_file_entry(data_dir / PLAYER_GAME_FILENAME),
     )
@@ -55,7 +59,6 @@ def build_manifest(data_dir: Path, *, built_at: datetime | None = None) -> Manif
 def write_manifest(manifest: Manifest, data_dir: Path) -> Path:
     """Write atomically, so the API never reads a half-written file."""
     target = data_dir / MANIFEST_FILENAME
-    tmp = data_dir / f".{MANIFEST_FILENAME}.tmp"
-    tmp.write_text(manifest.model_dump_json(indent=2) + "\n", encoding="utf-8")
-    os.replace(tmp, target)
+    with atomic_path(target) as tmp:
+        tmp.write_text(manifest.model_dump_json(indent=2) + "\n", encoding="utf-8")
     return target

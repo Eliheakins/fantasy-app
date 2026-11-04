@@ -1,18 +1,21 @@
 import { z } from "zod";
 
+// A plain Parquet file name: nothing that could point outside the data folder (mirrors the backend).
+const fileNameSchema = z.string().regex(/^[\w.-]+\.parquet$/);
+
 export const manifestSeasonSchema = z.object({
   season: z.number().int(),
-  path: z.string(),
+  path: fileNameSchema,
   rows: z.number().int(),
   max_week: z.number().int().nullable(),
   has_participation: z.boolean(),
 });
 
-const fileEntrySchema = z.object({ path: z.string(), rows: z.number().int() });
+const fileEntrySchema = z.object({ path: fileNameSchema, rows: z.number().int() });
 
 /** Mirrors `backend/schemas/manifest.py`; the build writes it as `manifest.json` in the data folder. */
 export const manifestSchema = z.object({
-  schema_version: z.number().int(),
+  schema_version: z.literal(1),
   built_at: z.string(),
   nflreadpy_version: z.string(),
   seasons: z.array(manifestSeasonSchema),

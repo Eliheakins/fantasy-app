@@ -8,11 +8,12 @@ play-level shards; this table answers questions that have no down, quarter or we
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import nflreadpy as nfl
 import polars as pl
+
+from pipeline.atomic import atomic_path
 
 PLAYER_GAME_FILENAME = "player_game.parquet"
 # Small row groups let a reader fetch only the seasons and players it needs.
@@ -60,8 +61,8 @@ PLAYER_GAME_COLUMNS = [
 def _as_int32(df: pl.DataFrame, column: str) -> pl.Expr:
     """Cast a count to Int32, refusing to silently drop a fractional part."""
     values = df[column].drop_nulls().cast(pl.Float64)
-    if not (values == values.round()).all():
-        raise ValueError(f"{column} has fractional values; refusing to truncate them")
+    if values.is_nan().any() or not (values == values.round()).all():
+        raise ValueError(f"{column} has fractional or NaN values; refusing to truncate them")
     return pl.col(column).cast(pl.Int32)
 
 
@@ -85,7 +86,30 @@ def normalize_player_game(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def build_player_game(years: list[int]) -> pl.DataFrame:
+    """Download and normalize the requested seasons."""
     return normalize_player_game(nfl.load_player_stats(years, summary_level="week"))
+
+
+def merge_player_game(existing: pl.DataFrame | None, new: pl.DataFrame) -> pl.DataFrame:
+    """
+    Add `new` to the table already on disk, replacing only the seasons it contains.
+
+    A partial rebuild (`--years 2026`) must not drop 2021-2025, which live in this one file.
+    """
+    if existing is None:
+        return new
+    if existing.columns != new.columns:
+        raise ValueError(
+            "The existing player_game.parquet has different columns; rebuild all seasons to replace it"
+        )
+    kept = existing.filter(~pl.col("season").is_in(new["season"].unique().implode()))
+    return pl.concat([kept, new]).sort(["season", "gsis_id", "week"])
+
+
+def read_player_game(data_dir: Path) -> pl.DataFrame | None:
+    """The table already on disk, or None before the first build."""
+    path = data_dir / PLAYER_GAME_FILENAME
+    return pl.read_parquet(path) if path.is_file() else None
 
 
 def write_player_game(
@@ -93,7 +117,6 @@ def write_player_game(
 ) -> Path:
     """Write atomically so a reader never sees a half-written file."""
     target = data_dir / PLAYER_GAME_FILENAME
-    tmp = data_dir / f".{PLAYER_GAME_FILENAME}.tmp"
-    df.write_parquet(tmp, compression="zstd", row_group_size=row_group_size, statistics=True)
-    os.replace(tmp, target)
+    with atomic_path(target) as tmp:
+        df.write_parquet(tmp, compression="zstd", row_group_size=row_group_size, statistics=True)
     return target

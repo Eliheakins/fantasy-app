@@ -54,7 +54,8 @@ export function shardParquetUrl(path: string): string {
 export async function fetchManifest(): Promise<Manifest> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE}/data/manifest.json`);
+    // no-store: after a rebuild the next load must see the new seasons, not a cached copy.
+    res = await fetch(`${API_BASE}/data/manifest.json`, { cache: "no-store" });
   } catch {
     throw new Error(
       `The API is not reachable at ${API_BASE}. Start it with: cd backend && uv run uvicorn main:app --port 8100`,
@@ -68,10 +69,18 @@ export async function fetchManifest(): Promise<Manifest> {
   if (!res.ok) {
     throw new Error(`Loading the data manifest failed (${res.status}).`);
   }
-  const parsed = manifestSchema.safeParse(await res.json());
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    throw new Error(`The response for the data manifest was not JSON. Is the API running at ${API_BASE}?`);
+  }
+  const parsed = manifestSchema.safeParse(body);
   if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    const where = issue?.path.join(".") || "(root)";
     throw new Error(
-      `The data manifest has an unexpected shape, rebuild the data (${parsed.error.message}).`,
+      `The data manifest has an unexpected shape at "${where}": ${issue?.message ?? "invalid"}. Rebuild the data.`,
     );
   }
   return parsed.data;

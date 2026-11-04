@@ -5,7 +5,7 @@ import * as api from "@/shared/lib/api";
 import { useManifestStore } from "./useManifestStore";
 
 const manifest = (seasons: number[]) => ({
-  schema_version: 1,
+  schema_version: 1 as const,
   built_at: "2026-11-04T12:00:00+00:00",
   nflreadpy_version: "0.1.0",
   seasons: seasons.map((season) => ({
@@ -38,6 +38,36 @@ describe("useManifestStore", () => {
     expect(state.status).toBe("ready");
     expect(state.seasons).toEqual([2025, 2026]);
     expect(state.error).toBeNull();
+  });
+
+  it("does not fetch twice when load is called while already loading or after it is ready", async () => {
+    const fetchSpy = vi.spyOn(api, "fetchManifest").mockResolvedValue(manifest([2025]));
+
+    await Promise.all([useManifestStore.getState().load(), useManifestStore.getState().load()]);
+    await useManifestStore.getState().load();
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("tries again after an error", async () => {
+    const fetchSpy = vi
+      .spyOn(api, "fetchManifest")
+      .mockRejectedValueOnce(new Error("down"))
+      .mockResolvedValueOnce(manifest([2025]));
+
+    await useManifestStore.getState().load();
+    await useManifestStore.getState().load();
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(useManifestStore.getState().status).toBe("ready");
+  });
+
+  it("lists each season once even if the manifest repeats one", async () => {
+    vi.spyOn(api, "fetchManifest").mockResolvedValue(manifest([2025, 2025, 2024]));
+
+    await useManifestStore.getState().load();
+
+    expect(useManifestStore.getState().seasons).toEqual([2024, 2025]);
   });
 
   it("keeps the error message when loading fails", async () => {

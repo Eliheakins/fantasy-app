@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
 
+import { Button } from "@/shared/components/ui/button";
 import { initDB } from "@/shared/lib/duckdb";
+import { describeStartupError } from "@/shared/lib/startupError";
 import { useManifestStore } from "@/stores/useManifestStore";
 import { useWorkbenchStore } from "@/stores/useWorkbenchStore";
 
@@ -22,7 +24,7 @@ export function WorkbenchLayout() {
   }, [loadManifest]);
 
   const isReady = isEngineReady && manifestStatus === "ready";
-  const startupError = manifestError ?? (engineError ? `DuckDB failed to start: ${engineError}` : null);
+  const startupError = describeStartupError(manifestError, engineError);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,7 +52,14 @@ export function WorkbenchLayout() {
       {!isReady && (
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-surface/95 backdrop-blur-sm pt-14">
           {startupError ? (
-            <p className="max-w-md px-4 text-center text-sm text-danger-fg">{startupError}</p>
+            <>
+              <p className="max-w-md px-4 text-center text-sm text-danger-fg">{startupError}</p>
+              {manifestError ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => void loadManifest()}>
+                  Try again
+                </Button>
+              ) : null}
+            </>
           ) : (
             <>
               <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />

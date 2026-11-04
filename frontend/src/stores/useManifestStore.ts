@@ -14,16 +14,22 @@ interface ManifestState {
   load: () => Promise<void>;
 }
 
-export const useManifestStore = create<ManifestState>((set) => ({
+export const useManifestStore = create<ManifestState>((set, get) => ({
   manifest: null,
   seasons: [],
   status: "idle",
   error: null,
   load: async () => {
+    // StrictMode and layout remounts call this twice; a second call must not flip the app
+    // back to "loading" (which would unmount the routes) or fetch again.
+    const { status } = get();
+    if (status === "loading" || status === "ready") {
+      return;
+    }
     set({ status: "loading", error: null });
     try {
       const manifest = await fetchManifest();
-      const seasons = manifest.seasons.map((s) => s.season).sort((a, b) => a - b);
+      const seasons = [...new Set(manifest.seasons.map((s) => s.season))].sort((a, b) => a - b);
       set({ manifest, seasons, status: "ready", error: null });
     } catch (e) {
       set({

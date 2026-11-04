@@ -46,6 +46,31 @@ def test_participation_flag_is_true_only_when_some_values_exist(data_dir: Path):
     assert [s.has_participation for s in manifest.seasons] == [True, False]
 
 
+def test_a_shard_with_no_plays_is_not_listed_as_a_season(data_dir: Path):
+    _write_shard(data_dir, 2027, [], [])
+
+    manifest = build_manifest(data_dir, built_at=BUILT_AT)
+
+    assert [s.season for s in manifest.seasons] == [2025, 2026]
+    assert manifest.data_through == "2026 week 9"
+
+
+def test_a_shard_whose_participation_was_zero_filled_counts_as_having_none(tmp_path: Path):
+    # Shards built before nulls were preserved hold 0 where participation was missing.
+    _write_shard(tmp_path, 2025, [1, 2], [0, 0])
+
+    assert build_manifest(tmp_path, built_at=BUILT_AT).seasons[0].has_participation is False
+
+
+def test_a_manifest_version_this_code_does_not_know_is_rejected(tmp_path: Path):
+    (tmp_path / MANIFEST_FILENAME).write_text(
+        '{"schema_version": 2, "built_at": "x", "nflreadpy_version": "1", "seasons": []}'
+    )
+
+    with pytest.raises(ValueError, match=MANIFEST_FILENAME):
+        read_manifest(tmp_path)
+
+
 def test_data_through_names_the_latest_season_and_week(data_dir: Path):
     assert build_manifest(data_dir, built_at=BUILT_AT).data_through == "2026 week 9"
 

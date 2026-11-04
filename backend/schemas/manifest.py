@@ -3,16 +3,24 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError
 
 MANIFEST_FILENAME = "manifest.json"
 SCHEMA_VERSION = 1
 
+# A plain Parquet file name: no directories, no URL, nothing that could leave the data folder.
+FILE_NAME_PATTERN = r"^[\w.-]+\.parquet$"
+
 
 class SeasonEntry(BaseModel):
     season: int
-    path: str = Field(..., description="File name, relative to the data folder or CDN base")
+    path: str = Field(
+        ...,
+        pattern=FILE_NAME_PATTERN,
+        description="File name, relative to the data folder or CDN base",
+    )
     rows: int
     max_week: int | None = Field(
         None, description="Latest week in the shard (playoffs continue past 18)"
@@ -21,12 +29,12 @@ class SeasonEntry(BaseModel):
 
 
 class FileEntry(BaseModel):
-    path: str
+    path: str = Field(..., pattern=FILE_NAME_PATTERN)
     rows: int
 
 
 class Manifest(BaseModel):
-    schema_version: int = SCHEMA_VERSION
+    schema_version: Literal[1] = SCHEMA_VERSION
     built_at: str
     nflreadpy_version: str
     seasons: list[SeasonEntry]

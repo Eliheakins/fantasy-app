@@ -8,6 +8,7 @@ import pytest
 
 from pipeline.player_game import (
     PLAYER_GAME_COLUMNS,
+    merge_player_game,
     normalize_player_game,
     write_player_game,
 )
@@ -107,6 +108,47 @@ def test_missing_source_columns_are_named_in_the_error():
 def test_a_fractional_count_is_rejected_instead_of_truncated():
     with pytest.raises(ValueError, match="passing_yards"):
         normalize_player_game(_source(passing_yards=[272.5, 0.0, 226.0]))
+
+
+def test_a_nan_count_is_rejected_with_a_readable_message():
+    with pytest.raises(ValueError, match="passing_yards"):
+        normalize_player_game(_source(passing_yards=[float("nan"), 0.0, 226.0]))
+
+
+def _tier_one(season: int, player: str = "g1") -> pl.DataFrame:
+    return normalize_player_game(
+        _source(
+            player_id=[player, player, player],
+            season=[season, season, season],
+            week=[1, 2, 3],
+        )
+    )
+
+
+def test_merging_keeps_seasons_that_were_not_rebuilt_and_replaces_ones_that_were():
+    existing = pl.concat([_tier_one(2024, "old"), _tier_one(2025, "old")])
+    new = _tier_one(2025, "new")
+
+    merged = merge_player_game(existing, new)
+
+    assert merged.select("season", "gsis_id").unique().sort("season").rows() == [
+        (2024, "old"),
+        (2025, "new"),
+    ]
+    assert merged.height == 6
+
+
+def test_merging_with_no_existing_table_returns_the_new_one():
+    new = _tier_one(2026)
+
+    assert merge_player_game(None, new).equals(new)
+
+
+def test_merging_refuses_a_table_with_a_different_shape():
+    old = _tier_one(2024).drop("targets")
+
+    with pytest.raises(ValueError, match="different columns"):
+        merge_player_game(old, _tier_one(2025))
 
 
 def test_write_creates_a_compressed_file_with_small_row_groups(tmp_path: Path):

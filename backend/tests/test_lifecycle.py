@@ -70,6 +70,19 @@ async def test_lifespan_starts_without_a_manifest_when_the_file_is_invalid(
         assert app_state.llm_client is not None
 
 
+async def test_lifespan_starts_when_the_manifest_cannot_be_read_at_all(
+    settings: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+):
+    def unreadable(data_dir: Path):
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(lifecycle, "read_manifest", unreadable)
+
+    async with lifecycle.lifespan(FastAPI()):
+        assert app_state.manifest is None
+        assert app_state.llm_client is not None
+
+
 async def test_lifespan_starts_degraded_when_the_player_index_is_missing(settings: SimpleNamespace):
     async with lifecycle.lifespan(FastAPI()):
         assert app_state.player_index is None

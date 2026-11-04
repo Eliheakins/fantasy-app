@@ -167,7 +167,8 @@ const GROUP_TEMPLATES: FilterChipGroup[] = [
     label: "Pass rushers",
     combine: "or",
     options: [
-      // Run plays carry a real 0 here, so restrict to pass plays or the chip matches nearly every run.
+      // Seasons 2023+ report 0 rushers on run plays (2021-22 leave it empty), so restrict to
+      // pass plays or the chip matches nearly every run.
       {
         id: "pr-lte3",
         label: "≤3 rushers",
