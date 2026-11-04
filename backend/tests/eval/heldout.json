@@ -8,7 +8,7 @@
   {"q": "Jalen Hurts rushing touchdowns in 2022", "stats": ["rush_tds"], "filters": ["season-2022"], "granularity": "total"},
   {"q": "Dak Prescott completion percentage on third down in 2023", "stats": ["cmp_pct"], "filters": ["season-2023", "down-3"], "granularity": null},
   {"q": "Brock Purdy EPA per play in the second half in 2023", "stats": ["eff_epa"], "filters": ["season-2023", "gclk-second-half"], "granularity": "per_play"},
-  {"q": "Justin Herbert interceptions in 2021", "stats": ["int_rate"], "filters": ["season-2021"], "granularity": null},
+  {"q": "Justin Herbert interceptions in 2021", "stats": ["int_rate"], "filters": ["season-2021"], "granularity": null, "rules": "defer", "trap": "asks for a count; the only stat is a rate (corrected after review: the alias is not what the question means)"},
   {"q": "Joe Burrow sack rate in 2023", "stats": ["pass_sack_rate"], "filters": ["season-2023"], "granularity": null},
   {"q": "Travis Kelce receiving yards at home in 2023", "stats": ["rec_yards"], "filters": ["season-2023", "loc-home"], "granularity": "total"},
   {"q": "Derrick Henry rushing yards in the playoffs in 2023", "stats": ["rush_yards"], "filters": ["season-2023", "stype-post"], "granularity": "total"},

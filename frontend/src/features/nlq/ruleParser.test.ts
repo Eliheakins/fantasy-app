@@ -111,8 +111,12 @@ describe("parseRules resolves plain questions", () => {
 });
 
 describe("a phrase two stats share", () => {
-  it("is not guessed at: two stats are both labelled 'YAC share'", () => {
-    expect(parse("Travis Kelce YAC share in 2023").status).not.toBe("resolved");
+  it("is not guessed at: two stats are both labelled 'YAC share %'", () => {
+    expect(parse("Travis Kelce YAC share % in 2023").status).toBe("ambiguous");
+  });
+
+  it("still reads a stat's own alias that is a shorter form of the shared label", () => {
+    expect(resolved("Travis Kelce YAC share in 2023").stat_ids).toEqual(["rec_yac_share"]);
   });
 });
 
@@ -153,7 +157,7 @@ describe("generic words need a clear role", () => {
 
 describe("parseRules does not misread joins and contrasts", () => {
   it("does not treat 'with' as a comparison of two players", () => {
-    expect(parse("Patrick Mahomes passing yards with Travis Kelce in 2023").status).not.toBe("resolved");
+    expect(parse("Patrick Mahomes passing yards with Travis Kelce in 2023").status).toBe("ambiguous");
   });
 
   it("does not take a number that is not a season for a missing season", () => {
@@ -181,6 +185,93 @@ describe("parseRules does not misread joins and contrasts", () => {
   });
 });
 
+/** Each question here once resolved to a query the user did not ask for. */
+describe("parseRules regressions found in review", () => {
+  const handedOver = (question: string, status: "ambiguous" | "unsupported" = "ambiguous") =>
+    expect(parse(question).status, question).toBe(status);
+
+  it("does not turn a year range into its two end years", () => {
+    handedOver("Patrick Mahomes passing yards 2020-2023");
+    handedOver("Patrick Mahomes passing yards 2021–2023");
+    handedOver("Patrick Mahomes passing yards in 2022-23");
+  });
+
+  it("does not merge a comparison of seasons, filters or groups into one union query", () => {
+    handedOver("Patrick Mahomes passing yards 2022 vs 2023");
+    handedOver("Patrick Mahomes passing yards 2023 versus 2022");
+    handedOver("Patrick Mahomes passing yards early season vs late season in 2023");
+    handedOver("Patrick Mahomes passing yards first quarter vs fourth quarter in 2023");
+    handedOver("Patrick Mahomes passing yards third down vs fourth down in 2023");
+  });
+
+  it("still reads vs and compare between two players", () => {
+    expect(resolved("Travis Kelce vs George Kittle receptions in 2023").stat_ids).toEqual(["rec_receptions"]);
+    expect(resolved("Compare Travis Kelce and George Kittle receptions in 2023").stat_ids).toEqual(["rec_receptions"]);
+  });
+
+  it("does not give every player the seasons or filters meant for one", () => {
+    handedOver("Patrick Mahomes 2022 vs Jalen Hurts 2023 passing yards");
+    handedOver("Patrick Mahomes passing yards 2023 and Jalen Hurts passing yards 2022");
+  });
+
+  it("does not turn a count into a per-play value when counting and rate stats are mixed", () => {
+    handedOver("Patrick Mahomes passing yards and completion percentage in 2023");
+    handedOver("Patrick Mahomes passing touchdowns and sack rate in 2023");
+    expect(resolved("Patrick Mahomes passing yards and completion percentage per play in 2023").granularity).toBe("per_play");
+  });
+
+  it("does not answer a count question with a rate: 'interceptions' and 'picks'", () => {
+    handedOver("Patrick Mahomes interceptions in 2023");
+    handedOver("How many picks did Patrick Mahomes throw in 2023");
+  });
+
+  it("does not read a bare 'sack', 'catch' or 'comp' as a percentage alias", () => {
+    for (const question of ["Patrick Mahomes sack in 2023", "Travis Kelce catch in 2023", "Patrick Mahomes comp in 2023"]) {
+      expect(parse(question).status, question).not.toBe("resolved");
+    }
+    expect(resolved("Patrick Mahomes sack % in 2023").stat_ids).toEqual(["pass_sack_rate"]);
+    expect(resolved("Patrick Mahomes completion % in 2023").stat_ids).toEqual(["cmp_pct"]);
+  });
+
+  it("does not read the half of a season as the half of a game", () => {
+    handedOver("Patrick Mahomes passing yards in the first half of the season in 2023");
+    handedOver("Patrick Mahomes passing yards second half of 2023");
+    expect(resolved("Patrick Mahomes passing yards in the second half in 2023").filter_ids).toContain("gclk-second-half");
+  });
+
+  it("does not take a count after 'for' or 'and' for a missing season", () => {
+    handedOver("Did Patrick Mahomes pass for 2000 yards in 2023");
+    handedOver("Patrick Mahomes passing yards and 2000 attempts");
+  });
+
+  it("reads a name with a suffix as one name", () => {
+    expect(resolved("Robert Henry Jr. rushing yards in 2023").stat_ids).toEqual(["rush_yards"]);
+  });
+
+  it("does not answer 'total yards' for a receiver, who may also run", () => {
+    handedOver("Travis Kelce total yards in 2023");
+  });
+
+  it("does not pin a second player who cannot have the stat as a comparison", () => {
+    handedOver("Patrick Mahomes passing yards versus Travis Kelce in 2023");
+  });
+
+  it("does not read 'in a season' as a season-less career total", () => {
+    handedOver("Patrick Mahomes passing yards in a season");
+    handedOver("Patrick Mahomes passing yards season");
+  });
+
+  it("copes with a data set that has no seasons", () => {
+    const result = parseRules("Patrick Mahomes passing yards in 2023", {
+      matches: resolvePlayers("Patrick Mahomes passing yards in 2023", PLAYERS),
+      seasons: [],
+      chipGroups,
+    });
+
+    expect(result.status).toBe("unknown");
+  });
+});
+
 describe("parseRules hands over what it does not fully understand", () => {
   it("defers when a word is left over, and names it", () => {
     const result = parse("Patrick Mahomes net yards per attempt in 2023");
@@ -195,7 +286,7 @@ describe("parseRules hands over what it does not fully understand", () => {
       "Josh Allen passing yards in the last two minutes of games in 2023",
       "Lamar Jackson total yards in 2023",
     ]) {
-      expect(parse(question).status, question).not.toBe("resolved");
+      expect(parse(question).status, question).toBe("ambiguous");
     }
   });
 

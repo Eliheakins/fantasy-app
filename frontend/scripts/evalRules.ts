@@ -10,10 +10,11 @@ const out = (line: string) => process.stdout.write(`${line}\n`);
 
 for (const set of ["cases", "heldout"] as const) {
   const mine = rows.filter((r) => r.set === set);
-  const answerable = mine.filter((r) => !r.case.unsupported);
+  // Questions marked rules:"defer" are answerable, but the rules should hand them over.
+  const answerable = mine.filter((r) => !r.case.unsupported && r.case.rules !== "defer");
   const count = (v: string, of = mine) => of.filter((r) => r.verdict === v).length;
 
-  out(`\n${set}: ${mine.length} questions (${answerable.length} answerable, ${mine.length - answerable.length} to refuse)`);
+  out(`\n${set}: ${mine.length} questions (${answerable.length} for the rules to answer, ${mine.length - answerable.length} to refuse or hand over)`);
   out(`  answered correctly by rules: ${count("correct", answerable)}/${answerable.length}`);
   out(`  handed to the model:         ${count("deferred")}`);
   out(`  wrong:                       ${count("wrong")}`);

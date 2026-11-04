@@ -10,7 +10,7 @@ export interface PlayerMatch {
 
 const MAX_NAME_TOKENS = 4;
 const MIN_SURNAME_LENGTH = 3;
-const NAME_SUFFIXES = new Set(["jr", "sr", "ii", "iii", "iv", "v"]);
+export const NAME_SUFFIXES = new Set(["jr", "sr", "ii", "iii", "iv", "v"]);
 
 /** Surnames that are also everyday words in stat questions; a bare one is not a player reference. */
 const STOPWORDS = new Set([

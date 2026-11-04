@@ -118,7 +118,7 @@ Two question sets with the expected stats, filters and granularity (or `unsuppor
 
 | | cases.json | heldout.json |
 |---|---|---|
-| Rules (`npm run eval:rules`) | 40/40 answerable correct, 0 wrong | 26/27 answerable correct (the 27th is deferred on purpose), 0 wrong; 1 trap refused, 6 handed to the model |
+| Rules (`npm run eval:rules`) | 40/40 answerable correct, 0 wrong | 25/25 answerable correct (two more are deferred on purpose), 0 wrong; 1 trap refused, 7 handed to the model |
 | Model (`uv run pytest -m eval -s`, Qwen2.5-14B-Instruct-4bit) | 42/44 | 25/34: answers all 7 traps instead of refusing them |
 
 The model's refusal weakness is why an answer from the model lists the words the rules did not recognise. The model eval gates on `cases.json` only; improving its refusals is tracked in #9. `players.fixture.json` is a slice of `players.json` (the players named in the questions) so the rules eval runs in CI without built data.
