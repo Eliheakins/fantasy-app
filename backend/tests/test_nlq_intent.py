@@ -6,8 +6,8 @@ import pytest
 from conftest import FILTERS, STATS, FakeLlm
 from pydantic import ValidationError
 
-from schemas.nlq import CatalogStat, IntentRequest, QueryOutcome, UnsupportedOutcome
-from services.nlq_intent import (
+from nfl_stat.schemas.nlq import CatalogStat, IntentRequest, QueryOutcome, UnsupportedOutcome
+from nfl_stat.services.nlq_intent import (
     IntentError,
     build_system_prompt,
     extract_json_object,

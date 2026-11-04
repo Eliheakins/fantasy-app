@@ -7,8 +7,8 @@ import polars as pl
 import pytest
 from pydantic import ValidationError
 
-from pipeline.players import PLAYERS_FILENAME, build_players, write_players_file
-from schemas.players import PlayersFile
+from nfl_stat.pipeline.players import PLAYERS_FILENAME, build_players, write_players_file
+from nfl_stat.schemas.players import PlayersFile
 
 
 def _index() -> pl.DataFrame:

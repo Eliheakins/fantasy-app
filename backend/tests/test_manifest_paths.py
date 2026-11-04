@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from schemas.manifest import FileEntry, JsonFileEntry, SeasonEntry
+from nfl_stat.schemas.manifest import FileEntry, JsonFileEntry, SeasonEntry
 
 
 @pytest.mark.parametrize("path", ["nfl_pbp_2026.parquet", "player_game.parquet", "a-b_c.1.parquet"])

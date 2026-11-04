@@ -4,14 +4,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from api.routers import health, nlq
-from core.config import CORS_ORIGINS, get_settings
-from core.lifecycle import lifespan
+from nfl_stat.api.routers import health, nlq
+from nfl_stat.core.config import CORS_ORIGINS, AppSettings, get_settings
+from nfl_stat.core.lifecycle import lifespan
+from nfl_stat.core.state import AppState
 
 
-def create_app() -> FastAPI:
-    settings = get_settings()
+def create_app(settings: AppSettings | None = None) -> FastAPI:
+    settings = settings or get_settings()
     app = FastAPI(title="NFL Stat API", lifespan=lifespan)
+    app.state.settings = settings
+    app.state.app_state = AppState()
 
     app.include_router(health.router)
     app.include_router(nlq.router)
@@ -30,6 +33,3 @@ def create_app() -> FastAPI:
         app.mount("/data", StaticFiles(directory=str(settings.data_dir)), name="data")
 
     return app
-
-
-app = create_app()

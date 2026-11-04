@@ -18,9 +18,9 @@ from typing import Any
 import pytest
 from openai import AsyncOpenAI
 
-from core.config import get_settings
-from schemas.nlq import IntentRequest, QueryOutcome
-from services.nlq_intent import IntentError, translate_question
+from nfl_stat.core.config import get_settings
+from nfl_stat.schemas.nlq import IntentRequest, QueryOutcome
+from nfl_stat.services.nlq_intent import IntentError, translate_question
 
 EVAL_DIR = Path(__file__).parent
 RESULTS_FILE = EVAL_DIR / "results.jsonl"

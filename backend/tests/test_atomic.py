@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from pipeline.atomic import atomic_path
+from nfl_stat.pipeline.atomic import atomic_path
 
 
 def test_the_target_appears_only_after_the_block_finishes(tmp_path: Path):

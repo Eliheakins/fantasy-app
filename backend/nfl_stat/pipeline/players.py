@@ -9,9 +9,9 @@ from pathlib import Path
 import polars as pl
 from pydantic import ValidationError
 
-from pipeline.atomic import atomic_path
-from schemas.manifest import JsonFileEntry
-from schemas.players import PlayerEntry, PlayersFile
+from nfl_stat.pipeline.atomic import atomic_path
+from nfl_stat.schemas.manifest import JsonFileEntry
+from nfl_stat.schemas.players import PlayerEntry, PlayersFile
 
 PLAYERS_FILENAME = "players.json"
 PLAYER_INDEX_FILENAME = "player_index.parquet"

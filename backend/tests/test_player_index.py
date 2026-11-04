@@ -4,7 +4,7 @@ from pathlib import Path
 
 import polars as pl
 
-from pipeline.players import merge_player_index, read_player_index
+from nfl_stat.pipeline.players import merge_player_index, read_player_index
 
 
 def _index(rows: list[tuple[str | None, str, str, int | None]]) -> pl.DataFrame:

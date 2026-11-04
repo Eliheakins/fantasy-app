@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from core.state import AppState
-from schemas.manifest import MANIFEST_FILENAME, read_manifest
+from nfl_stat.core.state import AppState
+from nfl_stat.schemas.manifest import MANIFEST_FILENAME, read_manifest
 
 logger = logging.getLogger(__name__)
 

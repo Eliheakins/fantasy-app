@@ -6,7 +6,7 @@ import polars as pl
 import pyarrow.parquet as pq
 import pytest
 
-from pipeline.player_game import (
+from nfl_stat.pipeline.player_game import (
     PLAYER_GAME_COLUMNS,
     merge_player_game,
     normalize_player_game,

@@ -7,7 +7,7 @@ import openai
 import pytest
 from fastapi import HTTPException
 
-from services.llm_client import chat_text, http_exception_from_llm_error
+from nfl_stat.services.llm_client import chat_text, http_exception_from_llm_error
 
 BASE_URL = "http://127.0.0.1:8080/v1"
 
