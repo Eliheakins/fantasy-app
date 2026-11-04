@@ -5,6 +5,7 @@ export interface IntentCatalogStat {
   id: string;
   label: string;
   category: string;
+  aliases: string[];
 }
 
 export interface IntentCatalogFilter {
@@ -21,7 +22,12 @@ export interface IntentCatalog {
 /** The ids the model may choose from; sent with every ask so the backend never owns a second copy. */
 export function buildIntentCatalog(): IntentCatalog {
   return {
-    stats: STAT_DEFINITIONS.map((s) => ({ id: s.id, label: s.label, category: s.category })),
+    stats: STAT_DEFINITIONS.map((s) => ({
+      id: s.id,
+      label: s.label,
+      category: s.category,
+      aliases: s.aliases,
+    })),
     filters: getFilterChipGroups().flatMap((g) =>
       g.options.map((o) => ({ id: o.id, label: o.label, group: g.label })),
     ),

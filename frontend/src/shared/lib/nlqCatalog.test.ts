@@ -19,6 +19,13 @@ describe("buildIntentCatalog", () => {
     });
   });
 
+  it("gives the model each stat's aliases so it can match how people phrase things", () => {
+    const { stats } = buildIntentCatalog();
+
+    expect(stats.find((s) => s.id === "int_rate")?.aliases).toContain("picks");
+    expect(stats.filter((s) => s.aliases.length === 0)).toEqual([]);
+  });
+
   it("matches the catalog committed for the backend eval (run npm run export:catalog if not)", () => {
     const path = fileURLToPath(
       new URL("../../../../backend/tests/eval/catalog.json", import.meta.url),

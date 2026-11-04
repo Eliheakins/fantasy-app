@@ -74,8 +74,15 @@ def _example_block(stat_ids: set[str], filter_ids: set[str]) -> str:
     return "\n\n".join(lines)
 
 
+def _stat_line(stat: CatalogStat) -> str:
+    line = f"{stat.id} | {stat.label} | {stat.category}"
+    if stat.aliases:
+        line += f" | also called: {', '.join(stat.aliases)}"
+    return line
+
+
 def build_system_prompt(stats: Sequence[CatalogStat], filters: Sequence[CatalogFilter]) -> str:
-    stat_lines = "\n".join(f"{s.id} | {s.label} | {s.category}" for s in stats)
+    stat_lines = "\n".join(_stat_line(s) for s in stats)
     filter_lines = "\n".join(f"{f.id} | {f.group}: {f.label}" for f in filters)
     examples = _example_block({s.id for s in stats}, {f.id for f in filters})
     examples_section = f"\nEXAMPLES:\n{examples}\n" if examples else ""
@@ -92,7 +99,7 @@ home/away, red zone, weather). Empty list if none apply.
 efficiency wording, otherwise "total".
 - Player names are handled elsewhere. Ignore them.
 {examples_section}
-STATS (id | label | category):
+STATS (id | label | category | also called):
 {stat_lines}
 
 FILTERS (id | group: label):

@@ -14,6 +14,7 @@ class CatalogStat(BaseModel):
     id: str
     label: str
     category: str
+    aliases: list[str] = Field(default_factory=list, description="Other phrases for this stat")
 
 
 class CatalogFilter(BaseModel):

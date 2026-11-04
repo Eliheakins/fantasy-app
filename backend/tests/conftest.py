@@ -15,7 +15,12 @@ from core.state import app_state
 from schemas.nlq import CatalogFilter, CatalogStat
 
 STATS = [
-    CatalogStat(id="pass_yards", label="Pass yards", category="passing"),
+    CatalogStat(
+        id="pass_yards",
+        label="Pass yards",
+        category="passing",
+        aliases=["passing yards", "yards through the air"],
+    ),
     CatalogStat(id="pass_tds", label="Pass TDs", category="passing"),
     CatalogStat(id="rec_yards", label="Rec yards", category="receiving"),
     CatalogStat(id="rec_receptions", label="Receptions", category="receiving"),

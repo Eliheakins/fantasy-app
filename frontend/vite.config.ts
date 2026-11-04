@@ -78,6 +78,8 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    // metrics/metrics.json lives at the repo root, outside this project folder.
+    fs: { allow: [fileURLToPath(new URL("..", import.meta.url))] },
     // Uncomment if you use initDB("coi") (COI bundle) and need pthreads / SAB:
     // headers: {
     //   "Cross-Origin-Opener-Policy": "same-origin",

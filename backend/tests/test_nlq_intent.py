@@ -76,6 +76,10 @@ def test_system_prompt_lists_catalog_and_only_examples_with_known_ids():
     prompt = build_system_prompt(STATS, FILTERS)
 
     assert "rec_yards | Rec yards | receiving" in prompt
+    assert (
+        "pass_yards | Pass yards | passing | also called: passing yards, yards through the air"
+        in prompt
+    )
     assert "season-2023 | Season: 2023" in prompt
     # Uses pass_yards/pass_tds/season-2023, all present in the test catalog.
     assert "Mahomes passing yards" in prompt
