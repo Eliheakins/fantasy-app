@@ -24,8 +24,10 @@ function describe(query: LoggedQuery): string {
   const filters = query.filters.map((id) => labels.get(id) ?? id).join(", ") || "all seasons";
   const ranking =
     query.order && query.limit ? ` · ${query.order.direction === "desc" ? "top" : "bottom"} ${query.limit}` : "";
-  const who =
+  const teams = `${query.teams.join(", ") || "every team"} ${query.side === "defense" ? "defense" : "offense"} · `;
+  const players =
     query.players.length > 0 ? `${query.players.length} player${query.players.length === 1 ? "" : "s"} · ` : "";
+  const who = query.subject === "teams" ? teams : players;
   return `${who}${stats} · ${filters} · ${query.granularity.replace("_", " ")}${ranking}`;
 }
 

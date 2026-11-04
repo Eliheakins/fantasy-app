@@ -17,7 +17,7 @@ import {
 import { specFromIntent, unsupportedReasons } from "@/shared/lib/querySpec";
 import type { PlayerDictionaryRow } from "@/shared/lib/schemas/players";
 import { useQueryState } from "@/shared/lib/useQueryState";
-import type { Split } from "@/shared/types/queryBuilder";
+import type { Side, Split } from "@/shared/types/queryBuilder";
 import { useManifestStore } from "@/stores/useManifestStore";
 
 import { isNewEdit, type LoggedQuery } from "./askLog";
@@ -33,13 +33,15 @@ import {
 } from "./intentCache";
 import { withDefaultSeasonType } from "./intentFilters";
 import { narrowByRoles, type PlayerMatch, pickCandidate, resolvePlayers } from "./resolvePlayers";
+import { dropTeamNames, resolveTeams } from "./resolveTeams";
 import { type Leaderboard, parseRules, splitAsked } from "./ruleParser";
 
 export type AskPhase = "idle" | "working" | "choosing";
 
 const NO_PLAYER_MESSAGE =
-  "I couldn't find a player in that question. Name one by last or full name, like " +
-  "“Mahomes passing yards 2023”, or ask for a leaderboard like “who led the league in passing yards in 2023”.";
+  "I couldn't find a player or team in that question. Name a player by last or full name, like " +
+  "“Mahomes passing yards 2023”, a team, like “Chiefs passing yards 2023”, or ask for a leaderboard like " +
+  "“who led the league in passing yards in 2023”.";
 
 function rolesOf(intent: QueryIntent): PlayerRole[] {
   const roles = intent.stat_ids.flatMap((id) => {
@@ -57,11 +59,14 @@ const loggedFrom = (state: QueryState): LoggedQuery => ({
   order: state.order,
   limit: state.limit,
   split: state.split,
+  subject: state.subject,
+  teams: state.teams,
+  side: state.side,
 });
 
-/** What an edit can correct: the players are matched by name, never part of the intent. */
+/** What an edit can correct: players and teams are matched by name, never part of the intent. */
 const editKey = (state: QueryState): string => {
-  const { players: _players, ...rest } = loggedFrom(state);
+  const { players: _players, teams: _teams, ...rest } = loggedFrom(state);
   return JSON.stringify(rest);
 };
 
@@ -206,19 +211,26 @@ export function useAsk() {
     [answer, fail],
   );
 
-  /** A ranking across the league, read by the rules: no player to match, so no model call either. */
-  const showLeaderboard = useCallback(
-    (next: QueryIntent, board: Leaderboard, asked: string) => {
+  /** Read by the rules alone with no player to match (a league ranking or a team question), so no model call. */
+  const showRules = useCallback(
+    (
+      next: QueryIntent,
+      board: Leaderboard | undefined,
+      team: { ids: string[]; side: Side } | undefined,
+      asked: string,
+    ) => {
       answer(
         {
           ...EMPTY_QUERY,
-          players: [],
+          subject: team ? "teams" : "players",
+          teams: team?.ids ?? [],
+          side: team?.side ?? "offense",
           stats: next.stat_ids,
           filters: withDefaultSeasonType(next.filter_ids),
           granularity: next.granularity,
-          minPlays: board.minPlays,
-          order: board.order,
-          limit: board.limit,
+          minPlays: board?.minPlays ?? 0,
+          order: board?.order ?? null,
+          limit: board?.limit ?? null,
           split: splitOf(asked),
         },
         asked,
@@ -247,15 +259,15 @@ export function useAsk() {
       if (request !== currentRequest.current) {
         return;
       }
-      const matches = resolvePlayers(trimmed, dictionary);
+      const matches = dropTeamNames(resolvePlayers(trimmed, dictionary), resolveTeams(trimmed));
       if (matches.length === 0) {
         const read = parseRules(trimmed, {
           matches,
           seasons: useManifestStore.getState().seasons,
           chipGroups: getFilterChipGroups(),
         });
-        if (read.status === "resolved" && read.leaderboard) {
-          showLeaderboard(read.intent, read.leaderboard, trimmed);
+        if (read.status === "resolved" && (read.leaderboard || read.team)) {
+          showRules(read.intent, read.leaderboard, read.team, trimmed);
           return;
         }
         // With no player, "ambiguous" is a ranking question the rules could not finish: say why.
@@ -303,7 +315,7 @@ export function useAsk() {
         fail(trimmed, "none", errorText(e));
       }
     }
-  }, [question, show, showLeaderboard, fail]);
+  }, [question, show, showRules, fail]);
 
   const onChoose = useCallback(
     (player: PlayerDictionaryRow) => {
@@ -324,8 +336,8 @@ export function useAsk() {
 
   /** True when the URL holds a query to show: players (or a leaderboard) and at least one stat. */
   // Ask answers about players only, so a team URL (who=teams) is not shown as an answer here.
-  const hasResult =
-    state.subject === "players" && (state.players.length > 0 || isLeagueQuery(state)) && state.stats.length > 0;
+  const named = state.subject === "teams" ? state.teams : state.players;
+  const hasResult = (named.length > 0 || isLeagueQuery(state)) && state.stats.length > 0;
 
   // An edit to the answer on screen (a chip removed, a different granularity) is a correction: log it
   // and remember it, so the same question gives the corrected answer next time.
@@ -341,7 +353,9 @@ export function useAsk() {
     lastLogged.current = { id: answeredBy.entryId, key };
     logCorrection(answeredBy.entryId, loggedFrom(state));
     const storage = browserStorage();
-    if (!storage || state.order !== null || state.limit !== null) {
+    // Rankings and team questions are read by the rules alone and never consult the cache, so a saved
+    // correction for them would never be replayed; the log above keeps it.
+    if (!storage || state.order !== null || state.limit !== null || state.subject === "teams") {
       return;
     }
     const cacheKeyNow = keyFor(answeredBy.question);

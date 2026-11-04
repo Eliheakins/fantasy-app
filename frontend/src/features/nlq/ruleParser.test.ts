@@ -509,3 +509,85 @@ describe("splitting by season or week", () => {
     expect(parse("Patrick Mahomes passing yards by season and by week").status).toBe("ambiguous");
   });
 });
+
+describe("team questions", () => {
+  function team(question: string) {
+    const result = parse(question);
+    if (result.status !== "resolved" || !result.team) {
+      throw new Error(
+        `expected "${question}" to be a team question, got ${result.status}: ${"reason" in result ? result.reason : ""}`,
+      );
+    }
+    return { intent: result.intent, team: result.team, leaderboard: result.leaderboard };
+  }
+
+  it("reads a team's offense", () => {
+    const answer = team("Chiefs passing yards in 2023");
+
+    expect(answer.team).toEqual({ ids: ["KC"], side: "offense" });
+    expect(answer.intent).toEqual({ stat_ids: ["pass_yards"], filter_ids: ["season-2023"], granularity: "total" });
+  });
+
+  it.each([
+    "passing yards allowed by the Chiefs in 2023",
+    "Chiefs defense passing yards in 2023",
+    "passing yards against the Chiefs in 2023",
+  ])("reads %s as the defense", (question) => {
+    expect(team(question).team).toEqual({ ids: ["KC"], side: "defense" });
+  });
+
+  it("compares two teams", () => {
+    expect(team("Chiefs and Bills rushing yards in 2023").team.ids).toEqual(["KC", "BUF"]);
+  });
+
+  it("ranks every team when it asks which team", () => {
+    const answer = team("which team allowed the fewest passing yards in 2023");
+
+    expect(answer.team).toEqual({ ids: [], side: "defense" });
+    expect(answer.leaderboard?.order).toEqual({ metric: "pass_yards", direction: "asc" });
+  });
+
+  it("hands over a question that names a player and a team", () => {
+    expect(parse("Patrick Mahomes passing yards against the Chiefs in 2023").status).not.toBe("resolved");
+  });
+
+  it("hands over a question that asks for offense and defense at once", () => {
+    expect(parse("Chiefs offense and defense passing yards in 2023").status).toBe("ambiguous");
+  });
+
+  it("refuses a Next Gen Stat for a team", () => {
+    expect(parse("Chiefs time to throw in 2023").status).toBe("unsupported");
+  });
+});
+
+describe("team names inside player names", () => {
+  const BILLS = {
+    ...PLAYERS.find((p) => p.position === "QB")!,
+    gsis_id: "00-0099999",
+    display_name: "Keaton Bills",
+    search_key: "keaton bills",
+  };
+  const withBills = (question: string) =>
+    parseRules(question, {
+      matches: resolvePlayers(question, [...PLAYERS, BILLS]),
+      seasons: FIXTURE_SEASONS,
+      chipGroups,
+    });
+
+  it("reads a player named in full even when the surname is a team's nickname", () => {
+    const result = withBills("Keaton Bills passing yards in 2023");
+
+    expect(result.status).toBe("resolved");
+    expect(result.status === "resolved" && result.team).toBeUndefined();
+  });
+
+  it("does not make a player question about teams because it says team", () => {
+    expect(parse("Patrick Mahomes team time to throw in 2023").status).not.toBe("unsupported");
+  });
+
+  it("asks a team ranking for no play floor, since every team has plenty", () => {
+    const result = parse("which team had the highest completion percentage in 2023");
+
+    expect(result.status === "resolved" && result.leaderboard?.minPlays).toBe(0);
+  });
+});

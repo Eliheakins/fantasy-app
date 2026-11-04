@@ -20,6 +20,9 @@ const query = (over: Partial<LoggedQuery> = {}): LoggedQuery => ({
   order: null,
   limit: null,
   split: null,
+  subject: "players",
+  teams: [],
+  side: "offense",
   ...over,
 });
 
@@ -162,6 +165,12 @@ describe("toEvalCases", () => {
     expect(cases).toEqual([
       { q: "Mahomes TDs 2022", stats: ["pass_tds"], filters: ["season-2022"], granularity: "per_game" },
     ]);
+  });
+
+  it("skips team questions, which the eval format cannot express", () => {
+    const corrected = { ...entry("t"), corrected: query({ subject: "teams", teams: ["KC"], players: [] }) };
+
+    expect(toEvalCases([corrected])).toEqual([]);
   });
 
   it("skips leaderboards, which the eval format cannot express", () => {

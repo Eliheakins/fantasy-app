@@ -10,6 +10,7 @@ import type { PlayerDictionaryRow } from "@/shared/lib/schemas/players";
 import type { GranularityMode } from "@/shared/types/queryBuilder";
 
 import { resolvePlayers } from "./resolvePlayers";
+import { dropTeamNames, resolveTeams } from "./resolveTeams";
 import { parseRules, type RuleResult } from "./ruleParser";
 
 export interface EvalCase {
@@ -74,7 +75,8 @@ export function runRulesEval(seasons: readonly number[]): EvalRow[] {
 
   return EVAL_SETS.flatMap((set) =>
     readJson<EvalCase[]>(`${set}.json`).map((c): EvalRow => {
-      const result = parseRules(c.q, { matches: resolvePlayers(c.q, players), seasons, chipGroups });
+      const matches = dropTeamNames(resolvePlayers(c.q, players), resolveTeams(c.q));
+      const result = parseRules(c.q, { matches, seasons, chipGroups });
       return { set, case: c, result, verdict: judge(c, result) };
     }),
   );

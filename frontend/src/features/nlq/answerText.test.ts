@@ -102,3 +102,18 @@ describe("buildAnswer for a split", () => {
     ]);
   });
 });
+
+describe("buildAnswer for teams", () => {
+  it("names each team row from its team_id", () => {
+    const answer = buildAnswer({
+      result: { columns: ["team_id", passYards], rows: [{ team_id: "KC", [passYards]: 4383 }] },
+      statIds: ["pass_yards"],
+      granularity: "total",
+      filterIds: ["season-2023"],
+      nameByGsis: new Map([["KC", "Kansas City Chiefs"]]),
+      idColumn: "team_id",
+    });
+
+    expect(answer.lines).toEqual(["Kansas City Chiefs — Pass yards (total): 4383"]);
+  });
+});

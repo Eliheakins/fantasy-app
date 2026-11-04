@@ -13,6 +13,8 @@ export interface AnswerInput {
   nameByGsis: ReadonlyMap<string, string>;
   /** Number the lines, for a leaderboard where the order is the answer. */
   ranked?: boolean;
+  /** Which column names the row: player_id, or team_id for team rows. */
+  idColumn?: "player_id" | "team_id";
 }
 
 export interface Answer {
@@ -52,10 +54,11 @@ export function buildAnswer({
   filterIds,
   nameByGsis,
   ranked = false,
+  idColumn = "player_id",
 }: AnswerInput): Answer {
   const labels = filterLabels(filterIds);
   const lines = result.rows.map((row, rank) => {
-    const pid = String(row.player_id ?? "");
+    const pid = String(row[idColumn] ?? "");
     const name = nameByGsis.get(pid) ?? pid;
     const when = [row.season, row.week === undefined ? undefined : `week ${String(row.week)}`].filter(
       (v) => v !== undefined,
