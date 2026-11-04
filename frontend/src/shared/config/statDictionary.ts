@@ -34,6 +34,8 @@ export interface StatDefinition {
   base_sql: string;
   /** If true, the expression is used as-is (typically a rate); Total/Per game toggles are disabled in UI. */
   rate_only: boolean;
+  /** Which way is better, when one is; "best" and "worst" mean nothing for a stat without it. */
+  better?: "higher" | "lower";
   /** Table header hint for percentage-style metrics. */
   percent_format?: boolean;
   /**
@@ -60,6 +62,7 @@ function toStat(m: MetricDefinitionData): StatDefinition {
     playType: m.play_type,
     base_sql: m.base_sql,
     rate_only: m.rate_only,
+    better: m.better ?? undefined,
     percent_format: m.percent_format || undefined,
     playFilter: m.play_filter ?? undefined,
     playerGameColumn: m.player_game_column ?? undefined,

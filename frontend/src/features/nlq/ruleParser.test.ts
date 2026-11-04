@@ -356,6 +356,45 @@ describe("leaderboard questions with no player named", () => {
     expect(board("Who has the most receptions in 2023").order.metric).toBe("rec_receptions");
   });
 
+  it.each([
+    ["fewest passing touchdowns in 2023", "pass_tds"],
+    ["lowest interception rate in 2023", "int_rate"],
+    ["who had the least rushing yards in 2022", "rush_yards"],
+  ])("ranks lowest first for %s", (question, metric) => {
+    expect(board(question).order).toEqual({ metric, direction: "asc" });
+  });
+
+  it.each(["lowest 5 sack rate in 2023", "fewest 5 passing touchdowns in 2023"])("reads the number after %s as the limit", (question) => {
+    const answer = board(question);
+
+    expect(answer.order.direction).toBe("asc");
+    expect(answer.limit).toBe(5);
+  });
+
+  it("does not read at least as a lowest-first ranking", () => {
+    expect(parse("who has at least 1000 rushing yards in 2023").status).not.toBe("resolved");
+  });
+
+  it("reads bottom N as a lowest-first limit", () => {
+    const answer = board("bottom 5 rushing yards in 2023");
+
+    expect(answer.order.direction).toBe("asc");
+    expect(answer.limit).toBe(5);
+  });
+
+  it("keeps the play floor on a lowest-first rate ranking, or a one-play passer would top it", () => {
+    expect(board("lowest interception rate in 2023").minPlays).toBeGreaterThan(0);
+  });
+
+  it.each([
+    ["best completion percentage in 2023", "desc"],
+    ["worst completion percentage in 2023", "asc"],
+    ["best interception rate in 2023", "asc"],
+    ["worst interception rate in 2023", "desc"],
+  ])("reads %s by which way the stat is better", (question, direction) => {
+    expect(board(question).order.direction).toBe(direction);
+  });
+
   it("asks for a minimum number of plays on a rate, so one-play players cannot top it", () => {
     const answer = board("highest completion percentage in 2023");
 
@@ -385,7 +424,8 @@ describe("leaderboard questions with no player named", () => {
     ["no leaderboard cue", "passing yards in 2023"],
     ["a bare yards that could be passing, rushing or receiving", "who led the league in yards in 2023"],
     ["a word it does not know", "top passers in 2023"],
-    ["fewest instead of most", "fewest passing touchdowns in 2023"],
+    ["best for a stat with no better direction", "best adot in 2023"],
+    ["both most and fewest", "most and fewest passing yards in 2023"],
     ["a limit over 100", "top 200 passing yards in 2023"],
     ["a limit of zero", "top 0 passing yards in 2023"],
   ])("hands over a question with %s", (_why, question) => {

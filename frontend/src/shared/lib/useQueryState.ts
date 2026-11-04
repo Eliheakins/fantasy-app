@@ -9,9 +9,11 @@ import {
   ignoredFilterIds,
   parseQuery,
   pinPlayer,
+  type QueryOrder,
   type QueryState,
   setGranularity,
   setMinPlays,
+  setRanking,
   toggleFilter,
   toggleStat,
   unpinPlayer,
@@ -67,6 +69,10 @@ export function useQueryState() {
     applyFilterGroup: useCallback(
       (optionIds: readonly string[], selectedIds: readonly string[]) =>
         update((s) => applyFilterGroup(s, optionIds, selectedIds)),
+      [update],
+    ),
+    setRanking: useCallback(
+      (order: QueryOrder | null, limit?: number) => update((s) => setRanking(s, order, limit)),
       [update],
     ),
     toggleFilterId: useCallback((id: string) => update((s) => toggleFilter(s, id)), [update]),
