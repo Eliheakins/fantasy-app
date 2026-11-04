@@ -26,11 +26,22 @@ cd frontend && npm install
 ### Data
 
 ```bash
-uv run python backend/scripts/build_data.py            # NFL play-by-play + player index, 2021-2025
+uv run python backend/scripts/build_data.py            # 2021 through the current season
 uv run python backend/scripts/build_data.py --years 2023,2024
 ```
 
-This writes `backend/data/player_index.parquet` and `nfl_pbp_YYYY.parquet`.
+This writes, into `backend/data/`:
+
+| File | What it is |
+|------|------------|
+| `nfl_pbp_YYYY.parquet` | Play-by-play, one file per season, with participation and Next Gen Stats joined on |
+| `player_game.parquet` | One row per player per game with official counting totals (tier 1, not used by Ask yet) |
+| `player_index.parquet` | One row per player, for name matching |
+| `manifest.json` | What was built: seasons, files, rows, latest week, and when |
+
+The season list comes from the data: a new season appears in the app as soon as its shard is built, with no code change. Missing values (Next Gen Stats cover only some plays, participation is not published until after a season ends) stay null, and the build prints how much of each column is missing. Re-run the build weekly to pick up new games. If a brand-new season has no play-by-play published yet, build with `--years` up to the previous season.
+
+`/health` reports `data_through` (for example `2026 week 8`) and the seasons loaded.
 
 ## Run
 
@@ -82,7 +93,7 @@ uv run ruff check backend
 | `backend/main.py` | App factory: routers, CORS for the local Vite port, static `/data` |
 | `backend/api/routers/` | `health`, `pbp`, `players` (search, detail, dictionary), `nlq` (intent) |
 | `backend/services/` | `nlq_intent` (prompt, validation, retry), `llm_client`, `llm_warmup`, catalogs |
-| `backend/pipeline/` | Data build from nflverse (`build_data.py` is the entry point) |
+| `backend/pipeline/` | Data build from nflverse: play-by-play shards, the player-game table, the manifest (`build_data.py` is the entry point) |
 | `frontend/src/features/nlq/` | Ask: name matching, hook, answer text, panel |
 | `frontend/src/features/explore/` | Query builder and results canvas (also runs Ask's query) |
 | `frontend/src/shared/config/` | Stat dictionary and filter chips, the source for the model's catalog |
