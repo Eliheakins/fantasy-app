@@ -48,6 +48,9 @@ class MetricDefinition(BaseModel):
         ..., min_length=1, description="Aggregate over play rows; columns are unqualified"
     )
     rate_only: bool = Field(..., description="True when the SQL is used as written, never derived")
+    better: Literal["higher", "lower"] | None = Field(
+        None, description="Which way is better, when one is; unset for neutral stats like ADOT"
+    )
     percent_format: bool = False
     play_filter: str | None = Field(
         None,

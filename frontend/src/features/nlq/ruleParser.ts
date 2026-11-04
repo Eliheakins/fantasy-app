@@ -113,8 +113,19 @@ const ROLE_BY_CATEGORY: Readonly<Record<string, PlayerRole>> = {
 /** A verb that settles which role a bare "yards" or "touchdowns" belongs to. */
 const THROW_WORDS = new Set(["throw", "throws", "threw", "thrown"]);
 
+/** Words that set which end of a ranking comes first. "best" and "worst" depend on the stat (see `better`). */
+const RANK_DIRECTION: Record<string, "desc" | "asc" | "best" | "worst"> = {
+  most: "desc",
+  highest: "desc",
+  fewest: "asc",
+  least: "asc",
+  lowest: "asc",
+  bottom: "asc",
+  best: "best",
+  worst: "worst",
+};
 /** Words that ask for a ranking. Without one of these, a question with no player is not a leaderboard. */
-const LEADERBOARD_CUES = new Set(["led", "leader", "leaders", "leading", "top", "leaderboard", "most", "highest", "best"]);
+const LEADERBOARD_CUES = new Set(["led", "leader", "leaders", "leading", "top", "leaderboard", ...Object.keys(RANK_DIRECTION)]);
 /** Words a leaderboard question uses around its stat; read as filler only when no player is named. */
 const LEADERBOARD_WORDS = new Set([...LEADERBOARD_CUES, "who", "league", "nfl", "lead"]);
 const DEFAULT_LEADERBOARD_LIMIT = 10;
@@ -250,8 +261,8 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
 
   let limit = DEFAULT_LEADERBOARD_LIMIT;
   if (isLeaderboard) {
-    // "top 5": the number after "top" is the limit, not a stat or a season.
-    const top = tokens.indexOf("top");
+    // "top 5", "bottom 5": the number after it is the limit, not a stat or a season.
+    const top = tokens.findIndex((t) => t === "top" || t === "bottom");
     if (top >= 0 && /^\d+$/.test(tokens[top + 1] ?? "")) {
       limit = Number(tokens[top + 1]);
       used[top + 1] = true;
@@ -455,10 +466,36 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
   if (!isLeaderboard) {
     return { status: "resolved", intent };
   }
+  const metric = statIds[0]!;
+  const direction = rankDirection(tokens, metric);
+  if (typeof direction !== "string") {
+    return ambiguous(direction.reason);
+  }
   const minPlays = intent.granularity === "total" ? 0 : LEADERBOARD_MIN_PLAYS;
   return {
     status: "resolved",
     intent,
-    leaderboard: { order: { metric: statIds[0]!, direction: "desc" }, limit, minPlays },
+    leaderboard: { order: { metric, direction }, limit, minPlays },
   };
+}
+
+/** Highest first unless the question asks otherwise; asking both ways, or "best" of a neutral stat, is unclear. */
+function rankDirection(tokens: readonly string[], metric: string): "asc" | "desc" | { reason: string } {
+  const better = getStatById(metric)?.better;
+  const asked = new Set<"asc" | "desc">();
+  for (const token of tokens) {
+    const cue = RANK_DIRECTION[token];
+    if (cue === "desc" || cue === "asc") {
+      asked.add(cue);
+    } else if (cue) {
+      if (!better) {
+        return { reason: `"${token}" has no clear meaning for ${getStatById(metric)?.label ?? metric}; ask for the highest or lowest.` };
+      }
+      asked.add((cue === "best") === (better === "higher") ? "desc" : "asc");
+    }
+  }
+  if (asked.size > 1) {
+    return { reason: "It asks for both the highest and the lowest." };
+  }
+  return [...asked][0] ?? "desc";
 }

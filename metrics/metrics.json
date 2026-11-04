@@ -39,6 +39,7 @@
       "play_type": "pass",
       "base_sql": "(SUM(yards_gained) + (20 * SUM(pass_touchdown)) - (45 * SUM(interception))) / NULLIF(COUNT(*), 0)",
       "rate_only": true,
+      "better": "higher",
       "help": "Adjusted net yards per attempt: passing yards (net of sack yardage) plus 20 per TD, minus 45 per INT, divided by dropbacks (every pass play including sacks). Higher is better.",
       "aliases": [
         "any/a",
@@ -83,6 +84,7 @@
       "play_type": "pass",
       "base_sql": "SUM(sack) / NULLIF(COUNT(*), 0) * 100",
       "rate_only": true,
+      "better": "lower",
       "percent_format": true,
       "help": "Percentage of dropbacks that end in a sack. Dropbacks are every pass play in the sample, sacks included.",
       "aliases": [
@@ -128,6 +130,7 @@
       "play_type": "pass",
       "base_sql": "SUM(sack) / NULLIF(SUM(qb_hit), 0) * 100",
       "rate_only": true,
+      "better": "lower",
       "percent_format": true,
       "help": "Pressure-to-sack rate: sacks divided by QB hits. High values mean hits often become sacks; undefined if SUM(qb_hit) is 0.",
       "aliases": [
@@ -162,6 +165,7 @@
       "play_type": "pass",
       "base_sql": "SUM(yards_gained)",
       "rate_only": false,
+      "better": "higher",
       "player_game_column": "passing_yards",
       "aliases": [
         "passing yards",
@@ -220,6 +224,7 @@
       "play_type": "pass",
       "base_sql": "SUM(pass_touchdown)",
       "rate_only": false,
+      "better": "higher",
       "player_game_column": "passing_tds",
       "aliases": [
         "passing touchdowns",
@@ -259,6 +264,7 @@
       "play_type": "pass",
       "base_sql": "AVG(complete_pass) * 100",
       "rate_only": true,
+      "better": "higher",
       "percent_format": true,
       "help": "Completion percentage on pass attempts in the sample. Sacks, penalties and no-plays are not attempts (mean of the completion flag × 100).",
       "aliases": [
@@ -316,6 +322,7 @@
       "play_type": "pass",
       "base_sql": "AVG(interception) * 100",
       "rate_only": true,
+      "better": "lower",
       "percent_format": true,
       "help": "Interceptions per pass attempt in the sample, as a percentage. Sacks, penalties and no-plays are not attempts (mean of INT flag × 100).",
       "aliases": [
@@ -364,6 +371,7 @@
       "play_type": "pass",
       "base_sql": "SUM(complete_pass) / NULLIF(CAST(COUNT(*) AS DOUBLE), 0) * 100",
       "rate_only": true,
+      "better": "higher",
       "percent_format": true,
       "help": "Catches divided by receiver-targeted pass plays in the filter (COUNT of rows). Each row is one play with this player as receiver.",
       "aliases": [
@@ -399,6 +407,7 @@
       "play_type": "pass",
       "base_sql": "AVG(CASE WHEN yards_gained >= 20 THEN 1 ELSE 0 END) * 100",
       "rate_only": true,
+      "better": "higher",
       "percent_format": true,
       "help": "Share of pass plays (as targeted receiver) where yards gained was 20 or more.",
       "aliases": [
@@ -415,6 +424,7 @@
       "play_type": "pass",
       "base_sql": "SUM(complete_pass)",
       "rate_only": false,
+      "better": "higher",
       "player_game_column": "receptions",
       "aliases": [
         "receptions",
@@ -442,6 +452,7 @@
       "play_type": "pass",
       "base_sql": "SUM(yards_gained)",
       "rate_only": false,
+      "better": "higher",
       "player_game_column": "receiving_yards",
       "aliases": [
         "receiving yards",
@@ -470,6 +481,7 @@
       "play_type": "pass",
       "base_sql": "SUM(yards_after_catch)",
       "rate_only": false,
+      "better": "higher",
       "player_game_column": "receiving_yards_after_catch",
       "aliases": [
         "yards after the catch",
@@ -503,6 +515,7 @@
       "play_type": "run",
       "base_sql": "AVG(CASE WHEN yards_gained >= 20 THEN 1 ELSE 0 END) * 100",
       "rate_only": true,
+      "better": "higher",
       "percent_format": true,
       "help": "Share of rush plays where yards gained was 20 or more.",
       "aliases": [
@@ -520,6 +533,7 @@
       "play_type": "run",
       "base_sql": "SUM(yards_gained)",
       "rate_only": false,
+      "better": "higher",
       "player_game_column": "rushing_yards",
       "aliases": [
         "rushing yards",
@@ -549,6 +563,7 @@
       "play_type": "run",
       "base_sql": "SUM(rush_touchdown)",
       "rate_only": false,
+      "better": "higher",
       "player_game_column": "rushing_tds",
       "aliases": [
         "rushing touchdowns",
@@ -577,6 +592,7 @@
       "play_type": "run",
       "base_sql": "AVG(yards_gained)",
       "rate_only": true,
+      "better": "higher",
       "help": "Yards per carry: average yards gained on run plays in the filter.",
       "aliases": [
         "yards per carry",
@@ -605,6 +621,7 @@
       "play_type": "pass",
       "base_sql": "AVG(epa)",
       "rate_only": true,
+      "better": "higher",
       "help": "Expected Points Added: average EPA per pass play for the passer. Positive means the offense gained more expected points than before the play.",
       "aliases": [
         "epa",
@@ -623,6 +640,7 @@
       "play_type": "pass",
       "base_sql": "AVG(success) * 100",
       "rate_only": true,
+      "better": "higher",
       "percent_format": true,
       "help": "Share of pass plays classified as successful (nflverse success flag), scaled to 0–100%. Typically gains that meet down-and-distance expectations.",
       "aliases": [
@@ -640,6 +658,7 @@
       "play_type": "pass",
       "base_sql": "AVG(cpoe)",
       "rate_only": true,
+      "better": "higher",
       "percent_format": true,
       "help": "Completion Percentage Over Expected: average difference between actual completion and model-based completion probability (nflverse cpoe), in percentage points.",
       "aliases": [
@@ -656,6 +675,7 @@
       "play_type": "pass",
       "base_sql": "SUM(wpa)",
       "rate_only": false,
+      "better": "higher",
       "help": "Win Probability Added summed over pass plays as passer. Total / per play / per game change how this aggregate is scaled in the UI.",
       "aliases": [
         "wpa",
@@ -672,6 +692,7 @@
       "play_type": "pass",
       "base_sql": "AVG(first_down) * 100",
       "rate_only": true,
+      "better": "higher",
       "percent_format": true,
       "help": "Share of pass plays that gained a first down (or scored), as a percentage.",
       "aliases": [
@@ -689,6 +710,7 @@
       "play_type": "pass",
       "base_sql": "SUM(qb_epa)",
       "rate_only": false,
+      "better": "higher",
       "help": "EPA attributed to the QB on pass plays (nflverse qb_epa). Totals or averages depend on granularity.",
       "aliases": [
         "qb epa",
@@ -736,6 +758,7 @@
       "play_type": "run",
       "base_sql": "SUM(wpa)",
       "rate_only": false,
+      "better": "higher",
       "help": "Win Probability Added summed on run plays where this player is the rusher. Granularity changes sum vs average vs per active game.",
       "aliases": [
         "rushing wpa",
@@ -752,6 +775,7 @@
       "play_type": "pass",
       "base_sql": "SUM(vegas_wpa)",
       "rate_only": false,
+      "better": "higher",
       "help": "Win probability added vs closing spread / Vegas-implied probabilities (nflverse vegas_wpa), summed as passer on pass plays.",
       "aliases": [
         "vegas wpa",
@@ -768,6 +792,7 @@
       "play_type": "run",
       "base_sql": "SUM(vegas_wpa)",
       "rate_only": false,
+      "better": "higher",
       "help": "Vegas WPA summed on run plays as the ballcarrier.",
       "aliases": [
         "rushing vegas wpa",
@@ -815,6 +840,7 @@
       "play_type": "pass",
       "base_sql": "AVG(passer_rating)",
       "rate_only": true,
+      "better": "higher",
       "help": "NGS weekly passer rating for the QB, averaged across pass plays (same value within a week until play-level NGS differs).",
       "aliases": [
         "passer rating",
@@ -831,6 +857,7 @@
       "play_type": "pass",
       "base_sql": "AVG(avg_separation)",
       "rate_only": true,
+      "better": "higher",
       "help": "NGS: average yards of separation at catch or incompletion for this receiver on targets.",
       "aliases": [
         "separation",

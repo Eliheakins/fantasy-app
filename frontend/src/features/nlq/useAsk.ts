@@ -226,7 +226,8 @@ export function useAsk() {
           showLeaderboard(read.intent, read.leaderboard, trimmed);
           return;
         }
-        fail(trimmed, "none", read.status === "unsupported" ? read.reason : NO_PLAYER_MESSAGE);
+        // With no player, "ambiguous" is a ranking question the rules could not finish: say why.
+        fail(trimmed, "none", read.status === "unsupported" || read.status === "ambiguous" ? read.reason : NO_PLAYER_MESSAGE);
         return;
       }
 

@@ -39,6 +39,8 @@ const metricSchema = z.object({
   play_type: playTypeSchema,
   base_sql: z.string().min(1),
   rate_only: z.boolean(),
+  /** Which way is better, when one is ("best" and "worst" need it); unset for neutral stats like ADOT. */
+  better: z.enum(["higher", "lower"]).nullish(),
   percent_format: z.boolean().default(false),
   play_filter: z.string().min(1).nullable().default(null),
   player_game_column: z.string().min(1).nullable().default(null),
