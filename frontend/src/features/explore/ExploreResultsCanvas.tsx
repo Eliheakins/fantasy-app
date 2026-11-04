@@ -13,7 +13,7 @@ import { getStatById } from "@/shared/config/statDictionary";
 import {
   formatMetricValueHeader,
   metricSelectAlias,
-} from "@/shared/lib/queryBuilderSql";
+} from "@/shared/lib/queryBuilder";
 import { formatQueryValue } from "@/shared/lib/formatQueryValue";
 import type { NFLPlayer, QueryResult } from "@/shared/types/workbench";
 import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
@@ -21,7 +21,7 @@ import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
 export interface ExploreResultsCanvasProps {
   result: QueryResult | null;
   error: string | null;
-  lastSql: string | null;
+  details: string | null;
   running: boolean;
   pinnedPlayers: NFLPlayer[];
 }
@@ -29,7 +29,7 @@ export interface ExploreResultsCanvasProps {
 export function ExploreResultsCanvas({
   result,
   error,
-  lastSql,
+  details,
   running,
   pinnedPlayers,
 }: ExploreResultsCanvasProps) {
@@ -215,7 +215,7 @@ export function ExploreResultsCanvas({
           </p>
         ) : null}
 
-        {lastSql ? <CollapsibleCode title="Last SQL" code={lastSql} /> : null}
+        {details ? <CollapsibleCode title="Query details" code={details} /> : null}
       </CardContent>
     </Card>
   );

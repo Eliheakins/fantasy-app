@@ -1,7 +1,7 @@
 import { getStatById } from "@/shared/config/statDictionary";
 import { getFilterChipGroups } from "@/shared/lib/filterChipGroups";
 import { formatQueryValue } from "@/shared/lib/formatQueryValue";
-import { formatMetricValueHeader, metricSelectAlias } from "@/shared/lib/queryBuilderSql";
+import { formatMetricValueHeader, metricSelectAlias } from "@/shared/lib/queryBuilder";
 import type { GranularityMode } from "@/shared/types/queryBuilder";
 import type { QueryResult } from "@/shared/types/workbench";
 

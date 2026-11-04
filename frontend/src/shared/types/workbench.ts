@@ -12,7 +12,7 @@ export interface NFLPlayer {
 }
 
 /**
- * Normalized result from `runQuery` for the UI.
+ * Result of a stat query, as the UI renders it.
  */
 export interface QueryResult {
   /** Result rows as plain objects (column name → value). */

@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  buildStatQueryPlans,
-  mergeStatQueryResults,
-} from "@/shared/lib/queryBuilderSql";
-import { runQuery } from "@/shared/lib/duckdb";
-import { ensurePbpMounted } from "@/shared/lib/workbenchDuckdb";
-import { mergeShardMap } from "@/shared/lib/mergeShards";
+import { browserColumnStore } from "@/shared/engine/parquetColumns";
+import { runStatQuery } from "@/shared/engine/statQuery";
 import { shardParquetUrl } from "@/shared/lib/api";
+import { getFilterChipGroups } from "@/shared/lib/filterChipGroups";
+import { createLatestRunner } from "@/shared/lib/latestRun";
+import { mergeShardMap } from "@/shared/lib/mergeShards";
+import { describeQuery } from "@/shared/lib/queryBuilder";
 import type { QueryResult } from "@/shared/types/workbench";
 import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
 import { useWorkbenchStore } from "@/stores/useWorkbenchStore";
@@ -21,104 +20,92 @@ export function useExploreQueryExecution() {
   const filterChipState = useQueryBuilderStore((s) => s.filterChipState);
 
   const shards = useMemo(() => mergeShardMap(playerShardMap), [playerShardMap]);
-  const viewNames = useMemo(() => shards.map((s) => `nfl_pbp_${s.year}`), [shards]);
 
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lastSql, setLastSql] = useState<string | null>(null);
+  const [details, setDetails] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  // Only the latest run may set state; an older, slower one is aborted and ignored.
+  const runLatest = useRef(createLatestRunner()).current;
 
   const executeQuery = useCallback(async () => {
     setError(null);
 
-    if (pinnedPlayers.length === 0) {
+    const invalid = (message: string) => {
+      runLatest.cancel();
+      setRunning(false);
       setResult(null);
-      setLastSql(null);
-      setError("Pin at least one player in The Who, then run again.");
+      setDetails(null);
+      setError(message);
+    };
+
+    if (pinnedPlayers.length === 0) {
+      invalid("Pin at least one player in The Who, then run again.");
       return;
     }
     if (shards.length === 0) {
-      setResult(null);
-      setLastSql(null);
-      setError("No Parquet shards found for pinned players. Check the API and data folder.");
+      invalid("No Parquet shards found for pinned players. Check the API and data folder.");
       return;
     }
     if (selectedStatIds.length === 0) {
-      setResult(null);
-      setLastSql(null);
-      setError("Select at least one metric.");
-      return;
-    }
-
-    let plans: ReturnType<typeof buildStatQueryPlans>;
-    try {
-      plans = buildStatQueryPlans({
-        statIds: selectedStatIds,
-        filterChipState,
-        gsisIds: pinnedPlayers.map((p) => p.gsis_id),
-        viewNames,
-        granularity: activeGranularity,
-        minPlays,
-      });
-    } catch (e) {
-      setResult(null);
-      setLastSql(null);
-      setError(e instanceof Error ? e.message : String(e));
+      invalid("Select at least one metric.");
       return;
     }
 
     setRunning(true);
-    setLastSql(plans.map((p) => p.sql).join("\n\n-- —— next query ——\n\n"));
+    setDetails(describeQuery({ statIds: selectedStatIds, granularity: activeGranularity, filterChipState, minPlays }));
+    let stale = false;
     try {
-      await ensurePbpMounted(shards, shardParquetUrl);
-      const rawResults: QueryResult[] = [];
-      for (const plan of plans) {
-        rawResults.push(await runQuery(plan.sql));
+      const outcome = await runLatest((signal) =>
+        runStatQuery(
+          {
+            statIds: selectedStatIds,
+            filterChipState,
+            gsisIds: pinnedPlayers.map((p) => p.gsis_id),
+            sources: shards.map((s) => ({ year: s.year, url: shardParquetUrl(s.path) })),
+            granularity: activeGranularity,
+            minPlays,
+            chipGroups: getFilterChipGroups(),
+          },
+          browserColumnStore,
+          signal,
+        ),
+      );
+      if (outcome.stale) {
+        stale = true;
+        return;
       }
-      const merged = mergeStatQueryResults(rawResults, selectedStatIds);
-      setResult(merged);
+      setResult(outcome.value);
       setError(null);
     } catch (e) {
       setResult(null);
       setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setRunning(false);
+      if (!stale) {
+        setRunning(false);
+      }
     }
-  }, [
-    pinnedPlayers,
-    shards,
-    selectedStatIds,
-    minPlays,
-    filterChipState,
-    viewNames,
-    activeGranularity,
-  ]);
+  }, [pinnedPlayers, shards, selectedStatIds, minPlays, filterChipState, activeGranularity, runLatest]);
 
   useEffect(() => {
     if (pinnedPlayers.length === 0 || shards.length === 0) {
       return;
     }
     if (selectedStatIds.length === 0) {
+      runLatest.cancel();
+      setRunning(false);
       setResult(null);
-      setLastSql(null);
+      setDetails(null);
       setError(null);
       return;
     }
     void executeQuery();
-  }, [
-    activeGranularity,
-    selectedStatIds,
-    minPlays,
-    filterChipState,
-    pinnedPlayers,
-    shards,
-    executeQuery,
-  ]);
+  }, [activeGranularity, selectedStatIds, minPlays, filterChipState, pinnedPlayers, shards, executeQuery, runLatest]);
 
   return {
     result,
     error,
-    lastSql,
+    details,
     running,
     executeQuery,
     pinnedPlayers,

@@ -3,7 +3,7 @@
 A local NFL stats workbench. Ask a question like "Mahomes passing yards and touchdowns in 2023" and get an answer and a table.
 
 - **Backend:** FastAPI serves a player index and play-by-play Parquet shards, and asks a local model to turn a question into stats and filters.
-- **Frontend:** Vite + React. DuckDB-WASM runs the queries in the browser against the shards. A local model never writes SQL and never sees player ids.
+- **Frontend:** Vite + React. A small columnar engine (`frontend/src/shared/engine/`, hyparquet plus an evaluator for the SQL expressions in `metrics/metrics.json`) runs the queries in the browser, reading only the Parquet columns a query needs over HTTP range requests. A local model never writes queries and never sees player ids.
 
 Everything runs on your machine. Data lives in `backend/data/`.
 
@@ -11,7 +11,7 @@ Everything runs on your machine. Data lives in `backend/data/`.
 
 1. Player names in the question are matched in the browser against the player dictionary (`GET /players/dictionary`). Namesakes are narrowed by the stats asked about, or you pick one.
 2. `POST /nlq/intent` sends the question and the stat/filter catalog to a local model, which returns `{outcome: "query", intent: {stat_ids, filter_ids, granularity}}`, or `{outcome: "unsupported", reason}` when no stat can answer (salary, fantasy points, opinions). The reply is validated, with one retry on a bad reply.
-3. The Explore query builder turns that into SQL and runs it in DuckDB-WASM. The answer text is built from the result rows, not by the model.
+3. The Explore query builder hands the stats and filters to the in-browser engine. The answer text is built from the result rows, not by the model.
 4. Questions default to the regular season unless they mention the playoffs.
 
 ## Setup
@@ -103,6 +103,8 @@ uv run ruff check backend
 
 - Play-by-play has one or two fewer pass attempts than the official tables in some games (Mahomes 2023: one play in week 5 and one in week 11), so rates match the official figures to within about 0.5%, not exactly. Passing yards, touchdowns, receptions and rushing totals for the sampled player-seasons match exactly. Each metric's `reference_values` in `metrics/metrics.json` record the tolerance.
 - Sack, penalty and no-play rows are pass plays in the data. Attempt-based stats (passing yards, passing TDs, completion %, interception rate) leave them out with a `play_filter`; edit that in `metrics/metrics.json` and run `uv run pytest`, which checks every metric against its reference values when data is built.
+- Per game divides by the games a player appeared in within the same season, season type, week and home/away filters. Situational filters (down, quarter, ...) do not shrink that count.
+- The expression language in `metrics/metrics.json` and the filter chips is a SQL subset: `SUM/AVG/COUNT/NULLIF`, `CASE`, `CAST(.. AS DOUBLE)`, arithmetic, comparisons, `AND/OR/NOT`, `LIKE`. `frontend/src/shared/engine/expression.ts` names anything else it cannot run. There is no ad hoc SQL.
 - "Min plays" counts the rows each stat uses: attempts for the filtered stats above, dropbacks (sacks included) for the rest. A passer near the threshold can show some stats and not others.
 - Per-play values for EPA and WPA stats are per dropback; per-play passing yards, TDs, completion % and interception rate are per attempt.
 - No league-wide leaderboards ("who led the league in..."); Ask needs a named player.

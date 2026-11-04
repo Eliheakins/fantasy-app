@@ -4,7 +4,7 @@ import {
   getStatById,
   getStatsByCategory,
 } from "@/shared/config/statDictionary";
-import { describeStat } from "@/shared/lib/queryBuilderSql";
+import { describeStat } from "@/shared/lib/queryBuilder";
 import { cn } from "@/shared/lib/utils";
 import { MAX_SELECTED_STATS, useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
 
