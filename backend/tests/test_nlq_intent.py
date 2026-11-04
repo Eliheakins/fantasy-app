@@ -5,12 +5,13 @@ import json
 import pytest
 from conftest import FILTERS, STATS, FakeLlm
 
-from schemas.nlq import IntentRequest
+from schemas.nlq import IntentRequest, QueryOutcome, UnsupportedOutcome
 from services.nlq_intent import (
     IntentError,
     build_system_prompt,
     extract_json_object,
     parse_intent,
+    parse_reply,
     translate_question,
 )
 
@@ -93,13 +94,43 @@ async def test_translate_question_retries_once_with_the_error_then_succeeds():
     )
     req = IntentRequest(question="Kelce yards per game", stats=STATS, filters=FILTERS)
 
-    intent = await translate_question(client=llm, model="m", req=req)
+    outcome = await translate_question(client=llm, model="m", req=req)
 
-    assert intent.stat_ids == ["rec_yards"]
-    assert intent.granularity == "per_game"
+    assert isinstance(outcome, QueryOutcome)
+    assert outcome.intent.stat_ids == ["rec_yards"]
+    assert outcome.intent.granularity == "per_game"
     retry_messages = llm.calls[1]
     assert retry_messages[-2] == {"role": "assistant", "content": '{"stat_ids": ["nope"]}'}
     assert "Unknown stat_ids" in retry_messages[-1]["content"]
+
+
+async def test_translate_question_returns_unsupported_without_a_retry():
+    llm = FakeLlm(['{"unsupported": "That is an opinion, not a stat."}'])
+    req = IntentRequest(question="Is Mahomes better than Brady?", stats=STATS, filters=FILTERS)
+
+    outcome = await translate_question(client=llm, model="m", req=req)
+
+    assert outcome == UnsupportedOutcome(reason="That is an opinion, not a stat.")
+    assert len(llm.calls) == 1
+
+
+def test_parse_reply_treats_a_blank_reason_as_an_invalid_reply():
+    with pytest.raises(IntentError, match="reason"):
+        parse_reply('{"unsupported": "  "}', stat_ids=STAT_IDS, filter_ids=FILTER_IDS)
+
+
+def test_parse_reply_ignores_stats_when_the_model_says_unsupported():
+    reply = '{"unsupported": "No salary data.", "stat_ids": ["pass_yards"]}'
+
+    outcome = parse_reply(reply, stat_ids=STAT_IDS, filter_ids=FILTER_IDS)
+
+    assert isinstance(outcome, UnsupportedOutcome)
+
+
+def test_system_prompt_tells_the_model_how_to_refuse():
+    prompt = build_system_prompt(STATS, FILTERS)
+
+    assert '{"unsupported":' in prompt
 
 
 async def test_translate_question_raises_after_two_invalid_replies():

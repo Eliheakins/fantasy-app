@@ -19,7 +19,7 @@ import pytest
 from openai import AsyncOpenAI
 
 from core.config import get_settings
-from schemas.nlq import IntentRequest
+from schemas.nlq import IntentRequest, QueryOutcome
 from services.nlq_intent import IntentError, translate_question
 
 EVAL_DIR = Path(__file__).parent
@@ -29,10 +29,14 @@ MIN_PASS_RATE = 0.8
 pytestmark = pytest.mark.eval
 
 
-def _check(
-    case: dict[str, Any], stat_ids: list[str], filter_ids: list[str], granularity: str
-) -> str | None:
+def _check(case: dict[str, Any], outcome: Any) -> str | None:
     """Return why the answer is wrong, or None if it matches the expectation."""
+    if case.get("unsupported"):
+        return None if outcome.outcome == "unsupported" else "answered a question it should refuse"
+    if not isinstance(outcome, QueryOutcome):
+        return f"refused a question it can answer ({outcome.reason})"
+    stat_ids, filter_ids = outcome.intent.stat_ids, outcome.intent.filter_ids
+    granularity = outcome.intent.granularity
     if set(stat_ids) != set(case["stats"]):
         return f"stats {sorted(stat_ids)} != {sorted(case['stats'])}"
     if set(filter_ids) != set(case["filters"]):
@@ -68,11 +72,11 @@ async def test_intent_pass_rate_meets_threshold():
     for case in cases:
         req = IntentRequest(question=case["q"], **catalog)
         try:
-            intent = await translate_question(client=client, model=settings.llm_model, req=req)
+            outcome = await translate_question(client=client, model=settings.llm_model, req=req)
         except IntentError as e:
             failures.append(f"{case['q']!r}: invalid after retry ({e})")
             continue
-        why = _check(case, intent.stat_ids, intent.filter_ids, intent.granularity)
+        why = _check(case, outcome)
         if why:
             failures.append(f"{case['q']!r}: {why}")
     await client.close()

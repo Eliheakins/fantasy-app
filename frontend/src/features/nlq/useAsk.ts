@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { getStatById, type PlayerRole } from "@/shared/config/statDictionary";
 import { fetchPlayerDetail, fetchPlayerDictionary } from "@/shared/lib/api";
 import { type QueryIntent, requestIntent } from "@/shared/lib/nlqApi";
+import { specFromIntent, unsupportedReasons } from "@/shared/lib/querySpec";
 import type { PlayerDictionaryRow } from "@/shared/lib/schemas/playerDictionary";
 import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
 import { MAX_PINNED_PLAYERS, useWorkbenchStore } from "@/stores/useWorkbenchStore";
@@ -49,6 +50,17 @@ export function useAsk() {
         0,
         MAX_PINNED_PLAYERS,
       );
+      const blocked = unsupportedReasons(
+        specFromIntent(
+          next,
+          unique.map((p) => p.gsis_id),
+        ),
+      );
+      if (blocked.length > 0) {
+        setMessage(blocked.join(" "));
+        setPhase("idle");
+        return;
+      }
       const details = await Promise.all(unique.map((p) => fetchPlayerDetail(p.gsis_id)));
       setPins(details.map((d) => ({ player: d.player, shards: d.shards })));
       applyIntent({
@@ -84,7 +96,13 @@ export function useAsk() {
         return;
       }
 
-      const next = await requestIntent(trimmed);
+      const outcome = await requestIntent(trimmed);
+      if (outcome.outcome === "unsupported") {
+        setMessage(outcome.reason);
+        setPhase("idle");
+        return;
+      }
+      const next = outcome.intent;
       const roles = rolesOf(next);
       const sure: PlayerDictionaryRow[] = [];
       const unsure: PlayerMatch[] = [];

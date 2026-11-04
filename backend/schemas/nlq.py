@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
@@ -35,3 +35,18 @@ class QueryIntent(BaseModel):
     stat_ids: list[str] = Field(..., min_length=1)
     filter_ids: list[str] = Field(default_factory=list)
     granularity: Granularity = "total"
+
+
+class QueryOutcome(BaseModel):
+    outcome: Literal["query"] = "query"
+    intent: QueryIntent
+
+
+class UnsupportedOutcome(BaseModel):
+    """No stat or filter can answer the question; `reason` is shown to the user."""
+
+    outcome: Literal["unsupported"] = "unsupported"
+    reason: str = Field(..., min_length=1, max_length=300)
+
+
+IntentOutcome = Annotated[QueryOutcome | UnsupportedOutcome, Field(discriminator="outcome")]
