@@ -9,6 +9,7 @@ import { Callout } from "@/shared/components/Callout";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/shared/components/ui/card";
 import { Textarea } from "@/shared/components/ui/textarea";
+import { TEAMS } from "@/shared/config/teams";
 import { isLeagueQuery, serializeQuery } from "@/shared/lib/queryUrl";
 import { useQueryState } from "@/shared/lib/useQueryState";
 
@@ -50,8 +51,12 @@ export function NLQPanel() {
       statIds: state.stats,
       granularity: state.granularity,
       filterIds: state.filters,
-      nameByGsis: new Map(exec.namedPlayers.map((p) => [p.gsis_id, p.full_name ?? p.gsis_id])),
+      nameByGsis:
+        state.subject === "teams"
+          ? new Map(TEAMS.map((t) => [t.id, t.name]))
+          : new Map(exec.namedPlayers.map((p) => [p.gsis_id, p.full_name ?? p.gsis_id])),
       ranked: isLeagueQuery(state),
+      idColumn: state.subject === "teams" ? "team_id" : "player_id",
     });
   }, [showingAnswer, exec.result, exec.namedPlayers, state]);
 

@@ -8,9 +8,10 @@ import { CHIP_COMBO_PHRASES, CHIP_PHRASES, type FilterChipGroup } from "@/shared
 import { getStatById, type PlayerRole, STAT_DEFINITIONS } from "@/shared/config/statDictionary";
 import { MAX_SELECTED_STATS, type QueryOrder } from "@/shared/lib/queryUrl";
 import type { QueryIntent } from "@/shared/lib/schemas/nlqIntent";
-import type { GranularityMode, Split } from "@/shared/types/queryBuilder";
+import type { GranularityMode, Side, Split } from "@/shared/types/queryBuilder";
 
 import { NAME_SUFFIXES, type PlayerMatch, tokenize } from "./resolvePlayers";
+import { findTeams } from "./resolveTeams";
 
 export interface RuleContext {
   /** Players already found in the question (their words are not part of the stat wording). */
@@ -28,7 +29,8 @@ export interface Leaderboard {
 }
 
 export type RuleResult =
-  | { status: "resolved"; intent: QueryIntent; leaderboard?: Leaderboard }
+  /** `team`: the question is about teams (none named means a ranking of all 32). */
+  | { status: "resolved"; intent: QueryIntent; leaderboard?: Leaderboard; team?: { ids: string[]; side: Side } }
   /** A question the data cannot answer, said with certainty (a season it does not have). */
   | { status: "unsupported"; reason: string }
   /** Understood in part; the wording leaves a real choice open. `unrecognized` lists words it could not place. */
@@ -163,6 +165,13 @@ const LEADERBOARD_CUES = new Set([
 ]);
 /** Words a leaderboard question uses around its stat; read as filler only when no player is named. */
 const LEADERBOARD_WORDS = new Set([...LEADERBOARD_CUES, "who", "league", "nfl", "lead"]);
+/** Words that make a question about teams, and that pick the side of the ball. */
+const TEAM_WORDS = new Set(["team", "teams"]);
+const DEFENSE_WORDS = new Set(["allowed", "allow", "allows", "against", "defense", "defensive"]);
+const OFFENSE_WORDS = new Set(["offense", "offensive"]);
+/** "allowed by the Chiefs", "which team": read as filler only in a team question. */
+const TEAM_FILLER = new Set(["by", "which"]);
+
 /** "by season", "each game", "every year": a word that asks for a split, then the unit. */
 const SPLIT_LEADS = new Set(["by", "each", "every", "per"]);
 /** "per game" is a granularity, so "per" only splits by season. */
@@ -295,8 +304,17 @@ const ambiguous = (reason: string, unrecognized?: string[]): RuleResult =>
 export function parseRules(question: string, context: RuleContext): RuleResult {
   const { matches, seasons, chipGroups } = context;
   const tokensForCue = wordsOf(question);
-  const isLeaderboard = matches.length === 0 && tokensForCue.some((t) => LEADERBOARD_CUES.has(t));
-  if (matches.length === 0 && !isLeaderboard) {
+  const teams = findTeams(tokensForCue);
+  const asksTeams = teams.length > 0 || tokensForCue.some((t) => TEAM_WORDS.has(t));
+  if (teams.length > 0 && matches.length > 0) {
+    // "Mahomes against the Chiefs" is an opponent filter, which the data cannot apply. The team words
+    // are listed as unread, so a model answer that ignores them says so.
+    const inTeam = (at: number) => teams.some((t) => at >= t.start && at < t.start + t.length);
+    const unread = tokensForCue.filter((t, at) => inTeam(at) || DEFENSE_WORDS.has(t) || OFFENSE_WORDS.has(t));
+    return ambiguous("It names a player and a team; ask about one of them.", unique(unread));
+  }
+  const isLeaderboard = matches.length === 0 && teams.length === 0 && tokensForCue.some((t) => LEADERBOARD_CUES.has(t));
+  if (matches.length === 0 && teams.length === 0 && !isLeaderboard) {
     return { status: "unknown", reason: "No player was named." };
   }
   if (seasons.length === 0) {
@@ -319,6 +337,23 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
     for (let i = match.start; i < end && i < tokens.length; i++) {
       used[i] = true;
     }
+  }
+  for (const team of teams) {
+    for (let i = team.start; i < team.start + team.length; i++) {
+      used[i] = true;
+    }
+  }
+  let side: Side = "offense";
+  if (asksTeams) {
+    const defense = tokens.some((t) => DEFENSE_WORDS.has(t));
+    if (defense && tokens.some((t) => OFFENSE_WORDS.has(t))) {
+      return ambiguous("It asks for a team's offense and defense at once.");
+    }
+    side = defense ? "defense" : "offense";
+    tokens.forEach((token, at) => {
+      used[at] ||=
+        TEAM_WORDS.has(token) || DEFENSE_WORDS.has(token) || OFFENSE_WORDS.has(token) || TEAM_FILLER.has(token);
+    });
   }
   const isName = [...used];
 
@@ -551,8 +586,15 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
     filter_ids: unique(filterAt.sort((a, b) => a.at - b.at).map((f) => f.id)),
     granularity: rate.length > 0 ? "per_play" : (requested ?? "total"),
   };
+  if (asksTeams && statIds.some((id) => getStatById(id)?.category.startsWith("ngs_"))) {
+    return {
+      status: "unsupported",
+      reason: "Next Gen Stats are per-player weekly values, so a team has no total for them.",
+    };
+  }
+  const team = asksTeams ? { team: { ids: unique(teams.map((t) => t.id)), side } } : {};
   if (!isLeaderboard) {
-    return { status: "resolved", intent };
+    return { status: "resolved", intent, ...team };
   }
   const metric = statIds[0]!;
   const direction = rankDirection(tokens, metric);
@@ -565,6 +607,7 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
     status: "resolved",
     intent,
     leaderboard: { order: { metric, direction }, limit, minPlays },
+    ...team,
   };
 }
 

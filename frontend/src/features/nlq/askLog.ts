@@ -20,6 +20,9 @@ const loggedQuerySchema = z.object({
   limit: z.number().int().nullable(),
   // Logs written before splits existed have no split.
   split: z.enum(["season", "week"]).nullable().default(null),
+  subject: z.enum(["players", "teams"]).default("players"),
+  teams: z.array(z.string()).default([]),
+  side: z.enum(["offense", "defense"]).default("offense"),
 });
 
 const entrySchema = z.object({
@@ -100,7 +103,7 @@ export function saveLog(storage: StorageLike, entries: readonly AskLogEntry[]): 
 /** Corrected answers as eval cases: the user's fix is the expected answer. Leaderboards are left out. */
 export function toEvalCases(entries: readonly AskLogEntry[]): EvalCaseDraft[] {
   return entries.flatMap((e) =>
-    e.corrected && e.corrected.order === null && e.corrected.limit === null
+    e.corrected && e.corrected.subject === "players" && e.corrected.order === null && e.corrected.limit === null
       ? [
           {
             q: e.question,
