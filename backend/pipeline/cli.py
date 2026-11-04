@@ -21,6 +21,7 @@ from pipeline.nfl_pipeline import (
     format_null_report,
     null_report,
 )
+from pipeline.player_game import build_player_game, write_player_game
 
 _backend_root = Path(__file__).resolve().parent.parent
 _default_data = _backend_root / "data"
@@ -69,6 +70,10 @@ def run_build(data_dir: Path, years: list[int]) -> None:
         _maybe_gc()
 
     create_player_index(data_dir, years)
+
+    player_game = build_player_game(years)
+    write_player_game(player_game, data_dir)
+    print(f"✅ Player-game table: {player_game.height} rows")
 
     manifest = build_manifest(data_dir)
     write_manifest(manifest, data_dir)

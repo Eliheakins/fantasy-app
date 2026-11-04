@@ -15,6 +15,7 @@ from schemas.manifest import MANIFEST_FILENAME, FileEntry, Manifest, SeasonEntry
 
 SHARD_PATTERN = re.compile(r"^nfl_pbp_(\d{4})\.parquet$")
 PLAYER_INDEX_FILENAME = "player_index.parquet"
+PLAYER_GAME_FILENAME = "player_game.parquet"
 
 
 def _summarize_shard(path: Path, season: int) -> SeasonEntry:
@@ -31,21 +32,23 @@ def _summarize_shard(path: Path, season: int) -> SeasonEntry:
     )
 
 
+def _file_entry(path: Path) -> FileEntry | None:
+    if not path.is_file():
+        return None
+    return FileEntry(path=path.name, rows=pq.read_metadata(path).num_rows)
+
+
 def build_manifest(data_dir: Path, *, built_at: datetime | None = None) -> Manifest:
     """Describe every shard in `data_dir`, not only the ones the current run rebuilt."""
     shards = sorted(
         (int(m.group(1)), p) for p in data_dir.iterdir() if (m := SHARD_PATTERN.match(p.name))
     )
-    index_path = data_dir / PLAYER_INDEX_FILENAME
     return Manifest(
         built_at=(built_at or datetime.now(UTC)).isoformat(),
         nflreadpy_version=version("nflreadpy"),
         seasons=[_summarize_shard(p, season) for season, p in shards],
-        player_index=(
-            FileEntry(path=index_path.name, rows=pq.read_metadata(index_path).num_rows)
-            if index_path.is_file()
-            else None
-        ),
+        player_index=_file_entry(data_dir / PLAYER_INDEX_FILENAME),
+        player_game=_file_entry(data_dir / PLAYER_GAME_FILENAME),
     )
 
 

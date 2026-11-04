@@ -63,6 +63,16 @@ def test_player_index_is_listed_when_present(data_dir: Path):
     assert (manifest.player_index.path, manifest.player_index.rows) == ("player_index.parquet", 2)
 
 
+def test_player_game_table_is_listed_when_present_and_none_otherwise(data_dir: Path):
+    assert build_manifest(data_dir, built_at=BUILT_AT).player_game is None
+
+    pl.DataFrame({"gsis_id": ["1", "2", "3"]}).write_parquet(data_dir / "player_game.parquet")
+    entry = build_manifest(data_dir, built_at=BUILT_AT).player_game
+
+    assert entry is not None
+    assert (entry.path, entry.rows) == ("player_game.parquet", 3)
+
+
 def test_other_files_are_ignored(data_dir: Path):
     (data_dir / "notes.txt").touch()
     (data_dir / "nfl_pbp_20.parquet").touch()

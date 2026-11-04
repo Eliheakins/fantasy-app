@@ -31,6 +31,13 @@ describe("manifestSchema", () => {
     expect(manifestSchema.safeParse({ ...VALID, player_index: null }).success).toBe(true);
   });
 
+  it("reads the player-game table entry, and treats a missing key as no table", () => {
+    const withTable = { ...VALID, player_game: { path: "player_game.parquet", rows: 94848 } };
+
+    expect(manifestSchema.parse(withTable).player_game?.rows).toBe(94848);
+    expect(manifestSchema.parse(VALID).player_game).toBeNull();
+  });
+
   it("rejects a manifest without seasons", () => {
     expect(manifestSchema.safeParse({ ...VALID, seasons: "nope" }).success).toBe(false);
   });

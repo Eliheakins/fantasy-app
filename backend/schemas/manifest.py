@@ -31,6 +31,9 @@ class Manifest(BaseModel):
     nflreadpy_version: str
     seasons: list[SeasonEntry]
     player_index: FileEntry | None = None
+    player_game: FileEntry | None = Field(
+        None, description="Tier-1 table: one row per player per game, official counting totals"
+    )
 
     @property
     def data_through(self) -> str | None:
