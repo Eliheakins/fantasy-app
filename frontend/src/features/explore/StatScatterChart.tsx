@@ -208,10 +208,12 @@ export function buildScatterPoints(
   xCol: string,
   yCol: string,
   nameByGsis: Map<string, string>,
+  /** Which column names the row: player_id, or team_id for team rows. */
+  idColumn: "player_id" | "team_id" = "player_id",
 ): ScatterPoint[] {
   const out: ScatterPoint[] = [];
   for (const row of rows) {
-    const pid = String(row.player_id ?? "");
+    const pid = String(row[idColumn] ?? "");
     if (!pid) {
       continue;
     }

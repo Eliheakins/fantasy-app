@@ -397,6 +397,8 @@ describe("team subjects in the URL", () => {
 
   it("switches the subject and the side", () => {
     expect(setSubject(FULL, "teams").subject).toBe("teams");
+    const ranked = { ...FULL, order: { metric: "pass_yards", direction: "desc" as const }, limit: 5 };
+    expect(setSubject(ranked, "teams")).toMatchObject({ order: null, limit: null });
     expect(setSide(teams, "offense").side).toBe("offense");
   });
 

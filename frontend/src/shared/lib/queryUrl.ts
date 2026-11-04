@@ -224,8 +224,9 @@ export function setRanking(state: QueryState, order: QueryOrder | null, limit = 
   return { ...state, order, limit: clampLimit(limit) };
 }
 
+/** A ranking belongs to the subject it was set for; carried over it would silently rank everyone. */
 export function setSubject(state: QueryState, subject: QueryState["subject"]): QueryState {
-  return { ...state, subject };
+  return subject === state.subject ? state : { ...state, subject, order: null, limit: null };
 }
 
 export function setSide(state: QueryState, side: Side): QueryState {

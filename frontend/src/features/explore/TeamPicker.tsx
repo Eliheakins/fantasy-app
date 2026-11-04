@@ -47,7 +47,7 @@ export function TeamPicker() {
             key={team.id}
             value={team.id}
             disabled={full && !state.teams.includes(team.id)}
-            aria-label={team.name}
+            aria-label={`${team.id}, ${team.name}`}
             title={team.name}
             className="rounded-md px-1 text-xs data-[disabled]:cursor-not-allowed data-[disabled]:opacity-40"
           >
@@ -55,8 +55,10 @@ export function TeamPicker() {
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
-      <p className="text-[10px] text-ink-muted">
-        Pick up to {MAX_PINNED_TEAMS} teams to compare, or none and set a ranking to rank all 32.
+      <p className="text-[10px] text-ink-muted" aria-live="polite">
+        {full
+          ? `${MAX_PINNED_TEAMS} teams picked, the most at once; remove one to pick another.`
+          : `Pick up to ${MAX_PINNED_TEAMS} teams to compare, or none and set a ranking to rank all 32.`}
       </p>
     </div>
   );
