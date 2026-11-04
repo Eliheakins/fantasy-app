@@ -64,6 +64,7 @@ def app(player_index: pl.DataFrame) -> Iterator[FastAPI]:
     yield app
     app.dependency_overrides.clear()
     app_state.player_index = None
+    app_state.manifest = None
 
 
 @pytest.fixture

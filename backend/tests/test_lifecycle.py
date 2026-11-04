@@ -10,6 +10,14 @@ from fastapi import FastAPI
 
 from core import lifecycle
 from core.state import app_state
+from pipeline.manifest import build_manifest, write_manifest
+
+
+def _write_shard(data_dir: Path) -> None:
+    pl.DataFrame(
+        {"season": [2026], "week": [9], "season_type": ["REG"], "defenders_in_box": [None]},
+        schema_overrides={"defenders_in_box": pl.Int32},
+    ).write_parquet(data_dir / "nfl_pbp_2026.parquet")
 
 
 @pytest.fixture
@@ -25,6 +33,7 @@ def settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Simple
     monkeypatch.setattr(lifecycle, "get_settings", lambda: fake)
     yield fake
     app_state.player_index = None
+    app_state.manifest = None
     app_state.pbp_shards = []
     app_state.llm_client = None
 
@@ -40,6 +49,25 @@ async def test_lifespan_loads_index_and_shards_and_starts_the_client(settings: S
         assert app_state.llm_client is not None
 
     assert app_state.llm_client is None
+
+
+async def test_lifespan_loads_the_manifest_when_one_was_built(settings: SimpleNamespace):
+    _write_shard(settings.data_dir)
+    write_manifest(build_manifest(settings.data_dir), settings.data_dir)
+
+    async with lifecycle.lifespan(FastAPI()):
+        assert app_state.manifest is not None
+        assert app_state.manifest.data_through == "2026 week 9"
+
+
+async def test_lifespan_starts_without_a_manifest_when_the_file_is_invalid(
+    settings: SimpleNamespace,
+):
+    (settings.data_dir / "manifest.json").write_text("{not json")
+
+    async with lifecycle.lifespan(FastAPI()):
+        assert app_state.manifest is None
+        assert app_state.llm_client is not None
 
 
 async def test_lifespan_starts_degraded_when_the_player_index_is_missing(settings: SimpleNamespace):

@@ -12,6 +12,7 @@ import gc
 import os
 from pathlib import Path
 
+from pipeline.manifest import build_manifest, write_manifest
 from pipeline.nfl_pipeline import (
     build_stitched_for_year,
     create_player_index,
@@ -61,6 +62,10 @@ def run_build(data_dir: Path, years: list[int]) -> None:
         _maybe_gc()
 
     create_player_index(data_dir, years)
+
+    manifest = build_manifest(data_dir)
+    write_manifest(manifest, data_dir)
+    print(f"✅ Manifest: {len(manifest.seasons)} seasons, data through {manifest.data_through}")
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -6,6 +6,8 @@ import pytest
 from conftest import FILTERS, STATS
 
 from api.deps import get_llm_client
+from core.state import app_state
+from schemas.manifest import Manifest, SeasonEntry
 from services.llm_client import chat_text
 
 
@@ -21,7 +23,40 @@ async def test_health_reports_loaded_index(client: httpx.AsyncClient):
     res = await client.get("/health")
 
     assert res.status_code == 200
-    assert res.json() == {"status": "ok", "player_index_loaded": True}
+    assert res.json() == {
+        "status": "ok",
+        "player_index_loaded": True,
+        "data_through": None,
+        "seasons": [],
+    }
+
+
+async def test_health_reports_how_current_the_data_is(client: httpx.AsyncClient):
+    app_state.manifest = Manifest(
+        built_at="2026-11-04T12:00:00+00:00",
+        nflreadpy_version="1",
+        seasons=[
+            SeasonEntry(
+                season=2025,
+                path="nfl_pbp_2025.parquet",
+                rows=1,
+                max_week=22,
+                has_participation=True,
+            ),
+            SeasonEntry(
+                season=2026,
+                path="nfl_pbp_2026.parquet",
+                rows=1,
+                max_week=9,
+                has_participation=False,
+            ),
+        ],
+    )
+
+    body = (await client.get("/health")).json()
+
+    assert body["data_through"] == "2026 week 9"
+    assert body["seasons"] == [2025, 2026]
 
 
 async def test_players_dictionary_skips_rows_without_id_and_lowercases_key(

@@ -47,3 +47,7 @@ class PlayerDetailResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     player_index_loaded: bool
+    data_through: str | None = Field(
+        None, description='How current the data is, e.g. "2026 week 9"'
+    )
+    seasons: list[int] = Field(default_factory=list, description="Seasons with a shard")
