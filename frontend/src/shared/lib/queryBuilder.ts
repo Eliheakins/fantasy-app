@@ -80,23 +80,24 @@ export function mergeStatQueryResults(
   results: QueryResult[],
   selectedStatIds: string[],
   split?: Split | null,
+  idColumn: "player_id" | "team_id" = "player_id",
 ): QueryResult {
   const merged = new Map<string, Record<string, unknown>>();
   const groupColumns = splitColumns(split);
 
   for (const res of results) {
     for (const row of res.rows) {
-      const pid = String(row.player_id ?? "");
+      const pid = String(row[idColumn] ?? "");
       if (!pid) {
         continue;
       }
       const key = [pid, ...groupColumns.map((c) => String(row[c]))].join("|");
       if (!merged.has(key)) {
-        merged.set(key, { player_id: pid, ...Object.fromEntries(groupColumns.map((c) => [c, row[c]])) });
+        merged.set(key, { [idColumn]: pid, ...Object.fromEntries(groupColumns.map((c) => [c, row[c]])) });
       }
       const acc = merged.get(key)!;
       for (const col of res.columns) {
-        if (col === "player_id") {
+        if (col === idColumn) {
           continue;
         }
         acc[col] = row[col];
@@ -104,9 +105,9 @@ export function mergeStatQueryResults(
     }
   }
 
-  const columns = ["player_id", ...groupColumns, ...selectedStatIds.map(metricSelectAlias)];
+  const columns = [idColumn, ...groupColumns, ...selectedStatIds.map(metricSelectAlias)];
   const rows = Array.from(merged.values()).map((row) => {
-    const out: Record<string, unknown> = { player_id: row.player_id };
+    const out: Record<string, unknown> = { [idColumn]: row[idColumn] };
     for (const c of groupColumns) {
       out[c] = row[c];
     }

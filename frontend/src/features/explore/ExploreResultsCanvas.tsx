@@ -10,6 +10,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
 import { getStatById } from "@/shared/config/statDictionary";
+import { getTeamById } from "@/shared/config/teams";
 import {
   formatMetricValueHeader,
   metricSelectAlias,
@@ -65,6 +66,9 @@ export function ExploreResultsCanvas({
     }
     return headers;
   }, [selectedStatIds, activeGranularity]);
+
+  const forTeams = state.subject === "teams";
+  const idColumn = forTeams ? "team_id" : "player_id";
 
   const nameByGsis = useMemo(() => {
     const m = new Map<string, string>();
@@ -182,9 +186,9 @@ export function ExploreResultsCanvas({
               <table className="w-full border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b border-border bg-input/60">
-                    <th className="px-3 py-2 font-medium text-ink-muted">Player</th>
+                    <th className="px-3 py-2 font-medium text-ink-muted">{forTeams ? "Team" : "Player"}</th>
                     {result.columns
-                      .filter((col) => col !== "player_id")
+                      .filter((col) => col !== idColumn)
                       .map((col) => (
                         <th key={col} className="px-3 py-2 font-medium text-ink-muted">
                           {columnHeaders.get(col) ?? col}
@@ -194,13 +198,13 @@ export function ExploreResultsCanvas({
                 </thead>
                 <tbody>
                   {result.rows.map((row, i) => {
-                    const pid = String(row.player_id ?? "");
-                    const label = nameByGsis.get(pid) ?? pid;
+                    const pid = String(row[idColumn] ?? "");
+                    const label = forTeams ? (getTeamById(pid)?.name ?? pid) : (nameByGsis.get(pid) ?? pid);
                     return (
                       <tr key={`${pid}-${i}`} className="border-b border-border/80 last:border-0">
                         <td className="px-3 py-2 font-medium text-ink">{label}</td>
                         {result.columns
-                          .filter((col) => col !== "player_id")
+                          .filter((col) => col !== idColumn)
                           .map((col) => (
                             <td key={col} className="px-3 py-2 font-mono text-accent">
                               {formatQueryValue(row[col])}

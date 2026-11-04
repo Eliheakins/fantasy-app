@@ -32,8 +32,11 @@ export function useExploreQueryExecution() {
   const [running, setRunning] = useState(false);
   const runLatest = useRef(createLatestRunner()).current;
 
-  const { players, stats, granularity, minPlays, order, limit, split } = state;
+  const { players, stats, granularity, minPlays, order, limit, split, subject, teams, side } = state;
   const league = isLeagueQuery(state);
+  const forTeams = subject === "teams";
+  // Whoever the rows are about is named, or the query ranks everyone.
+  const hasSubject = league || (forTeams ? teams.length > 0 : players.length > 0);
 
   const executeQuery = useCallback(async () => {
     setError(null);
@@ -46,8 +49,8 @@ export function useExploreQueryExecution() {
       setError(message);
     };
 
-    if (players.length === 0 && !league) {
-      invalid("Pin at least one player in The Who, then run again.");
+    if (!hasSubject) {
+      invalid(forTeams ? "Pick at least one team in The Who, then run again." : "Pin at least one player in The Who, then run again.");
       return;
     }
     if (sources.length === 0) {
@@ -76,6 +79,7 @@ export function useExploreQueryExecution() {
             order,
             limit,
             split,
+            teams: forTeams ? { ids: league ? null : teams, side } : null,
             chipGroups: getFilterChipGroups(),
           },
           browserColumnStore,
@@ -97,12 +101,12 @@ export function useExploreQueryExecution() {
         setRunning(false);
       }
     }
-  }, [players, league, order, limit, split, sources, playerGame, stats, minPlays, filterChipState, granularity, runLatest, currentKey]);
+  }, [players, league, hasSubject, forTeams, teams, side, order, limit, split, sources, playerGame, stats, minPlays, filterChipState, granularity, runLatest, currentKey]);
 
   useEffect(() => () => runLatest.cancel(), [runLatest]);
 
   useEffect(() => {
-    if ((players.length === 0 && !league) || sources.length === 0) {
+    if (!hasSubject || sources.length === 0) {
       // Nothing to show: stop any run still in flight so it cannot land results for players no longer pinned.
       runLatest.cancel();
       setRunning(false);
@@ -119,11 +123,11 @@ export function useExploreQueryExecution() {
       return;
     }
     void executeQuery();
-  }, [players, league, stats, sources, executeQuery, runLatest]);
+  }, [hasSubject, stats, sources, executeQuery, runLatest]);
 
   // Names for every row shown: the pinned players, or the players a leaderboard ranked.
   const shown = resultKey === currentKey ? result : null;
-  const rowPlayers = usePinnedPlayers(league ? (shown?.rows ?? []).map((r) => String(r.player_id)) : []);
+  const rowPlayers = usePinnedPlayers(league && !forTeams ? (shown?.rows ?? []).map((r) => String(r.player_id)) : []);
 
   return {
     result: shown,

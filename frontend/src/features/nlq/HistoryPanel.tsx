@@ -5,7 +5,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/shared/components/ui/card";
 import { getStatById } from "@/shared/config/statDictionary";
 import { getFilterChipGroups } from "@/shared/lib/filterChipGroups";
-import { serializeQuery } from "@/shared/lib/queryUrl";
+import { EMPTY_QUERY, serializeQuery } from "@/shared/lib/queryUrl";
 
 import type { AskLogEntry, LoggedQuery } from "./askLog";
 import { toEvalCases } from "./askLog";
@@ -32,7 +32,7 @@ const reopenSearch = (entry: AskLogEntry): string | null => {
     return null;
   }
   const query = entry.corrected ?? entry.outcome.query;
-  const params = serializeQuery({ ...query, minPlays: 0 });
+  const params = serializeQuery({ ...EMPTY_QUERY, ...query });
   params.set("q", entry.question);
   return params.toString();
 };

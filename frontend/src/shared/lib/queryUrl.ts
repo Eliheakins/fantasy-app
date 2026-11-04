@@ -5,11 +5,13 @@
  * cleaned here: unknown ids are dropped, lists are capped, numbers are clamped.
  */
 import { getStatById } from "@/shared/config/statDictionary";
-import type { GranularityMode, Split } from "@/shared/types/queryBuilder";
+import { getTeamById } from "@/shared/config/teams";
+import type { GranularityMode, Side, Split } from "@/shared/types/queryBuilder";
 
 /** Max metrics selectable at once (matches the model's cap in `MAX_INTENT_STATS`). */
 export const MAX_SELECTED_STATS = 5;
 export const MAX_PINNED_PLAYERS = 5;
+export const MAX_PINNED_TEAMS = 5;
 export const MAX_MIN_PLAYS = 500;
 export const MAX_LIMIT = 100;
 export const DEFAULT_LIMIT = 10;
@@ -29,6 +31,12 @@ export interface QueryState {
   limit: number | null;
   /** One row per player and season or week, instead of one per player. */
   split: Split | null;
+  /** Who the rows are: players (pinned in `players`) or teams (in `teams`). */
+  subject: "players" | "teams";
+  /** Team ids from `shared/config/teams`. */
+  teams: string[];
+  /** A team's own plays, or the plays against it. */
+  side: Side;
 }
 
 export interface QueryOrder {
@@ -45,6 +53,9 @@ export const EMPTY_QUERY: QueryState = {
   order: null,
   limit: null,
   split: null,
+  subject: "players",
+  teams: [],
+  side: "offense",
 };
 
 const KEYS = {
@@ -56,6 +67,9 @@ const KEYS = {
   order: "o",
   limit: "n",
   split: "by",
+  subject: "who",
+  teams: "t",
+  side: "side",
 } as const;
 const SPLITS: readonly Split[] = ["season", "week"];
 const GRANULARITIES: readonly GranularityMode[] = ["total", "per_game", "per_play"];
@@ -86,7 +100,8 @@ function parseLimit(value: string | null): number | null {
 
 /** True for a league-wide leaderboard: no players named, but an order and a limit. */
 export function isLeagueQuery(state: QueryState): boolean {
-  return state.players.length === 0 && state.order !== null && state.limit !== null;
+  const named = state.subject === "teams" ? state.teams : state.players;
+  return named.length === 0 && state.order !== null && state.limit !== null;
 }
 
 /** Rows for a ranking: a whole number from 1 to MAX_LIMIT, or the default when it is not a number. */
@@ -120,6 +135,9 @@ export function parseQuery(params: URLSearchParams, knownFilterIds?: ReadonlySet
     // A limit without an order would cut the rows unsorted, so it only counts alongside one.
     limit: order ? parseLimit(params.get(KEYS.limit)) : null,
     split: SPLITS.find((s) => s === params.get(KEYS.split)) ?? null,
+    subject: params.get(KEYS.subject) === "teams" ? "teams" : "players",
+    teams: unique(params.getAll(KEYS.teams).filter((id) => getTeamById(id))).slice(0, MAX_PINNED_TEAMS),
+    side: params.get(KEYS.side) === "defense" ? "defense" : "offense",
   };
 }
 
@@ -147,6 +165,13 @@ export function writeQuery(base: URLSearchParams, state: QueryState): URLSearchP
   if (state.split) {
     next.set(KEYS.split, state.split);
   }
+  if (state.subject === "teams") {
+    next.set(KEYS.subject, "teams");
+  }
+  state.teams.forEach((id) => next.append(KEYS.teams, id));
+  if (state.side === "defense") {
+    next.set(KEYS.side, "defense");
+  }
   return next;
 }
 
@@ -157,7 +182,7 @@ export function ignoredFilterIds(params: URLSearchParams, state: QueryState): st
 
 /** Identifies a query, so a result can be matched to the query that produced it. */
 export function queryKey(state: QueryState): string {
-  return JSON.stringify([state.players, state.stats, state.filters, state.granularity, state.minPlays, state.order, state.limit, state.split]);
+  return JSON.stringify([state.players, state.stats, state.filters, state.granularity, state.minPlays, state.order, state.limit, state.split, state.subject, state.teams, state.side]);
 }
 
 export function serializeQuery(state: QueryState): URLSearchParams {
@@ -197,6 +222,24 @@ export function setRanking(state: QueryState, order: QueryOrder | null, limit = 
     return state;
   }
   return { ...state, order, limit: clampLimit(limit) };
+}
+
+export function setSubject(state: QueryState, subject: QueryState["subject"]): QueryState {
+  return { ...state, subject };
+}
+
+export function setSide(state: QueryState, side: Side): QueryState {
+  return { ...state, side };
+}
+
+export function toggleTeam(state: QueryState, id: string): QueryState {
+  if (state.teams.includes(id)) {
+    return { ...state, teams: state.teams.filter((t) => t !== id) };
+  }
+  if (!getTeamById(id) || state.teams.length >= MAX_PINNED_TEAMS) {
+    return state;
+  }
+  return { ...state, teams: [...state.teams, id] };
 }
 
 export function setSplit(state: QueryState, split: Split | null): QueryState {

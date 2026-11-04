@@ -6,7 +6,14 @@ import { getPlayerDictionary } from "@/shared/lib/players";
 import { type QueryIntent, requestIntent } from "@/shared/lib/nlqApi";
 import { buildIntentCatalog } from "@/shared/lib/nlqCatalog";
 import { getAllFilterChipIds } from "@/shared/config/queryBuilderOptions";
-import { isLeagueQuery, MAX_PINNED_PLAYERS, parseQuery, type QueryState, writeQuery } from "@/shared/lib/queryUrl";
+import {
+  EMPTY_QUERY,
+  isLeagueQuery,
+  MAX_PINNED_PLAYERS,
+  parseQuery,
+  type QueryState,
+  writeQuery,
+} from "@/shared/lib/queryUrl";
 import { specFromIntent, unsupportedReasons } from "@/shared/lib/querySpec";
 import type { PlayerDictionaryRow } from "@/shared/lib/schemas/players";
 import { useQueryState } from "@/shared/lib/useQueryState";
@@ -168,6 +175,7 @@ export function useAsk() {
       }
       answer(
         {
+          ...EMPTY_QUERY,
           players: ids,
           stats: next.stat_ids,
           filters: withDefaultSeasonType(next.filter_ids),
@@ -190,6 +198,7 @@ export function useAsk() {
     (next: QueryIntent, board: Leaderboard, asked: string) => {
       answer(
         {
+          ...EMPTY_QUERY,
           players: [],
           stats: next.stat_ids,
           filters: withDefaultSeasonType(next.filter_ids),
