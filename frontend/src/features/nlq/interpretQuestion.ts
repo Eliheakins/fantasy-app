@@ -4,7 +4,8 @@ import type { IntentOutcome, QueryIntent } from "@/shared/lib/schemas/nlqIntent"
 import type { PlayerMatch } from "./resolvePlayers";
 import { parseRules } from "./ruleParser";
 
-export type AnswerPath = "rules" | "model";
+/** "saved" is an answer the user corrected earlier, replayed without asking anything. */
+export type AnswerPath = "rules" | "model" | "saved";
 
 export type Interpretation =
   /** `unrecognized` (model path only): words the rules could not place, so a misread is visible. */
