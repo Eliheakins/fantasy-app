@@ -8,7 +8,7 @@ import polars as pl
 import pytest
 from fastapi import FastAPI
 
-from core import lifecycle
+from core import lifecycle, manifest_state
 from core.state import app_state
 from pipeline.manifest import build_manifest, write_manifest
 
@@ -67,7 +67,7 @@ async def test_lifespan_starts_when_the_manifest_cannot_be_read_at_all(
     def unreadable(data_dir: Path):
         raise PermissionError("denied")
 
-    monkeypatch.setattr(lifecycle, "read_manifest", unreadable)
+    monkeypatch.setattr(manifest_state, "read_manifest", unreadable)
 
     async with lifecycle.lifespan(FastAPI()):
         assert app_state.manifest is None

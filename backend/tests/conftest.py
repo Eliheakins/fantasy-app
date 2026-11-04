@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Callable, Iterator
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -9,7 +10,7 @@ import pytest
 from fastapi import FastAPI
 from main import create_app
 
-from api.deps import get_llm_client
+from api.deps import get_llm_client, get_settings_dep
 from core.state import app_state
 from schemas.nlq import CatalogFilter, CatalogStat
 
@@ -49,11 +50,24 @@ class FakeLlm:
 
 
 @pytest.fixture
-def app() -> Iterator[FastAPI]:
+def data_dir(tmp_path: Path) -> Path:
+    """The folder the app under test reads its data from; empty until a test builds something."""
+    return tmp_path
+
+
+@pytest.fixture
+def app(data_dir: Path) -> Iterator[FastAPI]:
     app = create_app()
+    app.dependency_overrides[get_settings_dep] = lambda: SimpleNamespace(
+        data_dir=data_dir,
+        llm_model="test-model",
+        llm_base_url="http://fake-llm/v1",
+        llm_timeout_seconds=1.0,
+    )
     yield app
     app.dependency_overrides.clear()
     app_state.manifest = None
+    app_state.manifest_mtime = None
 
 
 @pytest.fixture
