@@ -10,7 +10,7 @@ Everything runs on your machine. Data lives in `backend/data/`.
 ## How Ask works
 
 1. Player names in the question are matched in the browser against the player dictionary (`GET /players/dictionary`). Namesakes are narrowed by the stats asked about, or you pick one.
-2. `POST /nlq/intent` sends the question and the stat/filter catalog to a local model, which returns `{stat_ids, filter_ids, granularity}`. The reply is validated, with one retry on a bad reply.
+2. `POST /nlq/intent` sends the question and the stat/filter catalog to a local model, which returns `{outcome: "query", intent: {stat_ids, filter_ids, granularity}}`, or `{outcome: "unsupported", reason}` when no stat can answer (salary, fantasy points, opinions). The reply is validated, with one retry on a bad reply.
 3. The Explore query builder turns that into SQL and runs it in DuckDB-WASM. The answer text is built from the result rows, not by the model.
 4. Questions default to the regular season unless they mention the playoffs.
 
@@ -96,11 +96,13 @@ uv run ruff check backend
 | `backend/pipeline/` | Data build from nflverse: play-by-play shards, the player-game table, the manifest (`build_data.py` is the entry point) |
 | `frontend/src/features/nlq/` | Ask: name matching, hook, answer text, panel |
 | `frontend/src/features/explore/` | Query builder and results canvas (also runs Ask's query) |
-| `frontend/src/shared/config/` | Stat dictionary and filter chips, the source for the model's catalog |
+| `metrics/metrics.json` | The stat definitions: SQL, aliases, row filters and reference values. Read by the app and by the backend tests |
+| `frontend/src/shared/config/` | Loads `metrics.json`; filter chips. The source for the model's catalog |
 
 ## Known limits
 
-- Passing yards count sack yardage against the passer (Mahomes 2023 regular season shows 3,997; the official 4,183 excludes sacks). Completion percentage has the same issue. This comes from the stat definitions in `statDictionary.ts`.
+- Play-by-play has one or two fewer pass attempts than the official tables in some games (Mahomes 2023: one play in week 5 and one in week 11), and a few yards differ (Josh Allen 2023 passing yards: 4,310 against the official 4,306). Rates therefore match the official figures to within about 0.5%, not exactly. Each metric's `reference_values` in `metrics/metrics.json` record the tolerance.
+- Sack rows are pass plays. Attempt-based stats (passing yards, completion %, interception rate) leave them out with a `play_filter`; edit that in `metrics/metrics.json` and run `uv run pytest`, which checks every metric against its reference values when data is built.
 - No league-wide leaderboards ("who led the league in..."); Ask needs a named player.
 - Name matching is exact on surnames and full names, so typos are not corrected.
 - Receiving and rushing totals can differ slightly from official lines (play-by-play data).

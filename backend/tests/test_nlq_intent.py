@@ -4,8 +4,9 @@ import json
 
 import pytest
 from conftest import FILTERS, STATS, FakeLlm
+from pydantic import ValidationError
 
-from schemas.nlq import IntentRequest, QueryOutcome, UnsupportedOutcome
+from schemas.nlq import CatalogStat, IntentRequest, QueryOutcome, UnsupportedOutcome
 from services.nlq_intent import (
     IntentError,
     build_system_prompt,
@@ -125,6 +126,36 @@ def test_parse_reply_ignores_stats_when_the_model_says_unsupported():
     outcome = parse_reply(reply, stat_ids=STAT_IDS, filter_ids=FILTER_IDS)
 
     assert isinstance(outcome, UnsupportedOutcome)
+
+
+def test_a_stat_line_cannot_be_split_by_newlines_in_an_alias():
+    stat = CatalogStat(id="pass_yards", label="Pass yards", category="passing", aliases=["a\nb\tc"])
+
+    prompt = build_system_prompt([stat], FILTERS)
+
+    assert "also called: a b c" in prompt
+
+
+def test_the_catalog_sent_by_the_client_is_bounded():
+    too_many_aliases = {"id": "x", "label": "X", "category": "c", "aliases": ["a"] * 21}
+    long_alias = {"id": "x", "label": "X", "category": "c", "aliases": ["a" * 61]}
+    base = {"question": "q", "filters": []}
+
+    for stat in (too_many_aliases, long_alias):
+        with pytest.raises(ValidationError):
+            IntentRequest.model_validate({**base, "stats": [stat]})
+    with pytest.raises(ValidationError):
+        IntentRequest.model_validate(
+            {**base, "stats": [{"id": "x", "label": "X", "category": "c"}] * 201}
+        )
+    with pytest.raises(ValidationError):
+        IntentRequest.model_validate(
+            {
+                "question": "q",
+                "stats": [{"id": "x", "label": "X", "category": "c"}],
+                "filters": [{"id": "f", "label": "F", "group": "G"}] * 401,
+            }
+        )
 
 
 def test_system_prompt_tells_the_model_how_to_refuse():

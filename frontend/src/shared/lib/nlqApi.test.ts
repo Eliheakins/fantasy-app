@@ -37,6 +37,12 @@ describe("requestIntent", () => {
     });
   });
 
+  it("rejects an unsupported reason longer than the server allows", async () => {
+    mockFetch(200, { outcome: "unsupported", reason: "x".repeat(301) });
+
+    await expect(requestIntent("x")).rejects.toThrow(/Unexpected \/nlq\/intent response/);
+  });
+
   it("rejects a reply that is neither shape", async () => {
     mockFetch(200, { stat_ids: ["pass_yards"] });
 

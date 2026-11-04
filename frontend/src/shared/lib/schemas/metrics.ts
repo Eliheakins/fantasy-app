@@ -34,8 +34,8 @@ const metricSchema = z.object({
   rate_only: z.boolean(),
   percent_format: z.boolean().default(false),
   play_filter: z.string().nullable().default(null),
-  description: z.string().optional(),
-  help: z.string().optional(),
+  description: z.string().nullish(),
+  help: z.string().nullish(),
   aliases: z.array(aliasSchema).default([]),
   reference_values: z.array(referenceValueSchema).default([]),
 });

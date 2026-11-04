@@ -28,6 +28,12 @@ describe("parseMetricsFile", () => {
     expect(parsed.metrics[0]).toMatchObject({ id: "pass_yards", percent_format: false, play_filter: null });
   });
 
+  it("treats a null description or help like a missing one, as the backend does", () => {
+    const parsed = parseMetricsFile(file(metric({ description: null, help: null })));
+
+    expect(parsed.metrics[0]!.help).toBeNull();
+  });
+
   it("rejects duplicate metric ids", () => {
     expect(() => parseMetricsFile(file(metric(), metric({ aliases: ["other"] })))).toThrow(/Duplicate metric id/);
   });

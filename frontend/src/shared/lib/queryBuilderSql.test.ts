@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { buildFilterWhereSql, buildStatQueryPlans } from "./queryBuilderSql";
+import { STAT_DEFINITIONS } from "@/shared/config/statDictionary";
+
+import { buildFilterWhereSql, buildStatQueryPlans, qualifyMetricSql } from "./queryBuilderSql";
 
 const planParams = {
   filterChipState: {},
@@ -9,6 +11,27 @@ const planParams = {
   granularity: "total" as const,
   minPlays: 0,
 };
+
+describe("qualifyMetricSql", () => {
+  const SQL_WORDS = new Set(["sum", "avg", "count", "nullif", "cast", "as", "double", "case", "when", "then", "else", "end"]);
+
+  it("qualifies every column used by every metric in metrics.json", () => {
+    // A column missing from the qualifier list stays bare and breaks once a joined table shares its name.
+    const bare = STAT_DEFINITIONS.flatMap((s) => {
+      const sql = qualifyMetricSql([s.base_sql, s.playFilter].filter(Boolean).join(" "));
+      const words = sql.toLowerCase().match(/(?<!main\.)(?<!sub\.)\b[a-z_][a-z0-9_]*\b/g) ?? [];
+      return words.filter((w) => !SQL_WORDS.has(w) && w !== "main" && w !== "sub").map((w) => `${s.id}: ${w}`);
+    });
+
+    expect(bare).toEqual([]);
+  });
+
+  it("does not rewrite a column whose name contains another column", () => {
+    expect(qualifyMetricSql("SUM(qb_epa) + SUM(pass_touchdown)")).toBe(
+      "SUM(main.qb_epa) + SUM(main.pass_touchdown)",
+    );
+  });
+});
 
 describe("buildStatQueryPlans play filters", () => {
   it("leaves sack rows out of attempt-based stats", () => {

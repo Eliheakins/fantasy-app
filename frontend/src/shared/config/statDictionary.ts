@@ -48,8 +48,8 @@ function toStat(m: MetricDefinitionData): StatDefinition {
   return {
     id: m.id,
     label: m.label,
-    description: m.description,
-    help: m.help,
+    description: m.description ?? undefined,
+    help: m.help ?? undefined,
     category: m.category,
     playerRole: m.player_role,
     playType: m.play_type,

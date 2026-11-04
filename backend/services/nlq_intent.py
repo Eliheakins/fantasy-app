@@ -80,7 +80,8 @@ def _example_block(stat_ids: set[str], filter_ids: set[str]) -> str:
 def _stat_line(stat: CatalogStat) -> str:
     line = f"{stat.id} | {stat.label} | {stat.category}"
     if stat.aliases:
-        line += f" | also called: {', '.join(stat.aliases)}"
+        aliases = (" ".join(a.split()) for a in stat.aliases)  # no newline can fake a catalog line
+        line += f" | also called: {', '.join(aliases)}"
     return line
 
 
