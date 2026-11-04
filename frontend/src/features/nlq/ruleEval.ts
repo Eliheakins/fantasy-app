@@ -1,6 +1,6 @@
 /**
- * Scores the rules parser against the eval questions (`backend/tests/eval/cases.json` and
- * `heldout.json`). Shared by the CI test and the printable report (`npm run eval:rules`).
+ * Scores the rules parser against the eval questions (`backend/tests/eval/cases.json`, `heldout.json`
+ * and `corrections.json`, the questions a user had to fix). Shared by the CI test and the printable report (`npm run eval:rules`).
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -59,8 +59,10 @@ export function judge(c: EvalCase, result: RuleResult): Verdict {
 const EVAL_DIR = fileURLToPath(new URL("../../../../backend/tests/eval/", import.meta.url));
 const readJson = <T>(name: string): T => JSON.parse(readFileSync(`${EVAL_DIR}${name}`, "utf8")) as T;
 
+export const EVAL_SETS = ["cases", "heldout", "corrections"] as const;
+
 export interface EvalRow {
-  set: "cases" | "heldout";
+  set: (typeof EVAL_SETS)[number];
   case: EvalCase;
   result: RuleResult;
   verdict: Verdict;
@@ -70,7 +72,7 @@ export function runRulesEval(seasons: readonly number[]): EvalRow[] {
   const players = readJson<PlayerDictionaryRow[]>("players.fixture.json");
   const chipGroups = buildFilterChipGroups(seasons);
 
-  return (["cases", "heldout"] as const).flatMap((set) =>
+  return EVAL_SETS.flatMap((set) =>
     readJson<EvalCase[]>(`${set}.json`).map((c): EvalRow => {
       const result = parseRules(c.q, { matches: resolvePlayers(c.q, players), seasons, chipGroups });
       return { set, case: c, result, verdict: judge(c, result) };

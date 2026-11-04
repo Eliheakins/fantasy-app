@@ -11,6 +11,8 @@ Needs the model server running, so it is deselected by default:
 from __future__ import annotations
 
 import json
+import statistics
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -26,6 +28,8 @@ EVAL_DIR = Path(__file__).parent
 RESULTS_FILE = EVAL_DIR / "results.jsonl"
 MIN_PASS_RATE = 0.8
 MIN_REFUSAL_RATE = 0.75  # a model that never refuses must fail even though refusals are few
+# `corrections` holds questions a user had to fix in the app (added with promote.py).
+SETS = ("cases", "heldout", "corrections")
 
 pytestmark = pytest.mark.eval
 
@@ -47,14 +51,29 @@ def _check(case: dict[str, Any], outcome: Any) -> str | None:
     return None
 
 
-def _record_run(model: str, passed: int, total: int, failures: list[str]) -> None:
-    """Append one line per run, so accuracy per model can be compared over time."""
+def _latency(seconds: list[float]) -> dict[str, float]:
+    """Mean and 95th percentile of the per-question times, in seconds."""
+    p95 = statistics.quantiles(seconds, n=20)[-1] if len(seconds) > 1 else seconds[0]
+    return {"mean_s": round(statistics.fmean(seconds), 2), "p95_s": round(p95, 2)}
+
+
+def _record_run(
+    model: str,
+    passed: int,
+    total: int,
+    by_set: dict[str, str],
+    seconds: list[float],
+    failures: list[str],
+) -> None:
+    """Append one line per run, so accuracy, speed and each set's score can be compared."""
     entry = {
         "at": datetime.now(UTC).isoformat(timespec="seconds"),
         "model": model,
         "passed": passed,
         "total": total,
         "rate": round(passed / total, 3),
+        "by_set": by_set,
+        "latency": _latency(seconds),
         "failures": failures,
     }
     with RESULTS_FILE.open("a") as f:
@@ -68,7 +87,7 @@ async def test_intent_pass_rate_meets_threshold():
     # paths can be compared on the same questions (`npm run eval:rules` in frontend/ scores rules).
     cases = [
         {**c, "set": name}
-        for name in ("cases", "heldout")
+        for name in SETS
         for c in json.loads((EVAL_DIR / f"{name}.json").read_text())
     ]
     client = AsyncOpenAI(
@@ -76,13 +95,17 @@ async def test_intent_pass_rate_meets_threshold():
     )
 
     failures: list[str] = []
+    seconds: list[float] = []
     for case in cases:
         req = IntentRequest(question=case["q"], **catalog)
+        started = time.perf_counter()
         try:
             outcome = await translate_question(client=client, model=settings.llm_model, req=req)
         except IntentError as e:
+            seconds.append(time.perf_counter() - started)
             failures.append(f"{case['q']!r}: invalid after retry ({e})")
             continue
+        seconds.append(time.perf_counter() - started)
         why = _check(case, outcome)
         if why:
             failures.append(f"{case['q']!r}: {why}")
@@ -90,7 +113,6 @@ async def test_intent_pass_rate_meets_threshold():
 
     passed = len(cases) - len(failures)
     rate = passed / len(cases)
-    _record_run(settings.llm_model, passed, len(cases), failures)
     report = "\n".join(failures)
     by_set = {
         name: sum(
@@ -98,12 +120,19 @@ async def test_intent_pass_rate_meets_threshold():
             for c in cases
             if c["set"] == name and not any(f.startswith(repr(c["q"])) for f in failures)
         )
-        for name in ("cases", "heldout")
+        for name in SETS
     }
     totals = {name: sum(1 for c in cases if c["set"] == name) for name in by_set}
-    split = ", ".join(f"{name} {by_set[name]}/{totals[name]}" for name in by_set)
-    print(f"\nintent eval: {passed}/{len(cases)} passed ({rate:.0%}); {split}\n{report}")
-    # Only the original cases gate the run. The held-out refusals are reported but do not fail it:
+    split = {name: f"{by_set[name]}/{totals[name]}" for name in by_set}
+    _record_run(settings.llm_model, passed, len(cases), split, seconds, failures)
+    speed = _latency(seconds)
+    print(
+        f"\nintent eval: {passed}/{len(cases)} passed ({rate:.0%}); "
+        + ", ".join(f"{name} {score}" for name, score in split.items())
+        + f"; {speed['mean_s']}s mean, {speed['p95_s']}s p95\n{report}"
+    )
+    # Only the original cases gate the run. The held-out set and the corrections are reported but
+    # do not fail it. The held-out refusals:
     # the model currently answers all seven (see issue #9), so gating on them would keep this red.
     gated = [c for c in cases if c["set"] == "cases"]
     gated_failures = [f for f in failures if any(f.startswith(repr(c["q"])) for c in gated)]

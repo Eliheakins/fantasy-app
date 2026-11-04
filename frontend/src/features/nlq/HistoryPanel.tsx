@@ -57,8 +57,8 @@ export function HistoryPanel() {
         <div>
           <CardTitle className="text-lg text-ink">Ask history</CardTitle>
           <p className="mt-1 text-xs text-ink-muted">
-            Kept in this browser only (the newest 200). A fix you make to an answer is remembered for that question and
-            can be exported as eval cases.
+            Kept in this browser only (the newest 200). A fix you make to an answer is remembered for that question.
+            Exported fixes join the eval set with <code>uv run python backend/tests/eval/promote.py</code>.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
