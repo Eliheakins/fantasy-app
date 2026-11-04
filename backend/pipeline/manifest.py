@@ -12,7 +12,9 @@ import pyarrow.parquet as pq
 
 from pipeline.atomic import atomic_path
 from pipeline.player_game import PLAYER_GAME_FILENAME
-from schemas.manifest import MANIFEST_FILENAME, FileEntry, Manifest, SeasonEntry
+from pipeline.players import PLAYERS_FILENAME
+from schemas.manifest import MANIFEST_FILENAME, FileEntry, JsonFileEntry, Manifest, SeasonEntry
+from schemas.players import PlayersFile
 
 SHARD_PATTERN = re.compile(r"^nfl_pbp_(\d{4})\.parquet$")
 PLAYER_INDEX_FILENAME = "player_index.parquet"
@@ -40,6 +42,13 @@ def _file_entry(path: Path) -> FileEntry | None:
     return FileEntry(path=path.name, rows=pq.read_metadata(path).num_rows)
 
 
+def _players_entry(path: Path) -> JsonFileEntry | None:
+    if not path.is_file():
+        return None
+    players = PlayersFile.model_validate_json(path.read_text(encoding="utf-8")).players
+    return JsonFileEntry(path=path.name, rows=len(players))
+
+
 def build_manifest(data_dir: Path, *, built_at: datetime | None = None) -> Manifest:
     """Describe every shard in `data_dir`, not only the ones the current run rebuilt."""
     shards = sorted(
@@ -53,6 +62,7 @@ def build_manifest(data_dir: Path, *, built_at: datetime | None = None) -> Manif
         seasons=seasons,
         player_index=_file_entry(data_dir / PLAYER_INDEX_FILENAME),
         player_game=_file_entry(data_dir / PLAYER_GAME_FILENAME),
+        players=_players_entry(data_dir / PLAYERS_FILENAME),
     )
 
 

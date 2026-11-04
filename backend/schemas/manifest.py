@@ -12,6 +12,7 @@ SCHEMA_VERSION = 1
 
 # A plain Parquet file name: no directories, no URL, nothing that could leave the data folder.
 FILE_NAME_PATTERN = r"^[\w.-]+\.parquet$"
+JSON_FILE_NAME_PATTERN = r"^[\w.-]+\.json$"
 
 
 class SeasonEntry(BaseModel):
@@ -33,12 +34,20 @@ class FileEntry(BaseModel):
     rows: int
 
 
+class JsonFileEntry(BaseModel):
+    path: str = Field(..., pattern=JSON_FILE_NAME_PATTERN)
+    rows: int
+
+
 class Manifest(BaseModel):
     schema_version: Literal[1] = SCHEMA_VERSION
     built_at: str
     nflreadpy_version: str
     seasons: list[SeasonEntry]
     player_index: FileEntry | None = None
+    players: JsonFileEntry | None = Field(
+        None, description="Static player list the browser searches (name, team, position)"
+    )
     player_game: FileEntry | None = Field(
         None, description="Tier-1 table: one row per player per game, official counting totals"
     )

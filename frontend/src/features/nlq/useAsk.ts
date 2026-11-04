@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react";
 
 import { getStatById, type PlayerRole } from "@/shared/config/statDictionary";
-import { fetchPlayerDetail, fetchPlayerDictionary } from "@/shared/lib/api";
+import { getPlayerDictionary, getPlayersByIds } from "@/shared/lib/players";
 import { type QueryIntent, requestIntent } from "@/shared/lib/nlqApi";
 import { specFromIntent, unsupportedReasons } from "@/shared/lib/querySpec";
-import type { PlayerDictionaryRow } from "@/shared/lib/schemas/playerDictionary";
+import type { PlayerDictionaryRow } from "@/shared/lib/schemas/players";
 import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
 import { MAX_PINNED_PLAYERS, useWorkbenchStore } from "@/stores/useWorkbenchStore";
 
@@ -61,8 +61,7 @@ export function useAsk() {
         setPhase("idle");
         return;
       }
-      const details = await Promise.all(unique.map((p) => fetchPlayerDetail(p.gsis_id)));
-      setPins(details.map((d) => ({ player: d.player, shards: d.shards })));
+      setPins(await getPlayersByIds(unique.map((p) => p.gsis_id)));
       applyIntent({
         statIds: next.stat_ids,
         filterIds: withDefaultSeasonType(next.filter_ids),
@@ -88,7 +87,7 @@ export function useAsk() {
     setIntent(null);
 
     try {
-      const dictionary = await fetchPlayerDictionary();
+      const dictionary = await getPlayerDictionary();
       const matches = resolvePlayers(trimmed, dictionary);
       if (matches.length === 0) {
         setMessage(NO_PLAYER_MESSAGE);

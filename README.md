@@ -9,7 +9,7 @@ Everything runs on your machine. Data lives in `backend/data/`.
 
 ## How Ask works
 
-1. Player names in the question are matched in the browser against the player dictionary (`GET /players/dictionary`). Namesakes are narrowed by the stats asked about, or you pick one.
+1. Player names in the question are matched in the browser against the static player list (`players.json`). Namesakes are narrowed by the stats asked about, or you pick one.
 2. `POST /nlq/intent` sends the question and the stat/filter catalog to a local model, which returns `{outcome: "query", intent: {stat_ids, filter_ids, granularity}}`, or `{outcome: "unsupported", reason}` when no stat can answer (salary, fantasy points, opinions). The reply is validated, with one retry on a bad reply.
 3. The Explore query builder hands the stats and filters to the in-browser engine. The answer text is built from the result rows, not by the model.
 4. Questions default to the regular season unless they mention the playoffs.
@@ -36,12 +36,13 @@ This writes, into `backend/data/`:
 |------|------------|
 | `nfl_pbp_YYYY.parquet` | Play-by-play, one file per season, with participation and Next Gen Stats joined on |
 | `player_game.parquet` | One row per player per game with official counting totals (tier 1, not used by Ask yet) |
-| `player_index.parquet` | One row per player, for name matching |
+| `player_index.parquet` | One row per player; the build turns it into `players.json` |
+| `players.json` | Player list the browser searches and matches names against (id, name, team, position) |
 | `manifest.json` | What was built: seasons, files, rows, latest week, and when |
 
 The season list comes from the data: a new season appears in the app as soon as its shard is built, with no code change. Missing values (Next Gen Stats cover only some plays, participation is not published until after a season ends) stay null, and the build prints how much of each column is missing. Re-run the build weekly to pick up new games. If a brand-new season has no play-by-play published yet, build with `--years` up to the previous season.
 
-`/health` reports `data_through` (for example `2026 week 8`) and the seasons loaded.
+`/health` reports `data_through` (for example `2026 week 8`) and the seasons loaded. The data files are static: the API's only dynamic endpoint is `POST /nlq/intent`. The browser reads `manifest.json`, `players.json` and the Parquet shards from one base URL, so they can be served from a CDN instead (see `VITE_DATA_BASE_URL` below).
 
 ## Run
 
@@ -71,6 +72,8 @@ Optional, in the environment or a `.env` file at the repository root.
 | `LLM_BASE_URL` | `http://127.0.0.1:8080/v1` | OpenAI-compatible server (any local server works, for example LM Studio) |
 | `LLM_MODEL` | `mlx-community/Qwen2.5-14B-Instruct-4bit` | Must match the model the server loaded |
 | `LLM_TIMEOUT_SECONDS` | `120` | Per-request timeout |
+| `VITE_API_BASE_URL` | `http://localhost:8100` | Where the browser finds `POST /nlq/intent` (frontend, set when starting Vite) |
+| `VITE_DATA_BASE_URL` | `<VITE_API_BASE_URL>/data` | Where the browser finds `manifest.json`, `players.json` and the shards. Point it at a CDN and nothing else changes; the host must allow CORS and HTTP Range requests |
 | `PIPELINE_GC` | `1` | Set `0` to skip `gc.collect()` between seasons in the data build |
 | `NFLVERSE_DOWNLOAD_BASE` | nflverse GitHub releases | Override the PBP download host |
 
@@ -91,7 +94,7 @@ uv run ruff check backend
 | Path | Role |
 |------|------|
 | `backend/main.py` | App factory: routers, CORS for the local Vite port, static `/data` |
-| `backend/api/routers/` | `health`, `pbp`, `players` (search, detail, dictionary), `nlq` (intent) |
+| `backend/api/routers/` | `health`, `nlq` (intent). Everything else is static files under `/data` |
 | `backend/services/` | `nlq_intent` (prompt, validation, retry), `llm_client`, `llm_warmup`, catalogs |
 | `backend/pipeline/` | Data build from nflverse: play-by-play shards, the player-game table, the manifest (`build_data.py` is the entry point) |
 | `frontend/src/features/nlq/` | Ask: name matching, hook, answer text, panel |

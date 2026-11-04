@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { fetchPlayerDetail, searchPlayers } from "@/shared/lib/api";
+import { getPlayers, searchPlayers } from "@/shared/lib/players";
 import type { NFLPlayer } from "@/shared/types/workbench";
 import { MAX_PINNED_PLAYERS, useWorkbenchStore } from "@/stores/useWorkbenchStore";
 
@@ -20,12 +20,12 @@ export function useExplorePlayerSearch() {
 
   const searchQ = useQuery({
     queryKey: ["search", debounced],
-    queryFn: () => searchPlayers(debounced),
+    queryFn: async () => searchPlayers(await getPlayers(), debounced),
     enabled: debounced.trim().length >= 2,
   });
 
   const onSelectPlayer = useCallback(
-    async (p: NFLPlayer) => {
+    (p: NFLPlayer) => {
       setPinMessage(null);
       if (pinnedPlayers.some((x) => x.gsis_id === p.gsis_id)) {
         setPinMessage("Already pinned.");
@@ -36,16 +36,10 @@ export function useExplorePlayerSearch() {
         return;
       }
 
-      try {
-        const d = await fetchPlayerDetail(p.gsis_id);
-        const ok = tryPinPlayer(p, d.shards);
-        if (ok) {
-          setQuery("");
-        } else {
-          setPinMessage("Could not pin (duplicate or limit).");
-        }
-      } catch (e) {
-        setPinMessage(e instanceof Error ? e.message : String(e));
+      if (tryPinPlayer(p)) {
+        setQuery("");
+      } else {
+        setPinMessage("Could not pin (duplicate or limit).");
       }
     },
     [pinnedPlayers, tryPinPlayer],

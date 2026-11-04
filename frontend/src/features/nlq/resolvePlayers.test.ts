@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { PlayerDictionaryRow } from "@/shared/lib/schemas/playerDictionary";
+import type { PlayerDictionaryRow } from "@/shared/lib/schemas/players";
 
 import { narrowByRoles, pickCandidate, resolvePlayers, tokenize } from "./resolvePlayers";
 

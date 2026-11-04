@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from api.routers import health, nlq, pbp, players
+from api.routers import health, nlq
 from core.config import CORS_ORIGINS, get_settings
 from core.lifecycle import lifespan
 
@@ -14,8 +14,6 @@ def create_app() -> FastAPI:
     app = FastAPI(title="NFL Stat API", lifespan=lifespan)
 
     app.include_router(health.router)
-    app.include_router(pbp.router)
-    app.include_router(players.router)
     app.include_router(nlq.router)
 
     app.add_middleware(

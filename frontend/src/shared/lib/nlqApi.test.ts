@@ -40,13 +40,19 @@ describe("requestIntent", () => {
   it("rejects an unsupported reason longer than the server allows", async () => {
     mockFetch(200, { outcome: "unsupported", reason: "x".repeat(301) });
 
-    await expect(requestIntent("x")).rejects.toThrow(/Unexpected \/nlq\/intent response/);
+    await expect(requestIntent("x")).rejects.toThrow(/unexpected shape/);
   });
 
   it("rejects a reply that is neither shape", async () => {
     mockFetch(200, { stat_ids: ["pass_yards"] });
 
-    await expect(requestIntent("x")).rejects.toThrow(/Unexpected \/nlq\/intent response/);
+    await expect(requestIntent("x")).rejects.toThrow(/unexpected shape/);
+  });
+
+  it("says the Ask service is not reachable and how to start it when the request fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+
+    await expect(requestIntent("x")).rejects.toThrow(/Ask service is not reachable at .*uvicorn/);
   });
 
   it("surfaces the server's message on an error status", async () => {

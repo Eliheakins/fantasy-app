@@ -10,6 +10,8 @@ import {
 } from "hyparquet";
 import { compressors } from "hyparquet-compressors";
 
+import { START_API_HINT } from "@/shared/lib/config";
+
 import { ColumnStore, concatenate, type ColumnLoader, type ColumnSource } from "./columns";
 
 export type OpenParquet = (source: ColumnSource) => Promise<AsyncBuffer>;
@@ -66,7 +68,7 @@ async function openOverHttp(source: ColumnSource): Promise<AsyncBuffer> {
     return cachedAsyncBuffer(await asyncBufferFromUrl({ url: source.url }));
   } catch (e) {
     throw new Error(
-      `Could not read the ${source.year} play-by-play data at ${source.url}: ${e instanceof Error ? e.message : String(e)}`,
+      `Could not read the ${source.year} play-by-play data at ${source.url} (${e instanceof Error ? e.message : String(e)}). ${START_API_HINT}`,
     );
   }
 }

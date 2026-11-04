@@ -1,4 +1,4 @@
-import { API_BASE } from "@/shared/lib/api";
+import { DATA_BASE_URL } from "@/shared/lib/config";
 import { cn } from "@/shared/lib/utils";
 import type { NFLPlayer } from "@/shared/types/workbench";
 import { MAX_PINNED_PLAYERS } from "@/stores/useWorkbenchStore";
@@ -82,7 +82,7 @@ export function QueryBuilderSidebarScroll({
         </div>
         {pinMessage && <p className="text-sm text-warn-fg">{pinMessage}</p>}
         <p className="text-[10px] text-ink-muted">
-          API: {API_BASE} · Pin up to {MAX_PINNED_PLAYERS} players to compare
+          Data: {DATA_BASE_URL} · Pin up to {MAX_PINNED_PLAYERS} players to compare
         </p>
         <PinnedPlayersBar />
       </section>

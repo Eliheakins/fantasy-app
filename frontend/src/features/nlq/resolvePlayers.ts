@@ -1,5 +1,5 @@
 import type { PlayerRole } from "@/shared/config/statDictionary";
-import type { PlayerDictionaryRow } from "@/shared/lib/schemas/playerDictionary";
+import type { PlayerDictionaryRow } from "@/shared/lib/schemas/players";
 
 export interface PlayerMatch {
   phrase: string;

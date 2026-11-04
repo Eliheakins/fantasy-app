@@ -19,13 +19,13 @@ def _intent_body(question: str = "Mahomes passing yards in 2023") -> dict:
     }
 
 
-async def test_health_reports_loaded_index(client: httpx.AsyncClient):
+async def test_health_is_degraded_until_the_data_is_built(client: httpx.AsyncClient):
     res = await client.get("/health")
 
     assert res.status_code == 200
     assert res.json() == {
-        "status": "ok",
-        "player_index_loaded": True,
+        "status": "degraded",
+        "data_ready": False,
         "data_through": None,
         "seasons": [],
     }
@@ -55,37 +55,17 @@ async def test_health_reports_how_current_the_data_is(client: httpx.AsyncClient)
 
     body = (await client.get("/health")).json()
 
+    assert body["status"] == "ok"
+    assert body["data_ready"] is True
     assert body["data_through"] == "2026 week 9"
     assert body["seasons"] == [2025, 2026]
 
 
-async def test_players_dictionary_skips_rows_without_id_and_lowercases_key(
+async def test_the_player_and_shard_endpoints_are_gone_because_the_data_is_static(
     client: httpx.AsyncClient,
 ):
-    res = await client.get("/players/dictionary")
-
-    assert res.status_code == 200
-    rows = res.json()
-    assert [r["display_name"] for r in rows] == ["Patrick Mahomes", "Travis Kelce"]
-    assert rows[0] == {
-        "gsis_id": "00-0033873",
-        "display_name": "Patrick Mahomes",
-        "search_key": "patrick mahomes",
-        "position": "QB",
-        "team": "KC",
-    }
-
-
-async def test_search_finds_player_case_insensitively(client: httpx.AsyncClient):
-    res = await client.get("/search", params={"q": "KELCE"})
-
-    assert [p["gsis_id"] for p in res.json()] == ["00-0030506"]
-
-
-async def test_player_detail_returns_404_for_unknown_id(client: httpx.AsyncClient):
-    res = await client.get("/player/00-0000000")
-
-    assert res.status_code == 404
+    for path in ("/search?q=a", "/players/dictionary", "/player/00-0033873", "/pbp/shards"):
+        assert (await client.get(path)).status_code == 404, path
 
 
 async def test_nlq_intent_returns_validated_intent(client: httpx.AsyncClient, use_llm):
