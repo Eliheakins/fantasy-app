@@ -1,0 +1,74 @@
+import { getStatById } from "@/shared/config/statDictionary";
+import { getFilterChipGroups } from "@/shared/lib/filterChipGroups";
+import { formatQueryValue } from "@/shared/lib/formatQueryValue";
+import { formatMetricValueHeader, metricSelectAlias } from "@/shared/lib/queryBuilder";
+import type { GranularityMode } from "@/shared/types/queryBuilder";
+import type { QueryResult } from "@/shared/types/workbench";
+
+export interface AnswerInput {
+  result: QueryResult;
+  statIds: string[];
+  granularity: GranularityMode;
+  filterIds: string[];
+  nameByGsis: ReadonlyMap<string, string>;
+  /** Number the lines, for a leaderboard where the order is the answer. */
+  ranked?: boolean;
+  /** Which column names the row: player_id, or team_id for team rows. */
+  idColumn?: "player_id" | "team_id";
+}
+
+export interface Answer {
+  /** What the numbers cover, e.g. "2023, Playoffs". */
+  context: string;
+  /** One line per player, or per player and season or week when split. */
+  lines: string[];
+}
+
+const NO_FILTERS_CONTEXT = "All loaded seasons";
+
+/** Seasons first (they scope everything else), then the other filters in chip-group order. */
+function filterLabels(filterIds: string[]): string[] {
+  const wanted = new Set(filterIds);
+  const seasons: string[] = [];
+  const others: string[] = [];
+  for (const group of getFilterChipGroups()) {
+    for (const option of group.options) {
+      if (!wanted.has(option.id)) {
+        continue;
+      }
+      if (group.id === "season") {
+        seasons.push(option.label);
+      } else {
+        others.push(`${group.label}: ${option.label}`);
+      }
+    }
+  }
+  return [...seasons, ...others];
+}
+
+/** Deterministic text for the table; the model only chose the query, never the numbers. */
+export function buildAnswer({
+  result,
+  statIds,
+  granularity,
+  filterIds,
+  nameByGsis,
+  ranked = false,
+  idColumn = "player_id",
+}: AnswerInput): Answer {
+  const labels = filterLabels(filterIds);
+  const lines = result.rows.map((row, rank) => {
+    const pid = String(row[idColumn] ?? "");
+    const name = nameByGsis.get(pid) ?? pid;
+    const when = [row.season, row.week === undefined ? undefined : `week ${String(row.week)}`].filter(
+      (v) => v !== undefined,
+    );
+    const who = when.length > 0 ? `${name}, ${when.join(" ")}` : name;
+    const metrics = statIds.map((id) => {
+      const header = formatMetricValueHeader(getStatById(id), granularity);
+      return `${header}: ${formatQueryValue(row[metricSelectAlias(id)])}`;
+    });
+    return `${ranked ? `${rank + 1}. ` : ""}${who} — ${metrics.join(" · ")}`;
+  });
+  return { context: labels.length > 0 ? labels.join(", ") : NO_FILTERS_CONTEXT, lines };
+}

@@ -1,178 +1,175 @@
 # NFL Stat App — The Bridge
 
-A local NFL analytics workbench: a **FastAPI** backend serves a **player index** and **play-by-play Parquet shards**, while a **Vite + React** frontend (**The Bridge**) runs **DuckDB-WASM** in the browser to query those Parquets over HTTP.
+A local NFL stats workbench. Ask a question like "Mahomes passing yards and touchdowns in 2023" and get an answer and a table.
 
-The same codebase can run **locally** (disk-backed `backend/data/`) or **hosted on [Render](https://render.com/)** (API web service, static frontend, optional persistent disk for Parquet files). You can also serve Parquet from **object storage** (for example **Cloudflare R2**) using `DATA_SOURCE=r2`.
+- **Backend:** FastAPI asks a local model to turn a question into stats and filters, and (locally) serves the static data files: the manifest, the player list and the play-by-play Parquet shards.
+- **Frontend:** Vite + React. A small columnar engine (`frontend/src/shared/engine/`, hyparquet plus an evaluator for the SQL expressions in `metrics/metrics.json`) runs the queries in the browser, reading only the Parquet columns a query needs over HTTP range requests. A local model never writes queries and never sees player ids.
 
----
+Everything runs on your machine. Data lives in `backend/data/`.
 
-## Setup and build
+## How Ask works
 
-### Prerequisites
+1. Player names in the question are matched in the browser against the static player list (`players.json`). Namesakes are narrowed by the stats asked about, or you pick one.
+2. Rules read the question first (`frontend/src/features/nlq/ruleParser.ts`): stats and their aliases, seasons, situations ("third down", "in the playoffs"), per game. They answer only when they understand every word, so a question with an unfamiliar word is not guessed at. Instant, free, and works with no model running.
+3. Only a question the rules cannot fully read goes to the model: `POST /nlq/intent` sends it with the stat/filter catalog to a local model, which returns `{outcome: "query", intent: {stat_ids, filter_ids, granularity}}`, or `{outcome: "unsupported", reason}` when no stat can answer (salary, fantasy points, opinions). The reply is validated, with one retry on a bad reply. An answer from the model lists the words the rules did not recognise, and Ask says which path read each question. With no model server, Ask still answers what the rules can read and explains why for the rest.
+4. The Explore query builder hands the stats and filters to the in-browser engine. The answer text is built from the result rows, not by the model.
+5. Questions default to the regular season unless they mention the playoffs.
+6. The answer is a link: the question and the query it became live in the URL, so reload, back/forward and sharing show the same result without asking the model again.
 
-- **Python 3.12+** (recommended) with `pip`
-- **Node.js 20+** and **npm** (for the frontend)
+## Links
 
-### 1. Backend (Python)
+The query on Explore and Ask is in the URL as readable parameters, one `p`, `s` and `f` per value:
 
-From the repository root:
-
-```bash
-python -m venv venv
+```
+/explore?p=00-0033873&s=pass_yards&s=pass_sack_rate&f=season-2023&f=stype-reg&g=per_game&m=20
 ```
 
-Activate the virtual environment (Windows PowerShell):
+| Parameter | Meaning |
+|-----------|---------|
+| `p` | Player GSIS id (up to 5) |
+| `s` | Stat id from `metrics/metrics.json` (up to 5) |
+| `f` | Filter chip id, such as `season-2023`, `stype-reg`, `down-3` |
+| `g` | `total`, `per_game` or `per_play` (default) |
+| `m` | Minimum rows per player, 0 to 500 |
+| `o` | Order by a selected stat, highest first; `<stat>:asc` for lowest first |
+| `n` | Rows to keep after ordering, 1 to 100 (only with `o`) |
+| `by` | `season` or `week`: one row per player and season, or per player and week |
+| `who` | `teams` for team rows instead of players (default players) |
+| `t` | Team id, such as `KC` or `BUF` (up to 5; none with `o` and `n` ranks all 32) |
+| `side` | `defense` for what opponents gained against the team (default offense) |
+| `q` | Ask only: the question that produced the query |
+
+Values the app does not recognise are ignored, so an old or edited link still opens. Explore and Ask each keep their own query; asking a question does not change Explore.
+
+## Setup
+
+Prerequisites: [uv](https://docs.astral.sh/uv/), Node.js 20+, and an Apple Silicon Mac for the MLX model server.
 
 ```bash
-.\venv\Scripts\Activate.ps1
+uv sync                       # backend dependencies (add --group llm for the model server)
+cd frontend && npm install
 ```
 
-Install runtime dependencies:
+### Data
 
 ```bash
-pip install -r backend/requirements.txt
+uv run python backend/scripts/build_data.py            # 2021 through the current season
+uv run python backend/scripts/build_data.py --years 2023,2024
 ```
 
-For linting, tests, and typing as well:
+This writes, into `backend/data/`:
+
+| File | What it is |
+|------|------------|
+| `nfl_pbp_YYYY.parquet` | Play-by-play, one file per season, with participation and Next Gen Stats joined on |
+| `player_game.parquet` | One row per player per game with official counting totals (tier 1) |
+| `player_index.parquet` | One row per player; the build turns it into `players.json` |
+| `players.json` | Player list the browser searches and matches names against (id, name, team, position) |
+| `manifest.json` | What was built: seasons, files, rows, latest week, and when |
+
+The season list comes from the data: a new season appears in the app as soon as its shard is built, with no code change. Missing values (Next Gen Stats cover only some plays, participation is not published until after a season ends) stay null, and the build prints how much of each column is missing. Pick up new games weekly with `uv run python backend/scripts/build_data.py --refresh`, which rebuilds only the current season and keeps the rest (`--years 2024,2025` rebuilds specific seasons). The API notices the new manifest without a restart, and the header shows how current the data is. If a brand-new season has no play-by-play published yet, build with `--years` up to the previous season.
+
+### Two tiers
+
+A query reads the small tier-1 table (`player_game.parquet`, built from nflverse weekly player stats: passing, rushing and receiving yards, touchdowns, receptions, yards after catch) when every selected stat is one of those counting stats and the only filters are season, season type and week. Those totals are the official ones; the play-level sums are not always (sack yards, for example). Per game divides by the games where the player had an attempt, carry or target, and per play by those attempts, carries or targets. Anything else (rates, EPA, Next Gen Stats, a down, quarter, home or away, or any other situational filter) reads the play-by-play shards for the seasons asked about, one column at a time. Which stats have a tier-1 column is the `player_game_column` field in `metrics/metrics.json`; a test checks each one against the recorded official totals.
+
+`/health` reports `data_through` (for example `2026 week 8`) and the seasons loaded. The data files are static: the API's only dynamic endpoint is `POST /nlq/intent`. The browser reads `manifest.json`, `players.json` and the Parquet shards from one base URL, so they can be served from a CDN instead (see `VITE_DATA_BASE_URL` below).
+
+## Run
+
+Three terminals, from the repository root:
 
 ```bash
-pip install -r backend/dev-requirements.txt
+# 1. Local model (first run downloads about 2 GB)
+uv run --group llm mlx_lm.server --model mlx-community/Qwen3-4B-Instruct-2507-4bit --port 8080
+
+# 2. API
+uv run uvicorn nfl_stat.main:create_app --factory --port 8100
+
+# 3. Frontend
+cd frontend && npm run dev
 ```
 
-### 2. Data files (local)
+Open `http://localhost:3000`. The API is `http://localhost:8100` (docs at `/docs`, health at `/health`). The API uses 8100 so it does not clash with other local servers on 8000.
 
-Generate Parquet shards and the player index (writes into `backend/data/`):
+## Configuration
+
+Optional, in the environment or a `.env` file at the repository root.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LLM_BASE_URL` | `http://127.0.0.1:8080/v1` | OpenAI-compatible server (any local server works, for example LM Studio) |
+| `LLM_MODEL` | `mlx-community/Qwen3-4B-Instruct-2507-4bit` | Must match the model the server loaded |
+| `LLM_TIMEOUT_SECONDS` | `120` | Per-request timeout |
+| `VITE_API_BASE_URL` | `http://localhost:8100` | Where the browser finds `POST /nlq/intent` (frontend, set when starting Vite) |
+| `VITE_DATA_BASE_URL` | `<VITE_API_BASE_URL>/data` | Where the browser finds `manifest.json`, `players.json` and the shards. Point it at a CDN and nothing else changes; the host must allow CORS for the page's origin and answer HTTP Range requests (expose `Content-Range`, `Content-Length` and `Accept-Ranges`). The API's own CORS list is only the local Vite origins |
+| `PIPELINE_GC` | `1` | Set `0` to skip `gc.collect()` between seasons in the data build |
+| `NFLVERSE_DOWNLOAD_BASE` | nflverse GitHub releases | Override the PBP download host |
+
+## Tests
 
 ```bash
-python backend/scripts/dataPipeline.py
+uv run pytest --cov           # backend unit and API tests
+uv run pytest -m eval -s              # intent accuracy against the live local model (needs step 1 above)
+cd frontend && npm test               # name matching, rules parser, answer text, catalog sync
+cd frontend && npm run format        # format src and scripts with Prettier (npm run check fails on unformatted code)
+cd frontend && npm run eval:rules     # how the rules parser scores on the eval questions (no model needed)
+cd frontend && npm run export:catalog # refresh backend/tests/eval/catalog.json after changing stats or filters
+uv run ruff check backend
 ```
 
-You should end up with:
+## Measuring Ask
 
-- `backend/data/player_index.parquet`
-- `backend/data/nfl_pbp_YYYY.parquet` (one file per season in the pipeline)
+Three question sets with the expected stats, filters and granularity (or `unsupported`) live in `backend/tests/eval/`:
 
-### 3. Run the API (local)
+- `cases.json`: 44 questions, written alongside the model prompt and, later, the rules. Treat its scores as optimistic.
+- `heldout.json`: 34 questions written **before** the rules parser, including traps that must not be answered (an unknown stat like "net yards per attempt", an opponent filter, a season outside the data, a leaderboard; the leaderboard trap is a trap for the model only, since the rules now answer it).
+- `corrections.json`: questions a user had to fix in the app. Every ask is logged in the browser and can be edited from the chips under the answer; the History page exports the fixes, and `uv run python backend/tests/eval/promote.py <ask-corrections.json>` adds them (checked against the catalog, duplicates skipped). Both evals score it: the model eval reports it, the rules eval fails on any wrong answer.
 
-From the `backend` directory:
+| | cases.json | heldout.json |
+|---|---|---|
+| Rules (`npm run eval:rules`) | 40/40 answerable correct, 0 wrong | 25/25 answerable correct (two more are deferred on purpose), 0 wrong; 1 trap refused, 7 handed to the model |
+| Model (`uv run pytest -m eval -s`, Qwen3-4B-Instruct-2507-4bit) | 43/44 | 26/34: refuses or fails safely on 2 of the 7 traps, answers the other 5 |
 
-```bash
-cd backend
-uvicorn main:app --reload --host 127.0.0.1 --port 8000
-```
+The model's refusal weakness is why an answer from the model lists the words the rules did not recognise. The model eval gates on `cases.json` only; refusals are still unsolved.
 
-- API: `http://127.0.0.1:8000`
-- Health: `http://127.0.0.1:8000/health`
-- Interactive docs: `http://127.0.0.1:8000/docs`
-- Parquet files are exposed under `http://127.0.0.1:8000/data/...` when `DATA_SOURCE=local` (default)
+### Model size
 
-### 4. Frontend (Vite + React)
+`uv run --group llm python backend/tests/eval/compare_models.py <model>...` runs the eval against each model in turn and adds speed, cold start (the first request, which loads the weights) and memory (macOS `footprint`, which counts GPU memory). Measured 2026-11-04 on an Apple M5 Pro with 24 GB, one run each over the 78 questions:
 
-In a second terminal:
+| Model | cases | heldout | Mean / p95 per question | Cold start | Memory |
+|---|---|---|---|---|---|
+| **Qwen3-4B-Instruct-2507-4bit** (default) | 43/44 | 26/34 | 0.49 s / 0.97 s | 2.7 s | 6.1 GB |
+| Qwen2.5-14B-Instruct-4bit (previous default) | 42/44 | 25/34 | 1.36 s / 1.68 s | 4.3 s | 13.0 GB |
+| Qwen3-8B-4bit (thinking off) | 41/44 | 26/34 | 1.01 s / 1.72 s | 4.3 s | 7.9 GB |
+| Qwen2.5-7B-Instruct-4bit | 38/44 | 21/34 | 0.94 s / 1.71 s | 3.2 s | 5.7 GB |
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+The 4B model scores as well as the 14B on both sets (a one-question gap is within noise for one run) at a third of the time per question and less than half the memory, so it is the default. It also retired the 20-second keep-alive ping the API used to send: with the 14B, macOS paged the idle weights out and the next question waited 20 to 40 seconds, while the 4B reloads from scratch in under 3 seconds. The 4B, 8B and 14B all read "yards per carry" as rush yards; the 7B gets that right but loses more on granularity and dropped season filters. `players.fixture.json` is a slice of `players.json` (the players named in the questions) so the rules eval runs in CI without built data.
 
-- App: `http://localhost:3000` (default Vite port in this project)
-- Optional: create `frontend/.env.local` with `VITE_API_BASE=http://127.0.0.1:8000` if your API URL differs
-
-**Production build:**
-
-```bash
-cd frontend
-npm run build
-npm run preview
-```
-
-Output is written to `frontend/dist/`. The `frontend/public/_redirects` file is copied into `dist/` for hosts that use it (for example Netlify-style `_redirects`); on **Render**, SPA fallback is configured in `render.yaml`.
-
----
-
-## Configuration (environment variables)
-
-### Backend (`backend/main.py`)
-
-| Variable | When | Description |
-|----------|------|-------------|
-| `DATA_LOCAL_DIR` | Optional | Absolute path to the directory containing `player_index.parquet` and `nfl_pbp_*.parquet` for local mode. Default: `backend/data` next to `main.py`. On Render, set to your persistent disk mount (for example `/data`) via `render.yaml`. |
-| `CORS_ORIGINS` | Always (optional) | Comma-separated browser origins allowed to call the API. Default: `http://localhost:3000,http://127.0.0.1:3000` (local Vite). In production, include your static site origin(s). **`CORSMiddleware`** also **exposes** `Content-Range`, `Content-Length`, and `Accept-Ranges` so the browser can read range responses for DuckDB-WASM Parquet over HTTP. |
-| `DATA_SOURCE` | Always (optional) | `local` (default) or `r2` |
-| `PLAYER_INDEX_PATH` | `DATA_SOURCE=local` | Path to `player_index.parquet`. Default: `<DATA_LOCAL_DIR or backend/data>/player_index.parquet` |
-| `PLAYER_INDEX_URL` | `DATA_SOURCE=r2` | **Required.** HTTPS URL to `player_index.parquet` (e.g. public object URL) |
-| `PUBLIC_PBP_BASE` | `DATA_SOURCE=r2` | **Required.** HTTPS base URL (no trailing slash) where `nfl_pbp_YYYY.parquet` objects are readable, e.g. `https://<bucket>.<account>.r2.cloudflarestorage.com` or a custom domain |
-| `PBP_YEARS` | `DATA_SOURCE=r2` | **Required.** Comma-separated seasons matching files in object storage, e.g. `2021,2022,2023,2024,2025` |
-
-With `DATA_SOURCE=r2`, the API does **not** mount `/data` from disk; shard `path` values in JSON are **absolute HTTPS URLs** so the browser (DuckDB-WASM) fetches Parquet **directly from storage**. Configure **CORS on the bucket** to allow `GET` from your static site origin.
-
-### Frontend (Vite)
-
-| Variable | Build-time | Description |
-|----------|------------|-------------|
-| `VITE_API_BASE` | Yes | Base URL of the FastAPI service (no trailing slash). Default in code: `http://localhost:8000`. All API fetches and Parquet URLs go through [`frontend/src/lib/api.ts`](frontend/src/lib/api.ts) (`API_BASE`, `shardParquetUrl`, `playerIndexParquetUrl`). **Render:** set at build time; after changing it, trigger a **new deploy** (e.g. **Clear build cache & deploy**) so Vite rebakes the bundle. **Local:** optional `frontend/.env.local` with `VITE_API_BASE=http://127.0.0.1:8000`. |
-
-**No boto3** is required for the current R2 mode: objects are addressed by public HTTPS URLs. If you later use a **private** bucket, you would add server-side presigned URLs (e.g. with `boto3`)—not implemented in this repo yet.
-
----
-
-## Hosted deployment (Render)
-
-Use the repo root [`render.yaml`](render.yaml) with [Render Blueprints](https://render.com/docs/infrastructure-as-code).
-
-1. **Create a Blueprint** from this repository. Render will provision:
-   - **nfl-stat-api** — Python web service (`rootDir: backend`), health check `GET /health`, persistent disk mounted at `/data` with `DATA_LOCAL_DIR=/data`.
-   - **nfl-stat-ui** — Static site (`rootDir: frontend`), publish directory `./dist` (Render paths are relative to `rootDir`, so this is `frontend/dist` in the repo), SPA rewrite `/*` → `/index.html`.
-
-2. When prompted, set **`VITE_API_BASE`** to your API’s public URL (for example `https://nfl-stat-api.onrender.com`, no trailing slash).
-
-3. Set **`CORS_ORIGINS`** on the API to your static site origin(s) (for example `https://nfl-stat-ui.onrender.com`, no trailing slash). You can update this in the Render dashboard after the first deploy when URLs are known.
-
-4. After changing **`VITE_API_BASE`**, run a **Manual Deploy** on the static site and use **Clear build cache** if needed so the new API URL is compiled into the assets.
-
-5. **Seed data on the persistent disk** (the disk starts empty). The API is configured with `DATA_LOCAL_DIR=/data` so both the app and the pipeline write to the same place. After seeding, **restart** the `nfl-stat-api` service so the in-memory player index reloads.
-
-### Render post-deploy checklist (vs. generic “AI deploy” advice)
-
-| Topic | This repo | Common mistake |
-|--------|-----------|----------------|
-| **Shell command** | With `rootDir: backend`, open **Shell** on `nfl-stat-api` and run: `python scripts/dataPipeline.py` | There is no `backend/data_pipeline.py`; the script is [`backend/scripts/dataPipeline.py`](backend/scripts/dataPipeline.py). |
-| **Output path** | The pipeline reads **`DATA_LOCAL_DIR`** (set to `/data` in [`render.yaml`](render.yaml)), same as the API | Writing only under `backend/data` on the container disk would **not** land on the persistent volume. |
-| **Serving Parquet** | [`main.py`](backend/main.py) mounts `StaticFiles` at URL path **`/data`** from filesystem **`DATA_DIR`** (`backend/data` locally, `/data` on Render). [`requirements.txt`](backend/requirements.txt) includes **`aiofiles`** for Starlette’s async static file I/O. | Hard-coding `directory="/data"` only would break local dev; use **`DATA_LOCAL_DIR`** on Render. |
-| **Empty disk / first boot** | The API **starts** without `player_index.parquet`; `/health` reports `player_index_loaded: false` until you seed and restart | — |
-| **Tuesday “cron on Render”** | A **Cron Job** is a **separate** service: it does **not** share the web service’s persistent disk, so `python …/dataPipeline.py` there would not update the API’s `/data` unless you upload elsewhere (e.g. R2) | For updates on the **same** disk, re-run the pipeline in **Shell** on the API and restart, or use **`DATA_SOURCE=r2`** and automate uploads to object storage. |
-| **CORS** | Set **`CORS_ORIGINS`** to your static site origin (no trailing slash), e.g. `https://nfl-stat-ui.onrender.com` | Mismatch here shows up as browser “failed to fetch” / CORS errors. |
-| **Frontend + DuckDB** | [`index.html`](frontend/index.html) loads the app with **`<script type="module" src="/src/main.tsx">`**. Use **`shardParquetUrl`** / **`playerIndexParquetUrl`** so Parquet URLs are always `${VITE_API_BASE}/data/...` (works locally and on Render). | — |
-| **Pipeline memory** | PBP is read from **nflverse GitHub Parquet** via `pl.read_parquet(..., columns=…)` (see `get_nfl_url` in [`dataPipeline.py`](backend/scripts/dataPipeline.py)), not `nfl.load_pbp`. [`render.yaml`](render.yaml) sets **`POLARS_MAX_THREADS=1`** and **`RAYON_NUM_THREADS=1`**. NGS loads stay **one at a time** with explicit `del`. | Override base URL with **`NFLVERSE_DOWNLOAD_BASE`** if needed. Set **`PIPELINE_GC=0`** to skip `gc.collect()` between seasons. |
-
-**Verify after seeding:** `ls /data` in Shell should list `player_index.parquet` and `nfl_pbp_*.parquet`. Hit `GET /health` and confirm `player_index_loaded` is `true` after restart.
-
-**Alternative:** Skip the disk entirely — set **`DATA_SOURCE=r2`**, `PLAYER_INDEX_URL`, `PUBLIC_PBP_BASE`, and `PBP_YEARS` in the dashboard (and CORS on the bucket).
-
----
-
-## Object storage (optional, `DATA_SOURCE=r2`)
-
-1. Upload the same files as local `backend/data/`: `player_index.parquet`, `nfl_pbp_YYYY.parquet`.
-2. Expose them over **HTTPS** (public bucket, custom domain, or worker). The values of `PLAYER_INDEX_URL` and `PUBLIC_PBP_BASE` must match how objects are reachable.
-3. **CORS**: allow your **static site** origin for `GET` (and headers your browser sends for range requests if needed).
-
----
-
-## Project layout
+## Layout
 
 | Path | Role |
 |------|------|
-| `backend/main.py` | FastAPI app: `/health`, `/search`, `/player/{gsis_id}`, optional static `/data` |
-| `backend/data/` | Local `player_index.parquet` and `nfl_pbp_*.parquet` |
-| `backend/scripts/dataPipeline.py` | Downloads and builds Parquet from nflverse |
-| `frontend/` | Vite + React + DuckDB-WASM workbench |
-| `frontend/public/_redirects` | SPA fallback for hosts that honor `_redirects` |
-| `render.yaml` | Render Blueprint (API + static site) |
+| `backend/nfl_stat/main.py` | App factory: routers, CORS for the local Vite port, static `/data` |
+| `backend/nfl_stat/api/routers/` | `health`, `nlq` (intent). Everything else is static files under `/data` |
+| `backend/nfl_stat/services/` | `nlq_intent` (prompt, validation, retry), `llm_client`, catalogs |
+| `backend/nfl_stat/pipeline/` | Data build from nflverse: play-by-play shards, the player-game table, the manifest (`build_data.py` is the entry point) |
+| `frontend/src/features/nlq/` | Ask: name matching, hook, answer text, panel |
+| `frontend/src/features/explore/` | Query builder and results canvas (also runs Ask's query) |
+| `metrics/metrics.json` | The stat definitions: SQL, aliases, row filters and reference values. Read by the app and by the backend tests |
+| `frontend/src/shared/config/` | Loads `metrics.json`; filter chips. The source for the model's catalog |
 
----
+## Known limits
 
-## DuckDB-WASM / headers (optional)
-
-If you enable **cross-origin isolation** (COOP/COEP) for threaded WASM, configure matching headers on your **static host** and ensure Parquet responses from object storage (or your CDN) satisfy **Cross-Origin Resource Policy** requirements. The default setup uses the non-COI bundle unless you change [`frontend/vite.config.ts`](frontend/vite.config.ts).
+- Play-by-play has one or two fewer pass attempts than the official tables in some games (Mahomes 2023: one play in week 5 and one in week 11), so rates match the official figures to within about 0.5%, not exactly. Passing yards, touchdowns, receptions and rushing totals for the sampled player-seasons match exactly. Each metric's `reference_values` in `metrics/metrics.json` record the tolerance.
+- Sack, penalty and no-play rows are pass plays in the data. Attempt-based stats (passing yards, passing TDs, completion %, interception rate) leave them out with a `play_filter`; edit that in `metrics/metrics.json` and run `uv run pytest`, which checks every metric against its reference values when data is built.
+- Player search and name matching read `players.json`, built from nflverse rosters. A build over a few seasons keeps players from earlier builds (it merges, keeping each player's latest season), so retired and unsigned players stay findable.
+- Per game divides by the games a player appeared in within the same season, season type, week and home/away filters. Situational filters (down, quarter, ...) do not shrink that count.
+- The expression language in `metrics/metrics.json` and the filter chips is a SQL subset: `SUM/AVG/COUNT/NULLIF`, `CASE`, `CAST(.. AS DOUBLE)`, arithmetic, comparisons, `AND/OR/NOT`, `LIKE`. `frontend/src/shared/engine/expression.ts` names anything else it cannot run. There is no ad hoc SQL.
+- "Min plays" counts the rows each stat uses: attempts for the filtered stats above, dropbacks (sacks included) for the rest. A passer near the threshold can show some stats and not others.
+- Per-play values for EPA and WPA stats are per dropback; per-play passing yards, TDs, completion % and interception rate are per attempt.
+- Leaderboards are read by the rules only ("who led the league in passing yards in 2023", "top 5 completion percentage in 2023"): the model is never asked, because it cannot rank. They show the top 10 unless the question says "top N" or "bottom N"; per game and rate rankings need at least 100 plays. "fewest", "least", "lowest" and "bottom" rank lowest first. "best" and "worst" follow the stat's `better` field in `metrics/metrics.json` ("best interception rate" is the lowest), and a stat without one (ADOT, time to throw) gets "ask for the highest or lowest" instead of a guess. Team queries run in Explore (The Who: Players / Teams): a team's offense counts its plays that have someone in the stat's role, so a team total is the sum of its players'; defense counts the same plays by its opponents (yards allowed). Passing yards are gross yards on attempts, so a defense ranking can differ from official net figures. Next Gen Stats are per-player weekly values and are refused for teams. Ask reads team names and nicknames ("Chiefs passing yards in 2023", "Chiefs and Bills rushing yards by season"; abbreviations are not read, since "NO" and "LA" are words), "allowed", "against" or "defense" for the defense, and "which team ... the most / fewest" as a ranking of all 32, all with the rules only. A team name wins over a player matched only by that word ("Bills" is Buffalo, not Keaton Bills); a question naming a player and a team ("Mahomes against the Chiefs") is an opponent filter, which the data cannot apply, so it is handed back. The URL carries them as `o=<stat>` (add `:asc` to reverse) and `n=<rows>`. In Explore, the Ranking control in the Aggregation block sets them: rank by one selected stat, highest or lowest first, 1 to 100 rows. With no player pinned it ranks the league; with players pinned it sorts them.
+- Splits: "by season", "each season", "every year", "by week", "each game" and "game by game" give one line per season or week, whichever path read the rest of the question. With a ranking they rank single seasons or games ("top 5 passing yards by season"). In Explore, Split by in the Aggregation block sets the same `by` part; the X / Y chart is hidden while split, since it plots one dot per player. Min plays applies to each row, so a weekly ranking from Ask asks for 10 plays rather than 100. "per season" splits; "per game" stays a granularity, and "by week 5" is not a split.
+- Name matching is exact on surnames and full names, so typos are not corrected.
+- Receiving and rushing totals can differ slightly from official lines (play-by-play data).
+- `mlx_lm.server` is not hardened for production; keep it on localhost.

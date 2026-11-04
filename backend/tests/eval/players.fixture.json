@@ -1,0 +1,2249 @@
+[
+ {
+  "gsis_id": "00-0027962",
+  "display_name": "Cameron Jordan",
+  "search_key": "cameron jordan",
+  "position": "LB",
+  "team": "NO"
+ },
+ {
+  "gsis_id": "00-0028118",
+  "display_name": "Tyrod Taylor",
+  "search_key": "tyrod taylor",
+  "position": "QB",
+  "team": "GB"
+ },
+ {
+  "gsis_id": "00-0030279",
+  "display_name": "Keenan Allen",
+  "search_key": "keenan allen",
+  "position": "WR",
+  "team": "IND"
+ },
+ {
+  "gsis_id": "00-0030294",
+  "display_name": "Tony Jefferson",
+  "search_key": "tony jefferson",
+  "position": "DB",
+  "team": "LAC"
+ },
+ {
+  "gsis_id": "00-0030506",
+  "display_name": "Travis Kelce",
+  "search_key": "travis kelce",
+  "position": "TE",
+  "team": "KC"
+ },
+ {
+  "gsis_id": "00-0031381",
+  "display_name": "Davante Adams",
+  "search_key": "davante adams",
+  "position": "WR",
+  "team": "LA"
+ },
+ {
+  "gsis_id": "00-0031588",
+  "display_name": "Stefon Diggs",
+  "search_key": "stefon diggs",
+  "position": "WR",
+  "team": "WAS"
+ },
+ {
+  "gsis_id": "00-0032071",
+  "display_name": "Trent Brown",
+  "search_key": "trent brown",
+  "position": "OL",
+  "team": "HOU"
+ },
+ {
+  "gsis_id": "00-0032764",
+  "display_name": "Derrick Henry",
+  "search_key": "derrick henry",
+  "position": "RB",
+  "team": "BAL"
+ },
+ {
+  "gsis_id": "00-0033038",
+  "display_name": "Eric Murray",
+  "search_key": "eric murray",
+  "position": "DB",
+  "team": "JAX"
+ },
+ {
+  "gsis_id": "00-0033077",
+  "display_name": "Dak Prescott",
+  "search_key": "dak prescott",
+  "position": "QB",
+  "team": "DAL"
+ },
+ {
+  "gsis_id": "00-0033082",
+  "display_name": "Lucas Patrick",
+  "search_key": "lucas patrick",
+  "position": "OL",
+  "team": "WAS"
+ },
+ {
+  "gsis_id": "00-0033090",
+  "display_name": "Hunter Henry",
+  "search_key": "hunter henry",
+  "position": "TE",
+  "team": "NE"
+ },
+ {
+  "gsis_id": "00-0033106",
+  "display_name": "Jared Goff",
+  "search_key": "jared goff",
+  "position": "QB",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0033288",
+  "display_name": "George Kittle",
+  "search_key": "george kittle",
+  "position": "TE",
+  "team": "SF"
+ },
+ {
+  "gsis_id": "00-0033375",
+  "display_name": "Tim Patrick",
+  "search_key": "tim patrick",
+  "position": "WR",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0033439",
+  "display_name": "Pharaoh Brown",
+  "search_key": "pharaoh brown",
+  "position": "TE",
+  "team": "IND"
+ },
+ {
+  "gsis_id": "00-0033523",
+  "display_name": "Jonathan Allen",
+  "search_key": "jonathan allen",
+  "position": "DL",
+  "team": "CIN"
+ },
+ {
+  "gsis_id": "00-0033872",
+  "display_name": "Jamal Adams",
+  "search_key": "jamal adams",
+  "position": "LB",
+  "team": "MIN"
+ },
+ {
+  "gsis_id": "00-0033873",
+  "display_name": "Patrick Mahomes",
+  "search_key": "patrick mahomes",
+  "position": "QB",
+  "team": "KC"
+ },
+ {
+  "gsis_id": "00-0033908",
+  "display_name": "Cooper Kupp",
+  "search_key": "cooper kupp",
+  "position": "WR",
+  "team": "SEA"
+ },
+ {
+  "gsis_id": "00-0034356",
+  "display_name": "Donte Jackson",
+  "search_key": "donte jackson",
+  "position": "DB",
+  "team": "LAC"
+ },
+ {
+  "gsis_id": "00-0034495",
+  "display_name": "Evan Brown",
+  "search_key": "evan brown",
+  "position": "OL",
+  "team": "HOU"
+ },
+ {
+  "gsis_id": "00-0034577",
+  "display_name": "Kyle Allen",
+  "search_key": "kyle allen",
+  "position": "QB",
+  "team": "BUF"
+ },
+ {
+  "gsis_id": "00-0034752",
+  "display_name": "Orlando Brown",
+  "search_key": "orlando brown",
+  "position": "OL",
+  "team": "CIN"
+ },
+ {
+  "gsis_id": "00-0034796",
+  "display_name": "Lamar Jackson",
+  "search_key": "lamar jackson",
+  "position": "QB",
+  "team": "BAL"
+ },
+ {
+  "gsis_id": "00-0034800",
+  "display_name": "B.J. Hill",
+  "search_key": "b.j. hill",
+  "position": "DL",
+  "team": "CIN"
+ },
+ {
+  "gsis_id": "00-0034832",
+  "display_name": "Bradley Chubb",
+  "search_key": "bradley chubb",
+  "position": "LB",
+  "team": "BUF"
+ },
+ {
+  "gsis_id": "00-0034844",
+  "display_name": "Saquon Barkley",
+  "search_key": "saquon barkley",
+  "position": "RB",
+  "team": "PHI"
+ },
+ {
+  "gsis_id": "00-0034857",
+  "display_name": "Josh Allen",
+  "search_key": "josh allen",
+  "position": "QB",
+  "team": "BUF"
+ },
+ {
+  "gsis_id": "00-0034974",
+  "display_name": "Julian Love",
+  "search_key": "julian love",
+  "position": "DB",
+  "team": "SEA"
+ },
+ {
+  "gsis_id": "00-0034975",
+  "display_name": "Justice Hill",
+  "search_key": "justice hill",
+  "position": "RB",
+  "team": "BAL"
+ },
+ {
+  "gsis_id": "00-0035228",
+  "display_name": "Kyler Murray",
+  "search_key": "kyler murray",
+  "position": "QB",
+  "team": "MIN"
+ },
+ {
+  "gsis_id": "00-0035237",
+  "display_name": "Jawaan Taylor",
+  "search_key": "jawaan taylor",
+  "position": "OL",
+  "team": "ATL"
+ },
+ {
+  "gsis_id": "00-0035248",
+  "display_name": "Zach Allen",
+  "search_key": "zach allen",
+  "position": "DL",
+  "team": "DEN"
+ },
+ {
+  "gsis_id": "00-0035266",
+  "display_name": "Mike Jordan",
+  "search_key": "mike jordan",
+  "position": "OL",
+  "team": "BAL"
+ },
+ {
+  "gsis_id": "00-0035277",
+  "display_name": "Mike Jackson",
+  "search_key": "mike jackson",
+  "position": "DB",
+  "team": "CAR"
+ },
+ {
+  "gsis_id": "00-0035642",
+  "display_name": "Josh Hines-Allen",
+  "search_key": "josh hines-allen",
+  "position": "DL",
+  "team": "JAX"
+ },
+ {
+  "gsis_id": "00-0035662",
+  "display_name": "Marquise Brown",
+  "search_key": "marquise brown",
+  "position": "WR",
+  "team": "PHI"
+ },
+ {
+  "gsis_id": "00-0035665",
+  "display_name": "David Long",
+  "search_key": "david long",
+  "position": "DB",
+  "team": "NO"
+ },
+ {
+  "gsis_id": "00-0035676",
+  "display_name": "A.J. Brown",
+  "search_key": "a.j. brown",
+  "position": "WR",
+  "team": "NE"
+ },
+ {
+  "gsis_id": "00-0035946",
+  "display_name": "Myles Adams",
+  "search_key": "myles adams",
+  "position": "DL",
+  "team": "LAC"
+ },
+ {
+  "gsis_id": "00-0036093",
+  "display_name": "Bill Murray",
+  "search_key": "bill murray",
+  "position": "OL",
+  "team": "LA"
+ },
+ {
+  "gsis_id": "00-0036166",
+  "display_name": "Dane Jackson",
+  "search_key": "dane jackson",
+  "position": "DB",
+  "team": "JAX"
+ },
+ {
+  "gsis_id": "00-0036220",
+  "display_name": "Derrick Brown",
+  "search_key": "derrick brown",
+  "position": "DL",
+  "team": "CAR"
+ },
+ {
+  "gsis_id": "00-0036223",
+  "display_name": "Jonathan Taylor",
+  "search_key": "jonathan taylor",
+  "position": "RB",
+  "team": "IND"
+ },
+ {
+  "gsis_id": "00-0036248",
+  "display_name": "Austin Jackson",
+  "search_key": "austin jackson",
+  "position": "OL",
+  "team": "MIA"
+ },
+ {
+  "gsis_id": "00-0036258",
+  "display_name": "Jonah Jackson",
+  "search_key": "jonah jackson",
+  "position": "OL",
+  "team": "CHI"
+ },
+ {
+  "gsis_id": "00-0036264",
+  "display_name": "Jordan Love",
+  "search_key": "jordan love",
+  "position": "QB",
+  "team": "GB"
+ },
+ {
+  "gsis_id": "00-0036322",
+  "display_name": "Justin Jefferson",
+  "search_key": "justin jefferson",
+  "position": "WR",
+  "team": "MIN"
+ },
+ {
+  "gsis_id": "00-0036355",
+  "display_name": "Justin Herbert",
+  "search_key": "justin herbert",
+  "position": "QB",
+  "team": "LAC"
+ },
+ {
+  "gsis_id": "00-0036358",
+  "display_name": "CeeDee Lamb",
+  "search_key": "ceedee lamb",
+  "position": "WR",
+  "team": "DAL"
+ },
+ {
+  "gsis_id": "00-0036361",
+  "display_name": "Trevon Diggs",
+  "search_key": "trevon diggs",
+  "position": "DB",
+  "team": "SEA"
+ },
+ {
+  "gsis_id": "00-0036389",
+  "display_name": "Jalen Hurts",
+  "search_key": "jalen hurts",
+  "position": "QB",
+  "team": "PHI"
+ },
+ {
+  "gsis_id": "00-0036415",
+  "display_name": "Van Jefferson",
+  "search_key": "van jefferson",
+  "position": "WR",
+  "team": "WAS"
+ },
+ {
+  "gsis_id": "00-0036441",
+  "display_name": "Kenneth Murray, Jr.",
+  "search_key": "kenneth murray, jr.",
+  "position": "LB",
+  "team": "HOU"
+ },
+ {
+  "gsis_id": "00-0036442",
+  "display_name": "Joe Burrow",
+  "search_key": "joe burrow",
+  "position": "QB",
+  "team": "CIN"
+ },
+ {
+  "gsis_id": "00-0036556",
+  "display_name": "Brevin Jordan",
+  "search_key": "brevin jordan",
+  "position": "TE",
+  "team": "HOU"
+ },
+ {
+  "gsis_id": "00-0036603",
+  "display_name": "Alaric Jackson",
+  "search_key": "alaric jackson",
+  "position": "OL",
+  "team": "LA"
+ },
+ {
+  "gsis_id": "00-0036626",
+  "display_name": "Dyami Brown",
+  "search_key": "dyami brown",
+  "position": "WR",
+  "team": "WAS"
+ },
+ {
+  "gsis_id": "00-0036670",
+  "display_name": "Jermar Jefferson",
+  "search_key": "jermar jefferson",
+  "position": "RB",
+  "team": "MIN"
+ },
+ {
+  "gsis_id": "00-0036885",
+  "display_name": "Tre Brown",
+  "search_key": "tre brown",
+  "position": "DB",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0036903",
+  "display_name": "Bobby Brown III",
+  "search_key": "bobby brown iii",
+  "position": "DL",
+  "team": "CAR"
+ },
+ {
+  "gsis_id": "00-0036906",
+  "display_name": "Khalil Herbert",
+  "search_key": "khalil herbert",
+  "position": "RB",
+  "team": "ATL"
+ },
+ {
+  "gsis_id": "00-0036952",
+  "display_name": "Jonathon Cooper",
+  "search_key": "jonathon cooper",
+  "position": "LB",
+  "team": "DEN"
+ },
+ {
+  "gsis_id": "00-0036963",
+  "display_name": "Amon-Ra St. Brown",
+  "search_key": "amon-ra st. brown",
+  "position": "WR",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0036976",
+  "display_name": "Spencer Brown",
+  "search_key": "spencer brown",
+  "position": "OL",
+  "team": "BUF"
+ },
+ {
+  "gsis_id": "00-0037004",
+  "display_name": "Hunter Long",
+  "search_key": "hunter long",
+  "position": "TE",
+  "team": "ARI"
+ },
+ {
+  "gsis_id": "00-0037155",
+  "display_name": "Tony Adams",
+  "search_key": "tony adams",
+  "position": "DB",
+  "team": "TEN"
+ },
+ {
+  "gsis_id": "00-0037271",
+  "display_name": "D'Marco Jackson",
+  "search_key": "d'marco jackson",
+  "position": "LB",
+  "team": "CHI"
+ },
+ {
+  "gsis_id": "00-0037294",
+  "display_name": "Jordan Jackson",
+  "search_key": "jordan jackson",
+  "position": "DL",
+  "team": "DEN"
+ },
+ {
+  "gsis_id": "00-0037301",
+  "display_name": "Theo Jackson",
+  "search_key": "theo jackson",
+  "position": "DB",
+  "team": "MIN"
+ },
+ {
+  "gsis_id": "00-0037307",
+  "display_name": "Ja'Sir Taylor",
+  "search_key": "ja'sir taylor",
+  "position": "DB",
+  "team": "CIN"
+ },
+ {
+  "gsis_id": "00-0037313",
+  "display_name": "Montaric Brown",
+  "search_key": "montaric brown",
+  "position": "DB",
+  "team": "JAX"
+ },
+ {
+  "gsis_id": "00-0037329",
+  "display_name": "Brittain Brown",
+  "search_key": "brittain brown",
+  "position": "RB",
+  "team": "CHI"
+ },
+ {
+  "gsis_id": "00-0037413",
+  "display_name": "Ben Brown",
+  "search_key": "ben brown",
+  "position": "OL",
+  "team": "NE"
+ },
+ {
+  "gsis_id": "00-0037431",
+  "display_name": "Kingsley Jonathan",
+  "search_key": "kingsley jonathan",
+  "position": "DL",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0037493",
+  "display_name": "Mike Brown",
+  "search_key": "mike brown",
+  "position": "DB",
+  "team": "NE"
+ },
+ {
+  "gsis_id": "00-0037743",
+  "display_name": "Daxton Hill",
+  "search_key": "daxton hill",
+  "position": "DB",
+  "team": "CIN"
+ },
+ {
+  "gsis_id": "00-0037826",
+  "display_name": "Drake Jackson",
+  "search_key": "drake jackson",
+  "position": "LB",
+  "team": "ATL"
+ },
+ {
+  "gsis_id": "00-0037834",
+  "display_name": "Brock Purdy",
+  "search_key": "brock purdy",
+  "position": "QB",
+  "team": "SF"
+ },
+ {
+  "gsis_id": "00-0038121",
+  "display_name": "Alontae Taylor",
+  "search_key": "alontae taylor",
+  "position": "DB",
+  "team": "TEN"
+ },
+ {
+  "gsis_id": "00-0038181",
+  "display_name": "Lucky Jackson",
+  "search_key": "lucky jackson",
+  "position": "WR",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0038354",
+  "display_name": "Tanner Brown",
+  "search_key": "tanner brown",
+  "position": "K",
+  "team": "NO"
+ },
+ {
+  "gsis_id": "00-0038521",
+  "display_name": "Reese Taylor",
+  "search_key": "reese taylor",
+  "position": "DB",
+  "team": "MIA"
+ },
+ {
+  "gsis_id": "00-0038554",
+  "display_name": "Ji'Ayir Brown",
+  "search_key": "ji'ayir brown",
+  "position": "DB",
+  "team": "SF"
+ },
+ {
+  "gsis_id": "00-0038581",
+  "display_name": "KJ Henry",
+  "search_key": "kj henry",
+  "position": "DL",
+  "team": "PIT"
+ },
+ {
+  "gsis_id": "00-0038597",
+  "display_name": "Chase Brown",
+  "search_key": "chase brown",
+  "position": "RB",
+  "team": "CIN"
+ },
+ {
+  "gsis_id": "00-0038644",
+  "display_name": "Brandon Hill",
+  "search_key": "brandon hill",
+  "position": "DB",
+  "team": "PIT"
+ },
+ {
+  "gsis_id": "00-0038720",
+  "display_name": "Julian Hill",
+  "search_key": "julian hill",
+  "position": "TE",
+  "team": "NE"
+ },
+ {
+  "gsis_id": "00-0038891",
+  "display_name": "Shedrick Jackson",
+  "search_key": "shedrick jackson",
+  "position": "WR",
+  "team": "ARI"
+ },
+ {
+  "gsis_id": "00-0039002",
+  "display_name": "Sydney Brown",
+  "search_key": "sydney brown",
+  "position": "DB",
+  "team": "ATL"
+ },
+ {
+  "gsis_id": "00-0039060",
+  "display_name": "Jason Taylor II",
+  "search_key": "jason taylor ii",
+  "position": "DB",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0039074",
+  "display_name": "Davis Allen",
+  "search_key": "davis allen",
+  "position": "TE",
+  "team": "LA"
+ },
+ {
+  "gsis_id": "00-0039245",
+  "display_name": "Ryan Cooper Jr.",
+  "search_key": "ryan cooper jr.",
+  "position": "DB",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0039289",
+  "display_name": "Leonard Taylor III",
+  "search_key": "leonard taylor iii",
+  "position": "DL",
+  "team": "NE"
+ },
+ {
+  "gsis_id": "00-0039354",
+  "display_name": "McKinnley Jackson",
+  "search_key": "mckinnley jackson",
+  "position": "DL",
+  "team": "SF"
+ },
+ {
+  "gsis_id": "00-0039392",
+  "display_name": "Jha'Quan Jackson",
+  "search_key": "jha'quan jackson",
+  "position": "WR",
+  "team": "TB"
+ },
+ {
+  "gsis_id": "00-0039395",
+  "display_name": "Jamal Hill",
+  "search_key": "jamal hill",
+  "position": "LB",
+  "team": "JAX"
+ },
+ {
+  "gsis_id": "00-0039405",
+  "display_name": "Jawhar Jordan",
+  "search_key": "jawhar jordan",
+  "position": "RB",
+  "team": "HOU"
+ },
+ {
+  "gsis_id": "00-0039722",
+  "display_name": "JaQuae Jackson",
+  "search_key": "jaquae jackson",
+  "position": "WR",
+  "team": "LAC"
+ },
+ {
+  "gsis_id": "00-0039743",
+  "display_name": "Jordan Jefferson",
+  "search_key": "jordan jefferson",
+  "position": "DL",
+  "team": "MIA"
+ },
+ {
+  "gsis_id": "00-0039745",
+  "display_name": "Tory Taylor",
+  "search_key": "tory taylor",
+  "position": "P",
+  "team": "CHI"
+ },
+ {
+  "gsis_id": "00-0039794",
+  "display_name": "Braelon Allen",
+  "search_key": "braelon allen",
+  "position": "RB",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0039808",
+  "display_name": "Isaiah Adams",
+  "search_key": "isaiah adams",
+  "position": "OL",
+  "team": "ARI"
+ },
+ {
+  "gsis_id": "00-0039836",
+  "display_name": "Brennan Jackson",
+  "search_key": "brennan jackson",
+  "position": "LB",
+  "team": "LV"
+ },
+ {
+  "gsis_id": "00-0039850",
+  "display_name": "Edgerrin Cooper",
+  "search_key": "edgerrin cooper",
+  "position": "LB",
+  "team": "GB"
+ },
+ {
+  "gsis_id": "00-0039956",
+  "display_name": "Elliott Brown",
+  "search_key": "elliott brown",
+  "position": "LB",
+  "team": "ARI"
+ },
+ {
+  "gsis_id": "00-0040024",
+  "display_name": "Darius Cooper",
+  "search_key": "darius cooper",
+  "position": "WR",
+  "team": "PHI"
+ },
+ {
+  "gsis_id": "00-0040083",
+  "display_name": "Dalton Cooper",
+  "search_key": "dalton cooper",
+  "position": "OL",
+  "team": "GB"
+ },
+ {
+  "gsis_id": "00-0040087",
+  "display_name": "Brandon George",
+  "search_key": "brandon george",
+  "position": "LB",
+  "team": "PHI"
+ },
+ {
+  "gsis_id": "00-0040104",
+  "display_name": "Keondre Jackson",
+  "search_key": "keondre jackson",
+  "position": "DB",
+  "team": "BAL"
+ },
+ {
+  "gsis_id": "00-0040132",
+  "display_name": "Landon Jackson",
+  "search_key": "landon jackson",
+  "position": "DL",
+  "team": "BUF"
+ },
+ {
+  "gsis_id": "00-0040163",
+  "display_name": "Jalen Travis",
+  "search_key": "jalen travis",
+  "position": "OL",
+  "team": "IND"
+ },
+ {
+  "gsis_id": "00-0040174",
+  "display_name": "Cam Jackson",
+  "search_key": "cam jackson",
+  "position": "DL",
+  "team": "CAR"
+ },
+ {
+  "gsis_id": "00-0040212",
+  "display_name": "Branson Taylor",
+  "search_key": "branson taylor",
+  "position": "OL",
+  "team": "LAC"
+ },
+ {
+  "gsis_id": "00-0040233",
+  "display_name": "Dan Jackson",
+  "search_key": "dan jackson",
+  "position": "DB",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0040238",
+  "display_name": "LeQuint Allen Jr.",
+  "search_key": "lequint allen jr.",
+  "position": "RB",
+  "team": "JAX"
+ },
+ {
+  "gsis_id": "00-0040249",
+  "display_name": "Fadil Diggs",
+  "search_key": "fadil diggs",
+  "position": "LB",
+  "team": "NO"
+ },
+ {
+  "gsis_id": "00-0040331",
+  "display_name": "Patrick Herbert",
+  "search_key": "patrick herbert",
+  "position": "TE",
+  "team": "LAC"
+ },
+ {
+  "gsis_id": "00-0040332",
+  "display_name": "Ja'Quinden Jackson",
+  "search_key": "ja'quinden jackson",
+  "position": "RB",
+  "team": "PHI"
+ },
+ {
+  "gsis_id": "00-0040445",
+  "display_name": "Courtney Jackson",
+  "search_key": "courtney jackson",
+  "position": "WR",
+  "team": "TEN"
+ },
+ {
+  "gsis_id": "00-0040495",
+  "display_name": "Logan Brown",
+  "search_key": "logan brown",
+  "position": "OL",
+  "team": "SEA"
+ },
+ {
+  "gsis_id": "00-0040531",
+  "display_name": "Roc Taylor",
+  "search_key": "roc taylor",
+  "position": "WR",
+  "team": "CAR"
+ },
+ {
+  "gsis_id": "00-0040625",
+  "display_name": "Nick Jackson",
+  "search_key": "nick jackson",
+  "position": "LB",
+  "team": "TB"
+ },
+ {
+  "gsis_id": "00-0040655",
+  "display_name": "Keith Cooper Jr.",
+  "search_key": "keith cooper jr.",
+  "position": "DL",
+  "team": "CAR"
+ },
+ {
+  "gsis_id": "00-0040661",
+  "display_name": "Donovan Jackson",
+  "search_key": "donovan jackson",
+  "position": "OL",
+  "team": "MIN"
+ },
+ {
+  "gsis_id": "00-0040736",
+  "display_name": "Mason Taylor",
+  "search_key": "mason taylor",
+  "position": "TE",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0040890",
+  "display_name": "Cyrus Allen",
+  "search_key": "cyrus allen",
+  "position": "WR",
+  "team": "KC"
+ },
+ {
+  "gsis_id": "00-0040896",
+  "display_name": "Domani Jackson",
+  "search_key": "domani jackson",
+  "position": "DB",
+  "team": "GB"
+ },
+ {
+  "gsis_id": "00-0040930",
+  "display_name": "Camden Brown",
+  "search_key": "camden brown",
+  "position": "WR",
+  "team": "DAL"
+ },
+ {
+  "gsis_id": "00-0041027",
+  "display_name": "Jeremiyah Love",
+  "search_key": "jeremiyah love",
+  "position": "RB",
+  "team": "ARI"
+ },
+ {
+  "gsis_id": "00-0041039",
+  "display_name": "CJ Allen",
+  "search_key": "cj allen",
+  "position": "LB",
+  "team": "IND"
+ },
+ {
+  "gsis_id": "00-0041075",
+  "display_name": "Justin Jefferson",
+  "search_key": "justin jefferson",
+  "position": "LB",
+  "team": "CLE"
+ },
+ {
+  "gsis_id": "00-0041095",
+  "display_name": "Bobby Jamison-Travis",
+  "search_key": "bobby jamison-travis",
+  "position": "DL",
+  "team": "NYG"
+ },
+ {
+  "gsis_id": "00-0041096",
+  "display_name": "Kaytron Allen",
+  "search_key": "kaytron allen",
+  "position": "RB",
+  "team": "MIA"
+ },
+ {
+  "gsis_id": "00-0041097",
+  "display_name": "Anez Cooper",
+  "search_key": "anez cooper",
+  "position": "OL",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0041099",
+  "display_name": "Barion Brown",
+  "search_key": "barion brown",
+  "position": "WR",
+  "team": "NO"
+ },
+ {
+  "gsis_id": "00-0041105",
+  "display_name": "Logan Taylor",
+  "search_key": "logan taylor",
+  "position": "OL",
+  "team": "LAC"
+ },
+ {
+  "gsis_id": "00-0041128",
+  "display_name": "Ar'maj Reed-Adams",
+  "search_key": "ar'maj reed-adams",
+  "position": "OL",
+  "team": "BUF"
+ },
+ {
+  "gsis_id": "00-0041178",
+  "display_name": "Robert Henry Jr.",
+  "search_key": "robert henry jr.",
+  "position": "RB",
+  "team": "SEA"
+ },
+ {
+  "gsis_id": "00-0041184",
+  "display_name": "Carlos Allen Jr.",
+  "search_key": "carlos allen jr.",
+  "position": "DL",
+  "team": "ATL"
+ },
+ {
+  "gsis_id": "00-0041217",
+  "display_name": "J'Mari Taylor",
+  "search_key": "j'mari taylor",
+  "position": "RB",
+  "team": "JAX"
+ },
+ {
+  "gsis_id": "00-0041226",
+  "display_name": "Austin Brown",
+  "search_key": "austin brown",
+  "position": "DB",
+  "team": "IND"
+ },
+ {
+  "gsis_id": "00-0041238",
+  "display_name": "Xavier Hill",
+  "search_key": "xavier hill",
+  "position": "OL",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0041240",
+  "display_name": "Liam Brown",
+  "search_key": "liam brown",
+  "position": "OL",
+  "team": "CIN"
+ },
+ {
+  "gsis_id": "00-0041340",
+  "display_name": "Marcus Allen",
+  "search_key": "marcus allen",
+  "position": "DB",
+  "team": "MIN"
+ },
+ {
+  "gsis_id": "00-0041374",
+  "display_name": "Sincere Brown",
+  "search_key": "sincere brown",
+  "position": "WR",
+  "team": "LAC"
+ },
+ {
+  "gsis_id": "00-0041454",
+  "display_name": "Aamaris Brown",
+  "search_key": "aamaris brown",
+  "position": "DB",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0041479",
+  "display_name": "Anthony Hill Jr.",
+  "search_key": "anthony hill jr.",
+  "position": "LB",
+  "team": "TEN"
+ },
+ {
+  "gsis_id": "00-0041511",
+  "display_name": "Omar Cooper Jr.",
+  "search_key": "omar cooper jr.",
+  "position": "WR",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0041549",
+  "display_name": "Darrell Jackson Jr.",
+  "search_key": "darrell jackson jr.",
+  "position": "DL",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0041591",
+  "display_name": "Brien Taylor",
+  "search_key": "brien taylor",
+  "position": "DL",
+  "team": "NO"
+ },
+ {
+  "gsis_id": "00-0041599",
+  "display_name": "Matthew Henry",
+  "search_key": "matthew henry",
+  "position": "WR",
+  "team": "TB"
+ },
+ {
+  "gsis_id": "00-0031544",
+  "display_name": "Amari Cooper",
+  "search_key": "amari cooper",
+  "position": "WR",
+  "team": "LV"
+ },
+ {
+  "gsis_id": "00-0031608",
+  "display_name": "Quandre Diggs",
+  "search_key": "quandre diggs",
+  "position": "DB",
+  "team": "SEA"
+ },
+ {
+  "gsis_id": "00-0032416",
+  "display_name": "Quinton Jefferson",
+  "search_key": "quinton jefferson",
+  "position": "DL",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0032434",
+  "display_name": "Brandon Allen",
+  "search_key": "brandon allen",
+  "position": "QB",
+  "team": "TEN"
+ },
+ {
+  "gsis_id": "00-0033040",
+  "display_name": "Tyreek Hill",
+  "search_key": "tyreek hill",
+  "position": "WR",
+  "team": "MIA"
+ },
+ {
+  "gsis_id": "00-0033292",
+  "display_name": "Trent Taylor",
+  "search_key": "trent taylor",
+  "position": "WR",
+  "team": "SF"
+ },
+ {
+  "gsis_id": "00-0033357",
+  "display_name": "Taysom Hill",
+  "search_key": "taysom hill",
+  "position": "QB",
+  "team": "NO"
+ },
+ {
+  "gsis_id": "00-0033591",
+  "display_name": "Noah Brown",
+  "search_key": "noah brown",
+  "position": "WR",
+  "team": "WAS"
+ },
+ {
+  "gsis_id": "00-0033878",
+  "display_name": "Adoree' Jackson",
+  "search_key": "adoree' jackson",
+  "position": "DB",
+  "team": "PHI"
+ },
+ {
+  "gsis_id": "00-0034540",
+  "display_name": "Tony Brown",
+  "search_key": "tony brown",
+  "position": "DB",
+  "team": "CLE"
+ },
+ {
+  "gsis_id": "00-0034791",
+  "display_name": "Nick Chubb",
+  "search_key": "nick chubb",
+  "position": "RB",
+  "team": "HOU"
+ },
+ {
+  "gsis_id": "00-0035356",
+  "display_name": "Tyree Jackson",
+  "search_key": "tyree jackson",
+  "position": "TE",
+  "team": "WAS"
+ },
+ {
+  "gsis_id": "00-0035480",
+  "display_name": "Malik Taylor",
+  "search_key": "malik taylor",
+  "position": "WR",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0035934",
+  "display_name": "Trishton Jackson",
+  "search_key": "trishton jackson",
+  "position": "WR",
+  "team": "ARI"
+ },
+ {
+  "gsis_id": "00-0035973",
+  "display_name": "Patrick Taylor",
+  "search_key": "patrick taylor",
+  "position": "RB",
+  "team": "SF"
+ },
+ {
+  "gsis_id": "00-0036413",
+  "display_name": "Darrell Taylor",
+  "search_key": "darrell taylor",
+  "position": "DL",
+  "team": "NE"
+ },
+ {
+  "gsis_id": "00-0036493",
+  "display_name": "Deon Jackson",
+  "search_key": "deon jackson",
+  "position": "RB",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0036561",
+  "display_name": "Keith Taylor",
+  "search_key": "keith taylor",
+  "position": "DB",
+  "team": "JAX"
+ },
+ {
+  "gsis_id": "00-0036855",
+  "display_name": "Earnest Brown IV",
+  "search_key": "earnest brown iv",
+  "position": "DL",
+  "team": "DAL"
+ },
+ {
+  "gsis_id": "00-0036856",
+  "display_name": "Trey Hill",
+  "search_key": "trey hill",
+  "position": "OL",
+  "team": "CHI"
+ },
+ {
+  "gsis_id": "00-0036921",
+  "display_name": "Tarron Jackson",
+  "search_key": "tarron jackson",
+  "position": "LB",
+  "team": "SF"
+ },
+ {
+  "gsis_id": "00-0037415",
+  "display_name": "Allan George",
+  "search_key": "allan george",
+  "position": "DB",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0038669",
+  "display_name": "Dequan Jackson",
+  "search_key": "dequan jackson",
+  "position": "LB",
+  "team": "MIA"
+ },
+ {
+  "gsis_id": "00-0038670",
+  "display_name": "Samuel Jackson",
+  "search_key": "samuel jackson",
+  "position": "OL",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0038830",
+  "display_name": "Kazmeir Allen",
+  "search_key": "kazmeir allen",
+  "position": "RB",
+  "team": "WAS"
+ },
+ {
+  "gsis_id": "00-0038842",
+  "display_name": "Shakel Brown",
+  "search_key": "shakel brown",
+  "position": "DL",
+  "team": "SF"
+ },
+ {
+  "gsis_id": "00-0039413",
+  "display_name": "Trey Taylor",
+  "search_key": "trey taylor",
+  "position": "DB",
+  "team": "LV"
+ },
+ {
+  "gsis_id": "00-0039564",
+  "display_name": "Jaylon Allen",
+  "search_key": "jaylon allen",
+  "position": "DL",
+  "team": "SF"
+ },
+ {
+  "gsis_id": "00-0039566",
+  "display_name": "Omar Brown",
+  "search_key": "omar brown",
+  "position": "DB",
+  "team": "GB"
+ },
+ {
+  "gsis_id": "00-0039797",
+  "display_name": "Jordan Travis",
+  "search_key": "jordan travis",
+  "position": "QB",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0040036",
+  "display_name": "Tyler Cooper",
+  "search_key": "tyler cooper",
+  "position": "OL",
+  "team": "ARI"
+ },
+ {
+  "gsis_id": "00-0040281",
+  "display_name": "Jacolby George",
+  "search_key": "jacolby george",
+  "position": "WR",
+  "team": "CAR"
+ },
+ {
+  "gsis_id": "00-0040288",
+  "display_name": "Kayron Lynch-Adams",
+  "search_key": "kayron lynch-adams",
+  "position": "RB",
+  "team": "CAR"
+ },
+ {
+  "gsis_id": "00-0040297",
+  "display_name": "BJ Adams",
+  "search_key": "bj adams",
+  "position": "DB",
+  "team": "MIA"
+ },
+ {
+  "gsis_id": "00-0040354",
+  "display_name": "Blayne Taylor",
+  "search_key": "blayne taylor",
+  "position": "WR",
+  "team": "IND"
+ },
+ {
+  "gsis_id": "00-0040412",
+  "display_name": "Daniel Jackson",
+  "search_key": "daniel jackson",
+  "position": "WR",
+  "team": "HOU"
+ },
+ {
+  "gsis_id": "00-0040605",
+  "display_name": "Ketron Jackson Jr.",
+  "search_key": "ketron jackson jr.",
+  "position": "WR",
+  "team": "LV"
+ },
+ {
+  "gsis_id": "00-0040622",
+  "display_name": "D'Eryk Jackson",
+  "search_key": "d'eryk jackson",
+  "position": "LB",
+  "team": "SEA"
+ },
+ {
+  "gsis_id": "00-0027872",
+  "display_name": "Kareem Jackson",
+  "search_key": "kareem jackson",
+  "position": "DB",
+  "team": "BUF"
+ },
+ {
+  "gsis_id": "00-0028129",
+  "display_name": "Jason Kelce",
+  "search_key": "jason kelce",
+  "position": "OL",
+  "team": "PHI"
+ },
+ {
+  "gsis_id": "00-0031785",
+  "display_name": "Troy Hill",
+  "search_key": "troy hill",
+  "position": "DB",
+  "team": "TB"
+ },
+ {
+  "gsis_id": "00-0032437",
+  "display_name": "Kamu Grugier-Hill",
+  "search_key": "kamu grugier-hill",
+  "position": "LB",
+  "team": "MIN"
+ },
+ {
+  "gsis_id": "00-0032528",
+  "display_name": "Justin Murray",
+  "search_key": "justin murray",
+  "position": "OL",
+  "team": "CLE"
+ },
+ {
+  "gsis_id": "00-0033047",
+  "display_name": "Anthony Brown",
+  "search_key": "anthony brown",
+  "position": "DB",
+  "team": "CAR"
+ },
+ {
+  "gsis_id": "00-0033505",
+  "display_name": "Cameron Tom",
+  "search_key": "cameron tom",
+  "position": "OL",
+  "team": "CLE"
+ },
+ {
+  "gsis_id": "00-0033784",
+  "display_name": "Eddie Jackson",
+  "search_key": "eddie jackson",
+  "position": "DB",
+  "team": "LAC"
+ },
+ {
+  "gsis_id": "00-0033929",
+  "display_name": "Montravius Adams",
+  "search_key": "montravius adams",
+  "position": "DL",
+  "team": "PIT"
+ },
+ {
+  "gsis_id": "00-0034279",
+  "display_name": "Equanimeous St. Brown",
+  "search_key": "equanimeous st. brown",
+  "position": "WR",
+  "team": "NO"
+ },
+ {
+  "gsis_id": "00-0034424",
+  "display_name": "Matthew Adams",
+  "search_key": "matthew adams",
+  "position": "LB",
+  "team": "NYG"
+ },
+ {
+  "gsis_id": "00-0034804",
+  "display_name": "Brian Allen",
+  "search_key": "brian allen",
+  "position": "OL",
+  "team": "CLE"
+ },
+ {
+  "gsis_id": "00-0035247",
+  "display_name": "Trysten Hill",
+  "search_key": "trysten hill",
+  "position": "DL",
+  "team": "IND"
+ },
+ {
+  "gsis_id": "00-0035292",
+  "display_name": "David Long Jr.",
+  "search_key": "david long jr.",
+  "position": "LB",
+  "team": "TEN"
+ },
+ {
+  "gsis_id": "00-0035499",
+  "display_name": "Kyron Brown",
+  "search_key": "kyron brown",
+  "position": "DB",
+  "team": "BUF"
+ },
+ {
+  "gsis_id": "00-0036096",
+  "display_name": "J.J. Taylor",
+  "search_key": "j.j. taylor",
+  "position": "RB",
+  "team": "HOU"
+ },
+ {
+  "gsis_id": "00-0036152",
+  "display_name": "Lamar Jackson",
+  "search_key": "lamar jackson",
+  "position": "DB",
+  "team": "ATL"
+ },
+ {
+  "gsis_id": "00-0036400",
+  "display_name": "Cameron Brown",
+  "search_key": "cameron brown",
+  "position": "LB",
+  "team": "MIA"
+ },
+ {
+  "gsis_id": "00-0036543",
+  "display_name": "Spencer Brown",
+  "search_key": "spencer brown",
+  "position": "RB",
+  "team": "ATL"
+ },
+ {
+  "gsis_id": "00-0037175",
+  "display_name": "Anthony Brown",
+  "search_key": "anthony brown",
+  "position": "QB",
+  "team": "BUF"
+ },
+ {
+  "gsis_id": "00-0037571",
+  "display_name": "Storey Jackson",
+  "search_key": "storey jackson",
+  "position": "LB",
+  "team": "ATL"
+ },
+ {
+  "gsis_id": "00-0038757",
+  "display_name": "Robert Cooper",
+  "search_key": "robert cooper",
+  "position": "DL",
+  "team": "MIA"
+ },
+ {
+  "gsis_id": "00-0038845",
+  "display_name": "Matthew Jackson",
+  "search_key": "matthew jackson",
+  "position": "DB",
+  "team": "JAX"
+ },
+ {
+  "gsis_id": "00-0038856",
+  "display_name": "Brevin Allen",
+  "search_key": "brevin allen",
+  "position": "DL",
+  "team": "NE"
+ },
+ {
+  "gsis_id": "00-0038895",
+  "display_name": "Tyler Murray",
+  "search_key": "tyler murray",
+  "position": "LB",
+  "team": "PIT"
+ },
+ {
+  "gsis_id": "00-0038969",
+  "display_name": "Kearis Jackson",
+  "search_key": "kearis jackson",
+  "position": "WR",
+  "team": "NYG"
+ },
+ {
+  "gsis_id": "00-0038999",
+  "display_name": "Jordan Murray",
+  "search_key": "jordan murray",
+  "position": "TE",
+  "team": "NYG"
+ },
+ {
+  "gsis_id": "00-0039511",
+  "display_name": "Ahmarean Brown",
+  "search_key": "ahmarean brown",
+  "position": "WR",
+  "team": "BUF"
+ },
+ {
+  "gsis_id": "00-0039554",
+  "display_name": "Jalen Jackson",
+  "search_key": "jalen jackson",
+  "position": "RB",
+  "team": "JAX"
+ },
+ {
+  "gsis_id": "00-0039614",
+  "display_name": "Jermaine Jackson",
+  "search_key": "jermaine jackson",
+  "position": "WR",
+  "team": "NO"
+ },
+ {
+  "gsis_id": "00-0039662",
+  "display_name": "Savion Jackson",
+  "search_key": "savion jackson",
+  "position": "DL",
+  "team": "LAC"
+ },
+ {
+  "gsis_id": "00-0039671",
+  "display_name": "Willis Patrick",
+  "search_key": "willis patrick",
+  "position": "OL",
+  "team": "LAC"
+ },
+ {
+  "gsis_id": "00-0039689",
+  "display_name": "Zuri Henry",
+  "search_key": "zuri henry",
+  "position": "OL",
+  "team": "NE"
+ },
+ {
+  "gsis_id": "00-0039760",
+  "display_name": "John Jackson",
+  "search_key": "john jackson",
+  "position": "WR",
+  "team": "CHI"
+ },
+ {
+  "gsis_id": "00-0039766",
+  "display_name": "Ramon Jefferson",
+  "search_key": "ramon jefferson",
+  "position": "RB",
+  "team": "TB"
+ },
+ {
+  "gsis_id": "00-0039804",
+  "display_name": "Ireland Brown",
+  "search_key": "ireland brown",
+  "position": "OL",
+  "team": "MIA"
+ },
+ {
+  "gsis_id": "00-0039856",
+  "display_name": "Khyree Jackson",
+  "search_key": "khyree jackson",
+  "position": "DB",
+  "team": "MIN"
+ },
+ {
+  "gsis_id": "00-0026166",
+  "display_name": "Duane Brown",
+  "search_key": "duane brown",
+  "position": "OL",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0030513",
+  "display_name": "Latavius Murray",
+  "search_key": "latavius murray",
+  "position": "RB",
+  "team": "BUF"
+ },
+ {
+  "gsis_id": "00-0030533",
+  "display_name": "Matt Barkley",
+  "search_key": "matt barkley",
+  "position": "QB",
+  "team": "JAX"
+ },
+ {
+  "gsis_id": "00-0031367",
+  "display_name": "Gabe Jackson",
+  "search_key": "gabe jackson",
+  "position": "OL",
+  "team": "CAR"
+ },
+ {
+  "gsis_id": "00-0032637",
+  "display_name": "Andrew Adams",
+  "search_key": "andrew adams",
+  "position": "DB",
+  "team": "BAL"
+ },
+ {
+  "gsis_id": "00-0033567",
+  "display_name": "Brian Hill",
+  "search_key": "brian hill",
+  "position": "RB",
+  "team": "SF"
+ },
+ {
+  "gsis_id": "00-0034295",
+  "display_name": "James Murray",
+  "search_key": "james murray",
+  "position": "OL",
+  "team": "JAX"
+ },
+ {
+  "gsis_id": "00-0034394",
+  "display_name": "Andrew Brown",
+  "search_key": "andrew brown",
+  "position": "DL",
+  "team": "BUF"
+ },
+ {
+  "gsis_id": "00-0034440",
+  "display_name": "Justin Jackson",
+  "search_key": "justin jackson",
+  "position": "RB",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0034591",
+  "display_name": "J.C. Jackson",
+  "search_key": "j.c. jackson",
+  "position": "DB",
+  "team": "NE"
+ },
+ {
+  "gsis_id": "00-0034835",
+  "display_name": "Malik Jefferson",
+  "search_key": "malik jefferson",
+  "position": "LB",
+  "team": "DAL"
+ },
+ {
+  "gsis_id": "00-0035760",
+  "display_name": "Jacques Patrick",
+  "search_key": "jacques patrick",
+  "position": "RB",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0035885",
+  "display_name": "Lavert Hill",
+  "search_key": "lavert hill",
+  "position": "DB",
+  "team": "PIT"
+ },
+ {
+  "gsis_id": "00-0036186",
+  "display_name": "Isiah Brown",
+  "search_key": "isiah brown",
+  "position": "DB",
+  "team": "LV"
+ },
+ {
+  "gsis_id": "00-0036393",
+  "display_name": "Davion Taylor",
+  "search_key": "davion taylor",
+  "position": "LB",
+  "team": "ARI"
+ },
+ {
+  "gsis_id": "00-0036465",
+  "display_name": "Aaron Patrick",
+  "search_key": "aaron patrick",
+  "position": "LB",
+  "team": "DEN"
+ },
+ {
+  "gsis_id": "00-0036566",
+  "display_name": "Deonte Brown",
+  "search_key": "deonte brown",
+  "position": "OL",
+  "team": "CAR"
+ },
+ {
+  "gsis_id": "00-0037039",
+  "display_name": "Devon Allen",
+  "search_key": "devon allen",
+  "position": "WR",
+  "team": "PHI"
+ },
+ {
+  "gsis_id": "00-0037362",
+  "display_name": "Ra'Shaun Henry",
+  "search_key": "ra'shaun henry",
+  "position": "WR",
+  "team": "SEA"
+ },
+ {
+  "gsis_id": "00-0037369",
+  "display_name": "Austin Allen",
+  "search_key": "austin allen",
+  "position": "TE",
+  "team": "GB"
+ },
+ {
+  "gsis_id": "00-0037379",
+  "display_name": "Christopher Allen",
+  "search_key": "christopher allen",
+  "position": "LB",
+  "team": "DEN"
+ },
+ {
+  "gsis_id": "00-0038253",
+  "display_name": "Antwuan Jackson",
+  "search_key": "antwuan jackson",
+  "position": "DL",
+  "team": "CAR"
+ },
+ {
+  "gsis_id": "00-0038295",
+  "display_name": "Willie Taylor",
+  "search_key": "willie taylor",
+  "position": "LB",
+  "team": "JAX"
+ },
+ {
+  "gsis_id": "00-0038531",
+  "display_name": "Tyler Adams",
+  "search_key": "tyler adams",
+  "position": "WR",
+  "team": "IND"
+ },
+ {
+  "gsis_id": "00-0038673",
+  "display_name": "Leonard Taylor",
+  "search_key": "leonard taylor",
+  "position": "TE",
+  "team": "JAX"
+ },
+ {
+  "gsis_id": "00-0038816",
+  "display_name": "Ronnie Brown",
+  "search_key": "ronnie brown",
+  "position": "RB",
+  "team": "TB"
+ },
+ {
+  "gsis_id": "00-0038825",
+  "display_name": "Chris Murray",
+  "search_key": "chris murray",
+  "position": "OL",
+  "team": "TB"
+ },
+ {
+  "gsis_id": "00-0038859",
+  "display_name": "Cameron Brown",
+  "search_key": "cameron brown",
+  "position": "DB",
+  "team": "LAC"
+ },
+ {
+  "gsis_id": "00-0019596",
+  "display_name": "Tom Brady",
+  "search_key": "tom brady",
+  "position": "QB",
+  "team": "TB"
+ },
+ {
+  "gsis_id": "00-0026189",
+  "display_name": "DeSean Jackson",
+  "search_key": "desean jackson",
+  "position": "WR",
+  "team": "BAL"
+ },
+ {
+  "gsis_id": "00-0031051",
+  "display_name": "John Brown",
+  "search_key": "john brown",
+  "position": "WR",
+  "team": "BUF"
+ },
+ {
+  "gsis_id": "00-0031543",
+  "display_name": "Ty Long",
+  "search_key": "ty long",
+  "position": "P",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0031806",
+  "display_name": "Malcolm Brown",
+  "search_key": "malcolm brown",
+  "position": "RB",
+  "team": "LA"
+ },
+ {
+  "gsis_id": "00-0032094",
+  "display_name": "Tyrell Adams",
+  "search_key": "tyrell adams",
+  "position": "LB",
+  "team": "IND"
+ },
+ {
+  "gsis_id": "00-0032261",
+  "display_name": "Malcom Brown",
+  "search_key": "malcom brown",
+  "position": "DL",
+  "team": "JAX"
+ },
+ {
+  "gsis_id": "00-0033107",
+  "display_name": "William Jackson",
+  "search_key": "william jackson",
+  "position": "DB",
+  "team": "PIT"
+ },
+ {
+  "gsis_id": "00-0033111",
+  "display_name": "Pharoh Cooper",
+  "search_key": "pharoh cooper",
+  "position": "WR",
+  "team": "ARI"
+ },
+ {
+  "gsis_id": "00-0033469",
+  "display_name": "Vincent Taylor",
+  "search_key": "vincent taylor",
+  "position": "DL",
+  "team": "ATL"
+ },
+ {
+  "gsis_id": "00-0033954",
+  "display_name": "Jayon Brown",
+  "search_key": "jayon brown",
+  "position": "LB",
+  "team": "LV"
+ },
+ {
+  "gsis_id": "00-0033957",
+  "display_name": "Rodney Adams",
+  "search_key": "rodney adams",
+  "position": "WR",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0034085",
+  "display_name": "Chris Cooper",
+  "search_key": "chris cooper",
+  "position": "DB",
+  "team": "TB"
+ },
+ {
+  "gsis_id": "00-0034088",
+  "display_name": "Robert Jackson",
+  "search_key": "robert jackson",
+  "position": "DB",
+  "team": "BAL"
+ },
+ {
+  "gsis_id": "00-0034283",
+  "display_name": "Jullian Taylor",
+  "search_key": "jullian taylor",
+  "position": "DL",
+  "team": "MIN"
+ },
+ {
+  "gsis_id": "00-0034335",
+  "display_name": "Marcus Allen",
+  "search_key": "marcus allen",
+  "position": "LB",
+  "team": "PIT"
+ },
+ {
+  "gsis_id": "00-0034511",
+  "display_name": "Mike Love",
+  "search_key": "mike love",
+  "position": "DL",
+  "team": "BUF"
+ },
+ {
+  "gsis_id": "00-0034751",
+  "display_name": "Josh Jackson",
+  "search_key": "josh jackson",
+  "position": "DB",
+  "team": "ARI"
+ },
+ {
+  "gsis_id": "00-0035305",
+  "display_name": "Jordan Brown",
+  "search_key": "jordan brown",
+  "position": "DB",
+  "team": "NO"
+ },
+ {
+  "gsis_id": "00-0035615",
+  "display_name": "Natrez Patrick",
+  "search_key": "natrez patrick",
+  "position": "LB",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0035670",
+  "display_name": "Dakota Allen",
+  "search_key": "dakota allen",
+  "position": "LB",
+  "team": "DEN"
+ },
+ {
+  "gsis_id": "00-0036240",
+  "display_name": "Chris Jackson",
+  "search_key": "chris jackson",
+  "position": "DB",
+  "team": "TEN"
+ },
+ {
+  "gsis_id": "00-0036669",
+  "display_name": "Kylin Hill",
+  "search_key": "kylin hill",
+  "position": "RB",
+  "team": "GB"
+ },
+ {
+  "gsis_id": "00-0036721",
+  "display_name": "Warren Jackson",
+  "search_key": "warren jackson",
+  "position": "WR",
+  "team": "LA"
+ },
+ {
+  "gsis_id": "00-0037035",
+  "display_name": "Jordan Murray",
+  "search_key": "jordan murray",
+  "position": "OL",
+  "team": "IND"
+ },
+ {
+  "gsis_id": "00-0037100",
+  "display_name": "Chase Allen",
+  "search_key": "chase allen",
+  "position": "TE",
+  "team": "CHI"
+ },
+ {
+  "gsis_id": "00-0037169",
+  "display_name": "Devin Taylor",
+  "search_key": "devin taylor",
+  "position": "DB",
+  "team": "WAS"
+ },
+ {
+  "gsis_id": "00-0037221",
+  "display_name": "Calvin Jackson",
+  "search_key": "calvin jackson",
+  "position": "WR",
+  "team": "MIA"
+ },
+ {
+  "gsis_id": "00-0037223",
+  "display_name": "Carson Taylor",
+  "search_key": "carson taylor",
+  "position": "DL",
+  "team": "CHI"
+ },
+ {
+  "gsis_id": "00-0037445",
+  "display_name": "Demetrius Taylor",
+  "search_key": "demetrius taylor",
+  "position": "DL",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0037466",
+  "display_name": "Leddie Brown",
+  "search_key": "leddie brown",
+  "position": "RB",
+  "team": "LAC"
+ },
+ {
+  "gsis_id": "00-0037518",
+  "display_name": "Will Adams",
+  "search_key": "will adams",
+  "position": "DB",
+  "team": "WAS"
+ },
+ {
+  "gsis_id": "00-0037623",
+  "display_name": "Nijuel Hill",
+  "search_key": "nijuel hill",
+  "position": "DB",
+  "team": "WAS"
+ },
+ {
+  "gsis_id": "00-0037626",
+  "display_name": "Kameron Brown",
+  "search_key": "kameron brown",
+  "position": "WR",
+  "team": "TB"
+ },
+ {
+  "gsis_id": "00-0037647",
+  "display_name": "Kenneth George",
+  "search_key": "kenneth george",
+  "position": "DB",
+  "team": "TEN"
+ },
+ {
+  "gsis_id": "00-0037651",
+  "display_name": "Greg Long",
+  "search_key": "greg long",
+  "position": "OL",
+  "team": "ARI"
+ },
+ {
+  "gsis_id": "00-0037820",
+  "display_name": "Drew Jordan",
+  "search_key": "drew jordan",
+  "position": "DL",
+  "team": "CAR"
+ },
+ {
+  "gsis_id": "00-0027793",
+  "display_name": "Antonio Brown",
+  "search_key": "antonio brown",
+  "position": "WR",
+  "team": "TB"
+ },
+ {
+  "gsis_id": "00-0029568",
+  "display_name": "Malik Jackson",
+  "search_key": "malik jackson",
+  "position": "DL",
+  "team": "CLE"
+ },
+ {
+  "gsis_id": "00-0030216",
+  "display_name": "Josh Hill",
+  "search_key": "josh hill",
+  "position": "TE",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0030273",
+  "display_name": "Lane Taylor",
+  "search_key": "lane taylor",
+  "position": "OL",
+  "team": "HOU"
+ },
+ {
+  "gsis_id": "00-0030441",
+  "display_name": "Kyle Long",
+  "search_key": "kyle long",
+  "position": "OL",
+  "team": "KC"
+ },
+ {
+  "gsis_id": "00-0031181",
+  "display_name": "Ricardo Allen",
+  "search_key": "ricardo allen",
+  "position": "DB",
+  "team": "CIN"
+ },
+ {
+  "gsis_id": "00-0032098",
+  "display_name": "Daniel Brown",
+  "search_key": "daniel brown",
+  "position": "TE",
+  "team": "NYJ"
+ },
+ {
+  "gsis_id": "00-0032319",
+  "display_name": "Ross Travis",
+  "search_key": "ross travis",
+  "position": "TE",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0032409",
+  "display_name": "Willie Henry",
+  "search_key": "willie henry",
+  "position": "DL",
+  "team": "NYG"
+ },
+ {
+  "gsis_id": "00-0032429",
+  "display_name": "Jerell Adams",
+  "search_key": "jerell adams",
+  "position": "TE",
+  "team": "TB"
+ },
+ {
+  "gsis_id": "00-0032520",
+  "display_name": "Rashod Hill",
+  "search_key": "rashod hill",
+  "position": "OL",
+  "team": "MIN"
+ },
+ {
+  "gsis_id": "00-0032877",
+  "display_name": "Marcus Henry",
+  "search_key": "marcus henry",
+  "position": "OL",
+  "team": "ARI"
+ },
+ {
+  "gsis_id": "00-0033049",
+  "display_name": "Darius Jackson",
+  "search_key": "darius jackson",
+  "position": "RB",
+  "team": "HOU"
+ },
+ {
+  "gsis_id": "00-0033467",
+  "display_name": "Brian Allen",
+  "search_key": "brian allen",
+  "position": "DB",
+  "team": "CLE"
+ },
+ {
+  "gsis_id": "00-0033911",
+  "display_name": "Taywan Taylor",
+  "search_key": "taywan taylor",
+  "position": "WR",
+  "team": "HOU"
+ },
+ {
+  "gsis_id": "00-0033994",
+  "display_name": "Fred Brown",
+  "search_key": "fred brown",
+  "position": "WR",
+  "team": "TEN"
+ },
+ {
+  "gsis_id": "00-0034213",
+  "display_name": "Holton Hill",
+  "search_key": "holton hill",
+  "position": "DB",
+  "team": "CIN"
+ },
+ {
+  "gsis_id": "00-0034457",
+  "display_name": "Josh Adams",
+  "search_key": "josh adams",
+  "position": "RB",
+  "team": "NO"
+ },
+ {
+  "gsis_id": "00-0035007",
+  "display_name": "Paul Adams",
+  "search_key": "paul adams",
+  "position": "OL",
+  "team": "TEN"
+ },
+ {
+  "gsis_id": "00-0035281",
+  "display_name": "Joe Jackson",
+  "search_key": "joe jackson",
+  "position": "DL",
+  "team": "KC"
+ },
+ {
+  "gsis_id": "00-0035486",
+  "display_name": "Miles Brown",
+  "search_key": "miles brown",
+  "position": "DL",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0035937",
+  "display_name": "Josh Love",
+  "search_key": "josh love",
+  "position": "QB",
+  "team": "CAR"
+ },
+ {
+  "gsis_id": "00-0036111",
+  "display_name": "Tony Brown",
+  "search_key": "tony brown",
+  "position": "WR",
+  "team": "WAS"
+ },
+ {
+  "gsis_id": "00-0036382",
+  "display_name": "K.J. Hill",
+  "search_key": "k.j. hill",
+  "position": "WR",
+  "team": "LAC"
+ },
+ {
+  "gsis_id": "00-0036529",
+  "display_name": "Shakur Brown",
+  "search_key": "shakur brown",
+  "position": "DB",
+  "team": "DET"
+ },
+ {
+  "gsis_id": "00-0036747",
+  "display_name": "Drake Jackson",
+  "search_key": "drake jackson",
+  "position": "OL",
+  "team": "LA"
+ },
+ {
+  "gsis_id": "00-0036809",
+  "display_name": "Cam Murray",
+  "search_key": "cam murray",
+  "position": "DL",
+  "team": "ARI"
+ }
+]
