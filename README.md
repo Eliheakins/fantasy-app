@@ -10,10 +10,11 @@ Everything runs on your machine. Data lives in `backend/data/`.
 ## How Ask works
 
 1. Player names in the question are matched in the browser against the static player list (`players.json`). Namesakes are narrowed by the stats asked about, or you pick one.
-2. `POST /nlq/intent` sends the question and the stat/filter catalog to a local model, which returns `{outcome: "query", intent: {stat_ids, filter_ids, granularity}}`, or `{outcome: "unsupported", reason}` when no stat can answer (salary, fantasy points, opinions). The reply is validated, with one retry on a bad reply.
-3. The Explore query builder hands the stats and filters to the in-browser engine. The answer text is built from the result rows, not by the model.
-4. Questions default to the regular season unless they mention the playoffs.
-5. The answer is a link: the question and the query it became live in the URL, so reload, back/forward and sharing show the same result without asking the model again.
+2. Rules read the question first (`frontend/src/features/nlq/ruleParser.ts`): stats and their aliases, seasons, situations ("third down", "in the playoffs"), per game. They answer only when they understand every word, so a question with an unfamiliar word is not guessed at. Instant, free, and works with no model running.
+3. Only a question the rules cannot fully read goes to the model: `POST /nlq/intent` sends it with the stat/filter catalog to a local model, which returns `{outcome: "query", intent: {stat_ids, filter_ids, granularity}}`, or `{outcome: "unsupported", reason}` when no stat can answer (salary, fantasy points, opinions). The reply is validated, with one retry on a bad reply. An answer from the model lists the words the rules did not recognise, and Ask says which path read each question. With no model server, Ask still answers what the rules can read and explains why for the rest.
+4. The Explore query builder hands the stats and filters to the in-browser engine. The answer text is built from the result rows, not by the model.
+5. Questions default to the regular season unless they mention the playoffs.
+6. The answer is a link: the question and the query it became live in the URL, so reload, back/forward and sharing show the same result without asking the model again.
 
 ## Links
 
@@ -102,12 +103,25 @@ Optional, in the environment or a `.env` file at the repository root.
 ```bash
 uv run pytest --cov=backend           # backend unit and API tests
 uv run pytest -m eval -s              # intent accuracy against the live local model (needs step 1 above)
-cd frontend && npm test               # name matching, answer text, catalog sync
+cd frontend && npm test               # name matching, rules parser, answer text, catalog sync
+cd frontend && npm run eval:rules     # how the rules parser scores on the eval questions (no model needed)
 cd frontend && npm run export:catalog # refresh backend/tests/eval/catalog.json after changing stats or filters
 uv run ruff check backend
 ```
 
-`backend/tests/eval/cases.json` holds 40 questions with expected stats, filters and granularity. The last run passed 39 of 40.
+## Measuring Ask
+
+Two question sets with the expected stats, filters and granularity (or `unsupported`) live in `backend/tests/eval/`:
+
+- `cases.json`: 44 questions, written alongside the model prompt and, later, the rules. Treat its scores as optimistic.
+- `heldout.json`: 34 questions written **before** the rules parser, including traps that must not be answered (an unknown stat like "net yards per attempt", an opponent filter, a season outside the data, a leaderboard).
+
+| | cases.json | heldout.json |
+|---|---|---|
+| Rules (`npm run eval:rules`) | 40/40 answerable correct, 0 wrong | 25/25 answerable correct (two more are deferred on purpose), 0 wrong; 1 trap refused, 7 handed to the model |
+| Model (`uv run pytest -m eval -s`, Qwen2.5-14B-Instruct-4bit) | 42/44 | 25/34: answers all 7 traps instead of refusing them |
+
+The model's refusal weakness is why an answer from the model lists the words the rules did not recognise. The model eval gates on `cases.json` only; improving its refusals is tracked in #9. `players.fixture.json` is a slice of `players.json` (the players named in the questions) so the rules eval runs in CI without built data.
 
 ## Layout
 
@@ -126,6 +140,7 @@ uv run ruff check backend
 
 - Play-by-play has one or two fewer pass attempts than the official tables in some games (Mahomes 2023: one play in week 5 and one in week 11), so rates match the official figures to within about 0.5%, not exactly. Passing yards, touchdowns, receptions and rushing totals for the sampled player-seasons match exactly. Each metric's `reference_values` in `metrics/metrics.json` record the tolerance.
 - Sack, penalty and no-play rows are pass plays in the data. Attempt-based stats (passing yards, passing TDs, completion %, interception rate) leave them out with a `play_filter`; edit that in `metrics/metrics.json` and run `uv run pytest`, which checks every metric against its reference values when data is built.
+- Player search and name matching read `players.json`, built from nflverse rosters. A build over a few seasons keeps players from earlier builds (it merges, keeping each player's latest season), so retired and unsigned players stay findable.
 - Per game divides by the games a player appeared in within the same season, season type, week and home/away filters. Situational filters (down, quarter, ...) do not shrink that count.
 - The expression language in `metrics/metrics.json` and the filter chips is a SQL subset: `SUM/AVG/COUNT/NULLIF`, `CASE`, `CAST(.. AS DOUBLE)`, arithmetic, comparisons, `AND/OR/NOT`, `LIKE`. `frontend/src/shared/engine/expression.ts` names anything else it cannot run. There is no ad hoc SQL.
 - "Min plays" counts the rows each stat uses: attempts for the filtered stats above, dropbacks (sacks included) for the rest. A passer near the threshold can show some stats and not others.

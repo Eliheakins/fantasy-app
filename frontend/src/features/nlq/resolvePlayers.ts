@@ -10,7 +10,7 @@ export interface PlayerMatch {
 
 const MAX_NAME_TOKENS = 4;
 const MIN_SURNAME_LENGTH = 3;
-const NAME_SUFFIXES = new Set(["jr", "sr", "ii", "iii", "iv", "v"]);
+export const NAME_SUFFIXES = new Set(["jr", "sr", "ii", "iii", "iv", "v"]);
 
 /** Surnames that are also everyday words in stat questions; a bare one is not a player reference. */
 const STOPWORDS = new Set([
@@ -20,6 +20,9 @@ const STOPWORDS = new Set([
   "catches", "touchdowns", "touchdown", "play", "plays", "game", "games", "season", "seasons",
   "third", "down", "downs", "quarter", "half", "zone", "playoffs", "regular", "home", "away",
   "total", "average", "compare", "career", "last", "this", "year", "best", "worst", "top", "most",
+  // Surnames that are also football words ("3rd and long", "cold weather"); the full name still matches.
+  "long", "short", "deep", "early", "late", "mid", "goal", "line", "first", "second", "fourth", "wind",
+  "windy", "cold", "road", "night",
 ]);
 
 /** Positions that can plausibly record each stat role; used to pick between namesakes. */
@@ -32,6 +35,7 @@ const POSITIONS_BY_ROLE: Record<PlayerRole, readonly string[]> = {
 export function tokenize(text: string): string[] {
   return text
     .toLowerCase()
+    .replace(/['’]s\b/g, "") // a possessive: "Burrow's" is Burrow
     .replace(/['’.]/g, "")
     .replace(/[^a-z0-9]+/g, " ")
     .trim()

@@ -101,6 +101,17 @@ export function NLQPanel() {
                   <li key={line}>{line}</li>
                 ))}
               </ul>
+              {ask.path ? (
+                <p className="text-[11px] text-ink-muted">
+                  {ask.path === "rules" ? "Read by the built-in rules." : "Read by the local model."}
+                </p>
+              ) : null}
+              {ask.unrecognized.length > 0 ? (
+                <p className="text-[11px] text-warn-fg">
+                  The built-in rules did not recognise: {ask.unrecognized.join(", ")}. Check that this answers what
+                  you asked.
+                </p>
+              ) : null}
             </section>
           ) : null}
         </CardContent>
