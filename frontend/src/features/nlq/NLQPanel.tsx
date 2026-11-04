@@ -1,6 +1,7 @@
 import { type KeyboardEvent, useMemo } from "react";
 import { Link } from "react-router-dom";
 
+import { IgnoredFiltersNotice } from "@/features/explore/IgnoredFiltersNotice";
 import { ExploreResultsCanvas } from "@/features/explore/ExploreResultsCanvas";
 import { useExploreQueryExecution } from "@/features/explore/useExploreQueryExecution";
 import { Callout } from "@/shared/components/Callout";
@@ -20,7 +21,8 @@ export function NLQPanel() {
   const { state } = useQueryState();
 
   const busy = ask.phase === "working" || ask.phase === "choosing";
-  const showingAnswer = ask.hasResult && ask.phase === "idle";
+  // A failed or unsupported ask shows its message instead of the previous answer.
+  const showingAnswer = ask.hasResult && ask.phase === "idle" && ask.message === null;
 
   // While choosing between namesakes the matches so far are shown; otherwise the answer's own players.
   const matched = useMemo(
@@ -86,6 +88,7 @@ export function NLQPanel() {
           </div>
 
           {ask.message ? <Callout variant="danger">{ask.message}</Callout> : null}
+          <IgnoredFiltersNotice />
 
           <PlayerChips players={showingAnswer || ask.phase === "choosing" ? matched : []} />
           <PlayerChoices choices={ask.choices} onChoose={(p) => void ask.onChoose(p)} />

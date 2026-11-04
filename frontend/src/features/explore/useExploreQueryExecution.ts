@@ -8,6 +8,7 @@ import { createLatestRunner } from "@/shared/lib/latestRun";
 import { usePinnedPlayers } from "@/shared/lib/usePinnedPlayers";
 import { useQueryState } from "@/shared/lib/useQueryState";
 import { describeQuery } from "@/shared/lib/queryBuilder";
+import { queryKey } from "@/shared/lib/queryUrl";
 import type { QueryResult } from "@/shared/types/workbench";
 import { useManifestStore } from "@/stores/useManifestStore";
 
@@ -20,6 +21,10 @@ export function useExploreQueryExecution() {
   const sources = useMemo(() => seasonSources(manifest), [manifest]);
 
   const [result, setResult] = useState<QueryResult | null>(null);
+  // Which query the result belongs to: after back/forward the URL changes before the run finishes,
+  // and a result must never be shown (or described) as the answer to a different query.
+  const [resultKey, setResultKey] = useState<string | null>(null);
+  const currentKey = useMemo(() => queryKey(state), [state]);
   const [error, setError] = useState<string | null>(null);
   const [details, setDetails] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
@@ -75,6 +80,7 @@ export function useExploreQueryExecution() {
         return;
       }
       setResult(outcome.value);
+      setResultKey(currentKey);
       setError(null);
     } catch (e) {
       setResult(null);
@@ -84,7 +90,7 @@ export function useExploreQueryExecution() {
         setRunning(false);
       }
     }
-  }, [players, sources, stats, minPlays, filterChipState, granularity, runLatest]);
+  }, [players, sources, stats, minPlays, filterChipState, granularity, runLatest, currentKey]);
 
   useEffect(() => () => runLatest.cancel(), [runLatest]);
 
@@ -109,7 +115,7 @@ export function useExploreQueryExecution() {
   }, [players, stats, sources, executeQuery, runLatest]);
 
   return {
-    result,
+    result: resultKey === currentKey ? result : null,
     error,
     details,
     running,

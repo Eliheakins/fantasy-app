@@ -6,10 +6,12 @@ import {
   applyFilterGroup,
   clearPins,
   EMPTY_QUERY,
+  ignoredFilterIds,
   MAX_PINNED_PLAYERS,
   MAX_SELECTED_STATS,
   parseQuery,
   pinPlayer,
+  queryKey,
   type QueryState,
   serializeQuery,
   setGranularity,
@@ -96,6 +98,41 @@ describe("serializeQuery and parseQuery", () => {
 
   it("accepts any well-formed filter id when the chips are not known yet", () => {
     expect(parseQuery(params("f=season-2023&f=%3Cx%3E")).filters).toEqual(["season-2023"]);
+  });
+});
+
+describe("ignoredFilterIds", () => {
+  it("lists the filters in a link that the current data has no chip for", () => {
+    const search = params("f=season-2023&f=season-1999&f=bogus&f=%3Cx%3E");
+
+    expect(ignoredFilterIds(search, parseQuery(search, KNOWN_FILTERS))).toEqual(["season-1999", "bogus", "<x>"]);
+  });
+
+  it("is empty when every filter in the link is applied", () => {
+    const search = params("f=season-2023&f=down-3");
+
+    expect(ignoredFilterIds(search, parseQuery(search, KNOWN_FILTERS))).toEqual([]);
+  });
+
+  it("lists a repeated unknown filter once", () => {
+    const search = params("f=old&f=old");
+
+    expect(ignoredFilterIds(search, parseQuery(search, KNOWN_FILTERS))).toEqual(["old"]);
+  });
+});
+
+describe("queryKey", () => {
+  it("is the same for equal queries and differs when any part differs", () => {
+    expect(queryKey({ ...FULL })).toBe(queryKey({ ...FULL, players: [...FULL.players] }));
+    for (const changed of [
+      { players: ["00-0033873"] },
+      { stats: ["pass_yards"] },
+      { filters: ["season-2024"] },
+      { granularity: "total" as const },
+      { minPlays: 26 },
+    ]) {
+      expect(queryKey({ ...FULL, ...changed })).not.toBe(queryKey(FULL));
+    }
   });
 });
 

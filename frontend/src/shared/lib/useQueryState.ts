@@ -6,12 +6,12 @@ import { useFilterChipGroups } from "@/shared/lib/filterChipGroups";
 import {
   applyFilterGroup,
   clearPins,
+  ignoredFilterIds,
   parseQuery,
   pinPlayer,
   type QueryState,
   setGranularity,
   setMinPlays,
-  toggleFilter,
   toggleStat,
   unpinPlayer,
   writeQuery,
@@ -28,6 +28,7 @@ export function useQueryState() {
   const knownFilterIds = useMemo(() => new Set(getAllFilterChipIds(chipGroups)), [chipGroups]);
 
   const state = useMemo(() => parseQuery(params, knownFilterIds), [params, knownFilterIds]);
+  const ignoredFilters = useMemo(() => ignoredFilterIds(params, state), [params, state]);
   const filterChipState = useMemo(
     () => Object.fromEntries(state.filters.map((id) => [id, true])) as Record<string, boolean>,
     [state.filters],
@@ -57,11 +58,11 @@ export function useQueryState() {
     state,
     question: params.get("q") ?? "",
     filterChipState,
+    ignoredFilters,
     showQuery,
     toggleStatId: useCallback((id: string) => update((s) => toggleStat(s, id)), [update]),
     setActiveGranularity: useCallback((g: GranularityMode) => update((s) => setGranularity(s, g)), [update]),
     setMinPlays: useCallback((n: number) => update((s) => setMinPlays(s, n), { replace: true }), [update]),
-    toggleFilterChip: useCallback((id: string) => update((s) => toggleFilter(s, id)), [update]),
     applyFilterGroup: useCallback(
       (optionIds: readonly string[], selectedIds: readonly string[]) =>
         update((s) => applyFilterGroup(s, optionIds, selectedIds)),

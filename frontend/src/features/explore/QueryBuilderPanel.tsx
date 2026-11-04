@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 
 import { ExploreMobileBuilderDrawer } from "@/features/explore/ExploreMobileBuilderDrawer";
 import { ExploreResultsCanvas } from "@/features/explore/ExploreResultsCanvas";
+import { IgnoredFiltersNotice } from "@/features/explore/IgnoredFiltersNotice";
 import {
   QueryBuilderSidebarExecuteFooter,
   QueryBuilderSidebarScroll,
@@ -69,6 +70,8 @@ export function QueryBuilderPanel() {
               </>
             }
           />
+
+          <IgnoredFiltersNotice />
 
           <ExploreResultsCanvas
             result={queryExec.result}

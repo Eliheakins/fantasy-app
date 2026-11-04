@@ -86,6 +86,16 @@ export function writeQuery(base: URLSearchParams, state: QueryState): URLSearchP
   return next;
 }
 
+/** Filters named in the link that the current data has no chip for (they were not applied). */
+export function ignoredFilterIds(params: URLSearchParams, state: QueryState): string[] {
+  return unique(params.getAll(KEYS.filters).filter((id) => !state.filters.includes(id)));
+}
+
+/** Identifies a query, so a result can be matched to the query that produced it. */
+export function queryKey(state: QueryState): string {
+  return JSON.stringify([state.players, state.stats, state.filters, state.granularity, state.minPlays]);
+}
+
 export function serializeQuery(state: QueryState): URLSearchParams {
   return writeQuery(new URLSearchParams(), state);
 }
