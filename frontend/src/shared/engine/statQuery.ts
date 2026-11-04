@@ -11,6 +11,7 @@ import type { GranularityMode } from "@/shared/types/queryBuilder";
 import type { QueryResult } from "@/shared/types/workbench";
 
 import type { ColumnSource, ColumnStore } from "./columns";
+import { canServeFromPlayerGame, runPlayerGameQuery } from "./playerGameQuery";
 import {
   columnsIn,
   compileAggregateExpression,
@@ -36,6 +37,8 @@ export interface StatQueryParams {
   gsisIds: string[];
   /** The season files that hold these players; season chips narrow which of them are read. */
   sources: ColumnSource[];
+  /** The tier-1 player-game table; counting stats come from it when no situational filter is on. */
+  playerGame?: ColumnSource | null;
   granularity: GranularityMode;
   minPlays: number;
   chipGroups: FilterChipGroup[];
@@ -123,6 +126,10 @@ export async function runStatQuery(
   store: ColumnStore,
   signal?: AbortSignal,
 ): Promise<QueryResult> {
+  if (params.playerGame && canServeFromPlayerGame(params)) {
+    return runPlayerGameQuery(params, params.playerGame, store, signal);
+  }
+
   const groups = groupStatsByRows(params.statIds);
   const knownIds = groups.flat().map((s) => s.id);
   if (groups.length === 0) {

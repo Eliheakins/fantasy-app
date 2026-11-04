@@ -2,17 +2,20 @@
 Each metric's own SQL, run on the built shards, must reproduce the figures recorded in
 `metrics/metrics.json` (taken from the tier-1 `player_game` table, nflverse's official totals).
 
-A case is skipped when the shard for its season is not built. Run `uv run python -m pipeline.cli`
-first to exercise them all. The query composition (role column, play type, play filter) mirrors
-`runStatQuery` in the frontend engine; the engine's own tests pin that side.
+A case is skipped when the shard for its season is not built. Run
+`uv run python backend/scripts/build_data.py` first to exercise them all. The query composition
+(role column, play type, play filter) mirrors `runStatQuery` in the frontend engine; the engine's
+own tests pin that side.
 """
 
 from __future__ import annotations
 
 import duckdb
+import polars as pl
 import pytest
 
 from nfl_stat.pipeline.cli import data_output_dir
+from nfl_stat.pipeline.player_game import PLAYER_GAME_COLUMNS, PLAYER_GAME_FILENAME
 from nfl_stat.schemas.metrics import MetricDefinition, ReferenceValue, load_metrics
 
 DATA_DIR = data_output_dir()
@@ -70,3 +73,41 @@ def test_metric_sql_reproduces_its_reference_value(metric: MetricDefinition, ref
 
 def test_there_are_reference_values_to_check():
     assert len(_cases()) >= 15
+
+
+def _player_game_cases() -> list[tuple[MetricDefinition, ReferenceValue]]:
+    return [(m, ref) for m, ref in _cases() if m.player_game_column]
+
+
+def test_every_player_game_column_exists_and_belongs_to_a_counting_stat():
+    for metric in load_metrics().metrics:
+        if metric.player_game_column:
+            assert metric.player_game_column in PLAYER_GAME_COLUMNS, metric.id
+            assert not metric.rate_only, f"{metric.id} is a rate, so it cannot be a table total"
+
+
+@pytest.mark.parametrize(
+    ("metric", "ref"),
+    _player_game_cases(),
+    ids=lambda v: v.id if isinstance(v, MetricDefinition) else f"{v.player}-{v.season}",
+)
+def test_player_game_total_matches_the_official_reference_value(
+    metric: MetricDefinition, ref: ReferenceValue
+):
+    table = DATA_DIR / PLAYER_GAME_FILENAME
+    if not table.exists():
+        pytest.skip("no player-game table built")
+
+    total = (
+        pl.read_parquet(table)
+        .filter(
+            (pl.col("gsis_id") == ref.gsis_id)
+            & (pl.col("season") == ref.season)
+            & (pl.col("season_type") == ref.season_type)
+        )[metric.player_game_column]
+        .sum()
+    )
+
+    assert abs(total - ref.value) <= abs(ref.value) * ref.tolerance, (
+        f"{metric.id} for {ref.player}: table says {total}, reference says {ref.value}"
+    )

@@ -41,6 +41,7 @@ const metricSchema = z.object({
   rate_only: z.boolean(),
   percent_format: z.boolean().default(false),
   play_filter: z.string().min(1).nullable().default(null),
+  player_game_column: z.string().min(1).nullable().default(null),
   description: z.string().nullish(),
   help: z.string().nullish(),
   aliases: z.array(aliasSchema).max(MAX_ALIASES).default([]),

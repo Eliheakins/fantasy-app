@@ -36,6 +36,11 @@ export interface StatDefinition {
   rate_only: boolean;
   /** Table header hint for percentage-style metrics. */
   percent_format?: boolean;
+  /**
+   * The player-game column that holds this stat's official total. Present on counting stats only;
+   * with it, a query that needs no situational filter is answered from the small tier-1 table.
+   */
+  playerGameColumn?: string;
   /** Extra row predicate (e.g. `sack = 0`); stats with different filters run as separate queries. */
   playFilter?: string;
   /** Lowercase phrases people use for this stat; shown to the model and used for matching. */
@@ -57,6 +62,7 @@ function toStat(m: MetricDefinitionData): StatDefinition {
     rate_only: m.rate_only,
     percent_format: m.percent_format || undefined,
     playFilter: m.play_filter ?? undefined,
+    playerGameColumn: m.player_game_column ?? undefined,
     aliases: m.aliases,
   };
 }

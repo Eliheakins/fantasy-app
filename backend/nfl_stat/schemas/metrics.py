@@ -54,6 +54,11 @@ class MetricDefinition(BaseModel):
         min_length=1,
         description="Extra row predicate, e.g. 'sack = 0' for attempt-based stats",
     )
+    player_game_column: str | None = Field(
+        None,
+        min_length=1,
+        description="Column of player_game.parquet holding this counting stat's official total",
+    )
     description: str | None = None
     help: str | None = None
     # Same limits as the catalog sent to the model, so a valid file never makes /nlq/intent 422.
