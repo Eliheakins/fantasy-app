@@ -6,6 +6,11 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { buildIntentCatalog } from "../src/shared/lib/nlqCatalog";
+import { useManifestStore } from "../src/stores/useManifestStore";
+import { FIXTURE_SEASONS } from "../src/test/seasons";
+
+// The catalog lists the season chips, so pin the seasons to the fixture instead of local data.
+useManifestStore.setState({ seasons: FIXTURE_SEASONS });
 
 const target = fileURLToPath(new URL("../../backend/tests/eval/catalog.json", import.meta.url));
 writeFileSync(target, `${JSON.stringify(buildIntentCatalog(), null, 2)}\n`);

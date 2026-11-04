@@ -97,5 +97,14 @@ def test_read_raises_a_readable_error_for_an_invalid_manifest(tmp_path: Path):
         read_manifest(tmp_path)
 
 
+def test_the_fixture_manifest_used_by_the_frontend_tests_is_valid():
+    path = Path(__file__).parent / "eval" / "manifest.fixture.json"
+
+    manifest = Manifest.model_validate_json(path.read_text())
+
+    assert [s.season for s in manifest.seasons][-1] == 2026
+    assert manifest.data_through == "2026 week 9"
+
+
 def test_manifest_schema_version_is_recorded():
     assert Manifest(built_at="x", nflreadpy_version="1", seasons=[]).schema_version == 1

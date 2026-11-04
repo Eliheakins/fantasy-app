@@ -15,6 +15,10 @@ describe("buildFilterWhereSql", () => {
     expect(sql).toContain("number_of_pass_rushers <= 3");
   });
 
+  it("filters on a season the data has", () => {
+    expect(buildFilterWhereSql({ "season-2026": true })).toBe("((season = 2026))");
+  });
+
   it("joins chips from different groups with AND and chips in a group with OR", () => {
     const sql = buildFilterWhereSql({ "down-1": true, "down-3": true, "qtr-4": true });
 

@@ -1,5 +1,5 @@
-import { FILTER_CHIP_GROUPS } from "@/shared/config/queryBuilderOptions";
 import { getStatById } from "@/shared/config/statDictionary";
+import { getFilterChipGroups } from "@/shared/lib/filterChipGroups";
 import { formatQueryValue } from "@/shared/lib/formatQueryValue";
 import { formatMetricValueHeader, metricSelectAlias } from "@/shared/lib/queryBuilderSql";
 import type { GranularityMode } from "@/shared/types/queryBuilder";
@@ -27,7 +27,7 @@ function filterLabels(filterIds: string[]): string[] {
   const wanted = new Set(filterIds);
   const seasons: string[] = [];
   const others: string[] = [];
-  for (const group of FILTER_CHIP_GROUPS) {
+  for (const group of getFilterChipGroups()) {
     for (const option of group.options) {
       if (!wanted.has(option.id)) {
         continue;
