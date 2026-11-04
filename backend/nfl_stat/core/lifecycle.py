@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import asyncio
-import contextlib
 import logging
 from contextlib import asynccontextmanager
 
@@ -9,7 +7,6 @@ from fastapi import FastAPI
 from openai import AsyncOpenAI
 
 from nfl_stat.core.manifest_state import refresh_manifest
-from nfl_stat.services.llm_warmup import keep_model_warm
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +26,7 @@ async def lifespan(app: FastAPI):
         timeout=settings.llm_timeout_seconds,
     )
 
-    warm_task = asyncio.create_task(keep_model_warm(app_state.llm_client, settings.llm_model))
-
     yield
 
-    warm_task.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await warm_task
     await app_state.llm_client.close()
     app_state.llm_client = None

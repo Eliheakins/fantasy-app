@@ -2,7 +2,7 @@
 Measures how often the local model turns a question into the expected stats/filters/granularity.
 
 Needs the model server running, so it is deselected by default:
-    uv run --group llm mlx_lm.server --model mlx-community/Qwen2.5-14B-Instruct-4bit --port 8080
+    uv run --group llm mlx_lm.server --model mlx-community/Qwen3-4B-Instruct-2507-4bit --port 8080
     uv run pytest -m eval -s
 
 `catalog.json` comes from `npm run export:catalog` (frontend/), so the ids are the real ones.

@@ -74,8 +74,8 @@ A query reads the small tier-1 table (`player_game.parquet`, built from nflverse
 Three terminals, from the repository root:
 
 ```bash
-# 1. Local model (first run downloads about 8 GB)
-uv run --group llm mlx_lm.server --model mlx-community/Qwen2.5-14B-Instruct-4bit --port 8080
+# 1. Local model (first run downloads about 2 GB)
+uv run --group llm mlx_lm.server --model mlx-community/Qwen3-4B-Instruct-2507-4bit --port 8080
 
 # 2. API
 uv run uvicorn nfl_stat.main:create_app --factory --port 8100
@@ -86,8 +86,6 @@ cd frontend && npm run dev
 
 Open `http://localhost:3000`. The API is `http://localhost:8100` (docs at `/docs`, health at `/health`). The API uses 8100 so it does not clash with other local servers on 8000.
 
-The API pings the model every 20 seconds to keep its weights in memory. Without that, the first question after a pause took 20 to 40 seconds while macOS paged the model back in.
-
 ## Configuration
 
 Optional, in the environment or a `.env` file at the repository root.
@@ -95,7 +93,7 @@ Optional, in the environment or a `.env` file at the repository root.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `LLM_BASE_URL` | `http://127.0.0.1:8080/v1` | OpenAI-compatible server (any local server works, for example LM Studio) |
-| `LLM_MODEL` | `mlx-community/Qwen2.5-14B-Instruct-4bit` | Must match the model the server loaded |
+| `LLM_MODEL` | `mlx-community/Qwen3-4B-Instruct-2507-4bit` | Must match the model the server loaded |
 | `LLM_TIMEOUT_SECONDS` | `120` | Per-request timeout |
 | `VITE_API_BASE_URL` | `http://localhost:8100` | Where the browser finds `POST /nlq/intent` (frontend, set when starting Vite) |
 | `VITE_DATA_BASE_URL` | `<VITE_API_BASE_URL>/data` | Where the browser finds `manifest.json`, `players.json` and the shards. Point it at a CDN and nothing else changes; the host must allow CORS for the page's origin and answer HTTP Range requests (expose `Content-Range`, `Content-Length` and `Accept-Ranges`). The API's own CORS list is only the local Vite origins |
@@ -115,17 +113,31 @@ uv run ruff check backend
 
 ## Measuring Ask
 
-Two question sets with the expected stats, filters and granularity (or `unsupported`) live in `backend/tests/eval/`:
+Three question sets with the expected stats, filters and granularity (or `unsupported`) live in `backend/tests/eval/`:
 
 - `cases.json`: 44 questions, written alongside the model prompt and, later, the rules. Treat its scores as optimistic.
 - `heldout.json`: 34 questions written **before** the rules parser, including traps that must not be answered (an unknown stat like "net yards per attempt", an opponent filter, a season outside the data, a leaderboard; the leaderboard trap is a trap for the model only, since the rules now answer it).
+- `corrections.json`: questions a user had to fix in the app. Every ask is logged in the browser and can be edited from the chips under the answer; the History page exports the fixes, and `uv run python backend/tests/eval/promote.py <ask-corrections.json>` adds them (checked against the catalog, duplicates skipped). Both evals score it: the model eval reports it, the rules eval fails on any wrong answer.
 
 | | cases.json | heldout.json |
 |---|---|---|
 | Rules (`npm run eval:rules`) | 40/40 answerable correct, 0 wrong | 25/25 answerable correct (two more are deferred on purpose), 0 wrong; 1 trap refused, 7 handed to the model |
-| Model (`uv run pytest -m eval -s`, Qwen2.5-14B-Instruct-4bit) | 42/44 | 25/34: answers all 7 traps instead of refusing them |
+| Model (`uv run pytest -m eval -s`, Qwen3-4B-Instruct-2507-4bit) | 43/44 | 26/34: refuses or fails safely on 2 of the 7 traps, answers the other 5 |
 
-The model's refusal weakness is why an answer from the model lists the words the rules did not recognise. The model eval gates on `cases.json` only; improving its refusals is tracked in #9. `players.fixture.json` is a slice of `players.json` (the players named in the questions) so the rules eval runs in CI without built data.
+The model's refusal weakness is why an answer from the model lists the words the rules did not recognise. The model eval gates on `cases.json` only; refusals are still unsolved.
+
+### Model size
+
+`uv run --group llm python backend/tests/eval/compare_models.py <model>...` runs the eval against each model in turn and adds speed, cold start (the first request, which loads the weights) and memory (macOS `footprint`, which counts GPU memory). Measured 2026-11-04 on an Apple M5 Pro with 24 GB, one run each over the 78 questions:
+
+| Model | cases | heldout | Mean / p95 per question | Cold start | Memory |
+|---|---|---|---|---|---|
+| **Qwen3-4B-Instruct-2507-4bit** (default) | 43/44 | 26/34 | 0.49 s / 0.97 s | 2.7 s | 6.1 GB |
+| Qwen2.5-14B-Instruct-4bit (previous default) | 42/44 | 25/34 | 1.36 s / 1.68 s | 4.3 s | 13.0 GB |
+| Qwen3-8B-4bit (thinking off) | 41/44 | 26/34 | 1.01 s / 1.72 s | 4.3 s | 7.9 GB |
+| Qwen2.5-7B-Instruct-4bit | 38/44 | 21/34 | 0.94 s / 1.71 s | 3.2 s | 5.7 GB |
+
+The 4B model scores as well as the 14B on both sets (a one-question gap is within noise for one run) at a third of the time per question and less than half the memory, so it is the default. It also retired the 20-second keep-alive ping the API used to send: with the 14B, macOS paged the idle weights out and the next question waited 20 to 40 seconds, while the 4B reloads from scratch in under 3 seconds. The 4B, 8B and 14B all read "yards per carry" as rush yards; the 7B gets that right but loses more on granularity and dropped season filters. `players.fixture.json` is a slice of `players.json` (the players named in the questions) so the rules eval runs in CI without built data.
 
 ## Layout
 
@@ -133,7 +145,7 @@ The model's refusal weakness is why an answer from the model lists the words the
 |------|------|
 | `backend/nfl_stat/main.py` | App factory: routers, CORS for the local Vite port, static `/data` |
 | `backend/nfl_stat/api/routers/` | `health`, `nlq` (intent). Everything else is static files under `/data` |
-| `backend/nfl_stat/services/` | `nlq_intent` (prompt, validation, retry), `llm_client`, `llm_warmup`, catalogs |
+| `backend/nfl_stat/services/` | `nlq_intent` (prompt, validation, retry), `llm_client`, catalogs |
 | `backend/nfl_stat/pipeline/` | Data build from nflverse: play-by-play shards, the player-game table, the manifest (`build_data.py` is the entry point) |
 | `frontend/src/features/nlq/` | Ask: name matching, hook, answer text, panel |
 | `frontend/src/features/explore/` | Query builder and results canvas (also runs Ask's query) |
