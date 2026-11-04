@@ -12,6 +12,8 @@ from schemas.metrics import MetricsFile, load_metrics
 # Columns a metric's SQL may name: the play-by-play columns plus what the build derives.
 KNOWN_COLUMNS = set(PBP_COLS) | set(PART_COLS) | set(NGS_COLS) | {"is_red_zone"}
 SQL_WORDS = {
+    "or",
+    "and",
     "sum",
     "avg",
     "count",
@@ -25,6 +27,9 @@ SQL_WORDS = {
     "else",
     "end",
 }
+
+
+ATTEMPT_FILTER = "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1"
 
 
 def _metric(**overrides: Any) -> dict[str, Any]:
@@ -114,9 +119,10 @@ def test_the_real_file_loads_with_every_stat_the_app_had():
 def test_stats_that_sacks_distort_carry_reference_values_and_the_right_filter():
     by_id = {m.id: m for m in load_metrics().metrics}
 
-    # Sack rows are pass rows; official attempt-based totals leave them out.
-    for stat_id in ("pass_yards", "cmp_pct", "int_rate"):
-        assert by_id[stat_id].play_filter == "sack = 0", stat_id
+    # Sack, penalty and no-play rows are pass rows; official attempt-based totals leave them out.
+    # pass_tds shares the filter so its per-play value uses the same denominator as pass yards.
+    for stat_id in ("pass_yards", "pass_tds", "cmp_pct", "int_rate"):
+        assert by_id[stat_id].play_filter == ATTEMPT_FILTER, stat_id
     # Dropback-based rates count a sack as a play, so they must not filter it out.
     for stat_id in ("pass_sack_rate", "pass_any_a"):
         assert by_id[stat_id].play_filter is None, stat_id

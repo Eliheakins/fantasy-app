@@ -39,7 +39,7 @@
       "play_type": "pass",
       "base_sql": "(SUM(yards_gained) + (20 * SUM(pass_touchdown)) - (45 * SUM(interception))) / NULLIF(COUNT(*), 0)",
       "rate_only": true,
-      "help": "Adjusted net yards per attempt: rewards TDs (+20×) and penalizes INTs (−45×), divided by dropbacks (pass plays counted + sacks). Higher is better.",
+      "help": "Adjusted net yards per attempt: passing yards (net of sack yardage) plus 20 per TD, minus 45 per INT, divided by dropbacks (every pass play including sacks). Higher is better.",
       "aliases": [
         "any/a",
         "adjusted net yards per attempt",
@@ -52,7 +52,7 @@
           "season": 2023,
           "season_type": "REG",
           "value": 6.261,
-          "tolerance": 0.01,
+          "tolerance": 0.005,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         },
         {
@@ -61,7 +61,7 @@
           "season": 2023,
           "season_type": "REG",
           "value": 6.507,
-          "tolerance": 0.01,
+          "tolerance": 0.005,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         },
         {
@@ -70,7 +70,7 @@
           "season": 2023,
           "season_type": "REG",
           "value": 5.96,
-          "tolerance": 0.01,
+          "tolerance": 0.005,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         }
       ]
@@ -84,7 +84,7 @@
       "base_sql": "SUM(sack) / NULLIF(COUNT(*), 0) * 100",
       "rate_only": true,
       "percent_format": true,
-      "help": "Percentage of dropbacks that end in a sack. Denominator is pass plays in the sample plus sack plays (COUNT(*) + SUM(sack)).",
+      "help": "Percentage of dropbacks that end in a sack. Dropbacks are every pass play in the sample, sacks included.",
       "aliases": [
         "sack rate",
         "sack percentage",
@@ -97,7 +97,7 @@
           "season": 2023,
           "season_type": "REG",
           "value": 4.327,
-          "tolerance": 0.01,
+          "tolerance": 0.005,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         },
         {
@@ -106,7 +106,7 @@
           "season": 2023,
           "season_type": "REG",
           "value": 3.98,
-          "tolerance": 0.01,
+          "tolerance": 0.005,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         },
         {
@@ -115,7 +115,7 @@
           "season": 2023,
           "season_type": "REG",
           "value": 6.272,
-          "tolerance": 0.01,
+          "tolerance": 0.005,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         }
       ]
@@ -186,7 +186,7 @@
           "season": 2023,
           "season_type": "REG",
           "value": 4306.0,
-          "tolerance": 0.002,
+          "tolerance": 0.0,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         },
         {
@@ -199,7 +199,8 @@
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         }
       ],
-      "play_filter": "sack = 0"
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "help": "Passing yards on attempts only, which matches official totals; sack yardage is not subtracted. Total, per play (per attempt) or per game."
     },
     {
       "id": "pass_tds",
@@ -236,7 +237,8 @@
           "tolerance": 0.0,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         }
-      ]
+      ],
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1"
     },
     {
       "id": "cmp_pct",
@@ -247,7 +249,7 @@
       "base_sql": "AVG(complete_pass) * 100",
       "rate_only": true,
       "percent_format": true,
-      "help": "Completion percentage on pass plays in the sample (mean of the completion flag × 100).",
+      "help": "Completion percentage on pass attempts in the sample. Sacks, penalties and no-plays are not attempts (mean of the completion flag × 100).",
       "aliases": [
         "completion percentage",
         "completion %",
@@ -262,7 +264,7 @@
           "season": 2023,
           "season_type": "REG",
           "value": 67.169,
-          "tolerance": 0.01,
+          "tolerance": 0.005,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         },
         {
@@ -271,7 +273,7 @@
           "season": 2023,
           "season_type": "REG",
           "value": 66.494,
-          "tolerance": 0.01,
+          "tolerance": 0.005,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         },
         {
@@ -280,11 +282,11 @@
           "season": 2023,
           "season_type": "REG",
           "value": 65.428,
-          "tolerance": 0.01,
+          "tolerance": 0.005,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         }
       ],
-      "play_filter": "sack = 0"
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1"
     },
     {
       "id": "int_rate",
@@ -295,7 +297,7 @@
       "base_sql": "AVG(interception) * 100",
       "rate_only": true,
       "percent_format": true,
-      "help": "Interceptions per pass play in the sample, as a percentage (mean of INT flag × 100).",
+      "help": "Interceptions per pass attempt in the sample, as a percentage. Sacks, penalties and no-plays are not attempts (mean of INT flag × 100).",
       "aliases": [
         "interception rate",
         "int rate",
@@ -310,7 +312,7 @@
           "season": 2023,
           "season_type": "REG",
           "value": 2.345,
-          "tolerance": 0.01,
+          "tolerance": 0.005,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         },
         {
@@ -319,7 +321,7 @@
           "season": 2023,
           "season_type": "REG",
           "value": 3.109,
-          "tolerance": 0.01,
+          "tolerance": 0.005,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         },
         {
@@ -328,11 +330,11 @@
           "season": 2023,
           "season_type": "REG",
           "value": 2.788,
-          "tolerance": 0.01,
+          "tolerance": 0.005,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         }
       ],
-      "play_filter": "sack = 0"
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1"
     },
     {
       "id": "rec_catch_rate",

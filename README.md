@@ -101,8 +101,10 @@ uv run ruff check backend
 
 ## Known limits
 
-- Play-by-play has one or two fewer pass attempts than the official tables in some games (Mahomes 2023: one play in week 5 and one in week 11), and a few yards differ (Josh Allen 2023 passing yards: 4,310 against the official 4,306). Rates therefore match the official figures to within about 0.5%, not exactly. Each metric's `reference_values` in `metrics/metrics.json` record the tolerance.
-- Sack rows are pass plays. Attempt-based stats (passing yards, completion %, interception rate) leave them out with a `play_filter`; edit that in `metrics/metrics.json` and run `uv run pytest`, which checks every metric against its reference values when data is built.
+- Play-by-play has one or two fewer pass attempts than the official tables in some games (Mahomes 2023: one play in week 5 and one in week 11), so rates match the official figures to within about 0.5%, not exactly. Passing yards, touchdowns, receptions and rushing totals for the sampled player-seasons match exactly. Each metric's `reference_values` in `metrics/metrics.json` record the tolerance.
+- Sack, penalty and no-play rows are pass plays in the data. Attempt-based stats (passing yards, passing TDs, completion %, interception rate) leave them out with a `play_filter`; edit that in `metrics/metrics.json` and run `uv run pytest`, which checks every metric against its reference values when data is built.
+- "Min plays" counts the rows each stat uses: attempts for the filtered stats above, dropbacks (sacks included) for the rest. A passer near the threshold can show some stats and not others.
+- Per-play values for EPA and WPA stats are per dropback; per-play passing yards, TDs, completion % and interception rate are per attempt.
 - No league-wide leaderboards ("who led the league in..."); Ask needs a named player.
 - Name matching is exact on surnames and full names, so typos are not corrected.
 - Receiving and rushing totals can differ slightly from official lines (play-by-play data).

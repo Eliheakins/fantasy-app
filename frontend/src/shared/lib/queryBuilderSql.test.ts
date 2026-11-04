@@ -13,7 +13,7 @@ const planParams = {
 };
 
 describe("qualifyMetricSql", () => {
-  const SQL_WORDS = new Set(["sum", "avg", "count", "nullif", "cast", "as", "double", "case", "when", "then", "else", "end"]);
+  const SQL_WORDS = new Set(["or", "and", "sum", "avg", "count", "nullif", "cast", "as", "double", "case", "when", "then", "else", "end"]);
 
   it("qualifies every column used by every metric in metrics.json", () => {
     // A column missing from the qualifier list stays bare and breaks once a joined table shares its name.
@@ -34,16 +34,18 @@ describe("qualifyMetricSql", () => {
 });
 
 describe("buildStatQueryPlans play filters", () => {
-  it("leaves sack rows out of attempt-based stats", () => {
+  it("leaves sack, penalty and no-play rows out of attempt-based stats", () => {
     const [plan] = buildStatQueryPlans({ ...planParams, statIds: ["pass_yards"] });
 
-    expect(plan!.sql).toContain("main.sack = 0");
+    expect(plan!.sql).toContain(
+      "(main.complete_pass = 1 OR main.incomplete_pass = 1 OR main.interception = 1)",
+    );
   });
 
   it("keeps sack rows for stats that count them", () => {
     const [plan] = buildStatQueryPlans({ ...planParams, statIds: ["pass_sack_rate"] });
 
-    expect(plan!.sql).not.toContain("main.sack = 0");
+    expect(plan!.sql).not.toContain("main.complete_pass = 1");
   });
 
   it("runs stats with different row filters as separate queries", () => {
