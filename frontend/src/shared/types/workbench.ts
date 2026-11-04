@@ -1,5 +1,5 @@
 /**
- * Player row shape returned by FastAPI `/search` and `/player/{id}` (aligned with roster index).
+ * Player row shape read from the static `players.json` (aligned with the roster index).
  */
 export interface NFLPlayer {
   gsis_id: string;

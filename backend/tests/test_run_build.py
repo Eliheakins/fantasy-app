@@ -42,9 +42,9 @@ def stubbed_network(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         cli,
         "create_player_index",
-        lambda data_dir, years: pl.DataFrame({"gsis_id": ["g1"]}).write_parquet(
-            data_dir / "player_index.parquet"
-        ),
+        lambda data_dir, years: pl.DataFrame(
+            {"gsis_id": ["g1"], "full_name": ["A B"]}
+        ).write_parquet(data_dir / "player_index.parquet"),
     )
     monkeypatch.setattr(
         cli, "build_player_game", lambda years: pl.concat([_games(y) for y in years])
@@ -96,6 +96,7 @@ def test_a_finished_build_leaves_no_temporary_files(tmp_path: Path, stubbed_netw
         "nfl_pbp_2026.parquet",
         "player_game.parquet",
         "player_index.parquet",
+        "players.json",
     ]
 
 
@@ -108,3 +109,30 @@ def test_the_manifest_lists_the_player_game_table_after_a_full_build(
     assert manifest is not None
     assert manifest.player_game is not None
     assert manifest.player_game.rows == 1
+
+
+def test_a_build_writes_the_static_players_file_and_lists_it_in_the_manifest(
+    tmp_path: Path, stubbed_network: None
+):
+    cli.run_build(tmp_path, [2026])
+
+    manifest = read_manifest(tmp_path)
+    assert manifest is not None
+    assert manifest.players is not None
+    assert (manifest.players.path, manifest.players.rows) == ("players.json", 1)
+
+
+def test_the_manifest_matches_the_shards_even_if_the_players_step_fails(
+    tmp_path: Path, stubbed_network: None, monkeypatch: pytest.MonkeyPatch
+):
+    def boom(data_dir: Path):
+        raise ValueError("roster column missing")
+
+    monkeypatch.setattr(cli, "write_players_file", boom)
+
+    with pytest.raises(ValueError, match="roster column missing"):
+        cli.run_build(tmp_path, [2026])
+
+    manifest = read_manifest(tmp_path)
+    assert manifest is not None
+    assert [s.season for s in manifest.seasons] == [2026]

@@ -19,7 +19,6 @@ def test_defaults_point_at_the_local_model_server_and_backend_data_folder(
     assert settings.llm_timeout_seconds == 120.0
     assert settings.backend_dir.name == "backend"
     assert settings.data_dir == settings.backend_dir / "data"
-    assert settings.player_index_path == settings.data_dir / "player_index.parquet"
 
 
 def test_environment_variables_override_the_model_settings(monkeypatch: pytest.MonkeyPatch):

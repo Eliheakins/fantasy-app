@@ -1,4 +1,4 @@
-import { API_BASE } from "@/shared/lib/api";
+import { DATA_BASE_URL } from "@/shared/lib/config";
 import { cn } from "@/shared/lib/utils";
 import type { NFLPlayer } from "@/shared/types/workbench";
 import { MAX_PINNED_PLAYERS } from "@/stores/useWorkbenchStore";
@@ -19,6 +19,7 @@ export interface QueryBuilderSidebarScrollProps {
   pinnedPlayers: NFLPlayer[];
   onSelectPlayer: (p: NFLPlayer) => void;
   pinMessage: string | null;
+  searchError: string | null;
 }
 
 /**
@@ -33,6 +34,7 @@ export function QueryBuilderSidebarScroll({
   pinnedPlayers,
   onSelectPlayer,
   pinMessage,
+  searchError,
 }: QueryBuilderSidebarScrollProps) {
   return (
     <>
@@ -80,9 +82,10 @@ export function QueryBuilderSidebarScroll({
             </ul>
           )}
         </div>
+        {searchError && <p className="text-sm text-danger-fg">{searchError}</p>}
         {pinMessage && <p className="text-sm text-warn-fg">{pinMessage}</p>}
         <p className="text-[10px] text-ink-muted">
-          API: {API_BASE} · Pin up to {MAX_PINNED_PLAYERS} players to compare
+          Data: {DATA_BASE_URL} · Pin up to {MAX_PINNED_PLAYERS} players to compare
         </p>
         <PinnedPlayersBar />
       </section>

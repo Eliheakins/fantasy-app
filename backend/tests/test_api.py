@@ -7,7 +7,7 @@ from conftest import FILTERS, STATS
 
 from api.deps import get_llm_client
 from core.state import app_state
-from schemas.manifest import Manifest, SeasonEntry
+from schemas.manifest import JsonFileEntry, Manifest, SeasonEntry
 from services.llm_client import chat_text
 
 
@@ -19,13 +19,13 @@ def _intent_body(question: str = "Mahomes passing yards in 2023") -> dict:
     }
 
 
-async def test_health_reports_loaded_index(client: httpx.AsyncClient):
+async def test_health_is_degraded_until_the_data_is_built(client: httpx.AsyncClient):
     res = await client.get("/health")
 
     assert res.status_code == 200
     assert res.json() == {
-        "status": "ok",
-        "player_index_loaded": True,
+        "status": "degraded",
+        "data_ready": False,
         "data_through": None,
         "seasons": [],
     }
@@ -53,39 +53,23 @@ async def test_health_reports_how_current_the_data_is(client: httpx.AsyncClient)
         ],
     )
 
+    app_state.manifest = app_state.manifest.model_copy(
+        update={"players": JsonFileEntry(path="players.json", rows=1)}
+    )
+
     body = (await client.get("/health")).json()
 
+    assert body["status"] == "ok"
+    assert body["data_ready"] is True
     assert body["data_through"] == "2026 week 9"
     assert body["seasons"] == [2025, 2026]
 
 
-async def test_players_dictionary_skips_rows_without_id_and_lowercases_key(
+async def test_the_player_and_shard_endpoints_are_gone_because_the_data_is_static(
     client: httpx.AsyncClient,
 ):
-    res = await client.get("/players/dictionary")
-
-    assert res.status_code == 200
-    rows = res.json()
-    assert [r["display_name"] for r in rows] == ["Patrick Mahomes", "Travis Kelce"]
-    assert rows[0] == {
-        "gsis_id": "00-0033873",
-        "display_name": "Patrick Mahomes",
-        "search_key": "patrick mahomes",
-        "position": "QB",
-        "team": "KC",
-    }
-
-
-async def test_search_finds_player_case_insensitively(client: httpx.AsyncClient):
-    res = await client.get("/search", params={"q": "KELCE"})
-
-    assert [p["gsis_id"] for p in res.json()] == ["00-0030506"]
-
-
-async def test_player_detail_returns_404_for_unknown_id(client: httpx.AsyncClient):
-    res = await client.get("/player/00-0000000")
-
-    assert res.status_code == 404
+    for path in ("/search?q=a", "/players/dictionary", "/player/00-0033873", "/pbp/shards"):
+        assert (await client.get(path)).status_code == 404, path
 
 
 async def test_nlq_intent_returns_validated_intent(client: httpx.AsyncClient, use_llm):
@@ -171,3 +155,23 @@ async def test_chat_text_raises_502_when_model_returns_no_choices():
         await chat_text(client=EmptyLlm(), model="m", messages=[])
 
     assert getattr(exc.value, "status_code", None) == 502
+
+
+async def test_health_is_degraded_when_seasons_exist_but_the_players_file_does_not(
+    client: httpx.AsyncClient,
+):
+    app_state.manifest = Manifest(
+        built_at="2026-11-04T12:00:00+00:00",
+        nflreadpy_version="1",
+        seasons=[
+            SeasonEntry(
+                season=2026, path="nfl_pbp_2026.parquet", rows=1, max_week=9, has_participation=True
+            )
+        ],
+    )
+
+    body = (await client.get("/health")).json()
+
+    assert body["status"] == "degraded"
+    assert body["data_ready"] is False
+    assert body["seasons"] == [2026]

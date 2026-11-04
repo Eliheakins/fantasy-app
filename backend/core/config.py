@@ -31,10 +31,6 @@ class AppSettings(BaseSettings):
     def data_dir(self) -> Path:
         return _BACKEND_DIR / "data"
 
-    @property
-    def player_index_path(self) -> Path:
-        return self.data_dir / "player_index.parquet"
-
 
 @lru_cache
 def get_settings() -> AppSettings:

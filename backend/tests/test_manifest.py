@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -143,3 +144,25 @@ def test_the_fixture_manifest_used_by_the_frontend_tests_is_valid():
 
 def test_manifest_schema_version_is_recorded():
     assert Manifest(built_at="x", nflreadpy_version="1", seasons=[]).schema_version == 1
+
+
+def test_manifest_lists_the_players_file_when_it_was_built(data_dir: Path):
+    (data_dir / "players.json").write_text(
+        json.dumps({"schema_version": 1, "players": [{"gsis_id": "a", "full_name": "A B"}] * 2})
+    )
+
+    manifest = build_manifest(data_dir, built_at=BUILT_AT)
+
+    assert manifest.players is not None
+    assert (manifest.players.path, manifest.players.rows) == ("players.json", 2)
+
+
+def test_manifest_has_no_players_entry_without_the_file(data_dir: Path):
+    assert build_manifest(data_dir, built_at=BUILT_AT).players is None
+
+
+def test_a_corrupt_players_file_is_named_in_the_error(data_dir: Path):
+    (data_dir / "players.json").write_text("{not json")
+
+    with pytest.raises(ValueError, match="players.json is invalid"):
+        build_manifest(data_dir, built_at=BUILT_AT)

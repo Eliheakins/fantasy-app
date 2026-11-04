@@ -28,6 +28,7 @@ from pipeline.player_game import (
     read_player_game,
     write_player_game,
 )
+from pipeline.players import write_players_file
 
 _backend_root = Path(__file__).resolve().parent.parent
 _default_data = _backend_root / "data"
@@ -80,8 +81,12 @@ def run_build(data_dir: Path, years: list[int]) -> None:
 
     create_player_index(data_dir, years)
 
-    # Describe what is on disk before the network-bound tier-1 step, so a failure there still
-    # leaves a manifest that matches the shards.
+    # Describe what is on disk before the later steps, so a failure there still leaves a
+    # manifest that matches the shards.
+    _write_manifest(data_dir)
+
+    players_file, skipped = write_players_file(data_dir)
+    print(f"✅ Players: {players_file.rows} in players.json, {skipped} skipped (no id or name)")
     _write_manifest(data_dir)
 
     merged = merge_player_game(

@@ -1,5 +1,5 @@
 import { Button } from "@/shared/components/ui/button";
-import type { PlayerDictionaryRow } from "@/shared/lib/schemas/playerDictionary";
+import type { PlayerDictionaryRow } from "@/shared/lib/schemas/players";
 
 import type { PlayerMatch } from "./resolvePlayers";
 

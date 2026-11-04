@@ -1,10 +1,10 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getStatById, type PlayerRole } from "@/shared/config/statDictionary";
-import { fetchPlayerDetail, fetchPlayerDictionary } from "@/shared/lib/api";
+import { getPlayerDictionary, getPlayersByIds } from "@/shared/lib/players";
 import { type QueryIntent, requestIntent } from "@/shared/lib/nlqApi";
 import { specFromIntent, unsupportedReasons } from "@/shared/lib/querySpec";
-import type { PlayerDictionaryRow } from "@/shared/lib/schemas/playerDictionary";
+import type { PlayerDictionaryRow } from "@/shared/lib/schemas/players";
 import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
 import { MAX_PINNED_PLAYERS, useWorkbenchStore } from "@/stores/useWorkbenchStore";
 
@@ -44,8 +44,17 @@ export function useAsk() {
   const setPins = useWorkbenchStore((s) => s.setPins);
   const applyIntent = useQueryBuilderStore((s) => s.applyIntent);
 
+  // Each ask gets a number; leaving the page or asking again makes older ones stale, so a slow
+  // model reply cannot replace pins or stats the user has set since.
+  const currentRequest = useRef(0);
+  useEffect(() => {
+    return () => {
+      currentRequest.current += 1;
+    };
+  }, []);
+
   const apply = useCallback(
-    async (players: PlayerDictionaryRow[], next: QueryIntent) => {
+    async (players: PlayerDictionaryRow[], next: QueryIntent, request: number) => {
       const unique = [...new Map(players.map((p) => [p.gsis_id, p])).values()].slice(
         0,
         MAX_PINNED_PLAYERS,
@@ -61,8 +70,11 @@ export function useAsk() {
         setPhase("idle");
         return;
       }
-      const details = await Promise.all(unique.map((p) => fetchPlayerDetail(p.gsis_id)));
-      setPins(details.map((d) => ({ player: d.player, shards: d.shards })));
+      const found = await getPlayersByIds(unique.map((p) => p.gsis_id));
+      if (request !== currentRequest.current) {
+        return;
+      }
+      setPins(found);
       applyIntent({
         statIds: next.stat_ids,
         filterIds: withDefaultSeasonType(next.filter_ids),
@@ -81,6 +93,7 @@ export function useAsk() {
       setMessage("Type a question first.");
       return;
     }
+    const request = ++currentRequest.current;
     setPhase("working");
     setMessage(null);
     setResolved([]);
@@ -88,7 +101,10 @@ export function useAsk() {
     setIntent(null);
 
     try {
-      const dictionary = await fetchPlayerDictionary();
+      const dictionary = await getPlayerDictionary();
+      if (request !== currentRequest.current) {
+        return;
+      }
       const matches = resolvePlayers(trimmed, dictionary);
       if (matches.length === 0) {
         setMessage(NO_PLAYER_MESSAGE);
@@ -97,6 +113,9 @@ export function useAsk() {
       }
 
       const outcome = await requestIntent(trimmed);
+      if (request !== currentRequest.current) {
+        return;
+      }
       if (outcome.outcome === "unsupported") {
         setMessage(outcome.reason);
         setPhase("idle");
@@ -122,10 +141,12 @@ export function useAsk() {
         setPhase("choosing");
         return;
       }
-      await apply(sure, next);
+      await apply(sure, next, request);
     } catch (e) {
-      setMessage(errorText(e));
-      setPhase("idle");
+      if (request === currentRequest.current) {
+        setMessage(errorText(e));
+        setPhase("idle");
+      }
     }
   }, [question, apply]);
 
@@ -142,11 +163,14 @@ export function useAsk() {
         return;
       }
       setPhase("working");
+      const request = ++currentRequest.current;
       try {
-        await apply(players, intent);
+        await apply(players, intent, request);
       } catch (e) {
-        setMessage(errorText(e));
-        setPhase("idle");
+        if (request === currentRequest.current) {
+          setMessage(errorText(e));
+          setPhase("idle");
+        }
       }
     },
     [intent, choices, resolved, apply],

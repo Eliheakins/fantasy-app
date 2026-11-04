@@ -12,6 +12,7 @@ export const manifestSeasonSchema = z.object({
 });
 
 const fileEntrySchema = z.object({ path: fileNameSchema, rows: z.number().int() });
+const jsonFileEntrySchema = z.object({ path: z.string().regex(/^[\w.-]+\.json$/), rows: z.number().int() });
 
 /** Mirrors `backend/schemas/manifest.py`; the build writes it as `manifest.json` in the data folder. */
 export const manifestSchema = z.object({
@@ -22,6 +23,8 @@ export const manifestSchema = z.object({
   player_index: fileEntrySchema.nullable(),
   /** Tier-1 table (one row per player per game). Older manifests lack the key. */
   player_game: fileEntrySchema.nullable().default(null),
+  /** Static player list (`players.json`) the browser searches and matches names against. */
+  players: jsonFileEntrySchema.nullable().default(null),
 });
 
 export type Manifest = z.infer<typeof manifestSchema>;

@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from typing import Any
 
 import httpx
-import polars as pl
 import pytest
 from fastapi import FastAPI
 from main import create_app
@@ -50,25 +49,10 @@ class FakeLlm:
 
 
 @pytest.fixture
-def player_index() -> pl.DataFrame:
-    return pl.DataFrame(
-        {
-            "gsis_id": ["00-0033873", "00-0030506", None],
-            "full_name": ["Patrick Mahomes", "Travis Kelce", "No Id"],
-            "position": ["QB", "TE", "WR"],
-            "team": ["KC", "KC", "NYJ"],
-        }
-    )
-
-
-@pytest.fixture
-def app(player_index: pl.DataFrame) -> Iterator[FastAPI]:
-    app_state.player_index = player_index
-    app_state.pbp_shards = []
+def app() -> Iterator[FastAPI]:
     app = create_app()
     yield app
     app.dependency_overrides.clear()
-    app_state.player_index = None
     app_state.manifest = None
 
 

@@ -38,6 +38,19 @@ describe("manifestSchema", () => {
     expect(manifestSchema.parse(VALID).player_game).toBeNull();
   });
 
+  it("reads the players file entry, and treats a missing key as no players file", () => {
+    const withPlayers = { ...VALID, players: { path: "players.json", rows: 3062 } };
+
+    expect(manifestSchema.parse(withPlayers).players?.rows).toBe(3062);
+    expect(manifestSchema.parse(VALID).players).toBeNull();
+  });
+
+  it("rejects a players path that could leave the data folder or is not JSON", () => {
+    for (const path of ["../players.json", "/players.json", "a/b.json", "players.parquet"]) {
+      expect(manifestSchema.safeParse({ ...VALID, players: { path, rows: 1 } }).success).toBe(false);
+    }
+  });
+
   it("rejects a manifest without seasons", () => {
     expect(manifestSchema.safeParse({ ...VALID, seasons: "nope" }).success).toBe(false);
   });
