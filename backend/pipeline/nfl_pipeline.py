@@ -20,6 +20,9 @@ import nflreadpy as nfl
 import polars as pl
 from nflreadpy.utils_date import get_current_season
 
+from pipeline.atomic import atomic_path
+from pipeline.players import merge_player_index
+
 # Same release host as nflreadpy downloader; override with NFLVERSE_DOWNLOAD_BASE.
 _DEFAULT_NFLVERSE_DL = "https://github.com/nflverse/nflverse-data/releases/download/"
 
@@ -125,29 +128,26 @@ def _load_pbp_parquet_pruned(year: int) -> pl.DataFrame:
 
 
 def create_player_index(data_dir: Path, years: list[int]) -> None:
-    """One row per player (latest season) in player_index.parquet."""
+    """One row per player (latest season seen, across builds) in player_index.parquet."""
     print("Building player index…")
     rosters = nfl.load_rosters(years)
-    player_index = (
-        rosters.select(
-            [
-                "gsis_id",
-                "full_name",
-                "position",
-                "team",
-                "headshot_url",
-                "birth_date",
-                "years_exp",
-                "season",
-            ]
-        )
-        .sort("season", descending=True)
-        .unique(subset=["gsis_id"], keep="first")
-        .drop("season")
-    )
-    player_index = player_index.with_columns(pl.col("gsis_id").cast(pl.Utf8))
+    player_index = rosters.select(
+        [
+            "gsis_id",
+            "full_name",
+            "position",
+            "team",
+            "headshot_url",
+            "birth_date",
+            "years_exp",
+            "season",
+        ]
+    ).with_columns(pl.col("gsis_id").cast(pl.Utf8), pl.col("season").cast(pl.Int32))
     out_path = data_dir / "player_index.parquet"
-    player_index.write_parquet(out_path)
+    existing = pl.read_parquet(out_path) if out_path.is_file() else None
+    merged = merge_player_index(existing, player_index)
+    with atomic_path(out_path) as tmp:
+        merged.write_parquet(tmp)
     print(f"✅ Player index: {out_path}")
 
 

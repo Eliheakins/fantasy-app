@@ -48,6 +48,28 @@ def _iso_date(value: object) -> str | None:
     return _text(value)
 
 
+def merge_player_index(existing: pl.DataFrame | None, new: pl.DataFrame) -> pl.DataFrame:
+    """Fold a rebuild into the existing index, keeping the most recent season per player.
+
+    A build over a few seasons only knows those seasons' rosters, so players who left the league
+    earlier (and still have plays in older shards) must stay. An index written before the `season`
+    column existed counts as older than any row that has one.
+    """
+    frames = [new]
+    if existing is not None:
+        frames.append(
+            existing
+            if "season" in existing.columns
+            else existing.with_columns(pl.lit(None, dtype=pl.Int32).alias("season"))
+        )
+    return (
+        pl.concat(frames, how="diagonal_relaxed")
+        .filter(pl.col("gsis_id").is_not_null())
+        .sort("season", descending=True, nulls_last=True, maintain_order=True)
+        .unique(subset=["gsis_id"], keep="first", maintain_order=True)
+    )
+
+
 def build_players(index: pl.DataFrame) -> tuple[list[PlayerEntry], int]:
     """Players that have an id and a name, plus how many rows were left out for lacking one.
 
