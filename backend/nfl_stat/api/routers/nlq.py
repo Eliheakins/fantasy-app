@@ -6,10 +6,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from openai import AsyncOpenAI
 
-from api.deps import get_llm_client, get_settings_dep
-from core.config import AppSettings
-from schemas.nlq import IntentOutcome, IntentRequest
-from services.nlq_intent import IntentError, translate_question
+from nfl_stat.api.deps import get_llm_client, get_settings_dep
+from nfl_stat.core.config import AppSettings
+from nfl_stat.schemas.nlq import IntentOutcome, IntentRequest
+from nfl_stat.services.nlq_intent import IntentError, translate_question
 
 logger = logging.getLogger(__name__)
 

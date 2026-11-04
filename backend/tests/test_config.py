@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from core.config import AppSettings
+from nfl_stat.core.config import AppSettings
 
 LLM_VARS = ("LLM_BASE_URL", "LLM_MODEL", "LLM_TIMEOUT_SECONDS")
 

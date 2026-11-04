@@ -7,7 +7,7 @@ import httpx
 import openai
 import pytest
 
-from services.llm_warmup import keep_model_warm
+from nfl_stat.services.llm_warmup import keep_model_warm
 
 
 class PingRecorder:

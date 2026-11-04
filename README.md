@@ -74,7 +74,7 @@ Three terminals, from the repository root:
 uv run --group llm mlx_lm.server --model mlx-community/Qwen2.5-14B-Instruct-4bit --port 8080
 
 # 2. API
-cd backend && uv run uvicorn main:app --port 8100
+uv run uvicorn nfl_stat.main:create_app --factory --port 8100
 
 # 3. Frontend
 cd frontend && npm run dev
@@ -101,7 +101,7 @@ Optional, in the environment or a `.env` file at the repository root.
 ## Tests
 
 ```bash
-uv run pytest --cov=backend           # backend unit and API tests
+uv run pytest --cov           # backend unit and API tests
 uv run pytest -m eval -s              # intent accuracy against the live local model (needs step 1 above)
 cd frontend && npm test               # name matching, rules parser, answer text, catalog sync
 cd frontend && npm run eval:rules     # how the rules parser scores on the eval questions (no model needed)
@@ -127,10 +127,10 @@ The model's refusal weakness is why an answer from the model lists the words the
 
 | Path | Role |
 |------|------|
-| `backend/main.py` | App factory: routers, CORS for the local Vite port, static `/data` |
-| `backend/api/routers/` | `health`, `nlq` (intent). Everything else is static files under `/data` |
-| `backend/services/` | `nlq_intent` (prompt, validation, retry), `llm_client`, `llm_warmup`, catalogs |
-| `backend/pipeline/` | Data build from nflverse: play-by-play shards, the player-game table, the manifest (`build_data.py` is the entry point) |
+| `backend/nfl_stat/main.py` | App factory: routers, CORS for the local Vite port, static `/data` |
+| `backend/nfl_stat/api/routers/` | `health`, `nlq` (intent). Everything else is static files under `/data` |
+| `backend/nfl_stat/services/` | `nlq_intent` (prompt, validation, retry), `llm_client`, `llm_warmup`, catalogs |
+| `backend/nfl_stat/pipeline/` | Data build from nflverse: play-by-play shards, the player-game table, the manifest (`build_data.py` is the entry point) |
 | `frontend/src/features/nlq/` | Ask: name matching, hook, answer text, panel |
 | `frontend/src/features/explore/` | Query builder and results canvas (also runs Ask's query) |
 | `metrics/metrics.json` | The stat definitions: SQL, aliases, row filters and reference values. Read by the app and by the backend tests |

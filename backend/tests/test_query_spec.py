@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from schemas.query_spec import MAX_SPEC_METRICS, QuerySpec
+from nfl_stat.schemas.query_spec import MAX_SPEC_METRICS, QuerySpec
 
 
 def _spec(**overrides: Any) -> dict[str, Any]:

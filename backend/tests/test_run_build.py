@@ -5,9 +5,9 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from pipeline import cli
-from pipeline.player_game import PLAYER_GAME_COLUMNS, write_player_game
-from schemas.manifest import read_manifest
+from nfl_stat.pipeline import cli
+from nfl_stat.pipeline.player_game import PLAYER_GAME_COLUMNS, write_player_game
+from nfl_stat.schemas.manifest import read_manifest
 
 
 def _shard(season: int) -> pl.DataFrame:

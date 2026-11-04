@@ -7,8 +7,8 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from pipeline.manifest import build_manifest, write_manifest
-from schemas.manifest import MANIFEST_FILENAME, Manifest, read_manifest
+from nfl_stat.pipeline.manifest import build_manifest, write_manifest
+from nfl_stat.schemas.manifest import MANIFEST_FILENAME, Manifest, read_manifest
 
 BUILT_AT = datetime(2026, 11, 4, 12, 0, tzinfo=UTC)
 

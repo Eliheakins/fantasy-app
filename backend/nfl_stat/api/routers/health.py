@@ -4,11 +4,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from api.deps import get_app_state, get_settings_dep
-from core.config import AppSettings
-from core.manifest_state import refresh_manifest
-from core.state import AppState
-from schemas.api import HealthResponse
+from nfl_stat.api.deps import get_app_state, get_settings_dep
+from nfl_stat.core.config import AppSettings
+from nfl_stat.core.manifest_state import refresh_manifest
+from nfl_stat.core.state import AppState
+from nfl_stat.schemas.api import HealthResponse
 
 router = APIRouter(tags=["health"])
 

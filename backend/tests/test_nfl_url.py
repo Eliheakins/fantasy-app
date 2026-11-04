@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pipeline.nfl_pipeline import get_nfl_url
+from nfl_stat.pipeline.nfl_pipeline import get_nfl_url
 
 
 def test_default_url_points_at_the_nflverse_release(monkeypatch: pytest.MonkeyPatch):

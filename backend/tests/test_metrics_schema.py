@@ -6,8 +6,8 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from pipeline.nfl_pipeline import NGS_COLS, PART_COLS, PBP_COLS
-from schemas.metrics import MetricsFile, load_metrics
+from nfl_stat.pipeline.nfl_pipeline import NGS_COLS, PART_COLS, PBP_COLS
+from nfl_stat.schemas.metrics import MetricsFile, load_metrics
 
 # Columns a metric's SQL may name: the play-by-play columns plus what the build derives.
 KNOWN_COLUMNS = set(PBP_COLS) | set(PART_COLS) | set(NGS_COLS) | {"is_red_zone"}

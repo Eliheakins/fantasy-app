@@ -8,11 +8,10 @@ from typing import Any
 import httpx
 import pytest
 from fastapi import FastAPI
-from main import create_app
 
-from api.deps import get_llm_client, get_settings_dep
-from core.state import app_state
-from schemas.nlq import CatalogFilter, CatalogStat
+from nfl_stat.api.deps import get_llm_client
+from nfl_stat.main import create_app
+from nfl_stat.schemas.nlq import CatalogFilter, CatalogStat
 
 STATS = [
     CatalogStat(
@@ -57,17 +56,15 @@ def data_dir(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def app(data_dir: Path) -> Iterator[FastAPI]:
-    app = create_app()
-    app.dependency_overrides[get_settings_dep] = lambda: SimpleNamespace(
-        data_dir=data_dir,
-        llm_model="test-model",
-        llm_base_url="http://fake-llm/v1",
-        llm_timeout_seconds=1.0,
+    # Each test gets its own settings and state, so nothing leaks between tests.
+    yield create_app(
+        SimpleNamespace(
+            data_dir=data_dir,
+            llm_model="test-model",
+            llm_base_url="http://fake-llm/v1",
+            llm_timeout_seconds=1.0,
+        )
     )
-    yield app
-    app.dependency_overrides.clear()
-    app_state.manifest = None
-    app_state.manifest_mtime = None
 
 
 @pytest.fixture

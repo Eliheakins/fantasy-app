@@ -20,8 +20,8 @@ import nflreadpy as nfl
 import polars as pl
 from nflreadpy.utils_date import get_current_season
 
-from pipeline.atomic import atomic_path
-from pipeline.players import merge_player_index, read_player_index
+from nfl_stat.pipeline.atomic import atomic_path
+from nfl_stat.pipeline.players import merge_player_index, read_player_index
 
 # Same release host as nflreadpy downloader; override with NFLVERSE_DOWNLOAD_BASE.
 _DEFAULT_NFLVERSE_DL = "https://github.com/nflverse/nflverse-data/releases/download/"

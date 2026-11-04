@@ -15,7 +15,7 @@ from typing import Any
 from openai import AsyncOpenAI
 from pydantic import ValidationError
 
-from schemas.nlq import (
+from nfl_stat.schemas.nlq import (
     MAX_INTENT_STATS,
     CatalogFilter,
     CatalogStat,
@@ -25,7 +25,7 @@ from schemas.nlq import (
     QueryOutcome,
     UnsupportedOutcome,
 )
-from services.llm_client import ChatMessage, chat_text
+from nfl_stat.services.llm_client import ChatMessage, chat_text
 
 MAX_ATTEMPTS = 2
 

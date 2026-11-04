@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from pipeline import cli
+from nfl_stat.pipeline import cli
 
 
 def test_default_years_run_from_the_first_season_to_the_current_one(

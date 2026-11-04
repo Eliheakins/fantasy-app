@@ -30,12 +30,14 @@ dev = [
 # Apple Silicon only: `uv run --group llm mlx_lm.server --model <LLM_MODEL>`
 llm = ["mlx-lm"]
 
-[tool.uv]
-# Scripts and a FastAPI app, not an installable package.
-package = false
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/nfl_stat"]
 
 [tool.pytest.ini_options]
-pythonpath = ["backend"]
 testpaths = ["backend/tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
@@ -43,9 +45,9 @@ markers = ["eval: runs against the live local model (deselected by default)"]
 addopts = "-m 'not eval'"
 
 [tool.coverage.run]
-source = ["backend"]
+source = ["backend/nfl_stat"]
 # The data build needs the network, and scripts and tests are not product code.
-omit = ["backend/pipeline/*", "backend/scripts/*", "backend/tests/*"]
+omit = ["backend/nfl_stat/pipeline/*"]
 
 [tool.ruff]
 target-version = "py312"
@@ -70,11 +72,10 @@ select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"backend/pipeline/*" = ["E501"]  # long prose in column manifests and docstrings
-"backend/scripts/*" = ["E402"]   # sys.path is adjusted before the import
+"backend/nfl_stat/pipeline/*" = ["E501"]  # long prose in column manifests and docstrings
 
 [tool.ruff.lint.isort]
-known-first-party = ["api", "core", "pipeline", "schemas", "services"]
+known-first-party = ["nfl_stat"]
 
 [tool.ruff.format]
 quote-style = "double"

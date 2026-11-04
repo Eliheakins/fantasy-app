@@ -13,7 +13,7 @@ from pathlib import Path
 import nflreadpy as nfl
 import polars as pl
 
-from pipeline.atomic import atomic_path
+from nfl_stat.pipeline.atomic import atomic_path
 
 PLAYER_GAME_FILENAME = "player_game.parquet"
 # Small row groups let a reader fetch only the seasons and players it needs.

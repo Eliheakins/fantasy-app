@@ -7,10 +7,10 @@ import openai
 import pytest
 from conftest import FILTERS, STATS
 
-from api.deps import get_llm_client
-from pipeline.manifest import write_manifest
-from schemas.manifest import JsonFileEntry, Manifest, SeasonEntry
-from services.llm_client import chat_text
+from nfl_stat.api.deps import get_llm_client
+from nfl_stat.pipeline.manifest import write_manifest
+from nfl_stat.schemas.manifest import JsonFileEntry, Manifest, SeasonEntry
+from nfl_stat.services.llm_client import chat_text
 
 
 def _intent_body(question: str = "Mahomes passing yards in 2023") -> dict:

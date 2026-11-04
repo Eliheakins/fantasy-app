@@ -12,8 +12,8 @@ from __future__ import annotations
 import duckdb
 import pytest
 
-from pipeline.cli import data_output_dir
-from schemas.metrics import MetricDefinition, ReferenceValue, load_metrics
+from nfl_stat.pipeline.cli import data_output_dir
+from nfl_stat.schemas.metrics import MetricDefinition, ReferenceValue, load_metrics
 
 DATA_DIR = data_output_dir()
 ROLE_COLUMN = {

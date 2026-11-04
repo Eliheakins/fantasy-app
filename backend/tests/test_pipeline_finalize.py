@@ -3,8 +3,8 @@ from __future__ import annotations
 import polars as pl
 import pytest
 
-from pipeline import nfl_pipeline
-from pipeline.nfl_pipeline import (
+from nfl_stat.pipeline import nfl_pipeline
+from nfl_stat.pipeline.nfl_pipeline import (
     PART_COLS,
     finalize_columns,
     format_null_report,

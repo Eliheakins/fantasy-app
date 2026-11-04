@@ -14,23 +14,23 @@ from pathlib import Path
 
 from nflreadpy.utils_date import get_current_season
 
-from pipeline.atomic import atomic_path
-from pipeline.manifest import build_manifest, write_manifest
-from pipeline.nfl_pipeline import (
+from nfl_stat.pipeline.atomic import atomic_path
+from nfl_stat.pipeline.manifest import build_manifest, write_manifest
+from nfl_stat.pipeline.nfl_pipeline import (
     build_stitched_for_year,
     create_player_index,
     format_null_report,
     null_report,
 )
-from pipeline.player_game import (
+from nfl_stat.pipeline.player_game import (
     build_player_game,
     merge_player_game,
     read_player_game,
     write_player_game,
 )
-from pipeline.players import write_players_file
+from nfl_stat.pipeline.players import write_players_file
 
-_backend_root = Path(__file__).resolve().parent.parent
+_backend_root = Path(__file__).resolve().parents[2]
 _default_data = _backend_root / "data"
 
 

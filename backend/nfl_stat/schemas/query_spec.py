@@ -11,7 +11,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, StrictInt, model_validator
 
-from schemas.nlq import Granularity
+from nfl_stat.schemas.nlq import Granularity
 
 MAX_SPEC_METRICS = 5
 MAX_SPEC_LIMIT = 100

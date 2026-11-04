@@ -11,11 +11,17 @@ import polars as pl
 import pyarrow.parquet as pq
 from pydantic import ValidationError
 
-from pipeline.atomic import atomic_path
-from pipeline.player_game import PLAYER_GAME_FILENAME
-from pipeline.players import PLAYER_INDEX_FILENAME, PLAYERS_FILENAME
-from schemas.manifest import MANIFEST_FILENAME, FileEntry, JsonFileEntry, Manifest, SeasonEntry
-from schemas.players import PlayersFile
+from nfl_stat.pipeline.atomic import atomic_path
+from nfl_stat.pipeline.player_game import PLAYER_GAME_FILENAME
+from nfl_stat.pipeline.players import PLAYER_INDEX_FILENAME, PLAYERS_FILENAME
+from nfl_stat.schemas.manifest import (
+    MANIFEST_FILENAME,
+    FileEntry,
+    JsonFileEntry,
+    Manifest,
+    SeasonEntry,
+)
+from nfl_stat.schemas.players import PlayersFile
 
 SHARD_PATTERN = re.compile(r"^nfl_pbp_(\d{4})\.parquet$")
 
