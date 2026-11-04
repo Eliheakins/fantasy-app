@@ -17,6 +17,7 @@ import {
   serializeQuery,
   setGranularity,
   setMinPlays,
+  setRanking,
   toggleFilter,
   toggleStat,
   unpinPlayer,
@@ -279,6 +280,38 @@ describe("leaderboard parts of the URL", () => {
   it("clears the order when the ordering stat is deselected", () => {
     expect(toggleStat(board, "pass_yards").order).toBeNull();
     expect(toggleStat(board, "pass_tds").order).toEqual(board.order);
+  });
+
+  it("sets a ranking by a selected stat, starting at the top 10", () => {
+    const query = { ...EMPTY_QUERY, stats: ["pass_yards", "pass_tds"] };
+
+    const ranked = setRanking(query, { metric: "pass_tds", direction: "asc" });
+
+    expect(ranked.order).toEqual({ metric: "pass_tds", direction: "asc" });
+    expect(ranked.limit).toBe(10);
+    expect(ranked.stats).toEqual(query.stats);
+  });
+
+  it("keeps the limit already set when only the order changes", () => {
+    expect(setRanking(board, { metric: "pass_yards", direction: "asc" }).limit).toBe(10);
+    expect(setRanking({ ...board, limit: 25 }, { metric: "pass_yards", direction: "asc" }).limit).toBe(25);
+  });
+
+  it("keeps the limit between 1 and 100, and a non-number gives the default", () => {
+    expect(setRanking(board, board.order, 500).limit).toBe(100);
+    expect(setRanking(board, board.order, 0).limit).toBe(1);
+    expect(setRanking(board, board.order, Number.NaN).limit).toBe(10);
+  });
+
+  it("will not rank by a stat the query does not select", () => {
+    expect(setRanking(board, { metric: "rush_yards", direction: "desc" })).toBe(board);
+  });
+
+  it("clears the order and the limit together", () => {
+    const cleared = setRanking(board, null);
+
+    expect(cleared.order).toBeNull();
+    expect(cleared.limit).toBeNull();
   });
 
   it("tells a leaderboard from the same query without one", () => {

@@ -12,6 +12,7 @@ export const MAX_SELECTED_STATS = 5;
 export const MAX_PINNED_PLAYERS = 5;
 export const MAX_MIN_PLAYS = 500;
 export const MAX_LIMIT = 100;
+export const DEFAULT_LIMIT = 10;
 export const DEFAULT_GRANULARITY: GranularityMode = "per_play";
 
 export interface QueryState {
@@ -160,6 +161,18 @@ export function setGranularity(state: QueryState, granularity: GranularityMode):
 
 export function setMinPlays(state: QueryState, minPlays: number): QueryState {
   return { ...state, minPlays: clampMinPlays(minPlays) };
+}
+
+/** Ranks the rows by a selected stat and keeps the first `limit`; null clears both. */
+export function setRanking(state: QueryState, order: QueryOrder | null, limit = state.limit ?? DEFAULT_LIMIT): QueryState {
+  if (order === null) {
+    return { ...state, order: null, limit: null };
+  }
+  if (!state.stats.includes(order.metric)) {
+    return state;
+  }
+  const rows = Number.isFinite(limit) ? Math.min(MAX_LIMIT, Math.max(1, Math.round(limit))) : DEFAULT_LIMIT;
+  return { ...state, order, limit: rows };
 }
 
 export function toggleFilter(state: QueryState, id: string): QueryState {
