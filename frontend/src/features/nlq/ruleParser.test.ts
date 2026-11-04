@@ -559,3 +559,35 @@ describe("team questions", () => {
     expect(parse("Chiefs time to throw in 2023").status).toBe("unsupported");
   });
 });
+
+describe("team names inside player names", () => {
+  const BILLS = {
+    ...PLAYERS.find((p) => p.position === "QB")!,
+    gsis_id: "00-0099999",
+    display_name: "Keaton Bills",
+    search_key: "keaton bills",
+  };
+  const withBills = (question: string) =>
+    parseRules(question, {
+      matches: resolvePlayers(question, [...PLAYERS, BILLS]),
+      seasons: FIXTURE_SEASONS,
+      chipGroups,
+    });
+
+  it("reads a player named in full even when the surname is a team's nickname", () => {
+    const result = withBills("Keaton Bills passing yards in 2023");
+
+    expect(result.status).toBe("resolved");
+    expect(result.status === "resolved" && result.team).toBeUndefined();
+  });
+
+  it("does not make a player question about teams because it says team", () => {
+    expect(parse("Patrick Mahomes team time to throw in 2023").status).not.toBe("unsupported");
+  });
+
+  it("asks a team ranking for no play floor, since every team has plenty", () => {
+    const result = parse("which team had the highest completion percentage in 2023");
+
+    expect(result.status === "resolved" && result.leaderboard?.minPlays).toBe(0);
+  });
+});

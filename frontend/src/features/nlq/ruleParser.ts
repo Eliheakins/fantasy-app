@@ -304,8 +304,10 @@ const ambiguous = (reason: string, unrecognized?: string[]): RuleResult =>
 export function parseRules(question: string, context: RuleContext): RuleResult {
   const { matches, seasons, chipGroups } = context;
   const tokensForCue = wordsOf(question);
-  const teams = findTeams(tokensForCue);
-  const asksTeams = teams.length > 0 || tokensForCue.some((t) => TEAM_WORDS.has(t));
+  // A team name inside a player's name ("Keaton Bills") is part of the player, not a team.
+  const inPlayer = (at: number) => matches.some((m) => at >= m.start && at < m.start + tokenize(m.phrase).length);
+  const teams = findTeams(tokensForCue).filter((t) => !inPlayer(t.start));
+  const asksTeams = teams.length > 0 || (matches.length === 0 && tokensForCue.some((t) => TEAM_WORDS.has(t)));
   if (teams.length > 0 && matches.length > 0) {
     // "Mahomes against the Chiefs" is an opponent filter, which the data cannot apply. The team words
     // are listed as unread, so a model answer that ignores them says so.
@@ -601,8 +603,13 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
   if (typeof direction !== "string") {
     return ambiguous(direction.reason);
   }
+  // The floor keeps a one-play player off the top; a team always has hundreds of plays.
   const minPlays =
-    intent.granularity === "total" ? 0 : split.split === "week" ? WEEKLY_LEADERBOARD_MIN_PLAYS : LEADERBOARD_MIN_PLAYS;
+    intent.granularity === "total" || asksTeams
+      ? 0
+      : split.split === "week"
+        ? WEEKLY_LEADERBOARD_MIN_PLAYS
+        : LEADERBOARD_MIN_PLAYS;
   return {
     status: "resolved",
     intent,

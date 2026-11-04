@@ -353,7 +353,9 @@ export function useAsk() {
     lastLogged.current = { id: answeredBy.entryId, key };
     logCorrection(answeredBy.entryId, loggedFrom(state));
     const storage = browserStorage();
-    if (!storage || state.order !== null || state.limit !== null) {
+    // Rankings and team questions are read by the rules alone and never consult the cache, so a saved
+    // correction for them would never be replayed; the log above keeps it.
+    if (!storage || state.order !== null || state.limit !== null || state.subject === "teams") {
       return;
     }
     const cacheKeyNow = keyFor(answeredBy.question);
