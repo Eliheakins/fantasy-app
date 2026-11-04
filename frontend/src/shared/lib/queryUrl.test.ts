@@ -263,11 +263,15 @@ describe("leaderboard parts of the URL", () => {
     expect(parse("o=pass_yards&n=5").order).toBeNull();
   });
 
+  it("drops a limit with no order, which would cut unsorted rows", () => {
+    expect(parse("s=pass_yards&n=5").limit).toBeNull();
+  });
+
   it("drops a limit that is not a whole number from 1 to 100", () => {
     for (const bad of ["0", "101", "-3", "abc", "2.5", ""]) {
-      expect(parse(`s=pass_yards&n=${bad}`).limit, bad).toBeNull();
+      expect(parse(`s=pass_yards&o=pass_yards&n=${bad}`).limit, bad).toBeNull();
     }
-    expect(parse("s=pass_yards&n=100").limit).toBe(100);
+    expect(parse("s=pass_yards&o=pass_yards&n=100").limit).toBe(100);
   });
 
   it("is a league query only with no players, an order and a limit", () => {
@@ -277,8 +281,9 @@ describe("leaderboard parts of the URL", () => {
     expect(isLeagueQuery({ ...board, order: null })).toBe(false);
   });
 
-  it("clears the order when the ordering stat is deselected", () => {
+  it("clears the order and its limit when the ordering stat is deselected", () => {
     expect(toggleStat(board, "pass_yards").order).toBeNull();
+    expect(toggleStat(board, "pass_yards").limit).toBeNull();
     expect(toggleStat(board, "pass_tds").order).toEqual(board.order);
   });
 

@@ -76,6 +76,11 @@ export function isLeagueQuery(state: QueryState): boolean {
   return state.players.length === 0 && state.order !== null && state.limit !== null;
 }
 
+/** Rows for a ranking: a whole number from 1 to MAX_LIMIT, or the default when it is not a number. */
+export function clampLimit(value: number): number {
+  return Number.isFinite(value) ? Math.min(MAX_LIMIT, Math.max(1, Math.round(value))) : DEFAULT_LIMIT;
+}
+
 function clampMinPlays(value: number): number {
   return Number.isFinite(value) ? Math.max(0, Math.min(MAX_MIN_PLAYS, Math.round(value))) : 0;
 }
@@ -88,6 +93,7 @@ export function parseQuery(params: URLSearchParams, knownFilterIds?: ReadonlySet
   const stats = unique(params.getAll(KEYS.stats).filter((id) => getStatById(id))).slice(0, MAX_SELECTED_STATS);
   const requested = params.get(KEYS.granularity);
   const granularity = GRANULARITIES.find((g) => g === requested) ?? DEFAULT_GRANULARITY;
+  const order = parseOrder(params.get(KEYS.order), stats);
 
   return {
     players: unique(params.getAll(KEYS.players).filter((id) => PLAYER_ID.test(id))).slice(0, MAX_PINNED_PLAYERS),
@@ -97,8 +103,9 @@ export function parseQuery(params: URLSearchParams, knownFilterIds?: ReadonlySet
     ),
     granularity: clampGranularity(stats, granularity),
     minPlays: clampMinPlays(Number(params.get(KEYS.minPlays) ?? 0)),
-    order: parseOrder(params.get(KEYS.order), stats),
-    limit: parseLimit(params.get(KEYS.limit)),
+    order,
+    // A limit without an order would cut the rows unsorted, so it only counts alongside one.
+    limit: order ? parseLimit(params.get(KEYS.limit)) : null,
   };
 }
 
@@ -152,7 +159,8 @@ export function toggleStat(state: QueryState, id: string): QueryState {
   }
   const stats = has ? state.stats.filter((s) => s !== id) : [...state.stats, id];
   const order = state.order && stats.includes(state.order.metric) ? state.order : null;
-  return { ...state, stats, order, granularity: clampGranularity(stats, state.granularity) };
+  const limit = order ? state.limit : null;
+  return { ...state, stats, order, limit, granularity: clampGranularity(stats, state.granularity) };
 }
 
 export function setGranularity(state: QueryState, granularity: GranularityMode): QueryState {
@@ -171,8 +179,7 @@ export function setRanking(state: QueryState, order: QueryOrder | null, limit = 
   if (!state.stats.includes(order.metric)) {
     return state;
   }
-  const rows = Number.isFinite(limit) ? Math.min(MAX_LIMIT, Math.max(1, Math.round(limit))) : DEFAULT_LIMIT;
-  return { ...state, order, limit: rows };
+  return { ...state, order, limit: clampLimit(limit) };
 }
 
 export function toggleFilter(state: QueryState, id: string): QueryState {

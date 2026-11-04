@@ -114,18 +114,18 @@ const ROLE_BY_CATEGORY: Readonly<Record<string, PlayerRole>> = {
 const THROW_WORDS = new Set(["throw", "throws", "threw", "thrown"]);
 
 /** Words that set which end of a ranking comes first. "best" and "worst" depend on the stat (see `better`). */
-const RANK_DIRECTION: Record<string, "desc" | "asc" | "best" | "worst"> = {
-  most: "desc",
-  highest: "desc",
-  fewest: "asc",
-  least: "asc",
-  lowest: "asc",
-  bottom: "asc",
-  best: "best",
-  worst: "worst",
-};
+const RANK_DIRECTION = new Map<string, "desc" | "asc" | "best" | "worst">([
+  ["most", "desc"],
+  ["highest", "desc"],
+  ["fewest", "asc"],
+  ["least", "asc"],
+  ["lowest", "asc"],
+  ["bottom", "asc"],
+  ["best", "best"],
+  ["worst", "worst"],
+]);
 /** Words that ask for a ranking. Without one of these, a question with no player is not a leaderboard. */
-const LEADERBOARD_CUES = new Set(["led", "leader", "leaders", "leading", "top", "leaderboard", ...Object.keys(RANK_DIRECTION)]);
+const LEADERBOARD_CUES = new Set(["led", "leader", "leaders", "leading", "top", "leaderboard", ...RANK_DIRECTION.keys()]);
 /** Words a leaderboard question uses around its stat; read as filler only when no player is named. */
 const LEADERBOARD_WORDS = new Set([...LEADERBOARD_CUES, "who", "league", "nfl", "lead"]);
 const DEFAULT_LEADERBOARD_LIMIT = 10;
@@ -261,8 +261,8 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
 
   let limit = DEFAULT_LEADERBOARD_LIMIT;
   if (isLeaderboard) {
-    // "top 5", "bottom 5": the number after it is the limit, not a stat or a season.
-    const top = tokens.findIndex((t) => t === "top" || t === "bottom");
+    // "top 5", "fewest 5": the number after a ranking word is the limit, not a stat or a season.
+    const top = tokens.findIndex((t, at) => (t === "top" || RANK_DIRECTION.has(t)) && /^\d+$/.test(tokens[at + 1] ?? ""));
     if (top >= 0 && /^\d+$/.test(tokens[top + 1] ?? "")) {
       limit = Number(tokens[top + 1]);
       used[top + 1] = true;
@@ -484,7 +484,7 @@ function rankDirection(tokens: readonly string[], metric: string): "asc" | "desc
   const better = getStatById(metric)?.better;
   const asked = new Set<"asc" | "desc">();
   for (const token of tokens) {
-    const cue = RANK_DIRECTION[token];
+    const cue = RANK_DIRECTION.get(token);
     if (cue === "desc" || cue === "asc") {
       asked.add(cue);
     } else if (cue) {

@@ -364,6 +364,17 @@ describe("leaderboard questions with no player named", () => {
     expect(board(question).order).toEqual({ metric, direction: "asc" });
   });
 
+  it.each(["lowest 5 sack rate in 2023", "fewest 5 passing touchdowns in 2023"])("reads the number after %s as the limit", (question) => {
+    const answer = board(question);
+
+    expect(answer.order.direction).toBe("asc");
+    expect(answer.limit).toBe(5);
+  });
+
+  it("does not read at least as a lowest-first ranking", () => {
+    expect(parse("who has at least 1000 rushing yards in 2023").status).not.toBe("resolved");
+  });
+
   it("reads bottom N as a lowest-first limit", () => {
     const answer = board("bottom 5 rushing yards in 2023");
 

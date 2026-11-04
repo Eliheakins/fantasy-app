@@ -1,7 +1,7 @@
 import { Input } from "@/shared/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
 import { getStatById } from "@/shared/config/statDictionary";
-import { MAX_LIMIT } from "@/shared/lib/queryUrl";
+import { clampLimit, MAX_LIMIT } from "@/shared/lib/queryUrl";
 import { useQueryState } from "@/shared/lib/useQueryState";
 
 const NO_RANKING = "none";
@@ -14,10 +14,20 @@ export function RankingControl() {
   const { state, setRanking } = useQueryState();
   const { order, limit, stats } = state;
 
-  const commitRows = (text: string) => {
-    if (order && text.trim() !== "") {
-      setRanking(order, Number(text));
+  // Shows the rows actually kept, since the URL clamps what was typed (250 becomes 100).
+  const commitRows = (box: HTMLInputElement) => {
+    if (order && box.value.trim() !== "") {
+      const rows = clampLimit(Number(box.value));
+      box.value = String(rows);
+      setRanking(order, rows);
     }
+  };
+  // Several stats share a label (WPA, YAC share %); the player role tells them apart.
+  const labelOf = (id: string) => {
+    const stat = getStatById(id);
+    const label = stat?.label ?? id;
+    const shared = stats.some((other) => other !== id && getStatById(other)?.label === label);
+    return shared && stat ? `${label} (${stat.playerRole})` : label;
   };
 
   return (
@@ -43,7 +53,7 @@ export function RankingControl() {
         </ToggleGroupItem>
         {stats.map((id) => (
           <ToggleGroupItem key={id} value={id} className="rounded-md">
-            {getStatById(id)?.label ?? id}
+            {labelOf(id)}
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
@@ -76,10 +86,10 @@ export function RankingControl() {
               min={1}
               max={MAX_LIMIT}
               defaultValue={limit ?? undefined}
-              onBlur={(e) => commitRows(e.target.value)}
+              onBlur={(e) => commitRows(e.currentTarget)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  commitRows(e.currentTarget.value);
+                  commitRows(e.currentTarget);
                 }
               }}
               className="w-20"

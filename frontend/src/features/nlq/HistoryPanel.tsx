@@ -22,7 +22,7 @@ function describe(query: LoggedQuery): string {
   const labels = new Map(getFilterChipGroups().flatMap((g) => g.options.map((o): [string, string] => [o.id, o.label])));
   const stats = query.stats.map((id) => getStatById(id)?.label ?? id).join(", ");
   const filters = query.filters.map((id) => labels.get(id) ?? id).join(", ") || "all seasons";
-  const ranking = query.order && query.limit ? ` · top ${query.limit}` : "";
+  const ranking = query.order && query.limit ? ` · ${query.order.direction === "desc" ? "top" : "bottom"} ${query.limit}` : "";
   const who = query.players.length > 0 ? `${query.players.length} player${query.players.length === 1 ? "" : "s"} · ` : "";
   return `${who}${stats} · ${filters} · ${query.granularity.replace("_", " ")}${ranking}`;
 }
