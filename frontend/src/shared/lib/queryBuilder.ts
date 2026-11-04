@@ -77,17 +77,17 @@ export function mergeStatQueryResults(results: QueryResult[], selectedStatIds: s
   });
 
   const firstAlias = metricSelectAlias(selectedStatIds[0]!);
+  // Number(null) is 0, so a missing value must be caught before converting or it outranks negatives.
+  const rankOf = (row: Record<string, unknown>): number | null => {
+    const raw = row[firstAlias];
+    const n = raw === null || raw === undefined ? Number.NaN : Number(raw);
+    return Number.isNaN(n) ? null : n;
+  };
   rows.sort((a, b) => {
-    const va = Number(a[firstAlias]);
-    const vb = Number(b[firstAlias]);
-    if (Number.isNaN(va) && Number.isNaN(vb)) {
-      return 0;
-    }
-    if (Number.isNaN(va)) {
-      return 1;
-    }
-    if (Number.isNaN(vb)) {
-      return -1;
+    const va = rankOf(a);
+    const vb = rankOf(b);
+    if (va === null || vb === null) {
+      return va === vb ? 0 : va === null ? 1 : -1;
     }
     return vb - va;
   });

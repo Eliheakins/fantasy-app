@@ -96,7 +96,7 @@ export class ColumnStore {
     );
     signal?.throwIfAborted();
 
-    const cols: Columns = {};
+    const cols: Columns = Object.create(null) as Columns;
     wanted.forEach((name, k) => {
       cols[name] = concatenate(perSource.length === 0 ? [[]] : perSource.map((loaded) => loaded[k]!));
     });

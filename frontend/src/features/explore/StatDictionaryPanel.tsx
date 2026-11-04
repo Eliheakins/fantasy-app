@@ -64,7 +64,7 @@ export function StatDictionaryPanel({ className }: StatDictionaryPanelProps) {
             <AccordionContent>
               <div className="space-y-3 border-t border-border pt-3">
                 <p className="text-xs text-ink-muted">
-                  Select up to {MAX_SELECTED_STATS} metrics (same role/play-type bucket can share one SQL query). Hover
+                  Select up to {MAX_SELECTED_STATS} metrics (same role/play-type bucket are computed in one pass). Hover
                   “?” for definitions.
                 </p>
 

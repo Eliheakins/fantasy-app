@@ -24,7 +24,7 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        # DuckDB-WASM reads Parquet via HTTP range requests.
+        # The browser engine reads Parquet columns via HTTP range requests.
         expose_headers=["Content-Range", "Content-Length", "Accept-Ranges"],
     )
 

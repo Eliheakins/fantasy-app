@@ -45,6 +45,13 @@ describe("ColumnStore.table", () => {
     expect(calls.sort()).toEqual(["2022:a", "2022:b", "2023:a", "2023:b"]);
   });
 
+  it("keeps columns in a map without inherited keys, so no column name can resolve to a built-in", async () => {
+    const table = await new ColumnStore(fakeLoader().load).table([S22], ["a"]);
+
+    expect(Object.getPrototypeOf(table.cols)).toBeNull();
+    expect("constructor" in table.cols).toBe(false);
+  });
+
   it("returns an empty table for no sources", async () => {
     const table = await new ColumnStore(fakeLoader().load).table([], ["a"]);
 

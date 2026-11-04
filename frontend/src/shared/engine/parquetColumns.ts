@@ -45,10 +45,15 @@ export function createParquetLoader(open: OpenParquet, codecs?: Compressors): Co
 
   return async (source, column) => {
     const { file, metadata } = await openFile(source);
+    // An older season may lack a column a newer one has (participation data, say); read it as all
+    // null, as a UNION BY NAME would. A typo in a metric is caught by the metrics schema tests.
+    if (!metadata.schema.some((element) => element.name === column)) {
+      return new Array<null>(Number(metadata.num_rows)).fill(null);
+    }
     const chunks: ColumnData[] = [];
     await parquetRead({ file, metadata, columns: [column], compressors: codecs, onChunk: (c) => chunks.push(c) });
     if (chunks.length === 0) {
-      throw new Error(`Column '${column}' is not in the ${source.year} play-by-play file.`);
+      throw new Error(`Column '${column}' returned no data from the ${source.year} play-by-play file.`);
     }
     // One chunk per row group, in file order.
     chunks.sort((a, b) => a.rowStart - b.rowStart);

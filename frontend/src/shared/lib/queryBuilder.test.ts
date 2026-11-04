@@ -81,6 +81,24 @@ describe("mergeStatQueryResults", () => {
   });
 });
 
+describe("mergeStatQueryResults ordering", () => {
+  it("ranks a missing value last even when other values are negative", () => {
+    const a = metricSelectAlias("eff_cpoe");
+
+    const merged = mergeStatQueryResults(
+      [
+        {
+          columns: ["player_id", a],
+          rows: [{ player_id: "none", [a]: null }, { player_id: "low", [a]: -2 }, { player_id: "high", [a]: 1.5 }],
+        },
+      ],
+      ["eff_cpoe"],
+    );
+
+    expect(merged.rows.map((r) => r.player_id)).toEqual(["high", "low", "none"]);
+  });
+});
+
 describe("describeQuery", () => {
   it("lists each stat's definition and row filter, then the filters", () => {
     const text = describeQuery({

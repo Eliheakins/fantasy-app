@@ -87,8 +87,15 @@ export function useExploreQueryExecution() {
     }
   }, [pinnedPlayers, shards, selectedStatIds, minPlays, filterChipState, activeGranularity, runLatest]);
 
+  useEffect(() => () => runLatest.cancel(), [runLatest]);
+
   useEffect(() => {
     if (pinnedPlayers.length === 0 || shards.length === 0) {
+      // Nothing to show: stop any run still in flight so it cannot land results for players no longer pinned.
+      runLatest.cancel();
+      setRunning(false);
+      setResult(null);
+      setDetails(null);
       return;
     }
     if (selectedStatIds.length === 0) {

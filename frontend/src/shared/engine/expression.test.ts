@@ -115,6 +115,11 @@ describe("errors", () => {
     expect(() => parseExpression("a =")).toThrow(/Unexpected end/);
   });
 
+  it("only accepts a string literal as a LIKE pattern", () => {
+    expect(() => parseExpression("a LIKE b")).toThrow(/string literal/);
+    expect(() => parseExpression("a LIKE 'x' || 'y'")).toThrow();
+  });
+
   it("rejects a column that was not loaded", () => {
     expect(() => compileRowExpression(parseExpression("missing = 1"), cols)).toThrow(/Column 'missing'/);
   });

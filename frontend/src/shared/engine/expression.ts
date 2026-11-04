@@ -177,7 +177,11 @@ class Parser {
       this.pos++;
     }
     if (this.eatWord("LIKE")) {
-      return { kind: "like", arg: left, pattern: this.additive(), negated };
+      // A literal keeps the pattern set small and fixed, so the compiled-regex cache cannot grow with the data.
+      if (this.peek().type !== "str") {
+        throw new Error("LIKE needs a string literal pattern");
+      }
+      return { kind: "like", arg: left, pattern: this.primary(), negated };
     }
     return left;
   }

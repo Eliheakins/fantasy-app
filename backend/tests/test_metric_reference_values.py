@@ -4,7 +4,7 @@ Each metric's own SQL, run on the built shards, must reproduce the figures recor
 
 A case is skipped when the shard for its season is not built. Run `uv run python -m pipeline.cli`
 first to exercise them all. The query composition (role column, play type, play filter) mirrors
-`buildSqlForStatGroup` in the frontend; the builder tests pin that side.
+`runStatQuery` in the frontend engine; the engine's own tests pin that side.
 """
 
 from __future__ import annotations

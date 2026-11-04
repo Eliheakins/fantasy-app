@@ -1,7 +1,7 @@
 [project]
 name = "nfl-stat-app"
 version = "0.1.0"
-description = "Local NFL analytics workbench (The Bridge): FastAPI backend, DuckDB-WASM frontend."
+description = "Local NFL analytics workbench (The Bridge): FastAPI backend, in-browser columnar engine frontend."
 requires-python = ">=3.12"
 dependencies = [
   # --- API ---

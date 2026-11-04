@@ -31,7 +31,7 @@ function errorText(e: unknown): string {
 
 /**
  * Ask flow: match players locally, let the model pick stats/filters, then hand the result to the
- * Explore stores. The Explore query hook runs the SQL, so Ask and Explore always agree.
+ * Explore stores. The Explore query hook runs the query, so Ask and Explore always agree.
  */
 export function useAsk() {
   const [question, setQuestion] = useState("");
