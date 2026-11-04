@@ -3,197 +3,412 @@
     {
       "id": "pass_any_a",
       "label": "ANY/A",
-      "category": "passing"
+      "category": "passing",
+      "aliases": [
+        "any/a",
+        "adjusted net yards per attempt",
+        "adjusted net yards per dropback"
+      ]
     },
     {
       "id": "pass_sack_rate",
       "label": "Sack rate",
-      "category": "passing"
+      "category": "passing",
+      "aliases": [
+        "sack rate",
+        "sack percentage",
+        "sack %"
+      ]
     },
     {
       "id": "pass_p2s",
       "label": "P2S%",
-      "category": "passing"
+      "category": "passing",
+      "aliases": [
+        "pressure to sack",
+        "p2s",
+        "pressure-to-sack rate"
+      ]
     },
     {
       "id": "pass_adot",
       "label": "ADOT",
-      "category": "passing"
+      "category": "passing",
+      "aliases": [
+        "adot",
+        "average depth of target",
+        "average depth of throw",
+        "air yards per attempt"
+      ]
     },
     {
       "id": "pass_yards",
       "label": "Pass yards",
-      "category": "passing"
+      "category": "passing",
+      "aliases": [
+        "passing yards",
+        "pass yards",
+        "passing yds",
+        "yards passing",
+        "passing yardage",
+        "yards through the air"
+      ]
     },
     {
       "id": "pass_tds",
       "label": "Pass TDs",
-      "category": "passing"
+      "category": "passing",
+      "aliases": [
+        "passing touchdowns",
+        "passing tds",
+        "pass tds",
+        "touchdown passes",
+        "td passes",
+        "touchdowns thrown"
+      ]
     },
     {
       "id": "cmp_pct",
       "label": "Cmp %",
-      "category": "passing"
+      "category": "passing",
+      "aliases": [
+        "completion percentage",
+        "completion %",
+        "completion rate",
+        "cmp%",
+        "comp %"
+      ]
     },
     {
       "id": "int_rate",
       "label": "INT rate",
-      "category": "passing"
+      "category": "passing",
+      "aliases": [
+        "interception rate",
+        "int rate",
+        "interception percentage",
+        "interceptions",
+        "picks"
+      ]
     },
     {
       "id": "rec_catch_rate",
       "label": "Catch rate",
-      "category": "receiving"
+      "category": "receiving",
+      "aliases": [
+        "catch rate",
+        "catch percentage",
+        "catch %",
+        "reception percentage"
+      ]
     },
     {
       "id": "rec_yac_share",
       "label": "YAC share %",
-      "category": "receiving"
+      "category": "receiving",
+      "aliases": [
+        "yac share",
+        "yards after catch share",
+        "share of yards after catch"
+      ]
     },
     {
       "id": "rec_explosive",
       "label": "Explosive play rate",
-      "category": "receiving"
+      "category": "receiving",
+      "aliases": [
+        "explosive catch rate",
+        "explosive reception rate"
+      ]
     },
     {
       "id": "rec_receptions",
       "label": "Receptions",
-      "category": "receiving"
+      "category": "receiving",
+      "aliases": [
+        "receptions",
+        "catches",
+        "passes caught",
+        "catches made"
+      ]
     },
     {
       "id": "rec_yards",
       "label": "Rec yards",
-      "category": "receiving"
+      "category": "receiving",
+      "aliases": [
+        "receiving yards",
+        "rec yards",
+        "receiving yds",
+        "yards receiving",
+        "receiving yardage"
+      ]
     },
     {
       "id": "rec_yac",
       "label": "YAC",
-      "category": "receiving"
+      "category": "receiving",
+      "aliases": [
+        "yards after the catch",
+        "yards after catch",
+        "yac",
+        "receiving yac"
+      ]
     },
     {
       "id": "rush_yac_share",
       "label": "YAC share %",
-      "category": "rushing"
+      "category": "rushing",
+      "aliases": [
+        "rushing yac share",
+        "rush yac share"
+      ]
     },
     {
       "id": "rush_explosive",
       "label": "Explosive play rate",
-      "category": "rushing"
+      "category": "rushing",
+      "aliases": [
+        "explosive run rate",
+        "explosive rush rate",
+        "big run rate"
+      ]
     },
     {
       "id": "rush_yards",
       "label": "Rush yards",
-      "category": "rushing"
+      "category": "rushing",
+      "aliases": [
+        "rushing yards",
+        "rush yards",
+        "rushing yds",
+        "yards rushing",
+        "rushing yardage",
+        "yards on the ground"
+      ]
     },
     {
       "id": "rush_tds",
       "label": "Rush TDs",
-      "category": "rushing"
+      "category": "rushing",
+      "aliases": [
+        "rushing touchdowns",
+        "rushing tds",
+        "rush tds",
+        "touchdown runs",
+        "rushing scores"
+      ]
     },
     {
       "id": "ypc",
       "label": "YPC",
-      "category": "rushing"
+      "category": "rushing",
+      "aliases": [
+        "yards per carry",
+        "ypc",
+        "yards per rush",
+        "rushing average",
+        "rush average"
+      ]
     },
     {
       "id": "eff_epa",
       "label": "EPA/Play",
-      "category": "efficiency"
+      "category": "efficiency",
+      "aliases": [
+        "epa",
+        "epa per play",
+        "expected points added",
+        "epa/play",
+        "epa per dropback"
+      ]
     },
     {
       "id": "eff_success",
       "label": "Success rate",
-      "category": "efficiency"
+      "category": "efficiency",
+      "aliases": [
+        "success rate",
+        "success percentage",
+        "successful play rate"
+      ]
     },
     {
       "id": "eff_cpoe",
       "label": "CPOE",
-      "category": "efficiency"
+      "category": "efficiency",
+      "aliases": [
+        "cpoe",
+        "completion percentage over expected"
+      ]
     },
     {
       "id": "eff_wpa",
       "label": "WPA",
-      "category": "efficiency"
+      "category": "efficiency",
+      "aliases": [
+        "wpa",
+        "win probability added",
+        "win probability added passing"
+      ]
     },
     {
       "id": "eff_first_down",
       "label": "1st down rate",
-      "category": "efficiency"
+      "category": "efficiency",
+      "aliases": [
+        "first down rate",
+        "1st down rate",
+        "first down percentage"
+      ]
     },
     {
       "id": "eff_qb_epa",
       "label": "QB EPA",
-      "category": "efficiency"
+      "category": "efficiency",
+      "aliases": [
+        "qb epa",
+        "total qb epa",
+        "quarterback epa"
+      ]
     },
     {
       "id": "eff_xpass",
       "label": "Expected pass",
-      "category": "efficiency"
+      "category": "efficiency",
+      "aliases": [
+        "expected pass",
+        "xpass",
+        "expected pass rate"
+      ]
     },
     {
       "id": "eff_xyac_epa",
       "label": "xYAC EPA",
-      "category": "efficiency"
+      "category": "efficiency",
+      "aliases": [
+        "xyac epa",
+        "expected yac epa"
+      ]
     },
     {
       "id": "ctx_wpa_rush",
       "label": "WPA",
-      "category": "efficiency"
+      "category": "efficiency",
+      "aliases": [
+        "rushing wpa",
+        "wpa on runs",
+        "win probability added rushing"
+      ]
     },
     {
       "id": "ctx_vwpa_pass",
       "label": "Vegas WPA",
-      "category": "efficiency"
+      "category": "efficiency",
+      "aliases": [
+        "vegas wpa",
+        "passing vegas wpa",
+        "vegas wpa passing"
+      ]
     },
     {
       "id": "ctx_vwpa_rush",
       "label": "Vegas WPA",
-      "category": "efficiency"
+      "category": "efficiency",
+      "aliases": [
+        "rushing vegas wpa",
+        "vegas wpa rushing"
+      ]
     },
     {
       "id": "ngs_p_time_throw",
       "label": "Time to throw",
-      "category": "ngs_passing"
+      "category": "ngs_passing",
+      "aliases": [
+        "time to throw",
+        "average time to throw",
+        "ttt"
+      ]
     },
     {
       "id": "ngs_p_intended_air",
       "label": "Intended air yards",
-      "category": "ngs_passing"
+      "category": "ngs_passing",
+      "aliases": [
+        "intended air yards",
+        "average intended air yards",
+        "iay"
+      ]
     },
     {
       "id": "ngs_p_rating",
       "label": "Passer rating",
-      "category": "ngs_passing"
+      "category": "ngs_passing",
+      "aliases": [
+        "passer rating",
+        "qb rating",
+        "next gen passer rating"
+      ]
     },
     {
       "id": "ngs_r_sep",
       "label": "Separation",
-      "category": "ngs_receiving"
+      "category": "ngs_receiving",
+      "aliases": [
+        "separation",
+        "average separation",
+        "receiver separation"
+      ]
     },
     {
       "id": "ngs_r_cushion",
       "label": "Cushion",
-      "category": "ngs_receiving"
+      "category": "ngs_receiving",
+      "aliases": [
+        "cushion",
+        "average cushion",
+        "defender cushion"
+      ]
     },
     {
       "id": "ngs_r_xyac",
       "label": "Expected YAC",
-      "category": "ngs_receiving"
+      "category": "ngs_receiving",
+      "aliases": [
+        "expected yac",
+        "expected yards after catch",
+        "xyac"
+      ]
     },
     {
       "id": "ngs_u_tlos",
       "label": "Time to LOS",
-      "category": "ngs_rushing"
+      "category": "ngs_rushing",
+      "aliases": [
+        "time to line of scrimmage",
+        "time to los",
+        "tlos"
+      ]
     },
     {
       "id": "ngs_u_exp_yards",
       "label": "Expected rush yards",
-      "category": "ngs_rushing"
+      "category": "ngs_rushing",
+      "aliases": [
+        "expected rush yards",
+        "expected rushing yards",
+        "expected run yards"
+      ]
     },
     {
       "id": "ngs_u_eff",
       "label": "Rush efficiency",
-      "category": "ngs_rushing"
+      "category": "ngs_rushing",
+      "aliases": [
+        "rush efficiency",
+        "rushing efficiency",
+        "ngs rush efficiency"
+      ]
     }
   ],
   "filters": [

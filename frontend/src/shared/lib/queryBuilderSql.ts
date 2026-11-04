@@ -148,7 +148,10 @@ export function metricSelectAlias(statId: string): string {
   return `m_${statId.replace(/[^a-zA-Z0-9_]/g, "_")}`;
 }
 
-/** Bucket stats by (playerRole, playType) while preserving global stat id order within each bucket. */
+/**
+ * Bucket stats by (playerRole, playType, playFilter) while preserving global stat id order within
+ * each bucket. A stat's row filter can't be applied to its neighbours, so each filter gets its own query.
+ */
 function buildStatGroupsInSelectOrder(statIds: string[]): StatDefinition[][] {
   const groups: StatDefinition[][] = [];
   const keyToIdx = new Map<string, number>();
@@ -157,7 +160,7 @@ function buildStatGroupsInSelectOrder(statIds: string[]): StatDefinition[][] {
     if (!s) {
       continue;
     }
-    const k = `${s.playerRole}:${s.playType}`;
+    const k = `${s.playerRole}:${s.playType}:${s.playFilter ?? ""}`;
     let idx = keyToIdx.get(k);
     if (idx === undefined) {
       idx = groups.length;
@@ -203,6 +206,9 @@ function buildSqlForStatGroup(
   } else if (first.playType === "run") {
     whereParts.push("main.play_type = 'run'");
   }
+  if (first.playFilter) {
+    whereParts.push(`(${qualifyMetricSql(first.playFilter)})`);
+  }
 
   const filterSql = buildFilterWhereSql(filterChipState, qualifyFilterPredicate);
   if (filterSql) {
@@ -232,7 +238,7 @@ ORDER BY ${orderAlias} DESC NULLS LAST
 }
 
 /**
- * One SQL plan per distinct (role, play_type) bucket. Run each plan and merge with `mergeStatQueryResults`.
+ * One SQL plan per distinct (role, play_type, play_filter) bucket. Run each plan and merge with `mergeStatQueryResults`.
  */
 export function buildStatQueryPlans(params: {
   statIds: string[];

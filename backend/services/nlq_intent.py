@@ -19,8 +19,11 @@ from schemas.nlq import (
     MAX_INTENT_STATS,
     CatalogFilter,
     CatalogStat,
+    IntentOutcome,
     IntentRequest,
     QueryIntent,
+    QueryOutcome,
+    UnsupportedOutcome,
 )
 from services.llm_client import ChatMessage, chat_text
 
@@ -74,8 +77,16 @@ def _example_block(stat_ids: set[str], filter_ids: set[str]) -> str:
     return "\n\n".join(lines)
 
 
+def _stat_line(stat: CatalogStat) -> str:
+    line = f"{stat.id} | {stat.label} | {stat.category}"
+    if stat.aliases:
+        aliases = (" ".join(a.split()) for a in stat.aliases)  # no newline can fake a catalog line
+        line += f" | also called: {', '.join(aliases)}"
+    return line
+
+
 def build_system_prompt(stats: Sequence[CatalogStat], filters: Sequence[CatalogFilter]) -> str:
-    stat_lines = "\n".join(f"{s.id} | {s.label} | {s.category}" for s in stats)
+    stat_lines = "\n".join(_stat_line(s) for s in stats)
     filter_lines = "\n".join(f"{f.id} | {f.group}: {f.label}" for f in filters)
     examples = _example_block({s.id for s in stats}, {f.id for f in filters})
     examples_section = f"\nEXAMPLES:\n{examples}\n" if examples else ""
@@ -91,8 +102,12 @@ home/away, red zone, weather). Empty list if none apply.
 - granularity: "per_game" when the question says per game, "per_play" for per play, per attempt or \
 efficiency wording, otherwise "total".
 - Player names are handled elsewhere. Ignore them.
+- If no STATS entry can answer the question (salary, fantasy points, awards, opinions such as \
+who is better, team records), reply instead with \
+{{"unsupported": "<one short sentence saying why>"}}. \
+Never pick a loosely related stat to fill the gap.
 {examples_section}
-STATS (id | label | category):
+STATS (id | label | category | also called):
 {stat_lines}
 
 FILTERS (id | group: label):
@@ -140,7 +155,21 @@ def parse_intent(text: str, *, stat_ids: set[str], filter_ids: set[str]) -> Quer
     )
 
 
-async def translate_question(*, client: AsyncOpenAI, model: str, req: IntentRequest) -> QueryIntent:
+def parse_reply(text: str, *, stat_ids: set[str], filter_ids: set[str]) -> IntentOutcome:
+    obj = extract_json_object(text)
+    reason = obj.get("unsupported")
+    if (
+        reason is None or reason is False
+    ):  # the model sometimes writes null/false beside a real query
+        return QueryOutcome(intent=parse_intent(text, stat_ids=stat_ids, filter_ids=filter_ids))
+    if not isinstance(reason, str) or not reason.strip():
+        raise IntentError('"unsupported" needs a short reason sentence.')
+    return UnsupportedOutcome(reason=reason.strip()[:300])
+
+
+async def translate_question(
+    *, client: AsyncOpenAI, model: str, req: IntentRequest
+) -> IntentOutcome:
     """Ask the model; on an invalid reply, show it the error and ask once more."""
     messages: list[ChatMessage] = [
         {"role": "system", "content": build_system_prompt(req.stats, req.filters)},
@@ -153,7 +182,7 @@ async def translate_question(*, client: AsyncOpenAI, model: str, req: IntentRequ
     for _ in range(MAX_ATTEMPTS):
         raw = await chat_text(client=client, model=model, messages=messages)
         try:
-            return parse_intent(raw, stat_ids=stat_ids, filter_ids=filter_ids)
+            return parse_reply(raw, stat_ids=stat_ids, filter_ids=filter_ids)
         except IntentError as e:
             last_error = e
             messages = [

@@ -4,13 +4,15 @@ import json
 
 import pytest
 from conftest import FILTERS, STATS, FakeLlm
+from pydantic import ValidationError
 
-from schemas.nlq import IntentRequest
+from schemas.nlq import CatalogStat, IntentRequest, QueryOutcome, UnsupportedOutcome
 from services.nlq_intent import (
     IntentError,
     build_system_prompt,
     extract_json_object,
     parse_intent,
+    parse_reply,
     translate_question,
 )
 
@@ -76,6 +78,10 @@ def test_system_prompt_lists_catalog_and_only_examples_with_known_ids():
     prompt = build_system_prompt(STATS, FILTERS)
 
     assert "rec_yards | Rec yards | receiving" in prompt
+    assert (
+        "pass_yards | Pass yards | passing | also called: passing yards, yards through the air"
+        in prompt
+    )
     assert "season-2023 | Season: 2023" in prompt
     # Uses pass_yards/pass_tds/season-2023, all present in the test catalog.
     assert "Mahomes passing yards" in prompt
@@ -89,13 +95,83 @@ async def test_translate_question_retries_once_with_the_error_then_succeeds():
     )
     req = IntentRequest(question="Kelce yards per game", stats=STATS, filters=FILTERS)
 
-    intent = await translate_question(client=llm, model="m", req=req)
+    outcome = await translate_question(client=llm, model="m", req=req)
 
-    assert intent.stat_ids == ["rec_yards"]
-    assert intent.granularity == "per_game"
+    assert isinstance(outcome, QueryOutcome)
+    assert outcome.intent.stat_ids == ["rec_yards"]
+    assert outcome.intent.granularity == "per_game"
     retry_messages = llm.calls[1]
     assert retry_messages[-2] == {"role": "assistant", "content": '{"stat_ids": ["nope"]}'}
     assert "Unknown stat_ids" in retry_messages[-1]["content"]
+
+
+async def test_translate_question_returns_unsupported_without_a_retry():
+    llm = FakeLlm(['{"unsupported": "That is an opinion, not a stat."}'])
+    req = IntentRequest(question="Is Mahomes better than Brady?", stats=STATS, filters=FILTERS)
+
+    outcome = await translate_question(client=llm, model="m", req=req)
+
+    assert outcome == UnsupportedOutcome(reason="That is an opinion, not a stat.")
+    assert len(llm.calls) == 1
+
+
+def test_parse_reply_treats_a_blank_reason_as_an_invalid_reply():
+    with pytest.raises(IntentError, match="reason"):
+        parse_reply('{"unsupported": "  "}', stat_ids=STAT_IDS, filter_ids=FILTER_IDS)
+
+
+def test_parse_reply_ignores_stats_when_the_model_says_unsupported():
+    reply = '{"unsupported": "No salary data.", "stat_ids": ["pass_yards"]}'
+
+    outcome = parse_reply(reply, stat_ids=STAT_IDS, filter_ids=FILTER_IDS)
+
+    assert isinstance(outcome, UnsupportedOutcome)
+
+
+def test_a_stat_line_cannot_be_split_by_newlines_in_an_alias():
+    stat = CatalogStat(id="pass_yards", label="Pass yards", category="passing", aliases=["a\nb\tc"])
+
+    prompt = build_system_prompt([stat], FILTERS)
+
+    assert "also called: a b c" in prompt
+
+
+def test_the_catalog_sent_by_the_client_is_bounded():
+    too_many_aliases = {"id": "x", "label": "X", "category": "c", "aliases": ["a"] * 21}
+    long_alias = {"id": "x", "label": "X", "category": "c", "aliases": ["a" * 61]}
+    base = {"question": "q", "filters": []}
+
+    for stat in (too_many_aliases, long_alias):
+        with pytest.raises(ValidationError):
+            IntentRequest.model_validate({**base, "stats": [stat]})
+    with pytest.raises(ValidationError):
+        IntentRequest.model_validate(
+            {**base, "stats": [{"id": "x", "label": "X", "category": "c"}] * 201}
+        )
+    with pytest.raises(ValidationError):
+        IntentRequest.model_validate(
+            {
+                "question": "q",
+                "stats": [{"id": "x", "label": "X", "category": "c"}],
+                "filters": [{"id": "f", "label": "F", "group": "G"}] * 401,
+            }
+        )
+
+
+@pytest.mark.parametrize("flag", ["null", "false"])
+def test_parse_reply_treats_an_empty_unsupported_flag_as_absent(flag: str):
+    reply = '{"unsupported": ' + flag + ', "stat_ids": ["pass_yards"]}'
+
+    outcome = parse_reply(reply, stat_ids=STAT_IDS, filter_ids=FILTER_IDS)
+
+    assert isinstance(outcome, QueryOutcome)
+    assert outcome.intent.stat_ids == ["pass_yards"]
+
+
+def test_system_prompt_tells_the_model_how_to_refuse():
+    prompt = build_system_prompt(STATS, FILTERS)
+
+    assert '{"unsupported":' in prompt
 
 
 async def test_translate_question_raises_after_two_invalid_replies():

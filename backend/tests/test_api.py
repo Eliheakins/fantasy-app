@@ -95,9 +95,26 @@ async def test_nlq_intent_returns_validated_intent(client: httpx.AsyncClient, us
 
     assert res.status_code == 200
     assert res.json() == {
-        "stat_ids": ["pass_yards"],
-        "filter_ids": ["season-2023"],
-        "granularity": "total",
+        "outcome": "query",
+        "intent": {
+            "stat_ids": ["pass_yards"],
+            "filter_ids": ["season-2023"],
+            "granularity": "total",
+        },
+    }
+
+
+async def test_nlq_intent_returns_the_reason_when_the_question_is_unsupported(
+    client: httpx.AsyncClient, use_llm
+):
+    use_llm(['{"unsupported": "Salaries are not in the play-by-play data."}'])
+
+    res = await client.post("/nlq/intent", json=_intent_body("Mahomes salary in 2023"))
+
+    assert res.status_code == 200
+    assert res.json() == {
+        "outcome": "unsupported",
+        "reason": "Salaries are not in the play-by-play data.",
     }
 
 

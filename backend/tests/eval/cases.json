@@ -38,5 +38,9 @@
   {"q": "Mahomes passing yards in cold weather in 2023", "stats": ["pass_yards"], "filters": ["season-2023", "temp-lte32"], "granularity": "total"},
   {"q": "Mahomes passing yards in windy games", "stats": ["pass_yards"], "filters": ["wind-gte15"], "granularity": "total"},
   {"q": "Mahomes passing yards and passing touchdowns per game in 2023", "stats": ["pass_yards", "pass_tds"], "filters": ["season-2023"], "granularity": "per_game"},
-  {"q": "Mahomes first down rate in 2023", "stats": ["eff_first_down"], "filters": ["season-2023"], "granularity": null}
+  {"q": "Mahomes first down rate in 2023", "stats": ["eff_first_down"], "filters": ["season-2023"], "granularity": null},
+  {"q": "Patrick Mahomes salary in 2023", "unsupported": true},
+  {"q": "Is Mahomes better than Tom Brady?", "unsupported": true},
+  {"q": "Josh Allen fantasy points in 2023", "unsupported": true},
+  {"q": "How many Super Bowls has Mahomes won?", "unsupported": true}
 ]

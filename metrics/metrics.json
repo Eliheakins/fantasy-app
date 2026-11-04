@@ -1,0 +1,916 @@
+{
+  "schema_version": 1,
+  "categories": [
+    {
+      "id": "passing",
+      "label": "Passing"
+    },
+    {
+      "id": "rushing",
+      "label": "Rushing"
+    },
+    {
+      "id": "receiving",
+      "label": "Receiving"
+    },
+    {
+      "id": "efficiency",
+      "label": "Efficiency (analytics)"
+    },
+    {
+      "id": "ngs_passing",
+      "label": "NGS · Passing"
+    },
+    {
+      "id": "ngs_receiving",
+      "label": "NGS · Receiving"
+    },
+    {
+      "id": "ngs_rushing",
+      "label": "NGS · Rushing"
+    }
+  ],
+  "metrics": [
+    {
+      "id": "pass_any_a",
+      "label": "ANY/A",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "(SUM(yards_gained) + (20 * SUM(pass_touchdown)) - (45 * SUM(interception))) / NULLIF(COUNT(*), 0)",
+      "rate_only": true,
+      "help": "Adjusted net yards per attempt: passing yards (net of sack yardage) plus 20 per TD, minus 45 per INT, divided by dropbacks (every pass play including sacks). Higher is better.",
+      "aliases": [
+        "any/a",
+        "adjusted net yards per attempt",
+        "adjusted net yards per dropback"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 6.261,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        },
+        {
+          "gsis_id": "00-0034857",
+          "player": "Josh Allen",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 6.507,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        },
+        {
+          "gsis_id": "00-0036389",
+          "player": "Jalen Hurts",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 5.96,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "pass_sack_rate",
+      "label": "Sack rate",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(sack) / NULLIF(COUNT(*), 0) * 100",
+      "rate_only": true,
+      "percent_format": true,
+      "help": "Percentage of dropbacks that end in a sack. Dropbacks are every pass play in the sample, sacks included.",
+      "aliases": [
+        "sack rate",
+        "sack percentage",
+        "sack %"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 4.327,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        },
+        {
+          "gsis_id": "00-0034857",
+          "player": "Josh Allen",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 3.98,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        },
+        {
+          "gsis_id": "00-0036389",
+          "player": "Jalen Hurts",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 6.272,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "pass_p2s",
+      "label": "P2S%",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(sack) / NULLIF(SUM(qb_hit), 0) * 100",
+      "rate_only": true,
+      "percent_format": true,
+      "help": "Pressure-to-sack rate: sacks divided by QB hits. High values mean hits often become sacks; undefined if SUM(qb_hit) is 0.",
+      "aliases": [
+        "pressure to sack",
+        "p2s",
+        "pressure-to-sack rate"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "pass_adot",
+      "label": "ADOT",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "AVG(air_yards)",
+      "rate_only": true,
+      "help": "Average depth of target (air yards): mean air yards on pass attempts in the filter. Does not measure completed depth only.",
+      "aliases": [
+        "adot",
+        "average depth of target",
+        "average depth of throw",
+        "air yards per attempt"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "pass_yards",
+      "label": "Pass yards",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(yards_gained)",
+      "rate_only": false,
+      "aliases": [
+        "passing yards",
+        "pass yards",
+        "passing yds",
+        "yards passing",
+        "passing yardage",
+        "yards through the air"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 4183.0,
+          "tolerance": 0.0,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        },
+        {
+          "gsis_id": "00-0034857",
+          "player": "Josh Allen",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 4306.0,
+          "tolerance": 0.0,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        },
+        {
+          "gsis_id": "00-0036389",
+          "player": "Jalen Hurts",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 3858.0,
+          "tolerance": 0.0,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        },
+        {
+          "gsis_id": "00-0033106",
+          "player": "Jared Goff",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 4575.0,
+          "tolerance": 0.0,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ],
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "help": "Passing yards on attempts only, which matches official totals; sack yardage is not subtracted. Total, per play (per attempt) or per game."
+    },
+    {
+      "id": "pass_tds",
+      "label": "Pass TDs",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(pass_touchdown)",
+      "rate_only": false,
+      "aliases": [
+        "passing touchdowns",
+        "passing tds",
+        "pass tds",
+        "touchdown passes",
+        "td passes",
+        "touchdowns thrown"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 27.0,
+          "tolerance": 0.0,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        },
+        {
+          "gsis_id": "00-0036389",
+          "player": "Jalen Hurts",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 23.0,
+          "tolerance": 0.0,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ],
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1"
+    },
+    {
+      "id": "cmp_pct",
+      "label": "Cmp %",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "AVG(complete_pass) * 100",
+      "rate_only": true,
+      "percent_format": true,
+      "help": "Completion percentage on pass attempts in the sample. Sacks, penalties and no-plays are not attempts (mean of the completion flag × 100).",
+      "aliases": [
+        "completion percentage",
+        "completion %",
+        "completion rate",
+        "cmp%",
+        "comp %"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 67.169,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        },
+        {
+          "gsis_id": "00-0034857",
+          "player": "Josh Allen",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 66.494,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        },
+        {
+          "gsis_id": "00-0036389",
+          "player": "Jalen Hurts",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 65.428,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        },
+        {
+          "gsis_id": "00-0035228",
+          "player": "Kyler Murray",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 65.672,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ],
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1"
+    },
+    {
+      "id": "int_rate",
+      "label": "INT rate",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "AVG(interception) * 100",
+      "rate_only": true,
+      "percent_format": true,
+      "help": "Interceptions per pass attempt in the sample, as a percentage. Sacks, penalties and no-plays are not attempts (mean of INT flag × 100).",
+      "aliases": [
+        "interception rate",
+        "int rate",
+        "interception percentage",
+        "interceptions",
+        "picks"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 2.345,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        },
+        {
+          "gsis_id": "00-0034857",
+          "player": "Josh Allen",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 3.109,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        },
+        {
+          "gsis_id": "00-0036389",
+          "player": "Jalen Hurts",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 2.788,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ],
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1"
+    },
+    {
+      "id": "rec_catch_rate",
+      "label": "Catch rate",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "SUM(complete_pass) / NULLIF(CAST(COUNT(*) AS DOUBLE), 0) * 100",
+      "rate_only": true,
+      "percent_format": true,
+      "help": "Catches divided by receiver-targeted pass plays in the filter (COUNT of rows). Each row is one play with this player as receiver.",
+      "aliases": [
+        "catch rate",
+        "catch percentage",
+        "catch %",
+        "reception percentage"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "rec_yac_share",
+      "label": "YAC share %",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "SUM(yards_after_catch) / NULLIF(SUM(yards_gained), 0) * 100",
+      "rate_only": true,
+      "percent_format": true,
+      "help": "Total yards after catch divided by total play yards on those targets—how much of receiving production came after the catch.",
+      "aliases": [
+        "yac share",
+        "yards after catch share",
+        "share of yards after catch"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "rec_explosive",
+      "label": "Explosive play rate",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "AVG(CASE WHEN yards_gained >= 20 THEN 1 ELSE 0 END) * 100",
+      "rate_only": true,
+      "percent_format": true,
+      "help": "Share of pass plays (as targeted receiver) where yards gained was 20 or more.",
+      "aliases": [
+        "explosive catch rate",
+        "explosive reception rate"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "rec_receptions",
+      "label": "Receptions",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "SUM(complete_pass)",
+      "rate_only": false,
+      "aliases": [
+        "receptions",
+        "catches",
+        "passes caught",
+        "catches made"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0033040",
+          "player": "Tyreek Hill",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 119.0,
+          "tolerance": 0.0,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "rec_yards",
+      "label": "Rec yards",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "SUM(yards_gained)",
+      "rate_only": false,
+      "aliases": [
+        "receiving yards",
+        "rec yards",
+        "receiving yds",
+        "yards receiving",
+        "receiving yardage"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0033040",
+          "player": "Tyreek Hill",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 1799.0,
+          "tolerance": 0.0,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "rec_yac",
+      "label": "YAC",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "SUM(yards_after_catch)",
+      "rate_only": false,
+      "aliases": [
+        "yards after the catch",
+        "yards after catch",
+        "yac",
+        "receiving yac"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "rush_yac_share",
+      "label": "YAC share %",
+      "category": "rushing",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "SUM(yards_after_catch) / NULLIF(SUM(yards_gained), 0) * 100",
+      "rate_only": true,
+      "percent_format": true,
+      "help": "YAC divided by rush yards on carries—often near 100% when all rush yards are credited as YAC on the ballcarrier row.",
+      "aliases": [
+        "rushing yac share",
+        "rush yac share"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "rush_explosive",
+      "label": "Explosive play rate",
+      "category": "rushing",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "AVG(CASE WHEN yards_gained >= 20 THEN 1 ELSE 0 END) * 100",
+      "rate_only": true,
+      "percent_format": true,
+      "help": "Share of rush plays where yards gained was 20 or more.",
+      "aliases": [
+        "explosive run rate",
+        "explosive rush rate",
+        "big run rate"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "rush_yards",
+      "label": "Rush yards",
+      "category": "rushing",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "SUM(yards_gained)",
+      "rate_only": false,
+      "aliases": [
+        "rushing yards",
+        "rush yards",
+        "rushing yds",
+        "yards rushing",
+        "rushing yardage",
+        "yards on the ground"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0032764",
+          "player": "Derrick Henry",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 1167.0,
+          "tolerance": 0.0,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "rush_tds",
+      "label": "Rush TDs",
+      "category": "rushing",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "SUM(rush_touchdown)",
+      "rate_only": false,
+      "aliases": [
+        "rushing touchdowns",
+        "rushing tds",
+        "rush tds",
+        "touchdown runs",
+        "rushing scores"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0032764",
+          "player": "Derrick Henry",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 12.0,
+          "tolerance": 0.0,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "ypc",
+      "label": "YPC",
+      "category": "rushing",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "AVG(yards_gained)",
+      "rate_only": true,
+      "help": "Yards per carry: average yards gained on run plays in the filter.",
+      "aliases": [
+        "yards per carry",
+        "ypc",
+        "yards per rush",
+        "rushing average",
+        "rush average"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0032764",
+          "player": "Derrick Henry",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 4.168,
+          "tolerance": 0.001,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "eff_epa",
+      "label": "EPA/Play",
+      "category": "efficiency",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "AVG(epa)",
+      "rate_only": true,
+      "help": "Expected Points Added: average EPA per pass play for the passer. Positive means the offense gained more expected points than before the play.",
+      "aliases": [
+        "epa",
+        "epa per play",
+        "expected points added",
+        "epa/play",
+        "epa per dropback"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "eff_success",
+      "label": "Success rate",
+      "category": "efficiency",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "AVG(success) * 100",
+      "rate_only": true,
+      "percent_format": true,
+      "help": "Share of pass plays classified as successful (nflverse success flag), scaled to 0–100%. Typically gains that meet down-and-distance expectations.",
+      "aliases": [
+        "success rate",
+        "success percentage",
+        "successful play rate"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "eff_cpoe",
+      "label": "CPOE",
+      "category": "efficiency",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "AVG(cpoe)",
+      "rate_only": true,
+      "percent_format": true,
+      "help": "Completion Percentage Over Expected: average difference between actual completion and model-based completion probability (nflverse cpoe), in percentage points.",
+      "aliases": [
+        "cpoe",
+        "completion percentage over expected"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "eff_wpa",
+      "label": "WPA",
+      "category": "efficiency",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(wpa)",
+      "rate_only": false,
+      "help": "Win Probability Added summed over pass plays as passer. Total / per play / per game change how this aggregate is scaled in the UI.",
+      "aliases": [
+        "wpa",
+        "win probability added",
+        "win probability added passing"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "eff_first_down",
+      "label": "1st down rate",
+      "category": "efficiency",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "AVG(first_down) * 100",
+      "rate_only": true,
+      "percent_format": true,
+      "help": "Share of pass plays that gained a first down (or scored), as a percentage.",
+      "aliases": [
+        "first down rate",
+        "1st down rate",
+        "first down percentage"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "eff_qb_epa",
+      "label": "QB EPA",
+      "category": "efficiency",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(qb_epa)",
+      "rate_only": false,
+      "help": "EPA attributed to the QB on pass plays (nflverse qb_epa). Totals or averages depend on granularity.",
+      "aliases": [
+        "qb epa",
+        "total qb epa",
+        "quarterback epa"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "eff_xpass",
+      "label": "Expected pass",
+      "category": "efficiency",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "AVG(xpass)",
+      "rate_only": true,
+      "help": "Model-estimated probability the play would be a pass (nflverse xpass), averaged over pass plays in the filter.",
+      "aliases": [
+        "expected pass",
+        "xpass",
+        "expected pass rate"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "eff_xyac_epa",
+      "label": "xYAC EPA",
+      "category": "efficiency",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "AVG(xyac_epa)",
+      "rate_only": true,
+      "help": "Expected yards-after-catch EPA component (nflverse xyac_epa), averaged on pass plays—how much YAC exceeded or fell short of expectation.",
+      "aliases": [
+        "xyac epa",
+        "expected yac epa"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "ctx_wpa_rush",
+      "label": "WPA",
+      "category": "efficiency",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "SUM(wpa)",
+      "rate_only": false,
+      "help": "Win Probability Added summed on run plays where this player is the rusher. Granularity changes sum vs average vs per active game.",
+      "aliases": [
+        "rushing wpa",
+        "wpa on runs",
+        "win probability added rushing"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "ctx_vwpa_pass",
+      "label": "Vegas WPA",
+      "category": "efficiency",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(vegas_wpa)",
+      "rate_only": false,
+      "help": "Win probability added vs closing spread / Vegas-implied probabilities (nflverse vegas_wpa), summed as passer on pass plays.",
+      "aliases": [
+        "vegas wpa",
+        "passing vegas wpa",
+        "vegas wpa passing"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "ctx_vwpa_rush",
+      "label": "Vegas WPA",
+      "category": "efficiency",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "SUM(vegas_wpa)",
+      "rate_only": false,
+      "help": "Vegas WPA summed on run plays as the ballcarrier.",
+      "aliases": [
+        "rushing vegas wpa",
+        "vegas wpa rushing"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "ngs_p_time_throw",
+      "label": "Time to throw",
+      "category": "ngs_passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "AVG(avg_time_to_throw)",
+      "rate_only": true,
+      "help": "Next Gen Stats: average seconds from snap to release on pass plays (weekly value repeated on each play row).",
+      "aliases": [
+        "time to throw",
+        "average time to throw",
+        "ttt"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "ngs_p_intended_air",
+      "label": "Intended air yards",
+      "category": "ngs_passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "AVG(avg_intended_air_yards)",
+      "rate_only": true,
+      "help": "NGS weekly average intended air yards for the passer, averaged across plays in your filter.",
+      "aliases": [
+        "intended air yards",
+        "average intended air yards",
+        "iay"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "ngs_p_rating",
+      "label": "Passer rating",
+      "category": "ngs_passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "AVG(passer_rating)",
+      "rate_only": true,
+      "help": "NGS weekly passer rating for the QB, averaged across pass plays (same value within a week until play-level NGS differs).",
+      "aliases": [
+        "passer rating",
+        "qb rating",
+        "next gen passer rating"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "ngs_r_sep",
+      "label": "Separation",
+      "category": "ngs_receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "AVG(avg_separation)",
+      "rate_only": true,
+      "help": "NGS: average yards of separation at catch or incompletion for this receiver on targets.",
+      "aliases": [
+        "separation",
+        "average separation",
+        "receiver separation"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "ngs_r_cushion",
+      "label": "Cushion",
+      "category": "ngs_receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "AVG(avg_cushion)",
+      "rate_only": true,
+      "help": "NGS: average cushion (yards from nearest defender at snap) for this receiver on targets.",
+      "aliases": [
+        "cushion",
+        "average cushion",
+        "defender cushion"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "ngs_r_xyac",
+      "label": "Expected YAC",
+      "category": "ngs_receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "AVG(avg_expected_yac)",
+      "rate_only": true,
+      "help": "NGS model: average expected yards after catch given spacing, speed, and defenders in space.",
+      "aliases": [
+        "expected yac",
+        "expected yards after catch",
+        "xyac"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "ngs_u_tlos",
+      "label": "Time to LOS",
+      "category": "ngs_rushing",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "AVG(avg_time_to_los)",
+      "rate_only": true,
+      "help": "NGS: average time (seconds) for the ballcarrier to reach the line of scrimmage on runs.",
+      "aliases": [
+        "time to line of scrimmage",
+        "time to los",
+        "tlos"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "ngs_u_exp_yards",
+      "label": "Expected rush yards",
+      "category": "ngs_rushing",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "AVG(expected_run_yards)",
+      "rate_only": true,
+      "help": "NGS expected rush yards (xRY) from tracking/model, averaged on this player’s rush plays.",
+      "aliases": [
+        "expected rush yards",
+        "expected rushing yards",
+        "expected run yards"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "ngs_u_eff",
+      "label": "Rush efficiency",
+      "category": "ngs_rushing",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "AVG(efficiency)",
+      "rate_only": true,
+      "help": "NGS rush efficiency: total distance traveled per rushing yard gained (lower often means more north/south).",
+      "aliases": [
+        "rush efficiency",
+        "rushing efficiency",
+        "ngs rush efficiency"
+      ],
+      "reference_values": []
+    }
+  ]
+}

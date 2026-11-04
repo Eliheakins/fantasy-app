@@ -1,8 +1,12 @@
 import { API_BASE } from "@/shared/lib/api";
 import { buildIntentCatalog } from "@/shared/lib/nlqCatalog";
-import { type QueryIntent, queryIntentSchema } from "@/shared/lib/schemas/nlqIntent";
+import {
+  type IntentOutcome,
+  intentOutcomeSchema,
+  type QueryIntent,
+} from "@/shared/lib/schemas/nlqIntent";
 
-export type { QueryIntent };
+export type { IntentOutcome, QueryIntent };
 
 async function parseErrorDetail(res: Response): Promise<string> {
   try {
@@ -19,7 +23,7 @@ async function parseErrorDetail(res: Response): Promise<string> {
   return res.statusText || `HTTP ${res.status}`;
 }
 
-export async function requestIntent(question: string): Promise<QueryIntent> {
+export async function requestIntent(question: string): Promise<IntentOutcome> {
   const res = await fetch(`${API_BASE}/nlq/intent`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -28,7 +32,7 @@ export async function requestIntent(question: string): Promise<QueryIntent> {
   if (!res.ok) {
     throw new Error(await parseErrorDetail(res));
   }
-  const parsed = queryIntentSchema.safeParse(await res.json());
+  const parsed = intentOutcomeSchema.safeParse(await res.json());
   if (!parsed.success) {
     throw new Error(`Unexpected /nlq/intent response (${parsed.error.message})`);
   }
