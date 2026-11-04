@@ -26,14 +26,23 @@ const COLUMNS = [
   "interception",
   "sack",
   "pass_touchdown",
+  "posteam",
+  "defteam",
 ] as const;
 
 type Play = Partial<Record<(typeof COLUMNS)[number], unknown>>;
 
 const NOT_A_FLAG = { complete_pass: 0, incomplete_pass: 0, interception: 0, sack: 0 };
 
+/** Q1 and R1 play for KC, Q2 for BUF; each team's plays are against the other. */
+const TEAM_OF: Record<string, string> = { [Q1]: "KC", [Q2]: "BUF", [R1]: "KC" };
+
 function shard(plays: Play[]): Record<string, unknown[]> {
-  return Object.fromEntries(COLUMNS.map((c) => [c, plays.map((p) => p[c] ?? null)]));
+  const withTeams = plays.map((p) => {
+    const team = TEAM_OF[String(p.passer_player_id ?? p.rusher_player_id)];
+    return { posteam: team, defteam: team === "KC" ? "BUF" : "KC", ...p };
+  });
+  return Object.fromEntries(COLUMNS.map((c) => [c, withTeams.map((p) => p[c] ?? null)]));
 }
 
 const pass = (p: Play): Play => ({ play_type: "pass", ...NOT_A_FLAG, pass_touchdown: 0, ...p });
@@ -416,5 +425,78 @@ describe("splitting by season or week", () => {
     );
 
     expect(result.rows).toEqual([{ player_id: Q2, season: 2023, m_pass_yards: 100 }]);
+  });
+});
+
+describe("team subjects", () => {
+  const teams = (over: Partial<StatQueryParams> = {}) =>
+    base({ gsisIds: null, teams: { ids: ["KC", "BUF"], side: "offense" }, ...over });
+  const teamValue = (result: { rows: Record<string, unknown>[] }, id: string, stat: string) =>
+    result.rows.find((r) => r.team_id === id)?.[`m_${stat}`];
+
+  it("totals each team's offense, keyed by team_id", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(teams(), s);
+
+    expect(result.columns).toEqual(["team_id", "m_pass_yards"]);
+    expect(teamValue(result, "KC", "pass_yards")).toBe(30);
+    expect(teamValue(result, "BUF", "pass_yards")).toBe(100);
+  });
+
+  it("reads a team's defense as what the other offense gained against it", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(teams({ teams: { ids: ["KC"], side: "defense" } }), s);
+
+    expect(result.rows).toEqual([{ team_id: "KC", m_pass_yards: 100 }]);
+  });
+
+  it("matches the sum of the team's players", async () => {
+    const { store: s } = store();
+
+    const team = await runStatQuery(teams({ statIds: ["rush_yards"], teams: { ids: ["KC"], side: "offense" } }), s);
+    const player = await runStatQuery(base({ statIds: ["rush_yards"], gsisIds: [R1] }), s);
+
+    expect(teamValue(team, "KC", "rush_yards")).toBe(valueOf(player, R1, "rush_yards"));
+  });
+
+  it("divides by the team's games for per game", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(teams({ granularity: "per_game", teams: { ids: ["KC"], side: "offense" } }), s);
+
+    expect(teamValue(result, "KC", "pass_yards")).toBe(15);
+  });
+
+  it("ranks every team when none is named", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(
+      teams({ teams: { ids: null, side: "offense" }, order: { metric: "pass_yards", direction: "desc" }, limit: 1 }),
+      s,
+    );
+
+    expect(result.rows).toEqual([{ team_id: "BUF", m_pass_yards: 100 }]);
+  });
+
+  it("splits a team by season like a player", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(
+      teams({ teams: { ids: ["KC"], side: "offense" }, filterChipState: { "stype-reg": true }, split: "season" }),
+      s,
+    );
+
+    expect(result.rows.map((r) => [r.season, r.m_pass_yards])).toEqual([
+      [2022, 30],
+      [2023, 30],
+    ]);
+  });
+
+  it("refuses Next Gen Stats, which are per-player weekly values", async () => {
+    const { store: s } = store();
+
+    await expect(runStatQuery(teams({ statIds: ["ngs_p_time_throw"] }), s)).rejects.toThrow(/Next Gen Stats/);
   });
 });

@@ -18,9 +18,12 @@ import {
   setGranularity,
   setMinPlays,
   setRanking,
+  setSide,
   setSplit,
+  setSubject,
   toggleFilter,
   toggleStat,
+  toggleTeam,
   unpinPlayer,
   writeQuery,
 } from "./queryUrl";
@@ -38,6 +41,9 @@ const FULL: QueryState = {
   order: null,
   limit: null,
   split: null,
+  subject: "players",
+  teams: [],
+  side: "offense",
 };
 
 describe("serializeQuery and parseQuery", () => {
@@ -348,5 +354,55 @@ describe("splitting by season or week in the URL", () => {
   it("sets and clears the split", () => {
     expect(setSplit(FULL, "week").split).toBe("week");
     expect(setSplit(split, null).split).toBeNull();
+  });
+});
+
+describe("team subjects in the URL", () => {
+  const teams: QueryState = { ...FULL, players: [], subject: "teams", teams: ["KC", "BUF"], side: "defense" };
+
+  it("writes who=teams, the teams and the side, and reads them back", () => {
+    const written = serializeQuery(teams);
+
+    expect(written.get("who")).toBe("teams");
+    expect(written.getAll("t")).toEqual(["KC", "BUF"]);
+    expect(written.get("side")).toBe("defense");
+    expect(parse(written.toString())).toEqual(teams);
+  });
+
+  it("leaves the default subject and side out of the URL", () => {
+    const written = serializeQuery(FULL);
+
+    expect(written.has("who")).toBe(false);
+    expect(written.has("side")).toBe(false);
+  });
+
+  it("drops team ids the data does not have", () => {
+    expect(parse("who=teams&t=KC&t=XYZ&s=pass_yards").teams).toEqual(["KC"]);
+  });
+
+  it("is a league query for teams when no team is named", () => {
+    const ranked = { ...teams, teams: [], order: { metric: "pass_yards", direction: "desc" as const }, limit: 5 };
+
+    expect(isLeagueQuery(ranked)).toBe(true);
+    expect(isLeagueQuery({ ...ranked, teams: ["KC"] })).toBe(false);
+  });
+
+  it("toggles a team, up to the cap", () => {
+    expect(toggleTeam(teams, "KC").teams).toEqual(["BUF"]);
+    expect(toggleTeam(teams, "DAL").teams).toEqual(["KC", "BUF", "DAL"]);
+    expect(toggleTeam(teams, "XYZ")).toBe(teams);
+    const full = { ...teams, teams: ["KC", "BUF", "DAL", "PHI", "SF"] };
+    expect(toggleTeam(full, "DET")).toBe(full);
+  });
+
+  it("switches the subject and the side", () => {
+    expect(setSubject(FULL, "teams").subject).toBe("teams");
+    const ranked = { ...FULL, order: { metric: "pass_yards", direction: "desc" as const }, limit: 5 };
+    expect(setSubject(ranked, "teams")).toMatchObject({ order: null, limit: null });
+    expect(setSide(teams, "offense").side).toBe("offense");
+  });
+
+  it("tells a team query from a player query with the same stats", () => {
+    expect(queryKey(teams)).not.toBe(queryKey({ ...teams, side: "offense" }));
   });
 });

@@ -6,7 +6,14 @@ import { getPlayerDictionary } from "@/shared/lib/players";
 import { type QueryIntent, requestIntent } from "@/shared/lib/nlqApi";
 import { buildIntentCatalog } from "@/shared/lib/nlqCatalog";
 import { getAllFilterChipIds } from "@/shared/config/queryBuilderOptions";
-import { isLeagueQuery, MAX_PINNED_PLAYERS, parseQuery, type QueryState, writeQuery } from "@/shared/lib/queryUrl";
+import {
+  EMPTY_QUERY,
+  isLeagueQuery,
+  MAX_PINNED_PLAYERS,
+  parseQuery,
+  type QueryState,
+  writeQuery,
+} from "@/shared/lib/queryUrl";
 import { specFromIntent, unsupportedReasons } from "@/shared/lib/querySpec";
 import type { PlayerDictionaryRow } from "@/shared/lib/schemas/players";
 import { useQueryState } from "@/shared/lib/useQueryState";
@@ -168,6 +175,7 @@ export function useAsk() {
       }
       answer(
         {
+          ...EMPTY_QUERY,
           players: ids,
           stats: next.stat_ids,
           filters: withDefaultSeasonType(next.filter_ids),
@@ -190,6 +198,7 @@ export function useAsk() {
     (next: QueryIntent, board: Leaderboard, asked: string) => {
       answer(
         {
+          ...EMPTY_QUERY,
           players: [],
           stats: next.stat_ids,
           filters: withDefaultSeasonType(next.filter_ids),
@@ -297,7 +306,9 @@ export function useAsk() {
   );
 
   /** True when the URL holds a query to show: players (or a leaderboard) and at least one stat. */
-  const hasResult = (state.players.length > 0 || isLeagueQuery(state)) && state.stats.length > 0;
+  // Ask answers about players only, so a team URL (who=teams) is not shown as an answer here.
+  const hasResult =
+    state.subject === "players" && (state.players.length > 0 || isLeagueQuery(state)) && state.stats.length > 0;
 
   // An edit to the answer on screen (a chip removed, a different granularity) is a correction: log it
   // and remember it, so the same question gives the corrected answer next time.

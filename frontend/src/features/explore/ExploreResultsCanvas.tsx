@@ -10,6 +10,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
 import { getStatById } from "@/shared/config/statDictionary";
+import { TEAMS } from "@/shared/config/teams";
 import {
   formatMetricValueHeader,
   metricSelectAlias,
@@ -17,6 +18,7 @@ import {
 import { formatQueryValue } from "@/shared/lib/formatQueryValue";
 import type { NFLPlayer, QueryResult } from "@/shared/types/workbench";
 import { useQueryState } from "@/shared/lib/useQueryState";
+import { isLeagueQuery } from "@/shared/lib/queryUrl";
 
 export interface ExploreResultsCanvasProps {
   result: QueryResult | null;
@@ -66,13 +68,21 @@ export function ExploreResultsCanvas({
     return headers;
   }, [selectedStatIds, activeGranularity]);
 
+  const forTeams = state.subject === "teams";
+  const idColumn = forTeams ? "team_id" : "player_id";
+
+  // Who each row is: a player's name, or a team's.
   const nameByGsis = useMemo(() => {
+    if (forTeams) {
+      return new Map(TEAMS.map((t) => [t.id, t.name]));
+    }
     const m = new Map<string, string>();
     for (const p of namedPlayers ?? pinnedPlayers) {
       m.set(p.gsis_id, p.full_name ?? p.gsis_id);
     }
     return m;
-  }, [pinnedPlayers, namedPlayers]);
+  }, [forTeams, pinnedPlayers, namedPlayers]);
+  const hasSubject = isLeagueQuery(state) || (forTeams ? state.teams.length > 0 : pinnedPlayers.length > 0);
 
   const scatterPoints = useMemo(() => {
     if (!result || !twoStatsMode) {
@@ -88,8 +98,9 @@ export function ExploreResultsCanvas({
       xCol,
       yCol,
       nameByGsis,
+      idColumn,
     );
-  }, [result, twoStatsMode, selectedStatIds, swapScatterAxes, nameByGsis]);
+  }, [result, twoStatsMode, selectedStatIds, swapScatterAxes, nameByGsis, idColumn]);
 
   const scatterXLabel = useMemo(() => {
     if (!twoStatsMode) {
@@ -182,9 +193,9 @@ export function ExploreResultsCanvas({
               <table className="w-full border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b border-border bg-input/60">
-                    <th className="px-3 py-2 font-medium text-ink-muted">Player</th>
+                    <th className="px-3 py-2 font-medium text-ink-muted">{forTeams ? "Team" : "Player"}</th>
                     {result.columns
-                      .filter((col) => col !== "player_id")
+                      .filter((col) => col !== idColumn)
                       .map((col) => (
                         <th key={col} className="px-3 py-2 font-medium text-ink-muted">
                           {columnHeaders.get(col) ?? col}
@@ -194,13 +205,13 @@ export function ExploreResultsCanvas({
                 </thead>
                 <tbody>
                   {result.rows.map((row, i) => {
-                    const pid = String(row.player_id ?? "");
+                    const pid = String(row[idColumn] ?? "");
                     const label = nameByGsis.get(pid) ?? pid;
                     return (
                       <tr key={`${pid}-${i}`} className="border-b border-border/80 last:border-0">
                         <td className="px-3 py-2 font-medium text-ink">{label}</td>
                         {result.columns
-                          .filter((col) => col !== "player_id")
+                          .filter((col) => col !== idColumn)
                           .map((col) => (
                             <td key={col} className="px-3 py-2 font-mono text-accent">
                               {formatQueryValue(row[col])}
@@ -215,13 +226,19 @@ export function ExploreResultsCanvas({
           )
         ) : result && result.rows.length === 0 && !running ? (
           <p className="text-ink-muted">Query returned no rows for this combination of filters.</p>
-        ) : !error && !running && pinnedPlayers.length === 0 ? (
+        ) : !error && !running && !hasSubject ? (
           <p className="text-ink-muted">
-            <span className="lg:hidden">Open the query builder (bottom-right) to search and pin players. </span>
-            <span className="hidden lg:inline">Pin players to load data. </span>
+            {forTeams ? (
+              <span>Pick teams in The Who, or set a ranking with none picked to rank all 32. </span>
+            ) : (
+              <>
+                <span className="lg:hidden">Open the query builder (bottom-right) to search and pin players. </span>
+                <span className="hidden lg:inline">Pin players to load data. </span>
+              </>
+            )}
             Stats, granularity, min plays, and filter changes refresh the table automatically.
           </p>
-        ) : !error && !running && pinnedPlayers.length > 0 && selectedStatIds.length === 0 ? (
+        ) : !error && !running && hasSubject && selectedStatIds.length === 0 ? (
           <p className="text-ink-muted">
             <span className="lg:hidden">Open the query builder and pick metrics under The What. </span>
             <span className="hidden lg:inline">Select at least one metric in The What to load the canvas.</span>
