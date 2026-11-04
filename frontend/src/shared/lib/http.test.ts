@@ -57,7 +57,11 @@ describe("requestJson", () => {
     vi.stubGlobal(
       "fetch",
       respond(
-        { detail: [{ type: "string_too_long", loc: ["body", "question"], msg: "String should have at most 2000 characters" }] },
+        {
+          detail: [
+            { type: "string_too_long", loc: ["body", "question"], msg: "String should have at most 2000 characters" },
+          ],
+        },
         { status: 422 },
       ),
     );

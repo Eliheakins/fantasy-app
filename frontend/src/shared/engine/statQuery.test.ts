@@ -67,7 +67,14 @@ const FILES: Record<string, Record<string, unknown[]>> = {
     pass({ ...game("g1", 1, "home"), passer_player_id: Q1, down: 2, yards_gained: 15 }),
     pass({ ...game("g1", 1, "home"), passer_player_id: Q2, down: 1, complete_pass: 1, yards_gained: 100 }),
     // g2, week 2, away
-    pass({ ...game("g2", 2, "away"), passer_player_id: Q1, down: 3, complete_pass: 1, yards_gained: 20, pass_touchdown: 1 }),
+    pass({
+      ...game("g2", 2, "away"),
+      passer_player_id: Q1,
+      down: 3,
+      complete_pass: 1,
+      yards_gained: 20,
+      pass_touchdown: 1,
+    }),
     pass({ ...game("g2", 2, "away"), passer_player_id: Q1, down: 1, interception: 1, yards_gained: 0 }),
     // g5, playoffs
     pass({ ...game("g5", 19, "home", 2023, "POST"), passer_player_id: Q1, down: 1, complete_pass: 1, yards_gained: 5 }),
@@ -401,13 +408,18 @@ describe("splitting by season or week", () => {
     );
 
     expect(result.rows).toHaveLength(2);
-    expect(result.rows.every((r) => typeof r.m_pass_yards === "number" && typeof r.m_pass_sack_rate === "number")).toBe(true);
+    expect(result.rows.every((r) => typeof r.m_pass_yards === "number" && typeof r.m_pass_sack_rate === "number")).toBe(
+      true,
+    );
   });
 
   it("lists split rows in season order, then by the first stat", async () => {
     const { store: s } = store();
 
-    const result = await runStatQuery(base({ gsisIds: [Q1, Q2], filterChipState: { "stype-reg": true }, split: "season" }), s);
+    const result = await runStatQuery(
+      base({ gsisIds: [Q1, Q2], filterChipState: { "stype-reg": true }, split: "season" }),
+      s,
+    );
 
     expect(result.rows.map((r) => [r.season, r.player_id])).toEqual([
       [2022, Q1],
@@ -420,7 +432,13 @@ describe("splitting by season or week", () => {
     const { store: s } = store();
 
     const result = await runStatQuery(
-      base({ gsisIds: null, filterChipState: { "stype-reg": true }, split: "season", order: { metric: "pass_yards", direction: "desc" }, limit: 1 }),
+      base({
+        gsisIds: null,
+        filterChipState: { "stype-reg": true },
+        split: "season",
+        order: { metric: "pass_yards", direction: "desc" },
+        limit: 1,
+      }),
       s,
     );
 

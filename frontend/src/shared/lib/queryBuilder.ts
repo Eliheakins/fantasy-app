@@ -4,10 +4,7 @@ import { getFilterChipGroups } from "@/shared/lib/filterChipGroups";
 import type { GranularityMode, Split } from "@/shared/types/queryBuilder";
 import type { QueryResult } from "@/shared/types/workbench";
 
-export function effectiveGranularity(
-  stat: StatDefinition | undefined,
-  requested: GranularityMode,
-): GranularityMode {
+export function effectiveGranularity(stat: StatDefinition | undefined, requested: GranularityMode): GranularityMode {
   if (stat?.rate_only) {
     return "per_play";
   }
@@ -164,9 +161,7 @@ export function buildFilterWhereSql(
     if (active.length === 0) {
       continue;
     }
-    const inner = active
-      .map((o) => `(${o.predicate})`)
-      .join(group.combine === "or" ? " OR " : " AND ");
+    const inner = active.map((o) => `(${o.predicate})`).join(group.combine === "or" ? " OR " : " AND ");
     parts.push(`(${inner})`);
   }
 
@@ -179,8 +174,7 @@ export function describeStat(stat: StatDefinition | undefined): string {
   }
   const role = stat.playerRole;
   const pt = stat.playType === "all" ? "all plays" : stat.playType;
-  const sqlPreview =
-    stat.base_sql.length > 72 ? `${stat.base_sql.slice(0, 72)}…` : stat.base_sql;
+  const sqlPreview = stat.base_sql.length > 72 ? `${stat.base_sql.slice(0, 72)}…` : stat.base_sql;
   let s = `${sqlPreview} · ${role} · ${pt}`;
   if (stat.rate_only) {
     s += " · rate_only";
@@ -204,7 +198,9 @@ export function describeQuery(params: {
       `${stat.playerRole} ${stat.playType === "all" ? "plays" : `${stat.playType} plays`}`,
       stat.playFilter ? `only where ${stat.playFilter}` : null,
     ].filter(Boolean);
-    return [`${stat.label} (${effectiveGranularity(stat, params.granularity)}): ${stat.base_sql}\n    over ${rows.join(", ")}`];
+    return [
+      `${stat.label} (${effectiveGranularity(stat, params.granularity)}): ${stat.base_sql}\n    over ${rows.join(", ")}`,
+    ];
   });
   const where = buildFilterWhereSql(params.filterChipState);
   lines.push(where ? `Filters: ${where}` : "Filters: none");
@@ -214,10 +210,7 @@ export function describeQuery(params: {
   return lines.join("\n");
 }
 
-export function formatMetricValueHeader(
-  stat: StatDefinition | undefined,
-  granularity: GranularityMode,
-): string {
+export function formatMetricValueHeader(stat: StatDefinition | undefined, granularity: GranularityMode): string {
   if (!stat) {
     return "metric_value";
   }

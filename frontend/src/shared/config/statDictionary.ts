@@ -88,9 +88,7 @@ export function getStatsByCategory(category: StatCategory): StatDefinition[] {
   return STAT_DEFINITIONS.filter((s) => s.category === category);
 }
 
-export function playerColumnForRole(
-  role: PlayerRole,
-): "passer_player_id" | "rusher_player_id" | "receiver_player_id" {
+export function playerColumnForRole(role: PlayerRole): "passer_player_id" | "rusher_player_id" | "receiver_player_id" {
   switch (role) {
     case "passer":
       return "passer_player_id";

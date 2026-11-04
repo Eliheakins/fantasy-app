@@ -33,7 +33,16 @@ const ROWS: Row[] = [
   { gsis_id: QB, season: 2023, week: 3, season_type: "POST", attempts: 40, passing_yards: 400, passing_tds: 3 },
   { gsis_id: QB, season: 2022, week: 1, season_type: "REG", attempts: 10, passing_yards: 50, passing_tds: 0 },
   { gsis_id: RB, season: 2023, week: 1, season_type: "REG", carries: 20, rushing_yards: 100, rushing_tds: 1 },
-  { gsis_id: RB, season: 2023, week: 2, season_type: "REG", carries: 0, targets: 4, receptions: 3, receiving_yards: 30 },
+  {
+    gsis_id: RB,
+    season: 2023,
+    week: 2,
+    season_type: "REG",
+    carries: 0,
+    targets: 4,
+    receptions: 3,
+    receiving_yards: 30,
+  },
 ];
 
 /** Records every read, so a test can see which file and columns a query touched. */
@@ -146,11 +155,7 @@ describe("runPlayerGameQuery", () => {
       TABLE,
       store,
     );
-    const rec = await runPlayerGameQuery(
-      params({ statIds: ["rec_yards"], gsisIds: [RB], minPlays: 5 }),
-      TABLE,
-      store,
-    );
+    const rec = await runPlayerGameQuery(params({ statIds: ["rec_yards"], gsisIds: [RB], minPlays: 5 }), TABLE, store);
 
     expect(rush.rows[0]?.m_rush_yards).toBe(100);
     expect(rec.rows).toEqual([]);

@@ -182,7 +182,19 @@ export function ignoredFilterIds(params: URLSearchParams, state: QueryState): st
 
 /** Identifies a query, so a result can be matched to the query that produced it. */
 export function queryKey(state: QueryState): string {
-  return JSON.stringify([state.players, state.stats, state.filters, state.granularity, state.minPlays, state.order, state.limit, state.split, state.subject, state.teams, state.side]);
+  return JSON.stringify([
+    state.players,
+    state.stats,
+    state.filters,
+    state.granularity,
+    state.minPlays,
+    state.order,
+    state.limit,
+    state.split,
+    state.subject,
+    state.teams,
+    state.side,
+  ]);
 }
 
 export function serializeQuery(state: QueryState): URLSearchParams {
@@ -214,7 +226,11 @@ export function setMinPlays(state: QueryState, minPlays: number): QueryState {
 }
 
 /** Ranks the rows by a selected stat and keeps the first `limit`; null clears both. */
-export function setRanking(state: QueryState, order: QueryOrder | null, limit = state.limit ?? DEFAULT_LIMIT): QueryState {
+export function setRanking(
+  state: QueryState,
+  order: QueryOrder | null,
+  limit = state.limit ?? DEFAULT_LIMIT,
+): QueryState {
   if (order === null) {
     return { ...state, order: null, limit: null };
   }

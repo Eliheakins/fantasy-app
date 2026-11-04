@@ -14,15 +14,87 @@ export const NAME_SUFFIXES = new Set(["jr", "sr", "ii", "iii", "iv", "v"]);
 
 /** Surnames that are also everyday words in stat questions; a bare one is not a player reference. */
 const STOPWORDS = new Set([
-  "the", "and", "for", "per", "vs", "versus", "with", "from", "his", "her", "their", "what", "how",
-  "many", "much", "did", "does", "had", "has", "have", "got", "get", "who", "which", "when",
-  "yards", "yard", "pass", "passing", "passes", "rush", "rushing", "receiving", "receptions",
-  "catches", "touchdowns", "touchdown", "play", "plays", "game", "games", "season", "seasons",
-  "third", "down", "downs", "quarter", "half", "zone", "playoffs", "regular", "home", "away",
-  "total", "average", "compare", "career", "last", "this", "year", "best", "worst", "top", "most",
+  "the",
+  "and",
+  "for",
+  "per",
+  "vs",
+  "versus",
+  "with",
+  "from",
+  "his",
+  "her",
+  "their",
+  "what",
+  "how",
+  "many",
+  "much",
+  "did",
+  "does",
+  "had",
+  "has",
+  "have",
+  "got",
+  "get",
+  "who",
+  "which",
+  "when",
+  "yards",
+  "yard",
+  "pass",
+  "passing",
+  "passes",
+  "rush",
+  "rushing",
+  "receiving",
+  "receptions",
+  "catches",
+  "touchdowns",
+  "touchdown",
+  "play",
+  "plays",
+  "game",
+  "games",
+  "season",
+  "seasons",
+  "third",
+  "down",
+  "downs",
+  "quarter",
+  "half",
+  "zone",
+  "playoffs",
+  "regular",
+  "home",
+  "away",
+  "total",
+  "average",
+  "compare",
+  "career",
+  "last",
+  "this",
+  "year",
+  "best",
+  "worst",
+  "top",
+  "most",
   // Surnames that are also football words ("3rd and long", "cold weather"); the full name still matches.
-  "long", "short", "deep", "early", "late", "mid", "goal", "line", "first", "second", "fourth", "wind",
-  "windy", "cold", "road", "night",
+  "long",
+  "short",
+  "deep",
+  "early",
+  "late",
+  "mid",
+  "goal",
+  "line",
+  "first",
+  "second",
+  "fourth",
+  "wind",
+  "windy",
+  "cold",
+  "road",
+  "night",
 ]);
 
 /** Positions that can plausibly record each stat role; used to pick between namesakes. */
@@ -101,8 +173,7 @@ export function resolvePlayers(question: string, dict: readonly PlayerDictionary
       if (phrase.length === 1 && (word.length < MIN_SURNAME_LENGTH || STOPWORDS.has(word))) {
         continue;
       }
-      const candidates =
-        phrase.length === 1 ? index.bySurname.get(word) : index.byFullName.get(phrase.join(" "));
+      const candidates = phrase.length === 1 ? index.bySurname.get(word) : index.byFullName.get(phrase.join(" "));
       if (candidates) {
         used.fill(true, start, start + size);
         found.push({ phrase: phrase.join(" "), start, candidates });
@@ -114,10 +185,7 @@ export function resolvePlayers(question: string, dict: readonly PlayerDictionary
 }
 
 /** Keep namesakes whose position fits the stats asked about; fall back to all if none fit. */
-export function narrowByRoles(
-  candidates: PlayerDictionaryRow[],
-  roles: readonly PlayerRole[],
-): PlayerDictionaryRow[] {
+export function narrowByRoles(candidates: PlayerDictionaryRow[], roles: readonly PlayerRole[]): PlayerDictionaryRow[] {
   if (roles.length === 0) {
     return candidates;
   }
@@ -127,10 +195,7 @@ export function narrowByRoles(
 }
 
 /** The single player a match refers to once roles are considered, or null if still ambiguous. */
-export function pickCandidate(
-  match: PlayerMatch,
-  roles: readonly PlayerRole[],
-): PlayerDictionaryRow | null {
+export function pickCandidate(match: PlayerMatch, roles: readonly PlayerRole[]): PlayerDictionaryRow | null {
   const narrowed = narrowByRoles(match.candidates, roles);
   return narrowed.length === 1 ? narrowed[0]! : null;
 }

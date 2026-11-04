@@ -14,7 +14,10 @@ export function AggregationSection() {
   const activeGranularity = state.granularity;
   const minPlays = state.minPlays;
 
-  const ranking = state.order && state.limit !== null ? ` · ${state.order.direction === "desc" ? "top" : "bottom"} ${state.limit}` : "";
+  const ranking =
+    state.order && state.limit !== null
+      ? ` · ${state.order.direction === "desc" ? "top" : "bottom"} ${state.limit}`
+      : "";
   const split = state.split ? ` · by ${state.split}` : "";
   const summary = `${activeGranularity.replace(/_/g, " ")} · min ${minPlays} plays${ranking}${split}`;
 

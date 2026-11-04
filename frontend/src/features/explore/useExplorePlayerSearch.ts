@@ -53,10 +53,7 @@ export function useExplorePlayerSearch() {
         : String(searchQ.error)
       : null;
 
-  const isPinned = useCallback(
-    (gsisId: string) => pinnedPlayers.some((p) => p.gsis_id === gsisId),
-    [pinnedPlayers],
-  );
+  const isPinned = useCallback((gsisId: string) => pinnedPlayers.some((p) => p.gsis_id === gsisId), [pinnedPlayers]);
 
   return {
     query,

@@ -32,9 +32,7 @@ describe("parseQuerySpec", () => {
   });
 
   it("requires order_by to name one of the metrics", () => {
-    expect(() =>
-      parseQuerySpec(spec({ order_by: { metric: "rec_yards", direction: "desc" } })),
-    ).toThrow(/order_by/);
+    expect(() => parseQuerySpec(spec({ order_by: { metric: "rec_yards", direction: "desc" } }))).toThrow(/order_by/);
   });
 
   it("caps the limit and the metric count and rejects repeats", () => {

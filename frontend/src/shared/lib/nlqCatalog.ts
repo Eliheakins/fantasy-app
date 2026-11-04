@@ -28,8 +28,6 @@ export function buildIntentCatalog(): IntentCatalog {
       category: s.category,
       aliases: s.aliases,
     })),
-    filters: getFilterChipGroups().flatMap((g) =>
-      g.options.map((o) => ({ id: o.id, label: o.label, group: g.label })),
-    ),
+    filters: getFilterChipGroups().flatMap((g) => g.options.map((o) => ({ id: o.id, label: o.label, group: g.label }))),
   };
 }

@@ -6,8 +6,7 @@ import { useRouteMemory } from "@/stores/useRouteMemory";
 
 import { cn } from "@/shared/lib/utils";
 
-const linkClass =
-  "rounded-md px-3 py-2 text-sm font-medium text-ink-muted transition hover:bg-input hover:text-ink";
+const linkClass = "rounded-md px-3 py-2 text-sm font-medium text-ink-muted transition hover:bg-input hover:text-ink";
 
 const activeClass = "bg-input text-ink";
 
@@ -28,7 +27,10 @@ export function AppNav() {
           The Bridge
         </NavLink>
         <nav className="flex flex-1 flex-wrap items-center gap-1" aria-label="Main">
-          <NavLink to={{ pathname: "/explore", search: exploreSearch }} className={({ isActive }) => cn(linkClass, isActive && activeClass)}>
+          <NavLink
+            to={{ pathname: "/explore", search: exploreSearch }}
+            className={({ isActive }) => cn(linkClass, isActive && activeClass)}
+          >
             Explore
           </NavLink>
           <NavLink to="/ask" className={({ isActive }) => cn(linkClass, isActive && activeClass)}>

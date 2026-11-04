@@ -17,7 +17,5 @@ export interface CalloutProps {
 }
 
 export function Callout({ variant = "info", className, children }: CalloutProps) {
-  return (
-    <div className={cn("rounded-md border px-3 py-2 text-sm", variantClass[variant], className)}>{children}</div>
-  );
+  return <div className={cn("rounded-md border px-3 py-2 text-sm", variantClass[variant], className)}>{children}</div>;
 }

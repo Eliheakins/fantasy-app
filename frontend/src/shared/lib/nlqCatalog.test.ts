@@ -27,9 +27,7 @@ describe("buildIntentCatalog", () => {
   });
 
   it("matches the catalog committed for the backend eval (run npm run export:catalog if not)", () => {
-    const path = fileURLToPath(
-      new URL("../../../../backend/tests/eval/catalog.json", import.meta.url),
-    );
+    const path = fileURLToPath(new URL("../../../../backend/tests/eval/catalog.json", import.meta.url));
 
     expect(JSON.parse(readFileSync(path, "utf8"))).toEqual(buildIntentCatalog());
   });

@@ -57,7 +57,9 @@ export function buildAnswer({
   const lines = result.rows.map((row, rank) => {
     const pid = String(row.player_id ?? "");
     const name = nameByGsis.get(pid) ?? pid;
-    const when = [row.season, row.week === undefined ? undefined : `week ${String(row.week)}`].filter((v) => v !== undefined);
+    const when = [row.season, row.week === undefined ? undefined : `week ${String(row.week)}`].filter(
+      (v) => v !== undefined,
+    );
     const who = when.length > 0 ? `${name}, ${when.join(" ")}` : name;
     const metrics = statIds.map((id) => {
       const header = formatMetricValueHeader(getStatById(id), granularity);

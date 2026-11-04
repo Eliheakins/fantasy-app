@@ -14,7 +14,9 @@ for (const set of EVAL_SETS) {
   const answerable = mine.filter((r) => !r.case.unsupported && r.case.rules !== "defer");
   const count = (v: string, of = mine) => of.filter((r) => r.verdict === v).length;
 
-  out(`\n${set}: ${mine.length} questions (${answerable.length} for the rules to answer, ${mine.length - answerable.length} to refuse or hand over)`);
+  out(
+    `\n${set}: ${mine.length} questions (${answerable.length} for the rules to answer, ${mine.length - answerable.length} to refuse or hand over)`,
+  );
   out(`  answered correctly by rules: ${count("correct", answerable)}/${answerable.length}`);
   out(`  handed to the model:         ${count("deferred")}`);
   out(`  wrong:                       ${count("wrong")}`);

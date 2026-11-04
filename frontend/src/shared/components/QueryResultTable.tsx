@@ -9,7 +9,12 @@ export interface QueryResultTableProps {
   minWidthClass?: string;
 }
 
-export function QueryResultTable({ result, zebra = false, className, minWidthClass = "min-w-[280px]" }: QueryResultTableProps) {
+export function QueryResultTable({
+  result,
+  zebra = false,
+  className,
+  minWidthClass = "min-w-[280px]",
+}: QueryResultTableProps) {
   return (
     <div className={cn("overflow-x-auto rounded-md border border-border", className)}>
       <table className={cn("w-full border-collapse text-left text-sm", minWidthClass)}>
@@ -24,7 +29,10 @@ export function QueryResultTable({ result, zebra = false, className, minWidthCla
         </thead>
         <tbody>
           {result.rows.map((row, i) => (
-            <tr key={i} className={cn("border-b border-border/80 last:border-0", zebra && i % 2 === 1 && "bg-input/30")}>
+            <tr
+              key={i}
+              className={cn("border-b border-border/80 last:border-0", zebra && i % 2 === 1 && "bg-input/30")}
+            >
               {result.columns.map((col) => (
                 <td key={col} className="px-3 py-2 font-mono text-accent">
                   {formatQueryValue(row[col])}

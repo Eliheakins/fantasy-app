@@ -31,9 +31,7 @@ const VOLUME_COLUMN: Readonly<Record<PlayerRole, string>> = {
 /** The stats a query names, or null when any is unknown or cannot come from the table. */
 function tierOneStats(params: StatQueryParams): StatDefinition[] | null {
   const stats = params.statIds.map((id) => getStatById(id));
-  const servable = stats.every(
-    (s) => s?.playerGameColumn !== undefined && !s.rate_only,
-  );
+  const servable = stats.every((s) => s?.playerGameColumn !== undefined && !s.rate_only);
   return stats.length > 0 && servable ? (stats as StatDefinition[]) : null;
 }
 

@@ -38,8 +38,18 @@ describe("parseMetricsFile", () => {
     for (const field of ["label", "base_sql", "play_filter"]) {
       expect(() => parseMetricsFile(file(metric({ [field]: "" })))).toThrow();
     }
-    expect(() => parseMetricsFile({ ...file(metric()), categories: [{ id: "passing", label: "A" }, { id: "passing", label: "B" }] })).toThrow(/Duplicate category/);
-    expect(() => parseMetricsFile(file(metric({ aliases: Array.from({ length: 21 }, (_, i) => `alias ${i}`) })))).toThrow();
+    expect(() =>
+      parseMetricsFile({
+        ...file(metric()),
+        categories: [
+          { id: "passing", label: "A" },
+          { id: "passing", label: "B" },
+        ],
+      }),
+    ).toThrow(/Duplicate category/);
+    expect(() =>
+      parseMetricsFile(file(metric({ aliases: Array.from({ length: 21 }, (_, i) => `alias ${i}`) }))),
+    ).toThrow();
     expect(() => parseMetricsFile(file(metric({ aliases: ["two  spaces"] })))).toThrow(/single spaces/);
   });
 
