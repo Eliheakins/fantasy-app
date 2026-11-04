@@ -1,5 +1,5 @@
 /**
- * Display formatting for DuckDB / query result cell values (shared across Explore and Ask).
+ * Display formatting for query result cell values (shared across Explore and Ask).
  */
 export function formatQueryValue(v: unknown): string {
   if (v === null || v === undefined) {

@@ -95,7 +95,7 @@ export function NLQPanel() {
           <ExploreResultsCanvas
             result={exec.result}
             error={exec.error}
-            lastSql={exec.lastSql}
+            details={exec.details}
             running={exec.running}
             pinnedPlayers={exec.pinnedPlayers}
           />

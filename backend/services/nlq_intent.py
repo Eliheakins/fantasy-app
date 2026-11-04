@@ -1,8 +1,8 @@
 """
 Question -> structured query intent (stat ids, filter ids, granularity) via the local model.
 
-The model never writes SQL. The frontend's query builder turns the intent into SQL, and player
-ids are resolved in the browser, so the model cannot invent either.
+The model never writes queries. The frontend's engine runs the intent, and player ids are
+resolved in the browser, so the model cannot invent either.
 """
 
 from __future__ import annotations

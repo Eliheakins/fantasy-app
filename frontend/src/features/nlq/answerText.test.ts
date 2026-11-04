@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { metricSelectAlias } from "@/shared/lib/queryBuilderSql";
+import { metricSelectAlias } from "@/shared/lib/queryBuilder";
 
 import { buildAnswer } from "./answerText";
 

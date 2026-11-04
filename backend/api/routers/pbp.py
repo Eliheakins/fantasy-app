@@ -14,5 +14,5 @@ router = APIRouter(tags=["pbp"])
 async def list_pbp_shards(
     shards: Annotated[list[PbpShard], Depends(get_nfl_pbp_shards)],
 ) -> list[PbpShard]:
-    """Season shards (`/data/...` paths) for DuckDB-WASM."""
+    """Season shards (`/data/...` paths) the browser engine reads."""
     return shards

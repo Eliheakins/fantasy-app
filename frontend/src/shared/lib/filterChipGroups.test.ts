@@ -5,7 +5,6 @@ import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
 import { FIXTURE_SEASONS } from "@/test/seasons";
 
 import { getFilterChipGroups } from "./filterChipGroups";
-import { buildStatQueryPlans } from "./queryBuilderSql";
 
 const seasonIds = () =>
   getFilterChipGroups()
@@ -53,20 +52,5 @@ describe("query builder store and the manifest's seasons", () => {
     expect(state["season-2023"]).toBe(true);
     expect(state["season-2024"]).toBe(false);
     expect("not-a-chip" in state).toBe(false);
-  });
-});
-
-describe("rusher chip through the SQL builder", () => {
-  it("qualifies the columns but not the 'pass' literal", () => {
-    const [plan] = buildStatQueryPlans({
-      statIds: ["pass_yards"],
-      filterChipState: { "pr-lte3": true },
-      gsisIds: ["00-0033873"],
-      viewNames: ["nfl_pbp_2023"],
-      granularity: "total",
-      minPlays: 0,
-    });
-
-    expect(plan!.sql).toContain("main.play_type = 'pass' AND main.number_of_pass_rushers <= 3");
   });
 });

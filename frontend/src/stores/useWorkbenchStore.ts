@@ -11,11 +11,9 @@ export interface PinEntry {
 }
 
 export interface WorkbenchState {
-  isEngineReady: boolean;
   pinnedPlayers: NFLPlayer[];
   /** Shards last fetched per pinned player (gsis_id → shards). */
   playerShardMap: Record<string, PbpShardInfo[]>;
-  setEngineReady: (ready: boolean) => void;
   /** Returns false if already pinned, at capacity, or duplicate. */
   tryPinPlayer: (player: NFLPlayer, shards: PbpShardInfo[]) => boolean;
   /** Replace every pin at once (Ask); duplicates are dropped and the list is capped. */
@@ -25,10 +23,8 @@ export interface WorkbenchState {
 }
 
 export const useWorkbenchStore = create<WorkbenchState>((set, get) => ({
-  isEngineReady: false,
   pinnedPlayers: [],
   playerShardMap: {},
-  setEngineReady: (ready) => set({ isEngineReady: ready }),
 
   tryPinPlayer: (player, shards) => {
     const { pinnedPlayers, playerShardMap } = get();

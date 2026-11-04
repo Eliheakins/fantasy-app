@@ -28,7 +28,7 @@ export interface StatDefinition {
   playerRole: PlayerRole;
   playType: PlayTypeScope;
   /**
-   * Aggregate SQL over filtered play rows. Use raw column names (no `main.`); the builder qualifies them.
+   * Aggregate SQL over filtered play rows. Use raw column names; the engine reads those columns from the Parquet shards.
    * For `rate_only: false`, if this is exactly `SUM(single_column)`, Total / Per play / Per game are derived.
    */
   base_sql: string;

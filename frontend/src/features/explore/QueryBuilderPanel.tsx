@@ -64,7 +64,7 @@ export function QueryBuilderPanel() {
           <ExploreResultsCanvas
             result={queryExec.result}
             error={queryExec.error}
-            lastSql={queryExec.lastSql}
+            details={queryExec.details}
             running={queryExec.running}
             pinnedPlayers={queryExec.pinnedPlayers}
           />

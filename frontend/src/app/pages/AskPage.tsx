@@ -7,7 +7,7 @@ export function AskPage() {
       <PageHeader
         eyebrow="Workbench / Ask"
         title="Natural language"
-        description="Ask in plain language. Player names are matched in your browser and a local model picks the stats; the numbers come from play-by-play data in DuckDB-WASM."
+        description="Ask in plain language. Player names are matched in your browser and a local model picks the stats; the numbers are computed in your browser from play-by-play data."
       />
       <NLQPanel />
     </div>
