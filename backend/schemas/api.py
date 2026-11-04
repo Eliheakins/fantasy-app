@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 class HealthResponse(BaseModel):
     status: str
     data_ready: bool = Field(
-        ..., description="True once a manifest with at least one season exists"
+        ..., description="True once the manifest lists a season and the players file"
     )
     data_through: str | None = Field(
         None, description='How current the data is, e.g. "2026 week 9"'

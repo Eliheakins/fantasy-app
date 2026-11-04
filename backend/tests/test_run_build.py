@@ -120,3 +120,19 @@ def test_a_build_writes_the_static_players_file_and_lists_it_in_the_manifest(
     assert manifest is not None
     assert manifest.players is not None
     assert (manifest.players.path, manifest.players.rows) == ("players.json", 1)
+
+
+def test_the_manifest_matches_the_shards_even_if_the_players_step_fails(
+    tmp_path: Path, stubbed_network: None, monkeypatch: pytest.MonkeyPatch
+):
+    def boom(data_dir: Path):
+        raise ValueError("roster column missing")
+
+    monkeypatch.setattr(cli, "write_players_file", boom)
+
+    with pytest.raises(ValueError, match="roster column missing"):
+        cli.run_build(tmp_path, [2026])
+
+    manifest = read_manifest(tmp_path)
+    assert manifest is not None
+    assert [s.season for s in manifest.seasons] == [2026]

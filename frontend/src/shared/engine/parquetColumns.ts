@@ -10,7 +10,7 @@ import {
 } from "hyparquet";
 import { compressors } from "hyparquet-compressors";
 
-import { START_API_HINT } from "@/shared/lib/config";
+import { DATA_UNREACHABLE_HINT } from "@/shared/lib/config";
 
 import { ColumnStore, concatenate, type ColumnLoader, type ColumnSource } from "./columns";
 
@@ -45,7 +45,7 @@ export function createParquetLoader(open: OpenParquet, codecs?: Compressors): Co
     return pending;
   };
 
-  return async (source, column) => {
+  const read: ColumnLoader = async (source, column) => {
     const { file, metadata } = await openFile(source);
     // An older season may lack a column a newer one has (participation data, say); read it as all
     // null, as a UNION BY NAME would. A typo in a metric is caught by the metrics schema tests.
@@ -61,16 +61,20 @@ export function createParquetLoader(open: OpenParquet, codecs?: Compressors): Co
     chunks.sort((a, b) => a.rowStart - b.rowStart);
     return concatenate(chunks.map((c) => c.columnData));
   };
+
+  return async (source, column) => {
+    try {
+      return await read(source, column);
+    } catch (e) {
+      throw new Error(
+        `Could not read the ${source.year} play-by-play data at ${source.url} (${e instanceof Error ? e.message : String(e)}). ${DATA_UNREACHABLE_HINT}`,
+      );
+    }
+  };
 }
 
 async function openOverHttp(source: ColumnSource): Promise<AsyncBuffer> {
-  try {
-    return cachedAsyncBuffer(await asyncBufferFromUrl({ url: source.url }));
-  } catch (e) {
-    throw new Error(
-      `Could not read the ${source.year} play-by-play data at ${source.url} (${e instanceof Error ? e.message : String(e)}). ${START_API_HINT}`,
-    );
-  }
+  return cachedAsyncBuffer(await asyncBufferFromUrl({ url: source.url }));
 }
 
 /** The app's store: columns come over HTTP, one range request per column chunk. */

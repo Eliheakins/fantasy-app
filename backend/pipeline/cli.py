@@ -80,11 +80,13 @@ def run_build(data_dir: Path, years: list[int]) -> None:
         _maybe_gc()
 
     create_player_index(data_dir, years)
-    players_file, skipped = write_players_file(data_dir)
-    print(f"✅ Players: {players_file.rows} written, {skipped} skipped (no id or name)")
 
-    # Describe what is on disk before the network-bound tier-1 step, so a failure there still
-    # leaves a manifest that matches the shards.
+    # Describe what is on disk before the later steps, so a failure there still leaves a
+    # manifest that matches the shards.
+    _write_manifest(data_dir)
+
+    players_file, skipped = write_players_file(data_dir)
+    print(f"✅ Players: {players_file.rows} in players.json, {skipped} skipped (no id or name)")
     _write_manifest(data_dir)
 
     merged = merge_player_game(

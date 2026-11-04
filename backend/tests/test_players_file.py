@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 import polars as pl
@@ -92,3 +92,86 @@ def test_the_players_schema_rejects_empty_ids_and_unknown_versions():
         )
     with pytest.raises(ValidationError):
         PlayersFile.model_validate({"schema_version": 2, "players": []})
+
+
+def test_ids_that_repeat_after_trimming_keep_the_last_row():
+    index = pl.DataFrame(
+        {"gsis_id": ["a", " a ", "b"], "full_name": ["Old Name", "New Name", "B B"]}
+    )
+
+    players, skipped = build_players(index)
+
+    assert [(p.gsis_id, p.full_name) for p in players] == [("a", "New Name"), ("b", "B B")]
+    assert skipped == 0
+
+
+def test_only_https_headshots_are_kept():
+    index = pl.DataFrame(
+        {
+            "gsis_id": ["a", "b", "c"],
+            "full_name": ["A A", "B B", "C C"],
+            "headshot_url": ["https://x/a.png", "javascript:alert(1)", "http://x/c.png"],
+        }
+    )
+
+    players, _ = build_players(index)
+
+    assert [p.headshot_url for p in players] == ["https://x/a.png", None, None]
+
+
+def test_experience_that_is_not_a_whole_number_becomes_null_instead_of_aborting_the_build():
+    index = pl.DataFrame(
+        {
+            "gsis_id": ["a", "b", "c"],
+            "full_name": ["A A", "B B", "C C"],
+            "years_exp": [3.0, float("nan"), 2.5],
+        }
+    )
+
+    players, _ = build_players(index)
+
+    assert [p.years_exp for p in players] == [3, None, None]
+
+
+def test_a_timestamp_birth_date_is_written_as_a_date():
+    index = pl.DataFrame(
+        {"gsis_id": ["a"], "full_name": ["A A"], "birth_date": [datetime(2000, 1, 1, 5, 0)]}
+    )
+
+    players, _ = build_players(index)
+
+    assert players[0].birth_date == "2000-01-01"
+
+
+def test_a_partial_rebuild_keeps_players_from_earlier_builds(tmp_path: Path):
+    pl.DataFrame(
+        {"gsis_id": ["a", "b"], "full_name": ["A Old", "B B"], "team": ["KC", "DEN"]}
+    ).write_parquet(tmp_path / "player_index.parquet")
+    write_players_file(tmp_path)
+    # A later build covers fewer seasons: A moved teams, B retired, C is new.
+    pl.DataFrame(
+        {"gsis_id": ["a", "c"], "full_name": ["A New", "C C"], "team": ["LV", "NYJ"]}
+    ).write_parquet(tmp_path / "player_index.parquet")
+
+    entry, _ = write_players_file(tmp_path)
+
+    loaded = PlayersFile.model_validate_json((tmp_path / PLAYERS_FILENAME).read_text())
+    assert [(p.gsis_id, p.full_name, p.team) for p in loaded.players] == [
+        ("a", "A New", "LV"),
+        ("c", "C C", "NYJ"),
+        ("b", "B B", "DEN"),
+    ]
+    assert entry.rows == 3
+
+
+def test_an_unreadable_earlier_players_file_is_replaced_rather_than_blocking_the_build(
+    tmp_path: Path,
+):
+    (tmp_path / PLAYERS_FILENAME).write_text("{not json")
+    pl.DataFrame({"gsis_id": ["a"], "full_name": ["A A"]}).write_parquet(
+        tmp_path / "player_index.parquet"
+    )
+
+    entry, _ = write_players_file(tmp_path)
+
+    assert entry.rows == 1

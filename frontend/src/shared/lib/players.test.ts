@@ -74,6 +74,25 @@ describe("getPlayers", () => {
     expect(String(fetchMock.mock.calls[0]![0])).toMatch(/\/data\/players\.json$/);
   });
 
+  it("revalidates the file on load, so a rebuild's new list is not hidden by the browser cache", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify(FILE)));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getPlayers();
+
+    expect(fetchMock.mock.calls[0]![1]).toMatchObject({ cache: "no-cache" });
+  });
+
+  it("drops a headshot address that is not https instead of rejecting the whole list", async () => {
+    const odd = { ...MAHOMES, headshot_url: "javascript:alert(1)" };
+    const ok = { ...KELCE, headshot_url: "https://x/k.png" };
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response(JSON.stringify({ schema_version: 1, players: [odd, ok] }))));
+
+    const players = await getPlayers();
+
+    expect(players.map((p) => p.headshot_url)).toEqual([null, "https://x/k.png"]);
+  });
+
   it("tells the user to rebuild when the manifest lists no players file", async () => {
     useManifestStore.setState({ manifest: { ...useManifestStore.getState().manifest!, players: null } });
 

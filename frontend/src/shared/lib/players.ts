@@ -1,4 +1,4 @@
-import { DATA_BASE_URL, joinUrl, START_API_HINT } from "@/shared/lib/config";
+import { DATA_BASE_URL, DATA_UNREACHABLE_HINT, joinUrl } from "@/shared/lib/config";
 import { requestJson } from "@/shared/lib/http";
 import {
   type Player,
@@ -43,9 +43,11 @@ async function loadPlayers(): Promise<Player[]> {
   }
   const file = await requestJson(joinUrl(DATA_BASE_URL, entry.path), playersFileSchema, {
     what: "the player list",
-    unreachableHint: START_API_HINT,
+    unreachableHint: DATA_UNREACHABLE_HINT,
     notFoundHint: BUILD_HINT,
     shapeHint: "Rebuild the data.",
+    // Same file name after every rebuild: revalidate so a new list is never hidden by the cache.
+    init: { cache: "no-cache" },
   });
   return file.players;
 }

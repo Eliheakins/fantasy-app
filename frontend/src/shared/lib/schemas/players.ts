@@ -6,7 +6,12 @@ export const playerSchema = z.object({
   full_name: z.string().min(1),
   position: z.string().nullable().default(null),
   team: z.string().nullable().default(null),
-  headshot_url: z.string().nullable().default(null),
+  // Third-party addresses: anything but https is dropped rather than failing the whole list.
+  headshot_url: z
+    .string()
+    .nullable()
+    .default(null)
+    .transform((url) => (url !== null && url.toLowerCase().startsWith("https://") ? url : null)),
   birth_date: z.string().nullable().default(null),
   years_exp: z.number().nullable().default(null),
 });

@@ -1,4 +1,4 @@
-import type { z } from "zod";
+import { z } from "zod";
 
 export interface RequestJsonOptions {
   /** What is being fetched, as it reads in a sentence: "the data manifest". */
@@ -13,19 +13,31 @@ export interface RequestJsonOptions {
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
 
-async function errorDetail(res: Response): Promise<string | null> {
-  try {
-    const body = (await res.json()) as { detail?: unknown };
-    if (typeof body.detail === "string") {
-      return body.detail;
-    }
-    if (body.detail !== undefined && body.detail !== null) {
-      return JSON.stringify(body.detail);
-    }
-  } catch {
-    // The body was not JSON; the caller falls back to the status.
+const errorBodySchema = z.object({ detail: z.unknown() });
+
+/** FastAPI sends `detail` as a string, or as a list of validation errors with a `msg` each. */
+function describeDetail(detail: unknown): string | null {
+  if (typeof detail === "string") {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    const messages = detail.flatMap((item: unknown) => {
+      const parsed = z.object({ msg: z.string() }).safeParse(item);
+      return parsed.success ? [parsed.data.msg] : [];
+    });
+    return messages.length > 0 ? messages.join("; ") : null;
   }
   return null;
+}
+
+async function errorDetail(res: Response): Promise<string | null> {
+  try {
+    const parsed = errorBodySchema.safeParse(await res.json());
+    return parsed.success ? describeDetail(parsed.data.detail) : null;
+  } catch {
+    // The body was not JSON; the caller falls back to the status.
+    return null;
+  }
 }
 
 /**
@@ -42,8 +54,14 @@ export async function requestJson<S extends z.ZodType>(
   let res: Response;
   try {
     res = await fetch(url, init);
-  } catch {
-    throw new Error(`${capitalize(what)} is not reachable at ${new URL(url).origin}. ${unreachableHint}`);
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "AbortError") {
+      throw e;
+    }
+    // The browser hides whether this was a refused connection, CORS or mixed content.
+    throw new Error(
+      `${capitalize(what)} is not reachable at ${new URL(url).origin}, or the browser blocked the request (CORS). ${unreachableHint}`,
+    );
   }
 
   if (res.status === 404) {

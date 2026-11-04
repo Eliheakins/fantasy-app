@@ -9,15 +9,15 @@ from pathlib import Path
 
 import polars as pl
 import pyarrow.parquet as pq
+from pydantic import ValidationError
 
 from pipeline.atomic import atomic_path
 from pipeline.player_game import PLAYER_GAME_FILENAME
-from pipeline.players import PLAYERS_FILENAME
+from pipeline.players import PLAYER_INDEX_FILENAME, PLAYERS_FILENAME
 from schemas.manifest import MANIFEST_FILENAME, FileEntry, JsonFileEntry, Manifest, SeasonEntry
 from schemas.players import PlayersFile
 
 SHARD_PATTERN = re.compile(r"^nfl_pbp_(\d{4})\.parquet$")
-PLAYER_INDEX_FILENAME = "player_index.parquet"
 
 
 def _summarize_shard(path: Path, season: int) -> SeasonEntry:
@@ -45,7 +45,10 @@ def _file_entry(path: Path) -> FileEntry | None:
 def _players_entry(path: Path) -> JsonFileEntry | None:
     if not path.is_file():
         return None
-    players = PlayersFile.model_validate_json(path.read_text(encoding="utf-8")).players
+    try:
+        players = PlayersFile.model_validate_json(path.read_text(encoding="utf-8")).players
+    except (ValidationError, UnicodeDecodeError) as e:
+        raise ValueError(f"{path.name} is invalid, rebuild the data: {e}") from e
     return JsonFileEntry(path=path.name, rows=len(players))
 
 

@@ -1,4 +1,4 @@
-import { DATA_BASE_URL, joinUrl, START_API_HINT } from "@/shared/lib/config";
+import { DATA_BASE_URL, DATA_UNREACHABLE_HINT, joinUrl } from "@/shared/lib/config";
 import { requestJson } from "@/shared/lib/http";
 import { type Manifest, manifestSchema } from "@/shared/lib/schemas/manifest";
 
@@ -6,7 +6,7 @@ import { type Manifest, manifestSchema } from "@/shared/lib/schemas/manifest";
 export function fetchManifest(): Promise<Manifest> {
   return requestJson(joinUrl(DATA_BASE_URL, "manifest.json"), manifestSchema, {
     what: "the data manifest",
-    unreachableHint: START_API_HINT,
+    unreachableHint: DATA_UNREACHABLE_HINT,
     notFoundHint: "Build the data with: uv run python backend/scripts/build_data.py",
     shapeHint: "Rebuild the data.",
     // no-store: after a rebuild the next load must see the new seasons, not a cached copy.

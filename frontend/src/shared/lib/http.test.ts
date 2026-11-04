@@ -42,8 +42,27 @@ describe("requestJson", () => {
     const error = await requestJson(URL, schema, options).catch((e: Error) => e);
 
     expect((error as Error).message).toBe(
-      "The widget list is not reachable at http://localhost:8100. Start it with: make serve",
+      "The widget list is not reachable at http://localhost:8100, or the browser blocked the request (CORS). Start it with: make serve",
     );
+  });
+
+  it("lets an aborted request through untouched so callers can tell it from a failure", async () => {
+    const abort = new DOMException("The operation was aborted.", "AbortError");
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(abort));
+
+    await expect(requestJson(URL, schema, options)).rejects.toBe(abort);
+  });
+
+  it("turns a validation error list into its messages instead of raw JSON", async () => {
+    vi.stubGlobal(
+      "fetch",
+      respond(
+        { detail: [{ type: "string_too_long", loc: ["body", "question"], msg: "String should have at most 2000 characters" }] },
+        { status: 422 },
+      ),
+    );
+
+    await expect(requestJson(URL, schema, options)).rejects.toThrow("String should have at most 2000 characters");
   });
 
   it("explains a missing file with the hint for it", async () => {

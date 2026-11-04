@@ -30,6 +30,7 @@ export function QueryBuilderPanel() {
     pinnedPlayers: playerSearch.pinnedPlayers,
     onSelectPlayer: playerSearch.onSelectPlayer,
     pinMessage: playerSearch.pinMessage,
+    searchError: playerSearch.searchError,
   };
 
   const onExecute = () => void queryExec.executeQuery();

@@ -159,3 +159,10 @@ def test_manifest_lists_the_players_file_when_it_was_built(data_dir: Path):
 
 def test_manifest_has_no_players_entry_without_the_file(data_dir: Path):
     assert build_manifest(data_dir, built_at=BUILT_AT).players is None
+
+
+def test_a_corrupt_players_file_is_named_in_the_error(data_dir: Path):
+    (data_dir / "players.json").write_text("{not json")
+
+    with pytest.raises(ValueError, match="players.json is invalid"):
+        build_manifest(data_dir, built_at=BUILT_AT)

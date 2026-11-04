@@ -2,7 +2,7 @@
 
 A local NFL stats workbench. Ask a question like "Mahomes passing yards and touchdowns in 2023" and get an answer and a table.
 
-- **Backend:** FastAPI serves a player index and play-by-play Parquet shards, and asks a local model to turn a question into stats and filters.
+- **Backend:** FastAPI asks a local model to turn a question into stats and filters, and (locally) serves the static data files: the manifest, the player list and the play-by-play Parquet shards.
 - **Frontend:** Vite + React. A small columnar engine (`frontend/src/shared/engine/`, hyparquet plus an evaluator for the SQL expressions in `metrics/metrics.json`) runs the queries in the browser, reading only the Parquet columns a query needs over HTTP range requests. A local model never writes queries and never sees player ids.
 
 Everything runs on your machine. Data lives in `backend/data/`.
@@ -73,7 +73,7 @@ Optional, in the environment or a `.env` file at the repository root.
 | `LLM_MODEL` | `mlx-community/Qwen2.5-14B-Instruct-4bit` | Must match the model the server loaded |
 | `LLM_TIMEOUT_SECONDS` | `120` | Per-request timeout |
 | `VITE_API_BASE_URL` | `http://localhost:8100` | Where the browser finds `POST /nlq/intent` (frontend, set when starting Vite) |
-| `VITE_DATA_BASE_URL` | `<VITE_API_BASE_URL>/data` | Where the browser finds `manifest.json`, `players.json` and the shards. Point it at a CDN and nothing else changes; the host must allow CORS and HTTP Range requests |
+| `VITE_DATA_BASE_URL` | `<VITE_API_BASE_URL>/data` | Where the browser finds `manifest.json`, `players.json` and the shards. Point it at a CDN and nothing else changes; the host must allow CORS for the page's origin and answer HTTP Range requests (expose `Content-Range`, `Content-Length` and `Accept-Ranges`). The API's own CORS list is only the local Vite origins |
 | `PIPELINE_GC` | `1` | Set `0` to skip `gc.collect()` between seasons in the data build |
 | `NFLVERSE_DOWNLOAD_BASE` | nflverse GitHub releases | Override the PBP download host |
 

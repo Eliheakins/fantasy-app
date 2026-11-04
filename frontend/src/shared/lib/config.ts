@@ -20,6 +20,9 @@ function readUrl(name: string, raw: string | undefined): string | undefined {
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error(`${name} must be an http(s) URL, got "${raw}".`);
   }
+  if (url.search !== "" || url.hash !== "") {
+    throw new Error(`${name} must not contain a query string or fragment, got "${raw}".`);
+  }
   return raw.trim().replace(/\/+$/, "");
 }
 
@@ -33,6 +36,14 @@ export function resolveBaseUrls(env: BaseUrlEnv): { apiBase: string; dataBase: s
   return { apiBase, dataBase };
 }
 
+/** What to tell the user when the data cannot be fetched: start the API, or check the data host. */
+export function dataUnreachableHint(urls: { apiBase: string; dataBase: string }): string {
+  if (new URL(urls.dataBase).origin === new URL(urls.apiBase).origin) {
+    return START_API_HINT;
+  }
+  return `Check that ${urls.dataBase} is up, allows cross-origin (CORS) requests from this page, and supports HTTP Range requests.`;
+}
+
 export function joinUrl(base: string, path: string): string {
   return `${base.replace(/\/+$/, "")}/${path.replace(/^\/+/, "")}`;
 }
@@ -41,3 +52,4 @@ const urls = resolveBaseUrls(import.meta.env);
 
 export const API_BASE = urls.apiBase;
 export const DATA_BASE_URL = urls.dataBase;
+export const DATA_UNREACHABLE_HINT = dataUnreachableHint(urls);

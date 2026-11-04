@@ -7,7 +7,7 @@ from conftest import FILTERS, STATS
 
 from api.deps import get_llm_client
 from core.state import app_state
-from schemas.manifest import Manifest, SeasonEntry
+from schemas.manifest import JsonFileEntry, Manifest, SeasonEntry
 from services.llm_client import chat_text
 
 
@@ -51,6 +51,10 @@ async def test_health_reports_how_current_the_data_is(client: httpx.AsyncClient)
                 has_participation=False,
             ),
         ],
+    )
+
+    app_state.manifest = app_state.manifest.model_copy(
+        update={"players": JsonFileEntry(path="players.json", rows=1)}
     )
 
     body = (await client.get("/health")).json()
@@ -151,3 +155,23 @@ async def test_chat_text_raises_502_when_model_returns_no_choices():
         await chat_text(client=EmptyLlm(), model="m", messages=[])
 
     assert getattr(exc.value, "status_code", None) == 502
+
+
+async def test_health_is_degraded_when_seasons_exist_but_the_players_file_does_not(
+    client: httpx.AsyncClient,
+):
+    app_state.manifest = Manifest(
+        built_at="2026-11-04T12:00:00+00:00",
+        nflreadpy_version="1",
+        seasons=[
+            SeasonEntry(
+                season=2026, path="nfl_pbp_2026.parquet", rows=1, max_week=9, has_participation=True
+            )
+        ],
+    )
+
+    body = (await client.get("/health")).json()
+
+    assert body["status"] == "degraded"
+    assert body["data_ready"] is False
+    assert body["seasons"] == [2026]
