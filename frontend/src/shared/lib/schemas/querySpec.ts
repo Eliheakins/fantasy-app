@@ -29,14 +29,18 @@ const querySpecSchema = z
     metrics: z.array(nonEmpty).min(1).max(MAX_SPEC_METRICS),
     filters: z.array(nonEmpty).max(MAX_SPEC_FILTERS).default([]),
     granularity: z.enum(["total", "per_game", "per_play"]).default("total"),
-    group_by: z.array(z.enum(["season", "week"])).max(2).default([]),
+    group_by: z
+      .array(z.enum(["season", "week"]))
+      .max(2)
+      .default([]),
     order_by: orderBySchema.nullable().default(null),
     limit: z.number().int().min(1).max(MAX_SPEC_LIMIT).nullable().default(null),
   })
   .superRefine((spec, ctx) => {
     const problem = (message: string) => ctx.addIssue({ code: "custom", message });
 
-    const people = spec.subject.kind === "players" ? spec.subject.gsis_ids : spec.subject.kind === "teams" ? spec.subject.teams : [];
+    const people =
+      spec.subject.kind === "players" ? spec.subject.gsis_ids : spec.subject.kind === "teams" ? spec.subject.teams : [];
     for (const [name, values] of [
       ["metrics", spec.metrics],
       ["filters", spec.filters],

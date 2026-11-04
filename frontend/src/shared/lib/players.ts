@@ -1,10 +1,6 @@
 import { DATA_BASE_URL, DATA_UNREACHABLE_HINT, joinUrl } from "@/shared/lib/config";
 import { requestJson } from "@/shared/lib/http";
-import {
-  type Player,
-  type PlayerDictionaryRow,
-  playersFileSchema,
-} from "@/shared/lib/schemas/players";
+import { type Player, type PlayerDictionaryRow, playersFileSchema } from "@/shared/lib/schemas/players";
 import { useManifestStore } from "@/stores/useManifestStore";
 
 const BUILD_HINT = "Build the data with: uv run python backend/scripts/build_data.py";

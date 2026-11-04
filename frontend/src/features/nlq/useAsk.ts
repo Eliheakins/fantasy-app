@@ -23,7 +23,14 @@ import { useManifestStore } from "@/stores/useManifestStore";
 import { isNewEdit, type LoggedQuery } from "./askLog";
 import { browserStorage, logAsk, logCorrection } from "./askLogStore";
 import { type AnswerPath, type Interpretation, interpretQuestion } from "./interpretQuestion";
-import { cacheKey, catalogSignature, forgetCorrection, lookupIntent, readIntentCache, storeIntent } from "./intentCache";
+import {
+  cacheKey,
+  catalogSignature,
+  forgetCorrection,
+  lookupIntent,
+  readIntentCache,
+  storeIntent,
+} from "./intentCache";
 import { withDefaultSeasonType } from "./intentFilters";
 import { narrowByRoles, type PlayerMatch, pickCandidate, resolvePlayers } from "./resolvePlayers";
 import { type Leaderboard, parseRules, splitAsked } from "./ruleParser";
@@ -122,7 +129,10 @@ export function useAsk() {
     /** The query as first answered, to tell when the user changed it. */
     answeredKey: string;
   } | null>(null);
-  const [pending, setPending] = useState<{ path: AnswerPath; unrecognized: string[] }>({ path: "model", unrecognized: [] });
+  const [pending, setPending] = useState<{ path: AnswerPath; unrecognized: string[] }>({
+    path: "model",
+    unrecognized: [],
+  });
 
   // Each ask gets a number; leaving the page, going back or asking again makes older ones stale, so a
   // slow model reply cannot replace an answer the user has moved past.
@@ -155,7 +165,10 @@ export function useAsk() {
   const answer = useCallback(
     (next: QueryState, asked: string, path: AnswerPath, unrecognized: string[]) => {
       // The URL can drop or clamp parts of a query, so compare edits against what is actually shown.
-      const shown = parseQuery(writeQuery(new URLSearchParams(), next), new Set(getAllFilterChipIds(getFilterChipGroups())));
+      const shown = parseQuery(
+        writeQuery(new URLSearchParams(), next),
+        new Set(getAllFilterChipIds(getFilterChipGroups())),
+      );
       const entryId = logAsk({ question: asked, path, outcome: { kind: "answered", query: loggedFrom(shown) } });
       setAnsweredBy({ question: asked, path, unrecognized, entryId, answeredKey: editKey(shown) });
       showQuery(next, asked);
@@ -246,7 +259,11 @@ export function useAsk() {
           return;
         }
         // With no player, "ambiguous" is a ranking question the rules could not finish: say why.
-        fail(trimmed, "none", read.status === "unsupported" || read.status === "ambiguous" ? read.reason : NO_PLAYER_MESSAGE);
+        fail(
+          trimmed,
+          "none",
+          read.status === "unsupported" || read.status === "ambiguous" ? read.reason : NO_PLAYER_MESSAGE,
+        );
         return;
       }
 

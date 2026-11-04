@@ -16,7 +16,8 @@ const manifest = (seasons: number[]) => ({
     has_participation: true,
   })),
   player_index: null,
-  player_game: null, players: null,
+  player_game: null,
+  players: null,
 });
 
 beforeEach(() => {

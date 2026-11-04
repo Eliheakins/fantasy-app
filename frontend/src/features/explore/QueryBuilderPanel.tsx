@@ -62,8 +62,8 @@ export function QueryBuilderPanel() {
             titleAs="h2"
             description={
               <>
-                Pin players, pick metrics, and filter context. Results update below. On phones, tap the filter button to open
-                the builder sheet. Use{" "}
+                Pin players, pick metrics, and filter context. Results update below. On phones, tap the filter button to
+                open the builder sheet. Use{" "}
                 <Link to="/ask" className="font-medium text-ink underline-offset-2 hover:underline">
                   Ask
                 </Link>{" "}

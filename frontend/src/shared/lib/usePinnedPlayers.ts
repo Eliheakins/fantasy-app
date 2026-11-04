@@ -18,7 +18,6 @@ export function usePinnedPlayers(ids: readonly string[]): NFLPlayer[] {
 
   const byId = new Map((data ?? []).map((p) => [p.gsis_id, p]));
   return ids.map(
-    (id): NFLPlayer =>
-      byId.get(id) ?? { gsis_id: id, full_name: null, position: null, team: null, headshot_url: null },
+    (id): NFLPlayer => byId.get(id) ?? { gsis_id: id, full_name: null, position: null, team: null, headshot_url: null },
   );
 }

@@ -116,7 +116,9 @@ describe("loadLog and saveLog", () => {
 
   it("reads an entry logged before splits existed as having none", () => {
     const { split: _split, ...old } = query();
-    const storage = memoryStorage({ "bridge.askLog.v1": JSON.stringify([{ ...entry("a"), outcome: { kind: "answered", query: old } }]) });
+    const storage = memoryStorage({
+      "bridge.askLog.v1": JSON.stringify([{ ...entry("a"), outcome: { kind: "answered", query: old } }]),
+    });
 
     const [loaded] = loadLog(storage);
 

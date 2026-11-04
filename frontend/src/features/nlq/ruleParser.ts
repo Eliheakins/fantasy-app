@@ -4,11 +4,7 @@
  * answer given with confidence is the failure to avoid, so an unrecognised word means "not sure",
  * never "ignore it".
  */
-import {
-  CHIP_COMBO_PHRASES,
-  CHIP_PHRASES,
-  type FilterChipGroup,
-} from "@/shared/config/queryBuilderOptions";
+import { CHIP_COMBO_PHRASES, CHIP_PHRASES, type FilterChipGroup } from "@/shared/config/queryBuilderOptions";
 import { getStatById, type PlayerRole, STAT_DEFINITIONS } from "@/shared/config/statDictionary";
 import { MAX_SELECTED_STATS, type QueryOrder } from "@/shared/lib/queryUrl";
 import type { QueryIntent } from "@/shared/lib/schemas/nlqIntent";
@@ -52,9 +48,40 @@ interface Phrase {
 
 /** Words that carry no meaning for the query. Anything else left over makes the parser unsure. */
 const FILLER = new Set([
-  "a", "an", "the", "in", "on", "at", "of", "for", "and", "what", "whats", "was", "were", "is", "are",
-  "how", "many", "much", "did", "do", "does", "had", "has", "have", "his", "their", "during", "me",
-  "show", "tell", "give", "get", "got", "s",
+  "a",
+  "an",
+  "the",
+  "in",
+  "on",
+  "at",
+  "of",
+  "for",
+  "and",
+  "what",
+  "whats",
+  "was",
+  "were",
+  "is",
+  "are",
+  "how",
+  "many",
+  "much",
+  "did",
+  "do",
+  "does",
+  "had",
+  "has",
+  "have",
+  "his",
+  "their",
+  "during",
+  "me",
+  "show",
+  "tell",
+  "give",
+  "get",
+  "got",
+  "s",
 ]);
 
 /**
@@ -125,7 +152,15 @@ const RANK_DIRECTION = new Map<string, "desc" | "asc" | "best" | "worst">([
   ["worst", "worst"],
 ]);
 /** Words that ask for a ranking. Without one of these, a question with no player is not a leaderboard. */
-const LEADERBOARD_CUES = new Set(["led", "leader", "leaders", "leading", "top", "leaderboard", ...RANK_DIRECTION.keys()]);
+const LEADERBOARD_CUES = new Set([
+  "led",
+  "leader",
+  "leaders",
+  "leading",
+  "top",
+  "leaderboard",
+  ...RANK_DIRECTION.keys(),
+]);
 /** Words a leaderboard question uses around its stat; read as filler only when no player is named. */
 const LEADERBOARD_WORDS = new Set([...LEADERBOARD_CUES, "who", "league", "nfl", "lead"]);
 /** "by season", "each game", "every year": a word that asks for a split, then the unit. */
@@ -302,7 +337,9 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
   let limit = DEFAULT_LEADERBOARD_LIMIT;
   if (isLeaderboard) {
     // "top 5", "fewest 5": the number after a ranking word is the limit, not a stat or a season.
-    const top = tokens.findIndex((t, at) => (t === "top" || RANK_DIRECTION.has(t)) && /^\d+$/.test(tokens[at + 1] ?? ""));
+    const top = tokens.findIndex(
+      (t, at) => (t === "top" || RANK_DIRECTION.has(t)) && /^\d+$/.test(tokens[at + 1] ?? ""),
+    );
     if (top >= 0 && /^\d+$/.test(tokens[top + 1] ?? "")) {
       limit = Number(tokens[top + 1]);
       used[top + 1] = true;
@@ -427,7 +464,9 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
     }
   }
 
-  const statAt: { at: number; id: string }[] = found.flatMap((f) => (f.piece.kind === "stat" ? [{ at: f.at, id: f.piece.id }] : []));
+  const statAt: { at: number; id: string }[] = found.flatMap((f) =>
+    f.piece.kind === "stat" ? [{ at: f.at, id: f.piece.id }] : [],
+  );
   if (generic.length > 0) {
     // "passing yards and touchdowns": the named stat settles the role. Otherwise only a receiver's
     // "yards" has one reading, since quarterbacks and backs both run and throw or catch.
@@ -539,7 +578,9 @@ function rankDirection(tokens: readonly string[], metric: string): "asc" | "desc
       asked.add(cue);
     } else if (cue) {
       if (!better) {
-        return { reason: `"${token}" has no clear meaning for ${getStatById(metric)?.label ?? metric}; ask for the highest or lowest.` };
+        return {
+          reason: `"${token}" has no clear meaning for ${getStatById(metric)?.label ?? metric}; ask for the highest or lowest.`,
+        };
       }
       asked.add((cue === "best") === (better === "higher") ? "desc" : "asc");
     }

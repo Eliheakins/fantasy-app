@@ -16,9 +16,10 @@ describe("createParquetLoader errors", () => {
       throw new Error("Failed to fetch");
     });
 
-    const error = (await failing({ year: 2024, url: "https://cdn.example.com/nfl_pbp_2024.parquet" }, "yards_gained").catch(
-      (e: Error) => e,
-    )) as Error;
+    const error = (await failing(
+      { year: 2024, url: "https://cdn.example.com/nfl_pbp_2024.parquet" },
+      "yards_gained",
+    ).catch((e: Error) => e)) as Error;
 
     expect(error.message).toContain("2024");
     expect(error.message).toContain("https://cdn.example.com/nfl_pbp_2024.parquet");

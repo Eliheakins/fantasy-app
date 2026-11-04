@@ -1,11 +1,7 @@
 import { API_BASE, joinUrl, START_API_HINT } from "@/shared/lib/config";
 import { requestJson } from "@/shared/lib/http";
 import { buildIntentCatalog } from "@/shared/lib/nlqCatalog";
-import {
-  type IntentOutcome,
-  intentOutcomeSchema,
-  type QueryIntent,
-} from "@/shared/lib/schemas/nlqIntent";
+import { type IntentOutcome, intentOutcomeSchema, type QueryIntent } from "@/shared/lib/schemas/nlqIntent";
 
 export type { IntentOutcome, QueryIntent };
 

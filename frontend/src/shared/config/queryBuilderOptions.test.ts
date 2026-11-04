@@ -2,8 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildFilterChipGroups, getAllFilterChipIds } from "./queryBuilderOptions";
 
-const seasonGroup = (seasons: number[]) =>
-  buildFilterChipGroups(seasons).find((g) => g.id === "season");
+const seasonGroup = (seasons: number[]) => buildFilterChipGroups(seasons).find((g) => g.id === "season");
 
 describe("buildFilterChipGroups", () => {
   it("makes one season chip per season, oldest first, with a matching predicate", () => {

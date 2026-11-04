@@ -83,7 +83,9 @@ export async function requestJson<S extends z.ZodType>(
     const issue = parsed.error.issues[0];
     const where = issue?.path.join(".") || "(root)";
     throw new Error(
-      oneLine(`${capitalize(what)} has an unexpected shape at "${where}": ${issue?.message ?? "invalid"}. ${shapeHint}`),
+      oneLine(
+        `${capitalize(what)} has an unexpected shape at "${where}": ${issue?.message ?? "invalid"}. ${shapeHint}`,
+      ),
     );
   }
   return parsed.data;

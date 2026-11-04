@@ -31,8 +31,7 @@ export interface EvalCase {
  */
 export type Verdict = "correct" | "deferred" | "wrong";
 
-const sameSet = (a: readonly string[], b: readonly string[]) =>
-  a.length === b.length && a.every((x) => b.includes(x));
+const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x) => b.includes(x));
 
 export function judge(c: EvalCase, result: RuleResult): Verdict {
   if (result.status === "ambiguous" || result.status === "unknown") {
@@ -43,7 +42,8 @@ export function judge(c: EvalCase, result: RuleResult): Verdict {
   }
   const { intent } = result;
   if (c.rules === "leaderboard") {
-    const reads = result.leaderboard && sameSet(intent.stat_ids, c.stats ?? []) && sameSet(intent.filter_ids, c.filters ?? []);
+    const reads =
+      result.leaderboard && sameSet(intent.stat_ids, c.stats ?? []) && sameSet(intent.filter_ids, c.filters ?? []);
     return reads ? "correct" : "wrong";
   }
   if (c.unsupported || c.rules === "defer") {

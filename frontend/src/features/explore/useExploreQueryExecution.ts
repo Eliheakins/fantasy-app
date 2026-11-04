@@ -50,7 +50,11 @@ export function useExploreQueryExecution() {
     };
 
     if (!hasSubject) {
-      invalid(forTeams ? "Pick at least one team in The Who, then run again." : "Pin at least one player in The Who, then run again.");
+      invalid(
+        forTeams
+          ? "Pick at least one team in The Who, then run again."
+          : "Pin at least one player in The Who, then run again.",
+      );
       return;
     }
     if (sources.length === 0) {
@@ -101,7 +105,25 @@ export function useExploreQueryExecution() {
         setRunning(false);
       }
     }
-  }, [players, league, hasSubject, forTeams, teams, side, order, limit, split, sources, playerGame, stats, minPlays, filterChipState, granularity, runLatest, currentKey]);
+  }, [
+    players,
+    league,
+    hasSubject,
+    forTeams,
+    teams,
+    side,
+    order,
+    limit,
+    split,
+    sources,
+    playerGame,
+    stats,
+    minPlays,
+    filterChipState,
+    granularity,
+    runLatest,
+    currentKey,
+  ]);
 
   useEffect(() => () => runLatest.cancel(), [runLatest]);
 

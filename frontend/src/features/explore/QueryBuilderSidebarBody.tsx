@@ -145,7 +145,12 @@ export function QueryBuilderSidebarExecuteFooter({
         className,
       )}
     >
-      <Button type="button" className="h-11 w-full min-h-[44px] text-sm font-semibold shadow-sm" onClick={onExecute} disabled={running}>
+      <Button
+        type="button"
+        className="h-11 w-full min-h-[44px] text-sm font-semibold shadow-sm"
+        onClick={onExecute}
+        disabled={running}
+      >
         {running ? "Running…" : "Execute analysis"}
       </Button>
     </div>

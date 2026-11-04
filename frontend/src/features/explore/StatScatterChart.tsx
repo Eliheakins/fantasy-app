@@ -104,20 +104,8 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
         <rect x={M.left} y={M.top} width={plotW} height={plotH} fill="#f1f5f9" rx={4} />
         {ticksX.map((t, i) => (
           <g key={`gx-${i}`}>
-            <line
-              x1={scaleX(t)}
-              y1={M.top}
-              x2={scaleX(t)}
-              y2={M.top + plotH}
-              stroke="#e2e8f0"
-              strokeDasharray="3 4"
-            />
-            <text
-              x={scaleX(t)}
-              y={H - 12}
-              textAnchor="middle"
-              className="fill-ink-muted text-[9px]"
-            >
+            <line x1={scaleX(t)} y1={M.top} x2={scaleX(t)} y2={M.top + plotH} stroke="#e2e8f0" strokeDasharray="3 4" />
+            <text x={scaleX(t)} y={H - 12} textAnchor="middle" className="fill-ink-muted text-[9px]">
               {fmt(t)}
             </text>
           </g>
@@ -143,20 +131,9 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
             </text>
           </g>
         ))}
-        <line
-          x1={M.left}
-          y1={M.top + plotH}
-          x2={M.left + plotW}
-          y2={M.top + plotH}
-          stroke="#cbd5e1"
-        />
+        <line x1={M.left} y1={M.top + plotH} x2={M.left + plotW} y2={M.top + plotH} stroke="#cbd5e1" />
         <line x1={M.left} y1={M.top} x2={M.left} y2={M.top + plotH} stroke="#cbd5e1" />
-        <text
-          x={M.left + plotW / 2}
-          y={H - 4}
-          textAnchor="middle"
-          className="fill-ink text-[11px] font-medium"
-        >
+        <text x={M.left + plotW / 2} y={H - 4} textAnchor="middle" className="fill-ink text-[11px] font-medium">
           {xLabel}
         </text>
         <text

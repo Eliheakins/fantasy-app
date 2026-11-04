@@ -28,7 +28,9 @@ export function InterpretationChips() {
 
   return (
     <div className="space-y-2" aria-label="How this was read">
-      <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">How this was read (click × to remove)</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+        How this was read (click × to remove)
+      </p>
       <div className="flex flex-wrap gap-1.5">
         {state.stats.map((id) => (
           <button

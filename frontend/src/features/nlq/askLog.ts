@@ -64,7 +64,12 @@ export function recordCorrection(entries: readonly AskLogEntry[], id: string, qu
  * True when the query on screen (`key`) is an edit not yet logged for entry `id`. `last` is the last
  * edit logged in this session; it may belong to an earlier entry, so it only counts for the same id.
  */
-export function isNewEdit(last: { id: string; key: string } | null, id: string, answeredKey: string, key: string): boolean {
+export function isNewEdit(
+  last: { id: string; key: string } | null,
+  id: string,
+  answeredKey: string,
+  key: string,
+): boolean {
   return last?.id === id ? last.key !== key : key !== answeredKey;
 }
 
@@ -96,7 +101,14 @@ export function saveLog(storage: StorageLike, entries: readonly AskLogEntry[]): 
 export function toEvalCases(entries: readonly AskLogEntry[]): EvalCaseDraft[] {
   return entries.flatMap((e) =>
     e.corrected && e.corrected.order === null && e.corrected.limit === null
-      ? [{ q: e.question, stats: e.corrected.stats, filters: e.corrected.filters, granularity: e.corrected.granularity }]
+      ? [
+          {
+            q: e.question,
+            stats: e.corrected.stats,
+            filters: e.corrected.filters,
+            granularity: e.corrected.granularity,
+          },
+        ]
       : [],
   );
 }

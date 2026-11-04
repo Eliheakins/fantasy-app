@@ -69,8 +69,8 @@ export function NLQPanel() {
           <div>
             <CardTitle className="text-lg text-ink">Ask</CardTitle>
             <p className="mt-1 text-xs text-ink-muted">
-              Names are matched in your browser. A local model picks the stats and filters, and the
-              Explore query builder runs them on play-by-play data.
+              Names are matched in your browser. A local model picks the stats and filters, and the Explore query
+              builder runs them on play-by-play data.
             </p>
           </div>
 
@@ -116,8 +116,8 @@ export function NLQPanel() {
               ) : null}
               {ask.unrecognized.length > 0 ? (
                 <p className="text-[11px] text-warn-fg">
-                  The built-in rules did not recognise: {ask.unrecognized.join(", ")}. Check that this answers what
-                  you asked.
+                  The built-in rules did not recognise: {ask.unrecognized.join(", ")}. Check that this answers what you
+                  asked.
                 </p>
               ) : null}
             </section>
@@ -139,7 +139,10 @@ export function NLQPanel() {
           />
           <p className="text-xs text-ink-muted">
             Want to adjust it?{" "}
-            <Link to={{ pathname: "/explore", search: serializeQuery(state).toString() }} className="font-medium text-ink underline-offset-2 hover:underline">
+            <Link
+              to={{ pathname: "/explore", search: serializeQuery(state).toString() }}
+              className="font-medium text-ink underline-offset-2 hover:underline"
+            >
               Open this query in Explore
             </Link>
             .

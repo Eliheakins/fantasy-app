@@ -195,9 +195,9 @@ function seasonOption(season: number): FilterChipOption {
 /** The chip groups, with one season chip for every season the data has (oldest first). */
 export function buildFilterChipGroups(seasons: readonly number[]): FilterChipGroup[] {
   const years = [...new Set(seasons)].sort((a, b) => a - b);
-  return GROUP_TEMPLATES.map((g) =>
-    g.id === "season" ? { ...g, options: years.map(seasonOption) } : g,
-  ).filter((g) => g.options.length > 0);
+  return GROUP_TEMPLATES.map((g) => (g.id === "season" ? { ...g, options: years.map(seasonOption) } : g)).filter(
+    (g) => g.options.length > 0,
+  );
 }
 
 export function getAllFilterChipIds(groups: readonly FilterChipGroup[]): string[] {

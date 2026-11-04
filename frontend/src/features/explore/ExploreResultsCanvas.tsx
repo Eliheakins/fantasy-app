@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import {
-  buildScatterPoints,
-  StatScatterChart,
-} from "@/features/explore/StatScatterChart";
+import { buildScatterPoints, StatScatterChart } from "@/features/explore/StatScatterChart";
 import { Callout } from "@/shared/components/Callout";
 import { CollapsibleCode } from "@/shared/components/CollapsibleCode";
 import { Button } from "@/shared/components/ui/button";
@@ -11,10 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
 import { getStatById } from "@/shared/config/statDictionary";
 import { TEAMS } from "@/shared/config/teams";
-import {
-  formatMetricValueHeader,
-  metricSelectAlias,
-} from "@/shared/lib/queryBuilder";
+import { formatMetricValueHeader, metricSelectAlias } from "@/shared/lib/queryBuilder";
 import { formatQueryValue } from "@/shared/lib/formatQueryValue";
 import type { NFLPlayer, QueryResult } from "@/shared/types/workbench";
 import { useQueryState } from "@/shared/lib/useQueryState";
@@ -93,13 +87,7 @@ export function ExploreResultsCanvas({
     const yId = swapScatterAxes ? a! : b!;
     const xCol = metricSelectAlias(xId);
     const yCol = metricSelectAlias(yId);
-    return buildScatterPoints(
-      result.rows as Record<string, unknown>[],
-      xCol,
-      yCol,
-      nameByGsis,
-      idColumn,
-    );
+    return buildScatterPoints(result.rows as Record<string, unknown>[], xCol, yCol, nameByGsis, idColumn);
   }, [result, twoStatsMode, selectedStatIds, swapScatterAxes, nameByGsis, idColumn]);
 
   const scatterXLabel = useMemo(() => {
@@ -128,8 +116,7 @@ export function ExploreResultsCanvas({
       .map((id) => getStatById(id))
       .filter(Boolean)
       .map((s) => s!.label);
-    const gran =
-      activeGranularity === "total" ? "totals" : activeGranularity === "per_game" ? "per game" : "per play";
+    const gran = activeGranularity === "total" ? "totals" : activeGranularity === "per_game" ? "per game" : "per play";
     const ranking =
       state.order && state.limit !== null
         ? ` · ${state.order.direction === "desc" ? "top" : "bottom"} ${state.limit} by ${getStatById(state.order.metric)?.label ?? state.order.metric}`

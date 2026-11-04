@@ -102,10 +102,7 @@ describe("fetchManifest", () => {
   });
 
   it("explains a response that is not JSON instead of leaking a parse error", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(new Response("<!doctype html><html></html>", { status: 200 })),
-    );
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("<!doctype html><html></html>", { status: 200 })));
 
     await expect(fetchManifest()).rejects.toThrow(/not JSON/);
   });

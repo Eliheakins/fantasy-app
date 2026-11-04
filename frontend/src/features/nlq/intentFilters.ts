@@ -6,7 +6,5 @@ const SEASON_TYPE_IDS = [REGULAR_SEASON_ID, "stype-post"];
  * games. Add the regular-season chip when the question named no season type.
  */
 export function withDefaultSeasonType(filterIds: string[]): string[] {
-  return filterIds.some((id) => SEASON_TYPE_IDS.includes(id))
-    ? filterIds
-    : [...filterIds, REGULAR_SEASON_ID];
+  return filterIds.some((id) => SEASON_TYPE_IDS.includes(id)) ? filterIds : [...filterIds, REGULAR_SEASON_ID];
 }

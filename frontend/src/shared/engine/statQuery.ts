@@ -75,7 +75,9 @@ function metricNodes(stat: StatDefinition, granularity: GranularityMode): Node {
   if (!sumColumn) {
     return parseExpression(stat.base_sql);
   }
-  return parseExpression(effectiveGranularity(stat, granularity) === "per_play" ? `AVG(${sumColumn[1]})` : stat.base_sql);
+  return parseExpression(
+    effectiveGranularity(stat, granularity) === "per_play" ? `AVG(${sumColumn[1]})` : stat.base_sql,
+  );
 }
 
 function compileMetric(stat: StatDefinition, granularity: GranularityMode, cols: Columns): Metric {
@@ -165,11 +167,7 @@ export async function runStatQuery(
   return orderAndLimit(result, params.order ?? null, params.limit ?? null);
 }
 
-async function runUnordered(
-  params: StatQueryParams,
-  store: ColumnStore,
-  signal?: AbortSignal,
-): Promise<QueryResult> {
+async function runUnordered(params: StatQueryParams, store: ColumnStore, signal?: AbortSignal): Promise<QueryResult> {
   const teams = params.teams ?? null;
   if (!teams && params.playerGame && canServeFromPlayerGame(params)) {
     return runPlayerGameQuery(params, params.playerGame, store, signal);
@@ -197,7 +195,9 @@ async function runUnordered(
   const needGames = groups.some((g) => g.some((s) => usesGameCount(s, params.granularity)));
   const chipNode = parseOptional(buildFilterWhereSql(params.filterChipState, { groups: params.chipGroups }));
   const scopeNode = needGames
-    ? parseOptional(buildFilterWhereSql(params.filterChipState, { groups: params.chipGroups, groupIds: GAME_SCOPE_GROUP_IDS }))
+    ? parseOptional(
+        buildFilterWhereSql(params.filterChipState, { groups: params.chipGroups, groupIds: GAME_SCOPE_GROUP_IDS }),
+      )
     : null;
   const filterNodes = groups.map((g) => (g[0]!.playFilter ? parseExpression(g[0]!.playFilter) : null));
 
@@ -292,5 +292,10 @@ async function runUnordered(
     return { columns: [idColumn, ...groupColumns, ...stats.map((s) => metricSelectAlias(s.id))], rows: out };
   });
 
-  return mergeStatQueryResults(results, params.statIds.filter((id) => knownIds.includes(id)), params.split, idColumn);
+  return mergeStatQueryResults(
+    results,
+    params.statIds.filter((id) => knownIds.includes(id)),
+    params.split,
+    idColumn,
+  );
 }

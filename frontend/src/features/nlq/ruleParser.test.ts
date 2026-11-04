@@ -25,7 +25,9 @@ function parse(question: string) {
 function resolved(question: string) {
   const result = parse(question);
   if (result.status !== "resolved") {
-    throw new Error(`expected "${question}" to resolve, got ${result.status}: ${"reason" in result ? result.reason : ""}`);
+    throw new Error(
+      `expected "${question}" to resolve, got ${result.status}: ${"reason" in result ? result.reason : ""}`,
+    );
   }
   return result.intent;
 }
@@ -49,7 +51,9 @@ describe("the phrase lists", () => {
     const claims: [string, string][] = [
       ...Object.entries(CHIP_PHRASES).flatMap(([id, ps]) => ps.map((p): [string, string] => [p, `chip ${id}`])),
       ...Object.keys(CHIP_COMBO_PHRASES).map((p): [string, string] => [p, "combo"]),
-      ...STAT_DEFINITIONS.flatMap((s) => s.aliases.map((p): [string, string] => [tokenize(p).join(" "), `stat ${s.id}`])),
+      ...STAT_DEFINITIONS.flatMap((s) =>
+        s.aliases.map((p): [string, string] => [tokenize(p).join(" "), `stat ${s.id}`]),
+      ),
     ];
     for (const [phrase, who] of claims) {
       const previous = owner.get(phrase);
@@ -122,7 +126,10 @@ describe("a phrase two stats share", () => {
 
 describe("generic words need a clear role", () => {
   it("take the role of a stat named in the same question", () => {
-    expect(resolved("Patrick Mahomes passing yards and touchdowns in 2023").stat_ids).toEqual(["pass_yards", "pass_tds"]);
+    expect(resolved("Patrick Mahomes passing yards and touchdowns in 2023").stat_ids).toEqual([
+      "pass_yards",
+      "pass_tds",
+    ]);
     expect(resolved("Derrick Henry rushing yards and touchdowns in 2023").stat_ids).toEqual(["rush_yards", "rush_tds"]);
   });
 
@@ -132,7 +139,9 @@ describe("generic words need a clear role", () => {
   });
 
   it("do not guess when a throwing verb meets a rushing stat", () => {
-    expect(parse("How many rushing yards and touchdowns did Lamar Jackson throw for in 2023").status).not.toBe("resolved");
+    expect(parse("How many rushing yards and touchdowns did Lamar Jackson throw for in 2023").status).not.toBe(
+      "resolved",
+    );
   });
 
   it("do not guess when the named stats disagree, or when a receiver asks for touchdowns", () => {
@@ -145,7 +154,11 @@ describe("generic words need a clear role", () => {
   });
 
   it("does not guess for a quarterback or a running back, who both throw/catch and run", () => {
-    for (const question of ["Patrick Mahomes yards in 2023", "Saquon Barkley yards in 2023", "Patrick Mahomes touchdowns in 2023"]) {
+    for (const question of [
+      "Patrick Mahomes yards in 2023",
+      "Saquon Barkley yards in 2023",
+      "Patrick Mahomes touchdowns in 2023",
+    ]) {
       expect(parse(question).status, question).toBe("ambiguous");
     }
   });
@@ -167,7 +180,9 @@ describe("parseRules does not misread joins and contrasts", () => {
 
   it("does not merge a contrast into one query: home vs away, regular season vs playoffs", () => {
     expect(parse("Travis Kelce receiving yards at home vs away in 2023").status).toBe("ambiguous");
-    expect(parse("Patrick Mahomes passing yards in the regular season vs the playoffs in 2023").status).toBe("ambiguous");
+    expect(parse("Patrick Mahomes passing yards in the regular season vs the playoffs in 2023").status).toBe(
+      "ambiguous",
+    );
   });
 
   it("still combines chips from different groups and neighbouring downs", () => {
@@ -217,7 +232,9 @@ describe("parseRules regressions found in review", () => {
   it("does not turn a count into a per-play value when counting and rate stats are mixed", () => {
     handedOver("Patrick Mahomes passing yards and completion percentage in 2023");
     handedOver("Patrick Mahomes passing touchdowns and sack rate in 2023");
-    expect(resolved("Patrick Mahomes passing yards and completion percentage per play in 2023").granularity).toBe("per_play");
+    expect(resolved("Patrick Mahomes passing yards and completion percentage per play in 2023").granularity).toBe(
+      "per_play",
+    );
   });
 
   it("does not answer a count question with a rate: 'interceptions' and 'picks'", () => {
@@ -226,7 +243,11 @@ describe("parseRules regressions found in review", () => {
   });
 
   it("does not read a bare 'sack', 'catch' or 'comp' as a percentage alias", () => {
-    for (const question of ["Patrick Mahomes sack in 2023", "Travis Kelce catch in 2023", "Patrick Mahomes comp in 2023"]) {
+    for (const question of [
+      "Patrick Mahomes sack in 2023",
+      "Travis Kelce catch in 2023",
+      "Patrick Mahomes comp in 2023",
+    ]) {
       expect(parse(question).status, question).not.toBe("resolved");
     }
     expect(resolved("Patrick Mahomes sack % in 2023").stat_ids).toEqual(["pass_sack_rate"]);
@@ -236,7 +257,9 @@ describe("parseRules regressions found in review", () => {
   it("does not read the half of a season as the half of a game", () => {
     handedOver("Patrick Mahomes passing yards in the first half of the season in 2023");
     handedOver("Patrick Mahomes passing yards second half of 2023");
-    expect(resolved("Patrick Mahomes passing yards in the second half in 2023").filter_ids).toContain("gclk-second-half");
+    expect(resolved("Patrick Mahomes passing yards in the second half in 2023").filter_ids).toContain(
+      "gclk-second-half",
+    );
   });
 
   it("does not take a count after 'for' or 'and' for a missing season", () => {
@@ -302,7 +325,9 @@ describe("parseRules hands over what it does not fully understand", () => {
   });
 
   it("says unknown when no player was matched", () => {
-    expect(parseRules("passing yards in 2023", { matches: [], seasons: FIXTURE_SEASONS, chipGroups }).status).toBe("unknown");
+    expect(parseRules("passing yards in 2023", { matches: [], seasons: FIXTURE_SEASONS, chipGroups }).status).toBe(
+      "unknown",
+    );
   });
 
   it("refuses a season the data does not have, saying which seasons it has", () => {
@@ -321,9 +346,9 @@ describe("parseRules hands over what it does not fully understand", () => {
   });
 
   it("defers when more stats are named than a query can hold", () => {
-    expect(
-      parse("Joe Burrow passing yards, passing touchdowns, sack rate, CPOE, EPA and ANY/A in 2023").status,
-    ).toBe("ambiguous");
+    expect(parse("Joe Burrow passing yards, passing touchdowns, sack rate, CPOE, EPA and ANY/A in 2023").status).toBe(
+      "ambiguous",
+    );
   });
 });
 
@@ -364,12 +389,15 @@ describe("leaderboard questions with no player named", () => {
     expect(board(question).order).toEqual({ metric, direction: "asc" });
   });
 
-  it.each(["lowest 5 sack rate in 2023", "fewest 5 passing touchdowns in 2023"])("reads the number after %s as the limit", (question) => {
-    const answer = board(question);
+  it.each(["lowest 5 sack rate in 2023", "fewest 5 passing touchdowns in 2023"])(
+    "reads the number after %s as the limit",
+    (question) => {
+      const answer = board(question);
 
-    expect(answer.order.direction).toBe("asc");
-    expect(answer.limit).toBe(5);
-  });
+      expect(answer.order.direction).toBe("asc");
+      expect(answer.limit).toBe(5);
+    },
+  );
 
   it("does not read at least as a lowest-first ranking", () => {
     expect(parse("who has at least 1000 rushing yards in 2023").status).not.toBe("resolved");
@@ -459,7 +487,11 @@ describe("splitting by season or week", () => {
     const result = parse("Patrick Mahomes passing yards by season");
 
     expect(result.status).toBe("resolved");
-    expect(result.status === "resolved" && result.intent).toEqual({ stat_ids: ["pass_yards"], filter_ids: [], granularity: "total" });
+    expect(result.status === "resolved" && result.intent).toEqual({
+      stat_ids: ["pass_yards"],
+      filter_ids: [],
+      granularity: "total",
+    });
   });
 
   it("does not read week 5 as a split; there is no single-week filter, so it is handed over", () => {

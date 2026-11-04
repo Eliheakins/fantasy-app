@@ -27,10 +27,7 @@ export function PlayerChips({ players }: PlayerChipsProps) {
       <p className="mb-1 text-xs font-medium uppercase tracking-wide text-ink-muted">Matched players</p>
       <ul className="flex flex-wrap gap-2">
         {players.map((p) => (
-          <li
-            key={p.gsis_id}
-            className="rounded-md border border-border bg-input/60 px-2 py-1.5 text-xs text-ink"
-          >
+          <li key={p.gsis_id} className="rounded-md border border-border bg-input/60 px-2 py-1.5 text-xs text-ink">
             {describe(p)}
           </li>
         ))}

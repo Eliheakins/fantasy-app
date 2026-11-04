@@ -11,9 +11,7 @@ describe("resolveBaseUrls", () => {
   });
 
   it("derives the data location from a custom API location", () => {
-    expect(resolveBaseUrls({ VITE_API_BASE_URL: "http://127.0.0.1:9000" }).dataBase).toBe(
-      "http://127.0.0.1:9000/data",
-    );
+    expect(resolveBaseUrls({ VITE_API_BASE_URL: "http://127.0.0.1:9000" }).dataBase).toBe("http://127.0.0.1:9000/data");
   });
 
   it("lets the data live on another host with no code change", () => {
@@ -37,14 +35,18 @@ describe("resolveBaseUrls", () => {
 
 describe("base URLs that cannot be joined with a file name", () => {
   it("rejects a query string or fragment, which would end up in the middle of the path", () => {
-    expect(() => resolveBaseUrls({ VITE_DATA_BASE_URL: "https://cdn.example.com/v3?sig=abc" })).toThrow(/VITE_DATA_BASE_URL.*query/);
+    expect(() => resolveBaseUrls({ VITE_DATA_BASE_URL: "https://cdn.example.com/v3?sig=abc" })).toThrow(
+      /VITE_DATA_BASE_URL.*query/,
+    );
     expect(() => resolveBaseUrls({ VITE_API_BASE_URL: "http://localhost:8100#x" })).toThrow(/VITE_API_BASE_URL/);
   });
 });
 
 describe("dataUnreachableHint", () => {
   it("tells the user to start the API when the data comes from it", () => {
-    expect(dataUnreachableHint({ apiBase: "http://localhost:8100", dataBase: "http://localhost:8100/data" })).toBe(START_API_HINT);
+    expect(dataUnreachableHint({ apiBase: "http://localhost:8100", dataBase: "http://localhost:8100/data" })).toBe(
+      START_API_HINT,
+    );
   });
 
   it("points at the data host and its CORS and Range requirements when the data is elsewhere", () => {

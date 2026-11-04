@@ -20,7 +20,12 @@ describe("rules parser against the eval questions", () => {
 
   it("never resolves a question that should be refused or deferred", () => {
     const guessed = rows
-      .filter((r) => (r.case.unsupported || r.case.rules === "defer") && r.case.rules !== "leaderboard" && r.result.status === "resolved")
+      .filter(
+        (r) =>
+          (r.case.unsupported || r.case.rules === "defer") &&
+          r.case.rules !== "leaderboard" &&
+          r.result.status === "resolved",
+      )
       .map((r) => r.case.q);
 
     expect(guessed).toEqual([]);

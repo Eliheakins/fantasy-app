@@ -35,7 +35,22 @@ interface Token {
   text: string;
 }
 
-const KEYWORDS = new Set(["AND", "OR", "NOT", "LIKE", "CASE", "WHEN", "THEN", "ELSE", "END", "CAST", "AS", "TRUE", "FALSE", "NULL"]);
+const KEYWORDS = new Set([
+  "AND",
+  "OR",
+  "NOT",
+  "LIKE",
+  "CASE",
+  "WHEN",
+  "THEN",
+  "ELSE",
+  "END",
+  "CAST",
+  "AS",
+  "TRUE",
+  "FALSE",
+  "NULL",
+]);
 const FUNCTIONS = new Set(["SUM", "AVG", "COUNT", "NULLIF"]);
 const TWO_CHAR_OPS = new Set(["<=", ">=", "<>", "!="]);
 const ONE_CHAR_OPS = new Set(["=", "<", ">", "+", "-", "*", "/", "(", ")", ","]);

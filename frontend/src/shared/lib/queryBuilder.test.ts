@@ -51,7 +51,9 @@ describe("groupStatsByRows", () => {
   });
 
   it("keeps stats that share role, play type and filter together, in the order asked", () => {
-    expect(ids(groupStatsByRows(["pass_yards", "cmp_pct", "pass_tds"]))).toEqual([["pass_yards", "cmp_pct", "pass_tds"]]);
+    expect(ids(groupStatsByRows(["pass_yards", "cmp_pct", "pass_tds"]))).toEqual([
+      ["pass_yards", "cmp_pct", "pass_tds"],
+    ]);
   });
 
   it("separates roles and ignores unknown ids", () => {
@@ -66,8 +68,20 @@ describe("mergeStatQueryResults", () => {
 
     const merged = mergeStatQueryResults(
       [
-        { columns: ["player_id", a], rows: [{ player_id: "x", [a]: 10 }, { player_id: "y", [a]: 30 }] },
-        { columns: ["player_id", b], rows: [{ player_id: "x", [b]: 4 }, { player_id: "z", [b]: 9 }] },
+        {
+          columns: ["player_id", a],
+          rows: [
+            { player_id: "x", [a]: 10 },
+            { player_id: "y", [a]: 30 },
+          ],
+        },
+        {
+          columns: ["player_id", b],
+          rows: [
+            { player_id: "x", [b]: 4 },
+            { player_id: "z", [b]: 9 },
+          ],
+        },
       ],
       ["pass_yards", "pass_sack_rate"],
     );
@@ -89,7 +103,11 @@ describe("mergeStatQueryResults ordering", () => {
       [
         {
           columns: ["player_id", a],
-          rows: [{ player_id: "none", [a]: null }, { player_id: "low", [a]: -2 }, { player_id: "high", [a]: 1.5 }],
+          rows: [
+            { player_id: "none", [a]: null },
+            { player_id: "low", [a]: -2 },
+            { player_id: "high", [a]: 1.5 },
+          ],
         },
       ],
       ["eff_cpoe"],
@@ -115,8 +133,8 @@ describe("describeQuery", () => {
   });
 
   it("says when no filter is on", () => {
-    expect(describeQuery({ statIds: ["rush_yards"], granularity: "total", filterChipState: {}, minPlays: 0 })).toContain(
-      "Filters: none",
-    );
+    expect(
+      describeQuery({ statIds: ["rush_yards"], granularity: "total", filterChipState: {}, minPlays: 0 }),
+    ).toContain("Filters: none");
   });
 });

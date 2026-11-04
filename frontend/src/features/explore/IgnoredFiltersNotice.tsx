@@ -10,8 +10,8 @@ export function IgnoredFiltersNotice() {
   }
   return (
     <Callout variant="warn">
-      This link names filters the data does not have, so they were not applied: {ignoredFilters.join(", ")}. The
-      numbers may differ from what the sender saw.
+      This link names filters the data does not have, so they were not applied: {ignoredFilters.join(", ")}. The numbers
+      may differ from what the sender saw.
     </Callout>
   );
 }

@@ -11,8 +11,24 @@ import {
   searchPlayers,
 } from "./players";
 
-const MAHOMES = { gsis_id: "00-0033873", full_name: "Patrick Mahomes", position: "QB", team: "KC", headshot_url: null, birth_date: "1995-09-17", years_exp: 8 };
-const KELCE = { gsis_id: "00-0030506", full_name: "Travis Kelce", position: "TE", team: "KC", headshot_url: null, birth_date: null, years_exp: 11 };
+const MAHOMES = {
+  gsis_id: "00-0033873",
+  full_name: "Patrick Mahomes",
+  position: "QB",
+  team: "KC",
+  headshot_url: null,
+  birth_date: "1995-09-17",
+  years_exp: 8,
+};
+const KELCE = {
+  gsis_id: "00-0030506",
+  full_name: "Travis Kelce",
+  position: "TE",
+  team: "KC",
+  headshot_url: null,
+  birth_date: null,
+  years_exp: 11,
+};
 const FILE = { schema_version: 1, players: [MAHOMES, KELCE] };
 
 function manifestWithPlayers() {
@@ -55,7 +71,13 @@ describe("searchPlayers", () => {
 describe("playerDictionary", () => {
   it("gives each player a display name and a lowercase search key", () => {
     expect(playerDictionary([MAHOMES])).toEqual([
-      { gsis_id: "00-0033873", display_name: "Patrick Mahomes", search_key: "patrick mahomes", position: "QB", team: "KC" },
+      {
+        gsis_id: "00-0033873",
+        display_name: "Patrick Mahomes",
+        search_key: "patrick mahomes",
+        position: "QB",
+        team: "KC",
+      },
     ]);
   });
 });
@@ -86,7 +108,10 @@ describe("getPlayers", () => {
   it("drops a headshot address that is not https instead of rejecting the whole list", async () => {
     const odd = { ...MAHOMES, headshot_url: "javascript:alert(1)" };
     const ok = { ...KELCE, headshot_url: "https://x/k.png" };
-    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response(JSON.stringify({ schema_version: 1, players: [odd, ok] }))));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => new Response(JSON.stringify({ schema_version: 1, players: [odd, ok] }))),
+    );
 
     const players = await getPlayers();
 
@@ -103,13 +128,23 @@ describe("getPlayers", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValueOnce(new TypeError("Failed to fetch")));
     await expect(getPlayers()).rejects.toThrow(/not reachable/);
 
-    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response(JSON.stringify(FILE))));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => new Response(JSON.stringify(FILE))),
+    );
 
     expect(await getPlayers()).toHaveLength(2);
   });
 
   it("rejects a players file with the wrong shape", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response(JSON.stringify({ schema_version: 1, players: [{ gsis_id: "" }] }))));
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockImplementation(
+          async () => new Response(JSON.stringify({ schema_version: 1, players: [{ gsis_id: "" }] })),
+        ),
+    );
 
     await expect(getPlayers()).rejects.toThrow(/unexpected shape/);
   });
@@ -117,7 +152,10 @@ describe("getPlayers", () => {
 
 describe("derived lookups", () => {
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response(JSON.stringify(FILE))));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => new Response(JSON.stringify(FILE))),
+    );
   });
 
   it("builds the dictionary from the same file, once", async () => {
