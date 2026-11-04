@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { browserColumnStore } from "@/shared/engine/parquetColumns";
 import { runStatQuery } from "@/shared/engine/statQuery";
-import { seasonSources } from "@/shared/lib/dataSources";
+import { playerGameSource, seasonSources } from "@/shared/lib/dataSources";
 import { getFilterChipGroups } from "@/shared/lib/filterChipGroups";
 import { createLatestRunner } from "@/shared/lib/latestRun";
 import { usePinnedPlayers } from "@/shared/lib/usePinnedPlayers";
@@ -19,6 +19,7 @@ export function useExploreQueryExecution() {
   const pinnedPlayers = usePinnedPlayers(state.players);
 
   const sources = useMemo(() => seasonSources(manifest), [manifest]);
+  const playerGame = useMemo(() => playerGameSource(manifest), [manifest]);
 
   const [result, setResult] = useState<QueryResult | null>(null);
   // Which query the result belongs to: after back/forward the URL changes before the run finishes,
@@ -67,6 +68,7 @@ export function useExploreQueryExecution() {
             filterChipState,
             gsisIds: players,
             sources,
+            playerGame,
             granularity,
             minPlays,
             chipGroups: getFilterChipGroups(),
@@ -90,7 +92,7 @@ export function useExploreQueryExecution() {
         setRunning(false);
       }
     }
-  }, [players, sources, stats, minPlays, filterChipState, granularity, runLatest, currentKey]);
+  }, [players, sources, playerGame, stats, minPlays, filterChipState, granularity, runLatest, currentKey]);
 
   useEffect(() => () => runLatest.cancel(), [runLatest]);
 

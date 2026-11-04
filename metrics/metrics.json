@@ -162,6 +162,7 @@
       "play_type": "pass",
       "base_sql": "SUM(yards_gained)",
       "rate_only": false,
+      "player_game_column": "passing_yards",
       "aliases": [
         "passing yards",
         "pass yards",
@@ -219,6 +220,7 @@
       "play_type": "pass",
       "base_sql": "SUM(pass_touchdown)",
       "rate_only": false,
+      "player_game_column": "passing_tds",
       "aliases": [
         "passing touchdowns",
         "passing tds",
@@ -413,6 +415,7 @@
       "play_type": "pass",
       "base_sql": "SUM(complete_pass)",
       "rate_only": false,
+      "player_game_column": "receptions",
       "aliases": [
         "receptions",
         "catches",
@@ -439,6 +442,7 @@
       "play_type": "pass",
       "base_sql": "SUM(yards_gained)",
       "rate_only": false,
+      "player_game_column": "receiving_yards",
       "aliases": [
         "receiving yards",
         "rec yards",
@@ -466,6 +470,7 @@
       "play_type": "pass",
       "base_sql": "SUM(yards_after_catch)",
       "rate_only": false,
+      "player_game_column": "receiving_yards_after_catch",
       "aliases": [
         "yards after the catch",
         "yards after catch",
@@ -515,6 +520,7 @@
       "play_type": "run",
       "base_sql": "SUM(yards_gained)",
       "rate_only": false,
+      "player_game_column": "rushing_yards",
       "aliases": [
         "rushing yards",
         "rush yards",
@@ -543,6 +549,7 @@
       "play_type": "run",
       "base_sql": "SUM(rush_touchdown)",
       "rate_only": false,
+      "player_game_column": "rushing_tds",
       "aliases": [
         "rushing touchdowns",
         "rushing tds",

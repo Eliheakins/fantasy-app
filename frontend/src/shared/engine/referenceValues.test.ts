@@ -13,6 +13,7 @@ import { compressors } from "hyparquet-compressors";
 import { describe, expect, it } from "vitest";
 
 import { buildFilterChipGroups } from "@/shared/config/queryBuilderOptions";
+import { getStatById } from "@/shared/config/statDictionary";
 import rawMetrics from "../../../../metrics/metrics.json";
 import { parseMetricsFile } from "@/shared/lib/schemas/metrics";
 
@@ -22,6 +23,7 @@ import { runStatQuery } from "./statQuery";
 
 const DATA_DIR = fileURLToPath(new URL("../../../../backend/data/", import.meta.url));
 const shardPath = (season: number) => `${DATA_DIR}nfl_pbp_${season}.parquet`;
+const PLAYER_GAME_PATH = `${DATA_DIR}player_game.parquet`;
 
 const store = new ColumnStore(
   createParquetLoader((source) => asyncBufferFromFile(source.url), compressors),
@@ -58,6 +60,46 @@ describe("reference values", () => {
 
       const value = Number(result.rows[0]?.[`m_${metric.id}`]);
       expect(Math.abs(value - ref.value)).toBeLessThanOrEqual(Math.abs(ref.value) * ref.tolerance);
+    });
+  }
+});
+
+describe("reference values served from the player-game table", () => {
+  const tierOne = cases.filter(({ metric }) => getStatById(metric.id)?.playerGameColumn);
+
+  it("covers the counting stats that have official totals", () => {
+    expect(tierOne.length).toBeGreaterThanOrEqual(8);
+  });
+
+  for (const { metric, ref } of tierOne) {
+    const name = `${metric.id} for ${ref.player} ${ref.season} ${ref.season_type}`;
+
+    it.skipIf(!existsSync(PLAYER_GAME_PATH))(`${name} matches ${ref.value} without reading any play shard`, async () => {
+      const reads: string[] = [];
+      const tierStore = new ColumnStore(async (source, column) => {
+        reads.push(source.url);
+        return createParquetLoader((s) => asyncBufferFromFile(s.url), compressors)(source, column);
+      });
+      const result = await runStatQuery(
+        {
+          statIds: [metric.id],
+          filterChipState: {
+            [`season-${ref.season}`]: true,
+            [ref.season_type === "REG" ? "stype-reg" : "stype-post"]: true,
+          },
+          gsisIds: [ref.gsis_id],
+          sources: [{ year: ref.season, url: shardPath(ref.season) }],
+          playerGame: { year: 0, url: PLAYER_GAME_PATH },
+          granularity: "total",
+          minPlays: 0,
+          chipGroups: buildFilterChipGroups([ref.season]),
+        },
+        tierStore,
+      );
+
+      const value = Number(result.rows[0]?.[`m_${metric.id}`]);
+      expect(Math.abs(value - ref.value)).toBeLessThanOrEqual(Math.abs(ref.value) * ref.tolerance);
+      expect(new Set(reads)).toEqual(new Set([PLAYER_GAME_PATH]));
     });
   }
 });

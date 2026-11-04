@@ -56,12 +56,16 @@ This writes, into `backend/data/`:
 | File | What it is |
 |------|------------|
 | `nfl_pbp_YYYY.parquet` | Play-by-play, one file per season, with participation and Next Gen Stats joined on |
-| `player_game.parquet` | One row per player per game with official counting totals (tier 1, not used by Ask yet) |
+| `player_game.parquet` | One row per player per game with official counting totals (tier 1) |
 | `player_index.parquet` | One row per player; the build turns it into `players.json` |
 | `players.json` | Player list the browser searches and matches names against (id, name, team, position) |
 | `manifest.json` | What was built: seasons, files, rows, latest week, and when |
 
 The season list comes from the data: a new season appears in the app as soon as its shard is built, with no code change. Missing values (Next Gen Stats cover only some plays, participation is not published until after a season ends) stay null, and the build prints how much of each column is missing. Pick up new games weekly with `uv run python backend/scripts/build_data.py --refresh`, which rebuilds only the current season and keeps the rest (`--years 2024,2025` rebuilds specific seasons). The API notices the new manifest without a restart, and the header shows how current the data is. If a brand-new season has no play-by-play published yet, build with `--years` up to the previous season.
+
+### Two tiers
+
+A query reads the small tier-1 table (`player_game.parquet`, built from nflverse weekly player stats: passing, rushing and receiving yards, touchdowns, receptions, yards after catch) when every selected stat is one of those counting stats and the only filters are season, season type and week. Those totals are the official ones; the play-level sums are not always (sack yards, for example). Per game divides by the games where the player had an attempt, carry or target, and per play by those attempts, carries or targets. Anything else (rates, EPA, Next Gen Stats, a down, quarter, home or away, or any other situational filter) reads the play-by-play shards for the seasons asked about, one column at a time. Which stats have a tier-1 column is the `player_game_column` field in `metrics/metrics.json`; a test checks each one against the recorded official totals.
 
 `/health` reports `data_through` (for example `2026 week 8`) and the seasons loaded. The data files are static: the API's only dynamic endpoint is `POST /nlq/intent`. The browser reads `manifest.json`, `players.json` and the Parquet shards from one base URL, so they can be served from a CDN instead (see `VITE_DATA_BASE_URL` below).
 
