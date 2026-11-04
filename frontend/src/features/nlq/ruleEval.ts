@@ -20,8 +20,8 @@ export interface EvalCase {
   granularity?: GranularityMode | null;
   /** The question must be refused. */
   unsupported?: boolean;
-  /** The rules parser must hand this one over rather than guess. */
-  rules?: "defer";
+  /** "defer": the rules parser must hand this one over rather than guess. "leaderboard": it must read it as a league ranking of `stats` and `filters`. */
+  rules?: "defer" | "leaderboard";
   trap?: string;
 }
 
@@ -41,10 +41,14 @@ export function judge(c: EvalCase, result: RuleResult): Verdict {
   if (result.status === "unsupported") {
     return c.unsupported ? "correct" : "wrong";
   }
+  const { intent } = result;
+  if (c.rules === "leaderboard") {
+    const reads = result.leaderboard && sameSet(intent.stat_ids, c.stats ?? []) && sameSet(intent.filter_ids, c.filters ?? []);
+    return reads ? "correct" : "wrong";
+  }
   if (c.unsupported || c.rules === "defer") {
     return "wrong";
   }
-  const { intent } = result;
   const matches =
     sameSet(intent.stat_ids, c.stats ?? []) &&
     sameSet(intent.filter_ids, c.filters ?? []) &&

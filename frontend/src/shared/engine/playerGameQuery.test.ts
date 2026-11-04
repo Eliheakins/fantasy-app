@@ -4,7 +4,7 @@ import { buildFilterChipGroups } from "@/shared/config/queryBuilderOptions";
 
 import { ColumnStore, type ColumnLoader, type ColumnSource } from "./columns";
 import { canServeFromPlayerGame, runPlayerGameQuery } from "./playerGameQuery";
-import type { StatQueryParams } from "./statQuery";
+import { runStatQuery, type StatQueryParams } from "./statQuery";
 
 const QB = "00-QB";
 const RB = "00-RB";
@@ -197,5 +197,25 @@ describe("runPlayerGameQuery", () => {
     );
 
     expect(result.rows).toEqual([{ player_id: RB, m_rush_yards: 100, m_rec_yards: 30 }]);
+  });
+});
+
+describe("a league query from the player-game table", () => {
+  it("ranks every player with the stat, highest first, and keeps the limit", async () => {
+    const { store, reads } = memoryStore();
+
+    const result = await runStatQuery(
+      params({
+        statIds: ["rush_yards"],
+        gsisIds: null,
+        filterChipState: {},
+        order: { metric: "rush_yards", direction: "desc" },
+        limit: 5,
+      }),
+      store,
+    );
+
+    expect(result.rows).toEqual([{ player_id: RB, m_rush_yards: 100 }]);
+    expect(new Set(reads.map((r) => r.url))).toEqual(new Set([TABLE.url]));
   });
 });

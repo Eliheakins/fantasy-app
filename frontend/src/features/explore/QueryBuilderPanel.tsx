@@ -81,6 +81,7 @@ export function QueryBuilderPanel() {
             details={queryExec.details}
             running={queryExec.running}
             pinnedPlayers={queryExec.pinnedPlayers}
+            namedPlayers={queryExec.namedPlayers}
           />
         </main>
       </div>

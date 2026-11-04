@@ -36,7 +36,7 @@ describe("unsupportedReasons", () => {
     expect(unsupportedReasons(base)).toEqual([]);
   });
 
-  it("says league-wide leaderboards are not supported yet", () => {
+  it("runs a league-wide leaderboard", () => {
     const league = {
       ...base,
       subject: { kind: "league" as const },
@@ -44,22 +44,29 @@ describe("unsupportedReasons", () => {
       limit: 10,
     };
 
-    expect(unsupportedReasons(league)).toEqual([
-      "League-wide leaderboards and team queries aren't supported yet.",
-    ]);
+    expect(unsupportedReasons(league)).toEqual([]);
   });
 
-  it("flags grouping, ordering and limits separately", () => {
-    const spec = {
+  it("runs ordering and limits on named players", () => {
+    const spec = { ...base, order_by: { metric: "pass_yards", direction: "asc" as const }, limit: 5 };
+
+    expect(unsupportedReasons(spec)).toEqual([]);
+  });
+
+  it("says team queries are not supported yet", () => {
+    const teams = {
       ...base,
-      group_by: ["season" as const],
-      order_by: { metric: "pass_yards", direction: "asc" as const },
+      subject: { kind: "teams" as const, teams: ["KC"] },
+      order_by: { metric: "pass_yards", direction: "desc" as const },
       limit: 5,
     };
 
-    expect(unsupportedReasons(spec)).toEqual([
+    expect(unsupportedReasons(teams)).toEqual(["Team queries aren't supported yet."]);
+  });
+
+  it("says grouping by season or week is not supported yet", () => {
+    expect(unsupportedReasons({ ...base, group_by: ["season" as const] })).toEqual([
       "Splitting results by season or week isn't supported yet.",
-      "Custom ordering and limits aren't supported yet.",
     ]);
   });
 });

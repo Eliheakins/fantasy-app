@@ -19,16 +19,12 @@ export function specFromIntent(intent: QueryIntent, gsisIds: string[]): QuerySpe
  * Every spec shape validates; this is the single place that says which ones execute.
  */
 export function unsupportedReasons(spec: QuerySpec): string[] {
-  if (spec.subject.kind !== "players") {
-    // A league or team query always carries an order and limit; one message covers all of it.
-    return ["League-wide leaderboards and team queries aren't supported yet."];
-  }
   const reasons: string[] = [];
+  if (spec.subject.kind === "teams") {
+    reasons.push("Team queries aren't supported yet.");
+  }
   if (spec.group_by.length > 0) {
     reasons.push("Splitting results by season or week isn't supported yet.");
-  }
-  if (spec.order_by !== null || spec.limit !== null) {
-    reasons.push("Custom ordering and limits aren't supported yet.");
   }
   return reasons;
 }

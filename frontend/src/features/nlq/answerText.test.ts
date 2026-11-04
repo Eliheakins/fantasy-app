@@ -55,3 +55,27 @@ describe("buildAnswer", () => {
     expect(answer.lines).toEqual(["zz — Pass yards (total): —"]);
   });
 });
+
+describe("buildAnswer for a leaderboard", () => {
+  it("numbers the lines in the order of the rows", () => {
+    const answer = buildAnswer({
+      result: {
+        columns: ["player_id", passYards],
+        rows: [
+          { player_id: "m", [passYards]: 4183 },
+          { player_id: "k", [passYards]: 3000 },
+        ],
+      },
+      statIds: ["pass_yards"],
+      granularity: "total",
+      filterIds: ["season-2023"],
+      nameByGsis: NAMES,
+      ranked: true,
+    });
+
+    expect(answer.lines).toEqual([
+      "1. Patrick Mahomes — Pass yards (total): 4183",
+      "2. Travis Kelce — Pass yards (total): 3000",
+    ]);
+  });
+});

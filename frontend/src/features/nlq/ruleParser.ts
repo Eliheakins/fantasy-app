@@ -10,7 +10,7 @@ import {
   type FilterChipGroup,
 } from "@/shared/config/queryBuilderOptions";
 import { getStatById, type PlayerRole, STAT_DEFINITIONS } from "@/shared/config/statDictionary";
-import { MAX_SELECTED_STATS } from "@/shared/lib/queryUrl";
+import { MAX_SELECTED_STATS, type QueryOrder } from "@/shared/lib/queryUrl";
 import type { QueryIntent } from "@/shared/lib/schemas/nlqIntent";
 import type { GranularityMode } from "@/shared/types/queryBuilder";
 
@@ -24,8 +24,15 @@ export interface RuleContext {
   chipGroups: readonly FilterChipGroup[];
 }
 
+/** A league-wide ranking: the stat to order by, how many rows to keep, and the plays a player needs to qualify. */
+export interface Leaderboard {
+  order: QueryOrder;
+  limit: number;
+  minPlays: number;
+}
+
 export type RuleResult =
-  | { status: "resolved"; intent: QueryIntent }
+  | { status: "resolved"; intent: QueryIntent; leaderboard?: Leaderboard }
   /** A question the data cannot answer, said with certainty (a season it does not have). */
   | { status: "unsupported"; reason: string }
   /** Understood in part; the wording leaves a real choice open. `unrecognized` lists words it could not place. */
@@ -105,6 +112,15 @@ const ROLE_BY_CATEGORY: Readonly<Record<string, PlayerRole>> = {
 
 /** A verb that settles which role a bare "yards" or "touchdowns" belongs to. */
 const THROW_WORDS = new Set(["throw", "throws", "threw", "thrown"]);
+
+/** Words that ask for a ranking. Without one of these, a question with no player is not a leaderboard. */
+const LEADERBOARD_CUES = new Set(["led", "leader", "leaders", "leading", "top", "leaderboard", "most", "highest", "best"]);
+/** Words a leaderboard question uses around its stat; read as filler only when no player is named. */
+const LEADERBOARD_WORDS = new Set([...LEADERBOARD_CUES, "who", "league", "nfl", "lead"]);
+const DEFAULT_LEADERBOARD_LIMIT = 10;
+const MAX_LEADERBOARD_LIMIT = 100;
+/** A rate or per-game ranking needs a floor of plays, or a player with one play tops it. */
+const LEADERBOARD_MIN_PLAYS = 100;
 
 const YEAR = /^(19|20)\d\d$/;
 /** 2020-2023, 2022\u201323, 2021/22: a span of seasons, which would otherwise read as two separate years. */
@@ -192,7 +208,9 @@ const ambiguous = (reason: string, unrecognized?: string[]): RuleResult =>
 
 export function parseRules(question: string, context: RuleContext): RuleResult {
   const { matches, seasons, chipGroups } = context;
-  if (matches.length === 0) {
+  const tokensForCue = wordsOf(question);
+  const isLeaderboard = matches.length === 0 && tokensForCue.some((t) => LEADERBOARD_CUES.has(t));
+  if (matches.length === 0 && !isLeaderboard) {
     return { status: "unknown", reason: "No player was named." };
   }
   if (seasons.length === 0) {
@@ -229,6 +247,19 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
       used[at] = true;
     }
   });
+
+  let limit = DEFAULT_LEADERBOARD_LIMIT;
+  if (isLeaderboard) {
+    // "top 5": the number after "top" is the limit, not a stat or a season.
+    const top = tokens.indexOf("top");
+    if (top >= 0 && /^\d+$/.test(tokens[top + 1] ?? "")) {
+      limit = Number(tokens[top + 1]);
+      used[top + 1] = true;
+      if (limit < 1 || limit > MAX_LEADERBOARD_LIMIT) {
+        return ambiguous(`A leaderboard shows 1 to ${MAX_LEADERBOARD_LIMIT} rows.`);
+      }
+    }
+  }
 
   const chipIds = new Set(chipGroups.flatMap((g) => g.options.map((o) => o.id)));
   const found: { at: number; end: number; piece: Piece }[] = [];
@@ -313,6 +344,12 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
       threw = true;
     }
   });
+
+  if (isLeaderboard) {
+    tokens.forEach((token, at) => {
+      used[at] ||= LEADERBOARD_WORDS.has(token);
+    });
+  }
 
   const leftover = tokens.filter((token, at) => !used[at] && !FILLER.has(token));
   if (leftover.length > 0) {
@@ -410,12 +447,18 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
     ...years.map((y) => ({ at: y.at, id: `season-${y.year}` })),
   ];
 
+  const intent: QueryIntent = {
+    stat_ids: statIds,
+    filter_ids: unique(filterAt.sort((a, b) => a.at - b.at).map((f) => f.id)),
+    granularity: rate.length > 0 ? "per_play" : (requested ?? "total"),
+  };
+  if (!isLeaderboard) {
+    return { status: "resolved", intent };
+  }
+  const minPlays = intent.granularity === "total" ? 0 : LEADERBOARD_MIN_PLAYS;
   return {
     status: "resolved",
-    intent: {
-      stat_ids: statIds,
-      filter_ids: unique(filterAt.sort((a, b) => a.at - b.at).map((f) => f.id)),
-      granularity: rate.length > 0 ? "per_play" : (requested ?? "total"),
-    },
+    intent,
+    leaderboard: { order: { metric: statIds[0]!, direction: "desc" }, limit, minPlays },
   };
 }

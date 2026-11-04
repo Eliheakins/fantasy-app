@@ -11,6 +11,8 @@ export interface AnswerInput {
   granularity: GranularityMode;
   filterIds: string[];
   nameByGsis: ReadonlyMap<string, string>;
+  /** Number the lines, for a leaderboard where the order is the answer. */
+  ranked?: boolean;
 }
 
 export interface Answer {
@@ -49,16 +51,17 @@ export function buildAnswer({
   granularity,
   filterIds,
   nameByGsis,
+  ranked = false,
 }: AnswerInput): Answer {
   const labels = filterLabels(filterIds);
-  const lines = result.rows.map((row) => {
+  const lines = result.rows.map((row, rank) => {
     const pid = String(row.player_id ?? "");
     const name = nameByGsis.get(pid) ?? pid;
     const metrics = statIds.map((id) => {
       const header = formatMetricValueHeader(getStatById(id), granularity);
       return `${header}: ${formatQueryValue(row[metricSelectAlias(id)])}`;
     });
-    return `${name} — ${metrics.join(" · ")}`;
+    return `${ranked ? `${rank + 1}. ` : ""}${name} — ${metrics.join(" · ")}`;
   });
   return { context: labels.length > 0 ? labels.join(", ") : NO_FILTERS_CONTEXT, lines };
 }

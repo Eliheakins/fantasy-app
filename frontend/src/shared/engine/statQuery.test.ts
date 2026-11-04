@@ -268,3 +268,71 @@ describe("runStatQuery errors and cancellation", () => {
     await expect(runStatQuery(base({}), failing)).rejects.toThrow("network down");
   });
 });
+
+describe("league queries, ordering and limits", () => {
+  const league = (over: Partial<StatQueryParams> = {}) => base({ gsisIds: null, ...over });
+  const ids = (result: { rows: Record<string, unknown>[] }) => result.rows.map((r) => r.player_id);
+
+  it("covers every player in the stat's role when no players are named", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(league(), s);
+
+    expect(new Set(ids(result))).toEqual(new Set([Q1, Q2]));
+    expect(valueOf(result, Q2, "pass_yards")).toBe(100);
+  });
+
+  it("sorts by the ordering stat, highest first by default", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(league({ order: { metric: "pass_yards", direction: "desc" } }), s);
+
+    expect(ids(result)).toEqual([Q2, Q1]);
+  });
+
+  it("sorts lowest first when asked", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(league({ order: { metric: "pass_yards", direction: "asc" } }), s);
+
+    expect(ids(result)).toEqual([Q1, Q2]);
+  });
+
+  it("keeps only the first rows after sorting", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(league({ order: { metric: "pass_yards", direction: "desc" }, limit: 1 }), s);
+
+    expect(ids(result)).toEqual([Q2]);
+  });
+
+  it("applies the minimum plays to the whole league", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(league({ minPlays: 2 }), s);
+
+    expect(ids(result)).toEqual([Q1]);
+  });
+
+  it("limits a query with named players too", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(
+      base({ gsisIds: [Q1, Q2], order: { metric: "pass_yards", direction: "desc" }, limit: 1 }),
+      s,
+    );
+
+    expect(ids(result)).toEqual([Q2]);
+  });
+
+  it("puts a player with no value last whichever way it sorts", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(
+      league({ statIds: ["pass_yards", "pass_sack_rate"], order: { metric: "pass_sack_rate", direction: "desc" } }),
+      s,
+    );
+
+    expect(ids(result)[0]).toBe(Q1);
+  });
+});

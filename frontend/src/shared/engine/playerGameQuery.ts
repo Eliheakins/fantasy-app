@@ -40,6 +40,12 @@ export function canServeFromPlayerGame(params: StatQueryParams): boolean {
   );
 }
 
+/** Who a query reports on: the named players, or everyone when none are named. */
+export const wantedPlayers = (gsisIds: string[] | null): ((id: string) => boolean) => {
+  const named = gsisIds === null ? null : new Set(gsisIds);
+  return (id) => named === null || named.has(id);
+};
+
 const numberAt = (column: ArrayLike<unknown>, row: number): number => Number(column[row]) || 0;
 
 /** Answers a query that `canServeFromPlayerGame` accepted, reading only the table's columns it needs. */
@@ -67,12 +73,12 @@ export async function runPlayerGameQuery(
   signal?.throwIfAborted();
 
   const keep = whereNode ? compileRowExpression(whereNode, table.cols) : null;
-  const wanted = new Set(params.gsisIds);
+  const wanted = wantedPlayers(params.gsisIds);
   const ids = table.cols.gsis_id!;
   const rowsByPlayer = new Map<string, number[]>();
   for (let i = 0; i < table.rowCount; i++) {
     const id = ids[i];
-    if (typeof id === "string" && wanted.has(id) && (!keep || keep(i) === true)) {
+    if (typeof id === "string" && wanted(id) && (!keep || keep(i) === true)) {
       rowsByPlayer.set(id, [...(rowsByPlayer.get(id) ?? []), i]);
     }
   }

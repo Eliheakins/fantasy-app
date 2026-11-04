@@ -7,11 +7,12 @@ import {
   mergeStatQueryResults,
   metricSelectAlias,
 } from "@/shared/lib/queryBuilder";
+import type { QueryOrder } from "@/shared/lib/queryUrl";
 import type { GranularityMode } from "@/shared/types/queryBuilder";
 import type { QueryResult } from "@/shared/types/workbench";
 
 import type { ColumnSource, ColumnStore } from "./columns";
-import { canServeFromPlayerGame, runPlayerGameQuery } from "./playerGameQuery";
+import { canServeFromPlayerGame, runPlayerGameQuery, wantedPlayers } from "./playerGameQuery";
 import {
   columnsIn,
   compileAggregateExpression,
@@ -34,7 +35,8 @@ const SUM_OF_COLUMN = /^SUM\((\w+)\)$/i;
 export interface StatQueryParams {
   statIds: string[];
   filterChipState: Record<string, boolean>;
-  gsisIds: string[];
+  /** The players to report on, or null for everyone with the stat (a league-wide query). */
+  gsisIds: string[] | null;
   /** The season files that hold these players; season chips narrow which of them are read. */
   sources: ColumnSource[];
   /** The tier-1 player-game table; counting stats come from it when no situational filter is on. */
@@ -42,6 +44,10 @@ export interface StatQueryParams {
   granularity: GranularityMode;
   minPlays: number;
   chipGroups: FilterChipGroup[];
+  /** Sorts the finished rows by one of the stats; rows without a value go last. */
+  order?: QueryOrder | null;
+  /** Keeps the first rows after sorting. */
+  limit?: number | null;
 }
 
 type Metric = (rows: ArrayLike<number>, games: number) => Value;
@@ -90,10 +96,26 @@ function parseOptional(sql: string): Node | null {
   return sql === "" ? null : parseExpression(sql);
 }
 
+/** Sorts rows by a stat (rows without a number last) and keeps the first `limit`. */
+export function orderAndLimit(result: QueryResult, order: QueryOrder | null, limit: number | null): QueryResult {
+  let rows = result.rows;
+  if (order) {
+    const key = metricSelectAlias(order.metric);
+    const sign = order.direction === "asc" ? 1 : -1;
+    const isNumber = (v: unknown): v is number => typeof v === "number" && !Number.isNaN(v);
+    rows = [...rows].sort((a, b) => {
+      const x = a[key];
+      const y = b[key];
+      return isNumber(x) && isNumber(y) ? (x - y) * sign : Number(!isNumber(x)) - Number(!isNumber(y));
+    });
+  }
+  return { ...result, rows: limit === null ? rows : rows.slice(0, limit) };
+}
+
 function gamesPlayed(
   cols: Columns,
   rowCount: number,
-  wanted: Set<string>,
+  wanted: (id: string) => boolean,
   scope: ((row: number) => Value) | null,
 ): Map<string, number> {
   const games = new Map<string, Set<unknown>>();
@@ -104,7 +126,7 @@ function gamesPlayed(
     }
     for (const role of ROLE_COLUMNS) {
       const pid = cols[role]![i];
-      if (typeof pid === "string" && wanted.has(pid)) {
+      if (typeof pid === "string" && wanted(pid)) {
         let set = games.get(pid);
         if (!set) {
           set = new Set();
@@ -122,6 +144,15 @@ function gamesPlayed(
  * type, the stat's row filter and the active chips, then aggregates per player.
  */
 export async function runStatQuery(
+  params: StatQueryParams,
+  store: ColumnStore,
+  signal?: AbortSignal,
+): Promise<QueryResult> {
+  const result = await runUnordered(params, store, signal);
+  return orderAndLimit(result, params.order ?? null, params.limit ?? null);
+}
+
+async function runUnordered(
   params: StatQueryParams,
   store: ColumnStore,
   signal?: AbortSignal,
@@ -181,7 +212,7 @@ export async function runStatQuery(
   const table = await store.table(sources, [...needed], signal);
   signal?.throwIfAborted();
 
-  const wanted = new Set(params.gsisIds);
+  const wanted = wantedPlayers(params.gsisIds);
   const chip = chipNode ? compileRowExpression(chipNode, table.cols) : null;
   const games = needGames
     ? gamesPlayed(table.cols, table.rowCount, wanted, scopeNode ? compileRowExpression(scopeNode, table.cols) : null)
@@ -198,7 +229,7 @@ export async function runStatQuery(
     const rowsByPlayer = new Map<string, number[]>();
     for (let i = 0; i < table.rowCount; i++) {
       const pid = ids[i];
-      if (typeof pid !== "string" || !wanted.has(pid)) {
+      if (typeof pid !== "string" || !wanted(pid)) {
         continue;
       }
       if (playTypes && playTypes[i] !== first.playType) {
