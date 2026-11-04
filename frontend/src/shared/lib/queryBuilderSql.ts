@@ -1,4 +1,4 @@
-import { FILTER_CHIP_GROUPS } from "@/shared/config/queryBuilderOptions";
+import { getFilterChipGroups } from "@/shared/lib/filterChipGroups";
 import {
   getStatById,
   playerColumnForRole,
@@ -320,7 +320,7 @@ export function buildFilterWhereSql(
 ): string {
   const parts: string[] = [];
 
-  for (const group of FILTER_CHIP_GROUPS) {
+  for (const group of getFilterChipGroups()) {
     const active = group.options.filter((o) => filterChipState[o.id]);
     if (active.length === 0) {
       continue;

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "built_at": "2026-11-04T12:00:00+00:00",
+  "nflreadpy_version": "fixture",
+  "seasons": [
+    {"season": 2021, "path": "nfl_pbp_2021.parquet", "rows": 35766, "max_week": 22, "has_participation": true},
+    {"season": 2022, "path": "nfl_pbp_2022.parquet", "rows": 35430, "max_week": 22, "has_participation": true},
+    {"season": 2023, "path": "nfl_pbp_2023.parquet", "rows": 35600, "max_week": 22, "has_participation": true},
+    {"season": 2024, "path": "nfl_pbp_2024.parquet", "rows": 35050, "max_week": 22, "has_participation": true},
+    {"season": 2025, "path": "nfl_pbp_2025.parquet", "rows": 34632, "max_week": 22, "has_participation": true},
+    {"season": 2026, "path": "nfl_pbp_2026.parquet", "rows": 17000, "max_week": 9, "has_participation": false}
+  ],
+  "player_index": {"path": "player_index.parquet", "rows": 5854}
+}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -9,14 +10,24 @@ from openai import AsyncOpenAI
 
 from core.config import get_settings
 from core.state import app_state
+from schemas.manifest import read_manifest
 from services.llm_warmup import keep_model_warm
 from services.player_catalog import load_player_index_from_path
 from services.shard_catalog import discover_nfl_pbp_shards_local
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings = get_settings()
+
+    try:
+        app_state.manifest = read_manifest(settings.data_dir)
+    except (ValueError, OSError):
+        # A bad or unreadable manifest must not stop the API; /health then reports no freshness.
+        logger.exception("Ignoring unreadable manifest in %s", settings.data_dir)
+        app_state.manifest = None
 
     if settings.player_index_path.is_file():
         app_state.player_index = load_player_index_from_path(settings.player_index_path)

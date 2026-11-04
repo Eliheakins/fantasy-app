@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import { type FilterChipGroup, getAllFilterChipIds } from "@/shared/config/queryBuilderOptions";
 import { getStatById } from "@/shared/config/statDictionary";
+import { getFilterChipGroups } from "@/shared/lib/filterChipGroups";
 import type { GranularityMode } from "@/shared/types/queryBuilder";
 
 const DEFAULT_GRANULARITY: GranularityMode = "per_play";
@@ -81,7 +82,7 @@ export const useQueryBuilderStore = create<QueryBuilderState>((set) => ({
         activeGranularity: clampGranularityForStats(next, granularity),
         minPlays: 0,
         filterChipState: Object.fromEntries(
-          getAllFilterChipIds().map((id) => [id, filterIds.includes(id)]),
+          getAllFilterChipIds(getFilterChipGroups()).map((id) => [id, filterIds.includes(id)]),
         ),
       };
     }),
@@ -90,6 +91,8 @@ export const useQueryBuilderStore = create<QueryBuilderState>((set) => ({
       selectedStatIds: [],
       activeGranularity: DEFAULT_GRANULARITY,
       minPlays: 0,
-      filterChipState: Object.fromEntries(getAllFilterChipIds().map((id) => [id, false])),
+      filterChipState: Object.fromEntries(
+        getAllFilterChipIds(getFilterChipGroups()).map((id) => [id, false]),
+      ),
     }),
 }));

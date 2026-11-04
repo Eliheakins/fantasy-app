@@ -12,7 +12,22 @@ import gc
 import os
 from pathlib import Path
 
-from pipeline.nfl_pipeline import build_stitched_for_year, create_player_index
+from nflreadpy.utils_date import get_current_season
+
+from pipeline.atomic import atomic_path
+from pipeline.manifest import build_manifest, write_manifest
+from pipeline.nfl_pipeline import (
+    build_stitched_for_year,
+    create_player_index,
+    format_null_report,
+    null_report,
+)
+from pipeline.player_game import (
+    build_player_game,
+    merge_player_game,
+    read_player_game,
+    write_player_game,
+)
 
 _backend_root = Path(__file__).resolve().parent.parent
 _default_data = _backend_root / "data"
@@ -39,7 +54,12 @@ def _parse_years(raw: str) -> list[int]:
     return years
 
 
-DEFAULT_YEARS = [2021, 2022, 2023, 2024, 2025]
+FIRST_SEASON = 2021
+
+
+def default_years() -> list[int]:
+    """Every season from FIRST_SEASON through the current one, so a new season needs no code edit."""
+    return list(range(FIRST_SEASON, max(FIRST_SEASON, get_current_season()) + 1))
 
 
 def run_build(data_dir: Path, years: list[int]) -> None:
@@ -49,12 +69,35 @@ def run_build(data_dir: Path, years: list[int]) -> None:
     for year in years:
         shard = build_stitched_for_year(year)
         path = data_dir / f"nfl_pbp_{year}.parquet"
-        shard.write_parquet(path)
+        with atomic_path(path) as tmp:
+            shard.write_parquet(tmp)
         print(f"✅ Shard saved: {path} ({shard.height} rows)")
+        report = format_null_report(null_report(shard))
+        if report:
+            print(f"Missing values (kept as null):\n{report}")
         del shard
         _maybe_gc()
 
     create_player_index(data_dir, years)
+
+    # Describe what is on disk before the network-bound tier-1 step, so a failure there still
+    # leaves a manifest that matches the shards.
+    _write_manifest(data_dir)
+
+    merged = merge_player_game(
+        read_player_game(data_dir),
+        build_player_game(years),
+    )
+    write_player_game(merged, data_dir)
+    print(f"✅ Player-game table: {merged.height} rows")
+
+    _write_manifest(data_dir)
+
+
+def _write_manifest(data_dir: Path) -> None:
+    manifest = build_manifest(data_dir)
+    write_manifest(manifest, data_dir)
+    print(f"✅ Manifest: {len(manifest.seasons)} seasons, data through {manifest.data_through}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -71,12 +114,12 @@ def main(argv: list[str] | None = None) -> int:
         "--years",
         type=str,
         default=None,
-        help=f"Comma-separated seasons (default: {','.join(map(str, DEFAULT_YEARS))})",
+        help=f"Comma-separated seasons (default: {FIRST_SEASON} through the current season)",
     )
     args = parser.parse_args(argv)
 
     data_dir = Path(args.data_dir).resolve() if args.data_dir else data_output_dir()
-    years = _parse_years(args.years) if args.years else list(DEFAULT_YEARS)
+    years = _parse_years(args.years) if args.years else default_years()
 
     print(f"📂 Data directory: {data_dir}")
     print(f"📅 Years: {years}\n")

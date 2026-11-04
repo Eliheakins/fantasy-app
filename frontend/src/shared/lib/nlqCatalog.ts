@@ -1,5 +1,5 @@
-import { FILTER_CHIP_GROUPS } from "@/shared/config/queryBuilderOptions";
 import { STAT_DEFINITIONS } from "@/shared/config/statDictionary";
+import { getFilterChipGroups } from "@/shared/lib/filterChipGroups";
 
 export interface IntentCatalogStat {
   id: string;
@@ -22,7 +22,7 @@ export interface IntentCatalog {
 export function buildIntentCatalog(): IntentCatalog {
   return {
     stats: STAT_DEFINITIONS.map((s) => ({ id: s.id, label: s.label, category: s.category })),
-    filters: FILTER_CHIP_GROUPS.flatMap((g) =>
+    filters: getFilterChipGroups().flatMap((g) =>
       g.options.map((o) => ({ id: o.id, label: o.label, group: g.label })),
     ),
   };

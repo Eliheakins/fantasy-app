@@ -253,6 +253,11 @@
       "group": "Season"
     },
     {
+      "id": "season-2026",
+      "label": "2026",
+      "group": "Season"
+    },
+    {
       "id": "week-early",
       "label": "Early (≤6)",
       "group": "Week"

@@ -1,4 +1,4 @@
-import { FILTER_CHIP_GROUPS } from "@/shared/config/queryBuilderOptions";
+import { useFilterChipGroups } from "@/shared/lib/filterChipGroups";
 import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/shared/components/ui/accordion";
@@ -10,6 +10,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-grou
 export function FilterChipsBar() {
   const filterState = useQueryBuilderStore((s) => s.filterChipState);
   const applyFilterGroup = useQueryBuilderStore((s) => s.applyFilterGroup);
+  const groups = useFilterChipGroups();
 
   return (
     <section className="rounded-xl border border-border bg-input/30 p-4">
@@ -27,7 +28,7 @@ export function FilterChipsBar() {
       </p>
 
       <Accordion type="multiple" className="mt-4 w-full">
-        {FILTER_CHIP_GROUPS.map((group) => {
+        {groups.map((group) => {
           const optionIds = group.options.map((o) => o.id);
           const value = optionIds.filter((id) => Boolean(filterState[id]));
           const activeCount = value.length;

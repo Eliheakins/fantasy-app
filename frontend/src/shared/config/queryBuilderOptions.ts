@@ -14,7 +14,7 @@ export interface FilterChipGroup {
   options: FilterChipOption[];
 }
 
-export const FILTER_CHIP_GROUPS: FilterChipGroup[] = [
+const GROUP_TEMPLATES: FilterChipGroup[] = [
   {
     id: "down",
     label: "Down",
@@ -42,13 +42,7 @@ export const FILTER_CHIP_GROUPS: FilterChipGroup[] = [
     label: "Season",
     description: "Multi-select",
     combine: "or",
-    options: [
-      { id: "season-2021", label: "2021", predicate: "season = 2021" },
-      { id: "season-2022", label: "2022", predicate: "season = 2022" },
-      { id: "season-2023", label: "2023", predicate: "season = 2023" },
-      { id: "season-2024", label: "2024", predicate: "season = 2024" },
-      { id: "season-2025", label: "2025", predicate: "season = 2025" },
-    ],
+    options: [], // filled from the data manifest, see buildFilterChipGroups
   },
   {
     id: "week",
@@ -173,7 +167,13 @@ export const FILTER_CHIP_GROUPS: FilterChipGroup[] = [
     label: "Pass rushers",
     combine: "or",
     options: [
-      { id: "pr-lte3", label: "≤3 rushers", predicate: "number_of_pass_rushers <= 3" },
+      // Seasons 2023+ report 0 rushers on run plays (2021-22 leave it empty), so restrict to
+      // pass plays or the chip matches nearly every run.
+      {
+        id: "pr-lte3",
+        label: "≤3 rushers",
+        predicate: "play_type = 'pass' AND number_of_pass_rushers <= 3",
+      },
       { id: "pr-gte4", label: "≥4 rushers", predicate: "number_of_pass_rushers >= 4" },
     ],
   },
@@ -188,6 +188,18 @@ export const FILTER_CHIP_GROUPS: FilterChipGroup[] = [
   },
 ];
 
-export function getAllFilterChipIds(): string[] {
-  return FILTER_CHIP_GROUPS.flatMap((g) => g.options.map((o) => o.id));
+function seasonOption(season: number): FilterChipOption {
+  return { id: `season-${season}`, label: String(season), predicate: `season = ${season}` };
+}
+
+/** The chip groups, with one season chip for every season the data has (oldest first). */
+export function buildFilterChipGroups(seasons: readonly number[]): FilterChipGroup[] {
+  const years = [...new Set(seasons)].sort((a, b) => a - b);
+  return GROUP_TEMPLATES.map((g) =>
+    g.id === "season" ? { ...g, options: years.map(seasonOption) } : g,
+  ).filter((g) => g.options.length > 0);
+}
+
+export function getAllFilterChipIds(groups: readonly FilterChipGroup[]): string[] {
+  return groups.flatMap((g) => g.options.map((o) => o.id));
 }
