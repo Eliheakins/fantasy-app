@@ -80,3 +80,27 @@ def test_unknown_subject_kinds_and_group_by_values_are_rejected():
         QuerySpec.model_validate(_spec(subject={"kind": "coaches"}))
     with pytest.raises(ValidationError):
         QuerySpec.model_validate(_spec(group_by=["decade"]))
+
+
+def test_values_that_the_typescript_schema_rejects_are_rejected_here_too():
+    for limit in (True, "5", 5.0):
+        with pytest.raises(ValidationError):
+            QuerySpec.model_validate(_spec(limit=limit))
+    with pytest.raises(ValidationError):
+        QuerySpec.model_validate(_spec(metrics=[""]))
+    with pytest.raises(ValidationError):
+        QuerySpec.model_validate(_spec(subject={"kind": "players", "gsis_ids": [""]}))
+
+
+def test_repeated_players_filters_and_group_by_are_rejected():
+    with pytest.raises(ValidationError, match="repeat"):
+        QuerySpec.model_validate(_spec(subject={"kind": "players", "gsis_ids": ["a", "a"]}))
+    with pytest.raises(ValidationError, match="repeat"):
+        QuerySpec.model_validate(_spec(filters=["season-2023", "season-2023"]))
+    with pytest.raises(ValidationError, match="repeat"):
+        QuerySpec.model_validate(_spec(group_by=["season", "season"]))
+
+
+def test_list_sizes_are_bounded():
+    with pytest.raises(ValidationError):
+        QuerySpec.model_validate(_spec(filters=[f"f{i}" for i in range(51)]))

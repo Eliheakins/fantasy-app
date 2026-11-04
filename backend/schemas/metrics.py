@@ -15,6 +15,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from schemas.nlq import MAX_ALIASES, Alias
+
 METRICS_PATH = Path(__file__).resolve().parents[2] / "metrics" / "metrics.json"
 
 PlayerRole = Literal["passer", "rusher", "receiver"]
@@ -22,8 +24,8 @@ PlayType = Literal["pass", "run", "all"]
 
 
 class Category(BaseModel):
-    id: str
-    label: str
+    id: str = Field(..., min_length=1)
+    label: str = Field(..., min_length=1)
 
 
 class ReferenceValue(BaseModel):
@@ -38,19 +40,26 @@ class ReferenceValue(BaseModel):
 
 class MetricDefinition(BaseModel):
     id: str = Field(..., pattern=r"^[a-z][a-z0-9_]*$")
-    label: str
+    label: str = Field(..., min_length=1)
     category: str
     player_role: PlayerRole
     play_type: PlayType
-    base_sql: str = Field(..., description="Aggregate over play rows; columns are unqualified")
+    base_sql: str = Field(
+        ..., min_length=1, description="Aggregate over play rows; columns are unqualified"
+    )
     rate_only: bool = Field(..., description="True when the SQL is used as written, never derived")
     percent_format: bool = False
     play_filter: str | None = Field(
-        None, description="Extra row predicate, e.g. 'sack = 0' for attempt-based stats"
+        None,
+        min_length=1,
+        description="Extra row predicate, e.g. 'sack = 0' for attempt-based stats",
     )
     description: str | None = None
     help: str | None = None
-    aliases: list[str] = Field(default_factory=list, description="Lowercase phrases people use")
+    # Same limits as the catalog sent to the model, so a valid file never makes /nlq/intent 422.
+    aliases: list[Alias] = Field(
+        default_factory=list, max_length=MAX_ALIASES, description="Lowercase phrases people use"
+    )
     reference_values: list[ReferenceValue] = Field(default_factory=list)
 
     @field_validator("aliases")
@@ -59,6 +68,8 @@ class MetricDefinition(BaseModel):
         for alias in aliases:
             if not alias or alias != alias.lower() or alias != alias.strip():
                 raise ValueError(f"alias {alias!r} must be non-empty, trimmed and lowercase")
+        if any(alias != " ".join(alias.split()) for alias in aliases):
+            raise ValueError("aliases use single spaces between words")
         repeated = [a for a, n in Counter(aliases).items() if n > 1]
         if repeated:
             raise ValueError(f"alias {repeated[0]!r} repeats within one metric")
@@ -77,7 +88,12 @@ class MetricsFile(BaseModel):
         if duplicate:
             raise ValueError(f"Duplicate metric id {duplicate!r}")
 
-        known = {c.id for c in self.categories}
+        category_ids = Counter(c.id for c in self.categories)
+        repeated_category = next((i for i, n in category_ids.items() if n > 1), None)
+        if repeated_category:
+            raise ValueError(f"Duplicate category id {repeated_category!r}")
+
+        known = set(category_ids)
         for m in self.metrics:
             if m.category not in known:
                 raise ValueError(f"Metric {m.id!r} has an undefined category {m.category!r}")

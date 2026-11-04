@@ -197,6 +197,15 @@
           "value": 3858.0,
           "tolerance": 0.0,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
+        },
+        {
+          "gsis_id": "00-0033106",
+          "player": "Jared Goff",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 4575.0,
+          "tolerance": 0.0,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
         }
       ],
       "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
@@ -282,6 +291,15 @@
           "season": 2023,
           "season_type": "REG",
           "value": 65.428,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        },
+        {
+          "gsis_id": "00-0035228",
+          "player": "Kyler Murray",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 65.672,
           "tolerance": 0.005,
           "source": "nflverse player stats (player_game.parquet), regular season totals"
         }

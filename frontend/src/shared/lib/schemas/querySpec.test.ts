@@ -54,4 +54,13 @@ describe("parseQuerySpec", () => {
   it("rejects an unknown group_by", () => {
     expect(() => parseQuerySpec(spec({ group_by: ["decade"] }))).toThrow();
   });
+
+  it("rejects empty ids, repeats and oversized lists like the backend", () => {
+    expect(() => parseQuerySpec(spec({ metrics: [""] }))).toThrow();
+    expect(() => parseQuerySpec(spec({ subject: { kind: "players", gsis_ids: [""] } }))).toThrow();
+    expect(() => parseQuerySpec(spec({ subject: { kind: "players", gsis_ids: ["a", "a"] } }))).toThrow(/repeat/);
+    expect(() => parseQuerySpec(spec({ filters: ["season-2023", "season-2023"] }))).toThrow(/repeat/);
+    expect(() => parseQuerySpec(spec({ group_by: ["season", "season"] }))).toThrow(/repeat/);
+    expect(() => parseQuerySpec(spec({ filters: Array.from({ length: 51 }, (_, i) => `f${i}`) }))).toThrow();
+  });
 });

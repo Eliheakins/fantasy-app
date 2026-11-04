@@ -157,9 +157,11 @@ def parse_intent(text: str, *, stat_ids: set[str], filter_ids: set[str]) -> Quer
 
 def parse_reply(text: str, *, stat_ids: set[str], filter_ids: set[str]) -> IntentOutcome:
     obj = extract_json_object(text)
-    if "unsupported" not in obj:
+    reason = obj.get("unsupported")
+    if (
+        reason is None or reason is False
+    ):  # the model sometimes writes null/false beside a real query
         return QueryOutcome(intent=parse_intent(text, stat_ids=stat_ids, filter_ids=filter_ids))
-    reason = obj["unsupported"]
     if not isinstance(reason, str) or not reason.strip():
         raise IntentError('"unsupported" needs a short reason sentence.')
     return UnsupportedOutcome(reason=reason.strip()[:300])

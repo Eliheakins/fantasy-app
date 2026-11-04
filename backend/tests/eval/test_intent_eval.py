@@ -25,6 +25,7 @@ from services.nlq_intent import IntentError, translate_question
 EVAL_DIR = Path(__file__).parent
 RESULTS_FILE = EVAL_DIR / "results.jsonl"
 MIN_PASS_RATE = 0.8
+MIN_REFUSAL_RATE = 0.75  # a model that never refuses must fail even though refusals are few
 
 pytestmark = pytest.mark.eval
 
@@ -86,4 +87,8 @@ async def test_intent_pass_rate_meets_threshold():
     _record_run(settings.llm_model, passed, len(cases), failures)
     report = "\n".join(failures)
     print(f"\nintent eval: {passed}/{len(cases)} passed ({rate:.0%})\n{report}")
+    refusals = [c["q"] for c in cases if c.get("unsupported")]
+    missed = [q for q in refusals if any(f.startswith(repr(q)) for f in failures)]
+    refusal_rate = 1 - len(missed) / len(refusals) if refusals else 1.0
     assert rate >= MIN_PASS_RATE, f"pass rate {rate:.0%} < {MIN_PASS_RATE:.0%}\n{report}"
+    assert refusal_rate >= MIN_REFUSAL_RATE, f"refusal rate {refusal_rate:.0%}\n{report}"

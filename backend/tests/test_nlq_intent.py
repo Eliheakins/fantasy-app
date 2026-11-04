@@ -158,6 +158,16 @@ def test_the_catalog_sent_by_the_client_is_bounded():
         )
 
 
+@pytest.mark.parametrize("flag", ["null", "false"])
+def test_parse_reply_treats_an_empty_unsupported_flag_as_absent(flag: str):
+    reply = '{"unsupported": ' + flag + ', "stat_ids": ["pass_yards"]}'
+
+    outcome = parse_reply(reply, stat_ids=STAT_IDS, filter_ids=FILTER_IDS)
+
+    assert isinstance(outcome, QueryOutcome)
+    assert outcome.intent.stat_ids == ["pass_yards"]
+
+
 def test_system_prompt_tells_the_model_how_to_refuse():
     prompt = build_system_prompt(STATS, FILTERS)
 

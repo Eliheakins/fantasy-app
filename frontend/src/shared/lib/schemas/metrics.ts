@@ -8,10 +8,17 @@ import { z } from "zod";
 const playerRoleSchema = z.enum(["passer", "rusher", "receiver"]);
 const playTypeSchema = z.enum(["pass", "run", "all"]);
 
+const MAX_ALIASES = 20;
+const MAX_ALIAS_LENGTH = 60;
+
 const aliasSchema = z
   .string()
+  .max(MAX_ALIAS_LENGTH)
   .refine((a) => a !== "" && a === a.trim() && a === a.toLowerCase(), {
     message: "alias must be non-empty, trimmed and lowercase",
+  })
+  .refine((a) => a === a.split(/\s+/).join(" "), {
+    message: "aliases use single spaces between words",
   });
 
 const referenceValueSchema = z.object({
@@ -26,31 +33,37 @@ const referenceValueSchema = z.object({
 
 const metricSchema = z.object({
   id: z.string().regex(/^[a-z][a-z0-9_]*$/),
-  label: z.string(),
+  label: z.string().min(1),
   category: z.string(),
   player_role: playerRoleSchema,
   play_type: playTypeSchema,
-  base_sql: z.string(),
+  base_sql: z.string().min(1),
   rate_only: z.boolean(),
   percent_format: z.boolean().default(false),
-  play_filter: z.string().nullable().default(null),
+  play_filter: z.string().min(1).nullable().default(null),
   description: z.string().nullish(),
   help: z.string().nullish(),
-  aliases: z.array(aliasSchema).default([]),
+  aliases: z.array(aliasSchema).max(MAX_ALIASES).default([]),
   reference_values: z.array(referenceValueSchema).default([]),
 });
 
 const metricsFileSchema = z
   .object({
     schema_version: z.literal(1),
-    categories: z.array(z.object({ id: z.string(), label: z.string() })),
+    categories: z.array(z.object({ id: z.string().min(1), label: z.string().min(1) })),
     metrics: z.array(metricSchema),
   })
   .superRefine((file, ctx) => {
     const problem = (message: string) => ctx.addIssue({ code: "custom", message });
 
     const seenIds = new Set<string>();
-    const categories = new Set(file.categories.map((c) => c.id));
+    const categories = new Set<string>();
+    for (const c of file.categories) {
+      if (categories.has(c.id)) {
+        problem(`Duplicate category id '${c.id}'`);
+      }
+      categories.add(c.id);
+    }
     const aliasOwner = new Map<string, string>();
 
     for (const m of file.metrics) {

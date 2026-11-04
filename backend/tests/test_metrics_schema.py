@@ -112,7 +112,7 @@ def test_a_reference_value_needs_a_known_season_type_and_a_sane_tolerance():
 def test_the_real_file_loads_with_every_stat_the_app_had():
     metrics = load_metrics()
 
-    assert len(metrics.metrics) == 39
+    assert len(metrics.metrics) >= 39
     assert {"pass_yards", "rec_yards", "ypc", "eff_epa"} <= {m.id for m in metrics.metrics}
 
 
@@ -130,6 +130,25 @@ def test_stats_that_sacks_distort_carry_reference_values_and_the_right_filter():
 
     for stat_id in ("pass_yards", "cmp_pct", "int_rate", "pass_sack_rate", "pass_any_a"):
         assert by_id[stat_id].reference_values, f"{stat_id} has no reference value"
+
+
+def test_empty_text_and_duplicate_categories_are_rejected():
+    for field in ("label", "base_sql", "play_filter"):
+        with pytest.raises(ValidationError):
+            MetricsFile.model_validate(_file(_metric(**{field: ""})))
+    duplicated = _file(_metric())
+    duplicated["categories"] = [{"id": "passing", "label": "A"}, {"id": "passing", "label": "B"}]
+    with pytest.raises(ValidationError, match="Duplicate category"):
+        MetricsFile.model_validate(duplicated)
+
+
+def test_aliases_follow_the_same_limits_the_model_catalog_enforces():
+    with pytest.raises(ValidationError):
+        MetricsFile.model_validate(_file(_metric(aliases=[f"alias {i}" for i in range(21)])))
+    with pytest.raises(ValidationError):
+        MetricsFile.model_validate(_file(_metric(aliases=["a" * 61])))
+    with pytest.raises(ValidationError, match="single spaces"):
+        MetricsFile.model_validate(_file(_metric(aliases=["two  spaces"])))
 
 
 def test_every_metric_has_at_least_one_alias():

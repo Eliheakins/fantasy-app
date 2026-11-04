@@ -73,3 +73,6 @@ Desktop.ini
 # --- Local NFL data (Parquet from pipeline; do not commit) ---
 backend/data/*
 !backend/data/.gitkeep
+
+# Eval run log: one machine's results, not repo state
+backend/tests/eval/results.jsonl

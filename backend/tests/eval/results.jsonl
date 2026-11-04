@@ -1,1 +1,0 @@
-{"at": "2026-11-04T15:43:15+00:00", "model": "mlx-community/Qwen2.5-14B-Instruct-4bit", "passed": 42, "total": 44, "rate": 0.955, "failures": ["'Nick Chubb yards per carry in 2022': stats ['rush_yards'] != ['ypc']", "'Mahomes passing yards in the playoffs': filters ['season-2023', 'stype-post'] != ['stype-post']"]}

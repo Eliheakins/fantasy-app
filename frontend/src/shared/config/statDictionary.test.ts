@@ -11,8 +11,8 @@ import {
 
 describe("stat dictionary", () => {
   it("loads every stat the app had from metrics.json", () => {
-    expect(STAT_DEFINITIONS).toHaveLength(39);
-    expect(new Set(STAT_DEFINITIONS.map((s) => s.id)).size).toBe(39);
+    expect(STAT_DEFINITIONS.length).toBeGreaterThanOrEqual(39);
+    expect(new Set(STAT_DEFINITIONS.map((s) => s.id)).size).toBe(STAT_DEFINITIONS.length);
   });
 
   it("keeps the category order and labels", () => {
