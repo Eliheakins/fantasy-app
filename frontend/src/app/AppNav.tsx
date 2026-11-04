@@ -1,5 +1,7 @@
 import { NavLink } from "react-router-dom";
 
+import { dataThrough } from "@/shared/lib/dataFreshness";
+import { useManifestStore } from "@/stores/useManifestStore";
 import { useRouteMemory } from "@/stores/useRouteMemory";
 
 import { cn } from "@/shared/lib/utils";
@@ -11,6 +13,7 @@ const activeClass = "bg-input text-ink";
 
 export function AppNav() {
   const exploreSearch = useRouteMemory((s) => s.exploreSearch);
+  const freshness = dataThrough(useManifestStore((s) => s.manifest));
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur-sm">
@@ -32,6 +35,11 @@ export function AppNav() {
             Ask
           </NavLink>
         </nav>
+        {freshness ? (
+          <span className="shrink-0 text-xs text-ink-muted" title="The latest game in the data">
+            Data through {freshness}
+          </span>
+        ) : null}
       </div>
     </header>
   );

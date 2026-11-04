@@ -61,7 +61,7 @@ This writes, into `backend/data/`:
 | `players.json` | Player list the browser searches and matches names against (id, name, team, position) |
 | `manifest.json` | What was built: seasons, files, rows, latest week, and when |
 
-The season list comes from the data: a new season appears in the app as soon as its shard is built, with no code change. Missing values (Next Gen Stats cover only some plays, participation is not published until after a season ends) stay null, and the build prints how much of each column is missing. Re-run the build weekly to pick up new games. If a brand-new season has no play-by-play published yet, build with `--years` up to the previous season.
+The season list comes from the data: a new season appears in the app as soon as its shard is built, with no code change. Missing values (Next Gen Stats cover only some plays, participation is not published until after a season ends) stay null, and the build prints how much of each column is missing. Pick up new games weekly with `uv run python backend/scripts/build_data.py --refresh`, which rebuilds only the current season and keeps the rest (`--years 2024,2025` rebuilds specific seasons). The API notices the new manifest without a restart, and the header shows how current the data is. If a brand-new season has no play-by-play published yet, build with `--years` up to the previous season.
 
 `/health` reports `data_through` (for example `2026 week 8`) and the seasons loaded. The data files are static: the API's only dynamic endpoint is `POST /nlq/intent`. The browser reads `manifest.json`, `players.json` and the Parquet shards from one base URL, so they can be served from a CDN instead (see `VITE_DATA_BASE_URL` below).
 

@@ -2,6 +2,7 @@ import { type KeyboardEvent, useMemo } from "react";
 import { Link } from "react-router-dom";
 
 import { IgnoredFiltersNotice } from "@/features/explore/IgnoredFiltersNotice";
+import { ParticipationNotice } from "@/features/explore/ParticipationNotice";
 import { ExploreResultsCanvas } from "@/features/explore/ExploreResultsCanvas";
 import { useExploreQueryExecution } from "@/features/explore/useExploreQueryExecution";
 import { Callout } from "@/shared/components/Callout";
@@ -89,6 +90,7 @@ export function NLQPanel() {
 
           {ask.message ? <Callout variant="danger">{ask.message}</Callout> : null}
           <IgnoredFiltersNotice />
+          <ParticipationNotice />
 
           <PlayerChips players={showingAnswer || ask.phase === "choosing" ? matched : []} />
           <PlayerChoices choices={ask.choices} onChoose={(p) => void ask.onChoose(p)} />

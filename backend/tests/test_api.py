@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import httpx
 import openai
 import pytest
 from conftest import FILTERS, STATS
 
 from api.deps import get_llm_client
-from core.state import app_state
+from pipeline.manifest import write_manifest
 from schemas.manifest import JsonFileEntry, Manifest, SeasonEntry
 from services.llm_client import chat_text
 
@@ -31,31 +33,28 @@ async def test_health_is_degraded_until_the_data_is_built(client: httpx.AsyncCli
     }
 
 
-async def test_health_reports_how_current_the_data_is(client: httpx.AsyncClient):
-    app_state.manifest = Manifest(
+def _manifest(
+    *, week: int, seasons: tuple[int, ...] = (2025, 2026), players: bool = True
+) -> Manifest:
+    return Manifest(
         built_at="2026-11-04T12:00:00+00:00",
         nflreadpy_version="1",
         seasons=[
             SeasonEntry(
-                season=2025,
-                path="nfl_pbp_2025.parquet",
+                season=season,
+                path=f"nfl_pbp_{season}.parquet",
                 rows=1,
-                max_week=22,
+                max_week=week if season == seasons[-1] else 22,
                 has_participation=True,
-            ),
-            SeasonEntry(
-                season=2026,
-                path="nfl_pbp_2026.parquet",
-                rows=1,
-                max_week=9,
-                has_participation=False,
-            ),
+            )
+            for season in seasons
         ],
+        players=JsonFileEntry(path="players.json", rows=1) if players else None,
     )
 
-    app_state.manifest = app_state.manifest.model_copy(
-        update={"players": JsonFileEntry(path="players.json", rows=1)}
-    )
+
+async def test_health_reports_how_current_the_data_is(client: httpx.AsyncClient, data_dir: Path):
+    write_manifest(_manifest(week=9), data_dir)
 
     body = (await client.get("/health")).json()
 
@@ -63,6 +62,53 @@ async def test_health_reports_how_current_the_data_is(client: httpx.AsyncClient)
     assert body["data_ready"] is True
     assert body["data_through"] == "2026 week 9"
     assert body["seasons"] == [2025, 2026]
+
+
+async def test_health_follows_a_rebuild_without_restarting_the_api(
+    client: httpx.AsyncClient, data_dir: Path
+):
+    write_manifest(_manifest(week=9), data_dir)
+    assert (await client.get("/health")).json()["data_through"] == "2026 week 9"
+
+    write_manifest(_manifest(week=10, seasons=(2025, 2026, 2027)), data_dir)
+    body = (await client.get("/health")).json()
+
+    assert body["data_through"] == "2027 week 10"
+    assert body["seasons"] == [2025, 2026, 2027]
+
+
+async def test_health_goes_degraded_when_the_manifest_disappears(
+    client: httpx.AsyncClient, data_dir: Path
+):
+    write_manifest(_manifest(week=9), data_dir)
+    assert (await client.get("/health")).json()["status"] == "ok"
+
+    (data_dir / "manifest.json").unlink()
+
+    assert (await client.get("/health")).json()["status"] == "degraded"
+
+
+async def test_health_reports_a_broken_manifest_instead_of_failing(
+    client: httpx.AsyncClient, data_dir: Path
+):
+    (data_dir / "manifest.json").write_text("{not json")
+
+    res = await client.get("/health")
+
+    assert res.status_code == 200
+    assert res.json()["status"] == "degraded"
+
+
+async def test_health_is_degraded_when_seasons_exist_but_the_players_file_does_not(
+    client: httpx.AsyncClient, data_dir: Path
+):
+    write_manifest(_manifest(week=9, seasons=(2026,), players=False), data_dir)
+
+    body = (await client.get("/health")).json()
+
+    assert body["status"] == "degraded"
+    assert body["data_ready"] is False
+    assert body["seasons"] == [2026]
 
 
 async def test_the_player_and_shard_endpoints_are_gone_because_the_data_is_static(
@@ -155,23 +201,3 @@ async def test_chat_text_raises_502_when_model_returns_no_choices():
         await chat_text(client=EmptyLlm(), model="m", messages=[])
 
     assert getattr(exc.value, "status_code", None) == 502
-
-
-async def test_health_is_degraded_when_seasons_exist_but_the_players_file_does_not(
-    client: httpx.AsyncClient,
-):
-    app_state.manifest = Manifest(
-        built_at="2026-11-04T12:00:00+00:00",
-        nflreadpy_version="1",
-        seasons=[
-            SeasonEntry(
-                season=2026, path="nfl_pbp_2026.parquet", rows=1, max_week=9, has_participation=True
-            )
-        ],
-    )
-
-    body = (await client.get("/health")).json()
-
-    assert body["status"] == "degraded"
-    assert body["data_ready"] is False
-    assert body["seasons"] == [2026]

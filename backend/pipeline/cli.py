@@ -115,16 +115,25 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help=f"Output directory (default: {_default_data})",
     )
-    parser.add_argument(
+    which = parser.add_mutually_exclusive_group()
+    which.add_argument(
         "--years",
         type=str,
         default=None,
         help=f"Comma-separated seasons (default: {FIRST_SEASON} through the current season)",
     )
+    which.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Rebuild only the current season (the weekly update); other seasons are kept",
+    )
     args = parser.parse_args(argv)
 
     data_dir = Path(args.data_dir).resolve() if args.data_dir else data_output_dir()
-    years = _parse_years(args.years) if args.years else default_years()
+    if args.refresh:
+        years = [get_current_season()]
+    else:
+        years = _parse_years(args.years) if args.years else default_years()
 
     print(f"📂 Data directory: {data_dir}")
     print(f"📅 Years: {years}\n")

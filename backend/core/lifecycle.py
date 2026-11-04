@@ -9,8 +9,8 @@ from fastapi import FastAPI
 from openai import AsyncOpenAI
 
 from core.config import get_settings
+from core.manifest_state import refresh_manifest
 from core.state import app_state
-from schemas.manifest import read_manifest
 from services.llm_warmup import keep_model_warm
 
 logger = logging.getLogger(__name__)
@@ -20,12 +20,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     settings = get_settings()
 
-    try:
-        app_state.manifest = read_manifest(settings.data_dir)
-    except (ValueError, OSError):
-        # A bad or unreadable manifest must not stop the API; /health then reports no freshness.
-        logger.exception("Ignoring unreadable manifest in %s", settings.data_dir)
-        app_state.manifest = None
+    # A bad or unreadable manifest must not stop the API; /health then reports no freshness.
+    refresh_manifest(app_state, settings.data_dir)
 
     # Local servers ignore the key, but the SDK requires a non-empty one.
     app_state.llm_client = AsyncOpenAI(

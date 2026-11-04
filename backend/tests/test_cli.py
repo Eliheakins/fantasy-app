@@ -49,3 +49,18 @@ def test_main_uses_the_years_it_is_given(monkeypatch: pytest.MonkeyPatch, tmp_pa
     cli.main(["--data-dir", str(tmp_path), "--years", "2023,2024"])
 
     assert calls == [[2023, 2024]]
+
+
+def test_refresh_rebuilds_only_the_current_season(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    calls: list[list[int]] = []
+    monkeypatch.setattr(cli, "get_current_season", lambda: 2026)
+    monkeypatch.setattr(cli, "run_build", lambda data_dir, years: calls.append(years))
+
+    assert cli.main(["--data-dir", str(tmp_path), "--refresh"]) == 0
+
+    assert calls == [[2026]]
+
+
+def test_refresh_cannot_be_combined_with_years(tmp_path: Path):
+    with pytest.raises(SystemExit):
+        cli.main(["--data-dir", str(tmp_path), "--refresh", "--years", "2024"])
