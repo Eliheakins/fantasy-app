@@ -19,7 +19,7 @@ class AppSettings(BaseSettings):
     # OpenAI-compatible local server, e.g. `uv run --group llm mlx_lm.server --model <LLM_MODEL>`.
     llm_base_url: str = Field(default="http://127.0.0.1:8080/v1", validation_alias="LLM_BASE_URL")
     llm_model: str = Field(
-        default="mlx-community/Qwen2.5-14B-Instruct-4bit", validation_alias="LLM_MODEL"
+        default="mlx-community/Qwen3-4B-Instruct-2507-4bit", validation_alias="LLM_MODEL"
     )
     llm_timeout_seconds: float = Field(default=120.0, validation_alias="LLM_TIMEOUT_SECONDS")
 

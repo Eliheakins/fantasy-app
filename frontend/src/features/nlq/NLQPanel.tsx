@@ -13,6 +13,7 @@ import { isLeagueQuery, serializeQuery } from "@/shared/lib/queryUrl";
 import { useQueryState } from "@/shared/lib/useQueryState";
 
 import { buildAnswer } from "./answerText";
+import { InterpretationChips } from "./InterpretationChips";
 import { PlayerChips, PlayerChoices } from "./NlqPlayerPickers";
 import { useAsk } from "./useAsk";
 
@@ -106,7 +107,11 @@ export function NLQPanel() {
               </ul>
               {ask.path ? (
                 <p className="text-[11px] text-ink-muted">
-                  {ask.path === "rules" ? "Read by the built-in rules." : "Read by the local model."}
+                  {ask.path === "rules"
+                    ? "Read by the built-in rules."
+                    : ask.path === "saved"
+                      ? "Using the fix you made to this question earlier."
+                      : "Read by the local model."}
                 </p>
               ) : null}
               {ask.unrecognized.length > 0 ? (
@@ -117,6 +122,8 @@ export function NLQPanel() {
               ) : null}
             </section>
           ) : null}
+
+          {showingAnswer ? <InterpretationChips /> : null}
         </CardContent>
       </Card>
 

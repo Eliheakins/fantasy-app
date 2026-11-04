@@ -2,13 +2,13 @@
  * Prints how the rules parser does on the eval questions: how many it answers correctly, hands to the
  * model, or gets wrong. Run: npm run eval:rules
  */
-import { runRulesEval } from "../src/features/nlq/ruleEval";
+import { EVAL_SETS, runRulesEval } from "../src/features/nlq/ruleEval";
 import { FIXTURE_SEASONS } from "../src/test/seasons";
 
 const rows = runRulesEval(FIXTURE_SEASONS);
 const out = (line: string) => process.stdout.write(`${line}\n`);
 
-for (const set of ["cases", "heldout"] as const) {
+for (const set of EVAL_SETS) {
   const mine = rows.filter((r) => r.set === set);
   // Questions marked rules:"defer" are answerable, but the rules should hand them over.
   const answerable = mine.filter((r) => !r.case.unsupported && r.case.rules !== "defer");

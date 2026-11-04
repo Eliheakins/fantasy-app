@@ -34,6 +34,9 @@ export function AppNav() {
           <NavLink to="/ask" className={({ isActive }) => cn(linkClass, isActive && activeClass)}>
             Ask
           </NavLink>
+          <NavLink to="/history" className={({ isActive }) => cn(linkClass, isActive && activeClass)}>
+            History
+          </NavLink>
         </nav>
         {freshness ? (
           <span className="shrink-0 text-xs text-ink-muted" title="The latest game in the data">

@@ -118,7 +118,7 @@ export function useExploreQueryExecution() {
       return;
     }
     void executeQuery();
-  }, [players, stats, sources, executeQuery, runLatest]);
+  }, [players, league, stats, sources, executeQuery, runLatest]);
 
   // Names for every row shown: the pinned players, or the players a leaderboard ranked.
   const shown = resultKey === currentKey ? result : null;

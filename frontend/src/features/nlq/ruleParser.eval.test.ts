@@ -1,6 +1,6 @@
 /**
  * Guards the rules parser against silent wrong answers. Runs every eval question (the 44 known
- * cases and the held-out set, written before the parser) through it. See `npm run eval:rules` for the
+ * cases, the held-out set written before the parser, and the corrections users made) through it. See `npm run eval:rules` for the
  * printable report. The numbers it must keep up are floors, set a little under what it scores today.
  */
 import { describe, expect, it } from "vitest";
@@ -34,7 +34,9 @@ describe("rules parser against the eval questions", () => {
     expect(correct.length / answerable.length).toBeGreaterThanOrEqual(0.9);
   });
 
-  it("covers both question sets", () => {
-    expect(new Set(rows.map((r) => r.set))).toEqual(new Set(["cases", "heldout"]));
+  it("covers the written question sets", () => {
+    const sets = new Set(rows.map((r) => r.set));
+
+    expect(sets.has("cases") && sets.has("heldout")).toBe(true);
   });
 });
