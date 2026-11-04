@@ -326,3 +326,74 @@ describe("parseRules hands over what it does not fully understand", () => {
     ).toBe("ambiguous");
   });
 });
+
+describe("leaderboard questions with no player named", () => {
+  function board(question: string) {
+    const result = parse(question);
+    if (result.status !== "resolved" || !result.leaderboard) {
+      throw new Error(`expected "${question}" to be a leaderboard, got ${result.status}`);
+    }
+    return { intent: result.intent, ...result.leaderboard };
+  }
+
+  it("reads who led the league in a stat in a season", () => {
+    const answer = board("Who led the league in passing yards in 2023");
+
+    expect(answer.intent).toEqual({ stat_ids: ["pass_yards"], filter_ids: ["season-2023"], granularity: "total" });
+    expect(answer.order).toEqual({ metric: "pass_yards", direction: "desc" });
+    expect(answer.limit).toBe(10);
+    expect(answer.minPlays).toBe(0);
+  });
+
+  it("reads top N as the limit", () => {
+    const answer = board("top 5 rushing yards in 2022");
+
+    expect(answer.intent.stat_ids).toEqual(["rush_yards"]);
+    expect(answer.limit).toBe(5);
+  });
+
+  it("reads who has the most of a counting stat", () => {
+    expect(board("Who has the most receptions in 2023").order.metric).toBe("rec_receptions");
+  });
+
+  it("asks for a minimum number of plays on a rate, so one-play players cannot top it", () => {
+    const answer = board("highest completion percentage in 2023");
+
+    expect(answer.intent.granularity).toBe("per_play");
+    expect(answer.minPlays).toBeGreaterThan(0);
+  });
+
+  it("asks for a minimum number of plays on a per game leaderboard", () => {
+    const answer = board("top 10 passing yards per game in 2023");
+
+    expect(answer.intent.granularity).toBe("per_game");
+    expect(answer.minPlays).toBeGreaterThan(0);
+  });
+
+  it("covers every season when none is named", () => {
+    expect(board("who led the league in passing touchdowns").intent.filter_ids).toEqual([]);
+  });
+
+  it("is not a leaderboard when a player is named", () => {
+    const result = parse("Patrick Mahomes passing yards in 2023");
+
+    expect(result.status).toBe("resolved");
+    expect(result.status === "resolved" && result.leaderboard).toBeFalsy();
+  });
+
+  it.each([
+    ["no leaderboard cue", "passing yards in 2023"],
+    ["a bare yards that could be passing, rushing or receiving", "who led the league in yards in 2023"],
+    ["a word it does not know", "top passers in 2023"],
+    ["fewest instead of most", "fewest passing touchdowns in 2023"],
+    ["a limit over 100", "top 200 passing yards in 2023"],
+    ["a limit of zero", "top 0 passing yards in 2023"],
+  ])("hands over a question with %s", (_why, question) => {
+    expect(["ambiguous", "unknown"]).toContain(parse(question).status);
+    expect(parse(question).status === "resolved").toBe(false);
+  });
+
+  it("refuses a season the data does not have", () => {
+    expect(parse("who led the league in passing yards in 2019").status).toBe("unsupported");
+  });
+});

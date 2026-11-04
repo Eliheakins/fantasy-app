@@ -24,6 +24,8 @@ export interface ExploreResultsCanvasProps {
   details: string | null;
   running: boolean;
   pinnedPlayers: NFLPlayer[];
+  /** Everyone the rows name; for a leaderboard these are the ranked players. Defaults to the pinned players. */
+  namedPlayers?: NFLPlayer[];
 }
 
 export function ExploreResultsCanvas({
@@ -32,6 +34,7 @@ export function ExploreResultsCanvas({
   details,
   running,
   pinnedPlayers,
+  namedPlayers,
 }: ExploreResultsCanvasProps) {
   const { state } = useQueryState();
   const selectedStatIds = state.stats;
@@ -61,11 +64,11 @@ export function ExploreResultsCanvas({
 
   const nameByGsis = useMemo(() => {
     const m = new Map<string, string>();
-    for (const p of pinnedPlayers) {
+    for (const p of namedPlayers ?? pinnedPlayers) {
       m.set(p.gsis_id, p.full_name ?? p.gsis_id);
     }
     return m;
-  }, [pinnedPlayers]);
+  }, [pinnedPlayers, namedPlayers]);
 
   const scatterPoints = useMemo(() => {
     if (!result || !twoStatsMode) {
@@ -112,8 +115,12 @@ export function ExploreResultsCanvas({
       .map((s) => s!.label);
     const gran =
       activeGranularity === "total" ? "totals" : activeGranularity === "per_game" ? "per game" : "per play";
-    return `${labels.join(" · ")} · ${gran} · min ${minPlays} plays`;
-  }, [selectedStatIds, activeGranularity, minPlays]);
+    const ranking =
+      state.order && state.limit !== null
+        ? ` · ${state.order.direction === "desc" ? "top" : "bottom"} ${state.limit} by ${getStatById(state.order.metric)?.label ?? state.order.metric}`
+        : "";
+    return `${labels.join(" · ")} · ${gran} · min ${minPlays} plays${ranking}`;
+  }, [selectedStatIds, activeGranularity, minPlays, state.order, state.limit]);
 
   return (
     <Card className="min-h-[160px] overflow-hidden">

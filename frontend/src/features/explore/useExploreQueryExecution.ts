@@ -6,6 +6,7 @@ import { playerGameSource, seasonSources } from "@/shared/lib/dataSources";
 import { getFilterChipGroups } from "@/shared/lib/filterChipGroups";
 import { createLatestRunner } from "@/shared/lib/latestRun";
 import { usePinnedPlayers } from "@/shared/lib/usePinnedPlayers";
+import { isLeagueQuery } from "@/shared/lib/queryUrl";
 import { useQueryState } from "@/shared/lib/useQueryState";
 import { describeQuery } from "@/shared/lib/queryBuilder";
 import { queryKey } from "@/shared/lib/queryUrl";
@@ -31,7 +32,8 @@ export function useExploreQueryExecution() {
   const [running, setRunning] = useState(false);
   const runLatest = useRef(createLatestRunner()).current;
 
-  const { players, stats, granularity, minPlays } = state;
+  const { players, stats, granularity, minPlays, order, limit } = state;
+  const league = isLeagueQuery(state);
 
   const executeQuery = useCallback(async () => {
     setError(null);
@@ -44,7 +46,7 @@ export function useExploreQueryExecution() {
       setError(message);
     };
 
-    if (players.length === 0) {
+    if (players.length === 0 && !league) {
       invalid("Pin at least one player in The Who, then run again.");
       return;
     }
@@ -66,11 +68,13 @@ export function useExploreQueryExecution() {
           {
             statIds: stats,
             filterChipState,
-            gsisIds: players,
+            gsisIds: league ? null : players,
             sources,
             playerGame,
             granularity,
             minPlays,
+            order,
+            limit,
             chipGroups: getFilterChipGroups(),
           },
           browserColumnStore,
@@ -92,12 +96,12 @@ export function useExploreQueryExecution() {
         setRunning(false);
       }
     }
-  }, [players, sources, playerGame, stats, minPlays, filterChipState, granularity, runLatest, currentKey]);
+  }, [players, league, order, limit, sources, playerGame, stats, minPlays, filterChipState, granularity, runLatest, currentKey]);
 
   useEffect(() => () => runLatest.cancel(), [runLatest]);
 
   useEffect(() => {
-    if (players.length === 0 || sources.length === 0) {
+    if ((players.length === 0 && !league) || sources.length === 0) {
       // Nothing to show: stop any run still in flight so it cannot land results for players no longer pinned.
       runLatest.cancel();
       setRunning(false);
@@ -116,12 +120,18 @@ export function useExploreQueryExecution() {
     void executeQuery();
   }, [players, stats, sources, executeQuery, runLatest]);
 
+  // Names for every row shown: the pinned players, or the players a leaderboard ranked.
+  const shown = resultKey === currentKey ? result : null;
+  const rowPlayers = usePinnedPlayers(league ? (shown?.rows ?? []).map((r) => String(r.player_id)) : []);
+
   return {
-    result: resultKey === currentKey ? result : null,
+    result: shown,
     error,
     details,
     running,
     executeQuery,
     pinnedPlayers,
+    /** Everyone the table names: pinned players, and for a leaderboard the players it ranked. */
+    namedPlayers: [...pinnedPlayers, ...rowPlayers],
   };
 }

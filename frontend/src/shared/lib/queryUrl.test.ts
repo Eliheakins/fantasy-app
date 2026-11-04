@@ -7,6 +7,7 @@ import {
   clearPins,
   EMPTY_QUERY,
   ignoredFilterIds,
+  isLeagueQuery,
   MAX_PINNED_PLAYERS,
   MAX_SELECTED_STATS,
   parseQuery,
@@ -32,6 +33,8 @@ const FULL: QueryState = {
   filters: ["season-2023", "stype-reg", "down-3"],
   granularity: "per_game",
   minPlays: 25,
+  order: null,
+  limit: null,
 };
 
 describe("serializeQuery and parseQuery", () => {
@@ -229,5 +232,57 @@ describe("query transitions", () => {
 
     expect(() => pinPlayer(frozen, "x")).not.toThrow();
     expect(frozen.players).toEqual(FULL.players);
+  });
+});
+
+describe("leaderboard parts of the URL", () => {
+  const board: QueryState = {
+    ...EMPTY_QUERY,
+    stats: ["pass_yards"],
+    filters: ["season-2023"],
+    order: { metric: "pass_yards", direction: "desc" },
+    limit: 10,
+  };
+
+  it("writes the order as o and the limit as n", () => {
+    expect(serializeQuery(board).toString()).toBe("s=pass_yards&f=season-2023&o=pass_yards&n=10");
+    expect(serializeQuery({ ...board, order: { metric: "pass_yards", direction: "asc" } }).toString()).toContain(
+      "o=pass_yards%3Aasc",
+    );
+  });
+
+  it("round-trips an order and a limit", () => {
+    expect(parse(serializeQuery(board).toString())).toEqual(board);
+    const ascending = { ...board, order: { metric: "pass_yards", direction: "asc" as const } };
+    expect(parse(serializeQuery(ascending).toString())).toEqual(ascending);
+  });
+
+  it("drops an order that names a stat the query does not select", () => {
+    expect(parse("s=pass_yards&o=rush_yards&n=5").order).toBeNull();
+    expect(parse("o=pass_yards&n=5").order).toBeNull();
+  });
+
+  it("drops a limit that is not a whole number from 1 to 100", () => {
+    for (const bad of ["0", "101", "-3", "abc", "2.5", ""]) {
+      expect(parse(`s=pass_yards&n=${bad}`).limit, bad).toBeNull();
+    }
+    expect(parse("s=pass_yards&n=100").limit).toBe(100);
+  });
+
+  it("is a league query only with no players, an order and a limit", () => {
+    expect(isLeagueQuery(board)).toBe(true);
+    expect(isLeagueQuery({ ...board, players: ["00-0033873"] })).toBe(false);
+    expect(isLeagueQuery({ ...board, limit: null })).toBe(false);
+    expect(isLeagueQuery({ ...board, order: null })).toBe(false);
+  });
+
+  it("clears the order when the ordering stat is deselected", () => {
+    expect(toggleStat(board, "pass_yards").order).toBeNull();
+    expect(toggleStat(board, "pass_tds").order).toEqual(board.order);
+  });
+
+  it("tells a leaderboard from the same query without one", () => {
+    expect(queryKey(board)).not.toBe(queryKey({ ...board, limit: null, order: null }));
+    expect(queryKey(board)).not.toBe(queryKey({ ...board, limit: 5 }));
   });
 });

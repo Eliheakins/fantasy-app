@@ -118,7 +118,7 @@ uv run ruff check backend
 Two question sets with the expected stats, filters and granularity (or `unsupported`) live in `backend/tests/eval/`:
 
 - `cases.json`: 44 questions, written alongside the model prompt and, later, the rules. Treat its scores as optimistic.
-- `heldout.json`: 34 questions written **before** the rules parser, including traps that must not be answered (an unknown stat like "net yards per attempt", an opponent filter, a season outside the data, a leaderboard).
+- `heldout.json`: 34 questions written **before** the rules parser, including traps that must not be answered (an unknown stat like "net yards per attempt", an opponent filter, a season outside the data, a leaderboard; the leaderboard trap is a trap for the model only, since the rules now answer it).
 
 | | cases.json | heldout.json |
 |---|---|---|
@@ -149,7 +149,7 @@ The model's refusal weakness is why an answer from the model lists the words the
 - The expression language in `metrics/metrics.json` and the filter chips is a SQL subset: `SUM/AVG/COUNT/NULLIF`, `CASE`, `CAST(.. AS DOUBLE)`, arithmetic, comparisons, `AND/OR/NOT`, `LIKE`. `frontend/src/shared/engine/expression.ts` names anything else it cannot run. There is no ad hoc SQL.
 - "Min plays" counts the rows each stat uses: attempts for the filtered stats above, dropbacks (sacks included) for the rest. A passer near the threshold can show some stats and not others.
 - Per-play values for EPA and WPA stats are per dropback; per-play passing yards, TDs, completion % and interception rate are per attempt.
-- No league-wide leaderboards ("who led the league in..."); Ask needs a named player.
+- Leaderboards are read by the rules only ("who led the league in passing yards in 2023", "top 5 completion percentage in 2023"): the model is never asked, because it cannot rank. They show the top 10 unless the question says "top N"; per game and rate rankings need at least 100 plays. There is no way to rank lowest first from Ask, and no team or by-season/by-week queries yet. The URL carries them as `o=<stat>` (add `:asc` to reverse) and `n=<rows>`, and Explore shows but does not edit them.
 - Name matching is exact on surnames and full names, so typos are not corrected.
 - Receiving and rushing totals can differ slightly from official lines (play-by-play data).
 - `mlx_lm.server` is not hardened for production; keep it on localhost.

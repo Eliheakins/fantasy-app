@@ -9,7 +9,7 @@ import { Callout } from "@/shared/components/Callout";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/shared/components/ui/card";
 import { Textarea } from "@/shared/components/ui/textarea";
-import { serializeQuery } from "@/shared/lib/queryUrl";
+import { isLeagueQuery, serializeQuery } from "@/shared/lib/queryUrl";
 import { useQueryState } from "@/shared/lib/useQueryState";
 
 import { buildAnswer } from "./answerText";
@@ -49,9 +49,10 @@ export function NLQPanel() {
       statIds: state.stats,
       granularity: state.granularity,
       filterIds: state.filters,
-      nameByGsis: new Map(exec.pinnedPlayers.map((p) => [p.gsis_id, p.full_name ?? p.gsis_id])),
+      nameByGsis: new Map(exec.namedPlayers.map((p) => [p.gsis_id, p.full_name ?? p.gsis_id])),
+      ranked: isLeagueQuery(state),
     });
-  }, [showingAnswer, exec.result, exec.pinnedPlayers, state.stats, state.granularity, state.filters]);
+  }, [showingAnswer, exec.result, exec.namedPlayers, state]);
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !busy) {
@@ -127,6 +128,7 @@ export function NLQPanel() {
             details={exec.details}
             running={exec.running}
             pinnedPlayers={exec.pinnedPlayers}
+            namedPlayers={exec.namedPlayers}
           />
           <p className="text-xs text-ink-muted">
             Want to adjust it?{" "}
