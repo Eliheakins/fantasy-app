@@ -112,6 +112,7 @@ Optional, in the environment or a `.env` file at the repository root.
 uv run pytest --cov           # backend unit and API tests
 uv run pytest -m eval -s              # intent accuracy against the live local model (needs step 1 above)
 cd frontend && npm test               # name matching, rules parser, answer text, catalog sync
+cd frontend && npm run format        # format src and scripts with Prettier (npm run check fails on unformatted code)
 cd frontend && npm run eval:rules     # how the rules parser scores on the eval questions (no model needed)
 cd frontend && npm run export:catalog # refresh backend/tests/eval/catalog.json after changing stats or filters
 uv run ruff check backend
