@@ -1,7 +1,7 @@
 import { DATA_BASE_URL } from "@/shared/lib/config";
 import { cn } from "@/shared/lib/utils";
 import type { NFLPlayer } from "@/shared/types/workbench";
-import { MAX_PINNED_PLAYERS } from "@/stores/useWorkbenchStore";
+import { MAX_PINNED_PLAYERS } from "@/shared/lib/queryUrl";
 
 import { AggregationSection } from "@/features/explore/AggregationSection";
 import { FilterChipsBar } from "@/features/explore/FilterChipsBar";

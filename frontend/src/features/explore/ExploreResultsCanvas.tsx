@@ -16,7 +16,7 @@ import {
 } from "@/shared/lib/queryBuilder";
 import { formatQueryValue } from "@/shared/lib/formatQueryValue";
 import type { NFLPlayer, QueryResult } from "@/shared/types/workbench";
-import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
+import { useQueryState } from "@/shared/lib/useQueryState";
 
 export interface ExploreResultsCanvasProps {
   result: QueryResult | null;
@@ -33,9 +33,10 @@ export function ExploreResultsCanvas({
   running,
   pinnedPlayers,
 }: ExploreResultsCanvasProps) {
-  const selectedStatIds = useQueryBuilderStore((s) => s.selectedStatIds);
-  const activeGranularity = useQueryBuilderStore((s) => s.activeGranularity);
-  const minPlays = useQueryBuilderStore((s) => s.minPlays);
+  const { state } = useQueryState();
+  const selectedStatIds = state.stats;
+  const activeGranularity = state.granularity;
+  const minPlays = state.minPlays;
 
   const [canvasView, setCanvasView] = useState<"table" | "scatter">("table");
   const [swapScatterAxes, setSwapScatterAxes] = useState(false);

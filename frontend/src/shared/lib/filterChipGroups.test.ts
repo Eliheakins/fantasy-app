@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { useManifestStore } from "@/stores/useManifestStore";
-import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
 import { FIXTURE_SEASONS } from "@/test/seasons";
 
 import { getFilterChipGroups } from "./filterChipGroups";
@@ -13,7 +12,6 @@ const seasonIds = () =>
 
 afterEach(() => {
   useManifestStore.setState({ seasons: FIXTURE_SEASONS });
-  useQueryBuilderStore.getState().resetQueryBuilder();
 });
 
 describe("getFilterChipGroups", () => {
@@ -27,30 +25,5 @@ describe("getFilterChipGroups", () => {
     useManifestStore.setState({ seasons: [] });
 
     expect(seasonIds()).toEqual([]);
-  });
-});
-
-describe("query builder store and the manifest's seasons", () => {
-  it("resets the chip state to the seasons the data has", () => {
-    useManifestStore.setState({ seasons: [2030] });
-
-    useQueryBuilderStore.getState().resetQueryBuilder();
-
-    const keys = Object.keys(useQueryBuilderStore.getState().filterChipState);
-    expect(keys).toContain("season-2030");
-    expect(keys).not.toContain("season-2021");
-  });
-
-  it("turns on only the chips an intent names that exist", () => {
-    useQueryBuilderStore.getState().applyIntent({
-      statIds: ["pass_yards"],
-      filterIds: ["season-2023", "not-a-chip"],
-      granularity: "total",
-    });
-
-    const state = useQueryBuilderStore.getState().filterChipState;
-    expect(state["season-2023"]).toBe(true);
-    expect(state["season-2024"]).toBe(false);
-    expect("not-a-chip" in state).toBe(false);
   });
 });

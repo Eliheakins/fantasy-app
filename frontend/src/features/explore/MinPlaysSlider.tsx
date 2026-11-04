@@ -1,4 +1,4 @@
-import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
+import { useQueryState } from "@/shared/lib/useQueryState";
 
 import { cn } from "@/shared/lib/utils";
 
@@ -9,8 +9,8 @@ interface MinPlaysSliderProps {
 }
 
 export function MinPlaysSlider({ className, embedded = false }: MinPlaysSliderProps) {
-  const minPlays = useQueryBuilderStore((s) => s.minPlays);
-  const setMinPlays = useQueryBuilderStore((s) => s.setMinPlays);
+  const { state, setMinPlays } = useQueryState();
+  const minPlays = state.minPlays;
 
   const body = (
     <>

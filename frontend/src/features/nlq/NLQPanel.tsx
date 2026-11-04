@@ -1,13 +1,15 @@
 import { type KeyboardEvent, useMemo } from "react";
 import { Link } from "react-router-dom";
 
+import { IgnoredFiltersNotice } from "@/features/explore/IgnoredFiltersNotice";
 import { ExploreResultsCanvas } from "@/features/explore/ExploreResultsCanvas";
 import { useExploreQueryExecution } from "@/features/explore/useExploreQueryExecution";
 import { Callout } from "@/shared/components/Callout";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardTitle } from "@/shared/components/ui/card";
 import { Textarea } from "@/shared/components/ui/textarea";
-import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
+import { serializeQuery } from "@/shared/lib/queryUrl";
+import { useQueryState } from "@/shared/lib/useQueryState";
 
 import { buildAnswer } from "./answerText";
 import { PlayerChips, PlayerChoices } from "./NlqPlayerPickers";
@@ -16,26 +18,39 @@ import { useAsk } from "./useAsk";
 export function NLQPanel() {
   const ask = useAsk();
   const exec = useExploreQueryExecution();
-  const selectedStatIds = useQueryBuilderStore((s) => s.selectedStatIds);
-  const activeGranularity = useQueryBuilderStore((s) => s.activeGranularity);
-  const filterChipState = useQueryBuilderStore((s) => s.filterChipState);
+  const { state } = useQueryState();
 
   const busy = ask.phase === "working" || ask.phase === "choosing";
+  // A failed or unsupported ask shows its message instead of the previous answer.
+  const showingAnswer = ask.hasResult && ask.phase === "idle" && ask.message === null;
+
+  // While choosing between namesakes the matches so far are shown; otherwise the answer's own players.
+  const matched = useMemo(
+    () =>
+      ask.phase === "choosing"
+        ? ask.resolved
+        : exec.pinnedPlayers.map((p) => ({
+            gsis_id: p.gsis_id,
+            display_name: p.full_name ?? p.gsis_id,
+            search_key: "",
+            position: p.position,
+            team: p.team,
+          })),
+    [ask.phase, ask.resolved, exec.pinnedPlayers],
+  );
 
   const answer = useMemo(() => {
-    if (ask.phase !== "done" || !exec.result || exec.result.rows.length === 0) {
+    if (!showingAnswer || !exec.result || exec.result.rows.length === 0) {
       return null;
     }
     return buildAnswer({
       result: exec.result,
-      statIds: selectedStatIds,
-      granularity: activeGranularity,
-      filterIds: Object.entries(filterChipState)
-        .filter(([, on]) => on)
-        .map(([id]) => id),
+      statIds: state.stats,
+      granularity: state.granularity,
+      filterIds: state.filters,
       nameByGsis: new Map(exec.pinnedPlayers.map((p) => [p.gsis_id, p.full_name ?? p.gsis_id])),
     });
-  }, [ask.phase, exec.result, exec.pinnedPlayers, selectedStatIds, activeGranularity, filterChipState]);
+  }, [showingAnswer, exec.result, exec.pinnedPlayers, state.stats, state.granularity, state.filters]);
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !busy) {
@@ -73,8 +88,9 @@ export function NLQPanel() {
           </div>
 
           {ask.message ? <Callout variant="danger">{ask.message}</Callout> : null}
+          <IgnoredFiltersNotice />
 
-          <PlayerChips players={ask.resolved} />
+          <PlayerChips players={showingAnswer || ask.phase === "choosing" ? matched : []} />
           <PlayerChoices choices={ask.choices} onChoose={(p) => void ask.onChoose(p)} />
 
           {answer ? (
@@ -90,7 +106,7 @@ export function NLQPanel() {
         </CardContent>
       </Card>
 
-      {ask.phase === "done" ? (
+      {showingAnswer ? (
         <>
           <ExploreResultsCanvas
             result={exec.result}
@@ -101,7 +117,7 @@ export function NLQPanel() {
           />
           <p className="text-xs text-ink-muted">
             Want to adjust it?{" "}
-            <Link to="/explore" className="font-medium text-ink underline-offset-2 hover:underline">
+            <Link to={{ pathname: "/explore", search: serializeQuery(state).toString() }} className="font-medium text-ink underline-offset-2 hover:underline">
               Open this query in Explore
             </Link>
             .
