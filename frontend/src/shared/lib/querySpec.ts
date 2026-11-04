@@ -23,8 +23,5 @@ export function unsupportedReasons(spec: QuerySpec): string[] {
   if (spec.subject.kind === "teams") {
     reasons.push("Team queries aren't supported yet.");
   }
-  if (spec.group_by.length > 0) {
-    reasons.push("Splitting results by season or week isn't supported yet.");
-  }
   return reasons;
 }

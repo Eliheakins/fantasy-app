@@ -5,7 +5,7 @@
  * cleaned here: unknown ids are dropped, lists are capped, numbers are clamped.
  */
 import { getStatById } from "@/shared/config/statDictionary";
-import type { GranularityMode } from "@/shared/types/queryBuilder";
+import type { GranularityMode, Split } from "@/shared/types/queryBuilder";
 
 /** Max metrics selectable at once (matches the model's cap in `MAX_INTENT_STATS`). */
 export const MAX_SELECTED_STATS = 5;
@@ -27,6 +27,8 @@ export interface QueryState {
   order: QueryOrder | null;
   /** Keeps the first rows after sorting. With an order and no players this is a league-wide leaderboard. */
   limit: number | null;
+  /** One row per player and season or week, instead of one per player. */
+  split: Split | null;
 }
 
 export interface QueryOrder {
@@ -42,9 +44,20 @@ export const EMPTY_QUERY: QueryState = {
   minPlays: 0,
   order: null,
   limit: null,
+  split: null,
 };
 
-const KEYS = { players: "p", stats: "s", filters: "f", granularity: "g", minPlays: "m", order: "o", limit: "n" } as const;
+const KEYS = {
+  players: "p",
+  stats: "s",
+  filters: "f",
+  granularity: "g",
+  minPlays: "m",
+  order: "o",
+  limit: "n",
+  split: "by",
+} as const;
+const SPLITS: readonly Split[] = ["season", "week"];
 const GRANULARITIES: readonly GranularityMode[] = ["total", "per_game", "per_play"];
 const PLAYER_ID = /^[\w-]{1,24}$/;
 const FILTER_ID = /^[\w-]{1,40}$/;
@@ -106,6 +119,7 @@ export function parseQuery(params: URLSearchParams, knownFilterIds?: ReadonlySet
     order,
     // A limit without an order would cut the rows unsorted, so it only counts alongside one.
     limit: order ? parseLimit(params.get(KEYS.limit)) : null,
+    split: SPLITS.find((s) => s === params.get(KEYS.split)) ?? null,
   };
 }
 
@@ -130,6 +144,9 @@ export function writeQuery(base: URLSearchParams, state: QueryState): URLSearchP
   if (state.limit !== null) {
     next.set(KEYS.limit, String(state.limit));
   }
+  if (state.split) {
+    next.set(KEYS.split, state.split);
+  }
   return next;
 }
 
@@ -140,7 +157,7 @@ export function ignoredFilterIds(params: URLSearchParams, state: QueryState): st
 
 /** Identifies a query, so a result can be matched to the query that produced it. */
 export function queryKey(state: QueryState): string {
-  return JSON.stringify([state.players, state.stats, state.filters, state.granularity, state.minPlays, state.order, state.limit]);
+  return JSON.stringify([state.players, state.stats, state.filters, state.granularity, state.minPlays, state.order, state.limit, state.split]);
 }
 
 export function serializeQuery(state: QueryState): URLSearchParams {
@@ -180,6 +197,10 @@ export function setRanking(state: QueryState, order: QueryOrder | null, limit = 
     return state;
   }
   return { ...state, order, limit: clampLimit(limit) };
+}
+
+export function setSplit(state: QueryState, split: Split | null): QueryState {
+  return { ...state, split };
 }
 
 export function toggleFilter(state: QueryState, id: string): QueryState {

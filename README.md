@@ -31,6 +31,9 @@ The query on Explore and Ask is in the URL as readable parameters, one `p`, `s` 
 | `f` | Filter chip id, such as `season-2023`, `stype-reg`, `down-3` |
 | `g` | `total`, `per_game` or `per_play` (default) |
 | `m` | Minimum rows per player, 0 to 500 |
+| `o` | Order by a selected stat, highest first; `<stat>:asc` for lowest first |
+| `n` | Rows to keep after ordering, 1 to 100 (only with `o`) |
+| `by` | `season` or `week`: one row per player and season, or per player and week |
 | `q` | Ask only: the question that produced the query |
 
 Values the app does not recognise are ignored, so an old or edited link still opens. Explore and Ask each keep their own query; asking a question does not change Explore.
@@ -161,7 +164,8 @@ The 4B model scores as well as the 14B on both sets (a one-question gap is withi
 - The expression language in `metrics/metrics.json` and the filter chips is a SQL subset: `SUM/AVG/COUNT/NULLIF`, `CASE`, `CAST(.. AS DOUBLE)`, arithmetic, comparisons, `AND/OR/NOT`, `LIKE`. `frontend/src/shared/engine/expression.ts` names anything else it cannot run. There is no ad hoc SQL.
 - "Min plays" counts the rows each stat uses: attempts for the filtered stats above, dropbacks (sacks included) for the rest. A passer near the threshold can show some stats and not others.
 - Per-play values for EPA and WPA stats are per dropback; per-play passing yards, TDs, completion % and interception rate are per attempt.
-- Leaderboards are read by the rules only ("who led the league in passing yards in 2023", "top 5 completion percentage in 2023"): the model is never asked, because it cannot rank. They show the top 10 unless the question says "top N" or "bottom N"; per game and rate rankings need at least 100 plays. "fewest", "least", "lowest" and "bottom" rank lowest first. "best" and "worst" follow the stat's `better` field in `metrics/metrics.json` ("best interception rate" is the lowest), and a stat without one (ADOT, time to throw) gets "ask for the highest or lowest" instead of a guess. There are no team or by-season/by-week queries yet. The URL carries them as `o=<stat>` (add `:asc` to reverse) and `n=<rows>`. In Explore, the Ranking control in the Aggregation block sets them: rank by one selected stat, highest or lowest first, 1 to 100 rows. With no player pinned it ranks the league; with players pinned it sorts them.
+- Leaderboards are read by the rules only ("who led the league in passing yards in 2023", "top 5 completion percentage in 2023"): the model is never asked, because it cannot rank. They show the top 10 unless the question says "top N" or "bottom N"; per game and rate rankings need at least 100 plays. "fewest", "least", "lowest" and "bottom" rank lowest first. "best" and "worst" follow the stat's `better` field in `metrics/metrics.json` ("best interception rate" is the lowest), and a stat without one (ADOT, time to throw) gets "ask for the highest or lowest" instead of a guess. Team queries are not supported yet. The URL carries them as `o=<stat>` (add `:asc` to reverse) and `n=<rows>`. In Explore, the Ranking control in the Aggregation block sets them: rank by one selected stat, highest or lowest first, 1 to 100 rows. With no player pinned it ranks the league; with players pinned it sorts them.
+- Splits: "by season", "each season", "every year", "by week", "each game" and "game by game" give one line per season or week, whichever path read the rest of the question. With a ranking they rank single seasons or games ("top 5 passing yards by season"). In Explore, Split by in the Aggregation block sets the same `by` part; the X / Y chart is hidden while split, since it plots one dot per player.
 - Name matching is exact on surnames and full names, so typos are not corrected.
 - Receiving and rushing totals can differ slightly from official lines (play-by-play data).
 - `mlx_lm.server` is not hardened for production; keep it on localhost.

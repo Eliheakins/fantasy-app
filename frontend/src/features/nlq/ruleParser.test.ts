@@ -9,7 +9,7 @@ import type { PlayerDictionaryRow } from "@/shared/lib/schemas/players";
 import { FIXTURE_SEASONS } from "@/test/seasons";
 
 import { resolvePlayers, tokenize } from "./resolvePlayers";
-import { parseRules } from "./ruleParser";
+import { parseRules, splitAsked } from "./ruleParser";
 
 const PLAYERS = JSON.parse(
   readFileSync(fileURLToPath(new URL("../../../../backend/tests/eval/players.fixture.json", import.meta.url)), "utf8"),
@@ -435,5 +435,33 @@ describe("leaderboard questions with no player named", () => {
 
   it("refuses a season the data does not have", () => {
     expect(parse("who led the league in passing yards in 2019").status).toBe("unsupported");
+  });
+});
+
+describe("splitting by season or week", () => {
+  it.each([
+    ["Patrick Mahomes passing yards by season", "season"],
+    ["Patrick Mahomes passing yards each season", "season"],
+    ["Patrick Mahomes passing yards every year", "season"],
+    ["Patrick Mahomes passing yards season by season", "season"],
+    ["Patrick Mahomes passing yards by week in 2023", "week"],
+    ["Patrick Mahomes passing yards each game in 2023", "week"],
+    ["Patrick Mahomes passing yards game by game in 2023", "week"],
+    ["Patrick Mahomes passing yards in 2023", null],
+    ["Patrick Mahomes passing yards per game in 2023", null],
+  ])("reads %s as a %s split", (question, split) => {
+    expect(splitAsked(question)).toBe(split);
+  });
+
+  it("reads the split words as understood, so the rest of the question still resolves", () => {
+    const result = parse("Patrick Mahomes passing yards by season");
+
+    expect(result.status).toBe("resolved");
+    expect(result.status === "resolved" && result.intent).toEqual({ stat_ids: ["pass_yards"], filter_ids: [], granularity: "total" });
+  });
+
+  it("hands over a question that asks for both splits", () => {
+    expect(splitAsked("Patrick Mahomes passing yards by season and by week")).toBe("both");
+    expect(parse("Patrick Mahomes passing yards by season and by week").status).toBe("ambiguous");
   });
 });

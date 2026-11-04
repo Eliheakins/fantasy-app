@@ -336,3 +336,85 @@ describe("league queries, ordering and limits", () => {
     expect(ids(result)[0]).toBe(Q1);
   });
 });
+
+describe("splitting by season or week", () => {
+  const rowsOf = (result: { rows: Record<string, unknown>[] }) =>
+    result.rows.map(({ player_id, season, week, ...stats }) => ({ player_id, season, week, ...stats }));
+
+  it("gives one row per player and season, with the season as a column", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(base({ filterChipState: { "stype-reg": true }, split: "season" }), s);
+
+    expect(result.columns).toEqual(["player_id", "season", "m_pass_yards"]);
+    expect(rowsOf(result)).toEqual(
+      expect.arrayContaining([
+        { player_id: Q1, season: 2022, week: undefined, m_pass_yards: 30 },
+        { player_id: Q1, season: 2023, week: undefined, m_pass_yards: 30 },
+      ]),
+    );
+    expect(result.rows).toHaveLength(2);
+  });
+
+  it("gives one row per player and week, keeping the season", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(base({ split: "week" }), s);
+
+    expect(result.columns).toEqual(["player_id", "season", "week", "m_pass_yards"]);
+    expect(rowsOf(result)).toEqual(
+      expect.arrayContaining([
+        { player_id: Q1, season: 2023, week: 1, m_pass_yards: 10 },
+        { player_id: Q1, season: 2023, week: 2, m_pass_yards: 20 },
+      ]),
+    );
+    expect(result.rows).toHaveLength(2);
+  });
+
+  it("counts games played within each season for per game", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(
+      base({ filterChipState: { "stype-reg": true }, split: "season", granularity: "per_game" }),
+      s,
+    );
+
+    const bySeason = Object.fromEntries(result.rows.map((r) => [r.season, r.m_pass_yards]));
+    expect(bySeason).toEqual({ 2022: 30, 2023: 15 });
+  });
+
+  it("keeps stats read from different plays on the same season row", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(
+      base({ statIds: ["pass_yards", "pass_sack_rate"], filterChipState: { "stype-reg": true }, split: "season" }),
+      s,
+    );
+
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows.every((r) => typeof r.m_pass_yards === "number" && typeof r.m_pass_sack_rate === "number")).toBe(true);
+  });
+
+  it("lists split rows in season order, then by the first stat", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(base({ gsisIds: [Q1, Q2], filterChipState: { "stype-reg": true }, split: "season" }), s);
+
+    expect(result.rows.map((r) => [r.season, r.player_id])).toEqual([
+      [2022, Q1],
+      [2023, Q2],
+      [2023, Q1],
+    ]);
+  });
+
+  it("ranks player-seasons when ordered", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(
+      base({ gsisIds: null, filterChipState: { "stype-reg": true }, split: "season", order: { metric: "pass_yards", direction: "desc" }, limit: 1 }),
+      s,
+    );
+
+    expect(result.rows).toEqual([{ player_id: Q2, season: 2023, m_pass_yards: 100 }]);
+  });
+});

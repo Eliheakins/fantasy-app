@@ -10,6 +10,7 @@ import { isLeagueQuery, MAX_PINNED_PLAYERS, parseQuery, type QueryState, writeQu
 import { specFromIntent, unsupportedReasons } from "@/shared/lib/querySpec";
 import type { PlayerDictionaryRow } from "@/shared/lib/schemas/players";
 import { useQueryState } from "@/shared/lib/useQueryState";
+import type { Split } from "@/shared/types/queryBuilder";
 import { useManifestStore } from "@/stores/useManifestStore";
 
 import { isNewEdit, type LoggedQuery } from "./askLog";
@@ -18,7 +19,7 @@ import { type AnswerPath, type Interpretation, interpretQuestion } from "./inter
 import { cacheKey, catalogSignature, forgetCorrection, lookupIntent, readIntentCache, storeIntent } from "./intentCache";
 import { withDefaultSeasonType } from "./intentFilters";
 import { narrowByRoles, type PlayerMatch, pickCandidate, resolvePlayers } from "./resolvePlayers";
-import { type Leaderboard, parseRules } from "./ruleParser";
+import { type Leaderboard, parseRules, splitAsked } from "./ruleParser";
 
 export type AskPhase = "idle" | "working" | "choosing";
 
@@ -41,12 +42,19 @@ const loggedFrom = (state: QueryState): LoggedQuery => ({
   granularity: state.granularity,
   order: state.order,
   limit: state.limit,
+  split: state.split,
 });
 
 /** What an edit can correct: the players are matched by name, never part of the intent. */
 const editKey = (state: QueryState): string => {
   const { players: _players, ...rest } = loggedFrom(state);
   return JSON.stringify(rest);
+};
+
+/** "by season" and "each game" split the answer, whichever path read the rest of the question. */
+const splitOf = (question: string): Split | null => {
+  const split = splitAsked(question);
+  return split === "both" ? null : split;
 };
 
 /** The cache key for a question under the catalog as it is now. */
@@ -167,6 +175,7 @@ export function useAsk() {
           minPlays: 0,
           order: null,
           limit: null,
+          split: splitOf(asked),
         },
         asked,
         path,
@@ -188,6 +197,7 @@ export function useAsk() {
           minPlays: board.minPlays,
           order: board.order,
           limit: board.limit,
+          split: splitOf(asked),
         },
         asked,
         "rules",

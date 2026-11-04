@@ -44,7 +44,8 @@ export function ExploreResultsCanvas({
   const [canvasView, setCanvasView] = useState<"table" | "scatter">("table");
   const [swapScatterAxes, setSwapScatterAxes] = useState(false);
 
-  const twoStatsMode = selectedStatIds.length === 2;
+  // The chart plots one dot per player, which a season or week split would repeat.
+  const twoStatsMode = selectedStatIds.length === 2 && state.split === null;
 
   useEffect(() => {
     if (!twoStatsMode) {
@@ -54,7 +55,10 @@ export function ExploreResultsCanvas({
   }, [twoStatsMode]);
 
   const columnHeaders = useMemo(() => {
-    const headers = new Map<string, string>();
+    const headers = new Map<string, string>([
+      ["season", "Season"],
+      ["week", "Week"],
+    ]);
     for (const id of selectedStatIds) {
       const st = getStatById(id);
       headers.set(metricSelectAlias(id), formatMetricValueHeader(st, activeGranularity));
@@ -119,8 +123,9 @@ export function ExploreResultsCanvas({
       state.order && state.limit !== null
         ? ` · ${state.order.direction === "desc" ? "top" : "bottom"} ${state.limit} by ${getStatById(state.order.metric)?.label ?? state.order.metric}`
         : "";
-    return `${labels.join(" · ")} · ${gran} · min ${minPlays} plays${ranking}`;
-  }, [selectedStatIds, activeGranularity, minPlays, state.order, state.limit]);
+    const split = state.split ? ` · by ${state.split}` : "";
+    return `${labels.join(" · ")} · ${gran} · min ${minPlays} plays${ranking}${split}`;
+  }, [selectedStatIds, activeGranularity, minPlays, state.order, state.limit, state.split]);
 
   return (
     <Card className="min-h-[160px] overflow-hidden">

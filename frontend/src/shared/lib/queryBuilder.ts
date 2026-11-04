@@ -1,7 +1,7 @@
 import { getStatById, type StatDefinition } from "@/shared/config/statDictionary";
 import type { FilterChipGroup } from "@/shared/config/queryBuilderOptions";
 import { getFilterChipGroups } from "@/shared/lib/filterChipGroups";
-import type { GranularityMode } from "@/shared/types/queryBuilder";
+import type { GranularityMode, Split } from "@/shared/types/queryBuilder";
 import type { QueryResult } from "@/shared/types/workbench";
 
 export function effectiveGranularity(
@@ -43,9 +43,40 @@ export function groupStatsByRows(statIds: string[]): StatDefinition[][] {
   return groups;
 }
 
-/** Merge per-group results on player_id; fills missing metrics with null. Sort by first stat descending. */
-export function mergeStatQueryResults(results: QueryResult[], selectedStatIds: string[]): QueryResult {
+/** The columns a split adds to each result row; a week split keeps the season too. */
+export function splitColumns(split: Split | null | undefined): string[] {
+  return split === "week" ? ["season", "week"] : split === "season" ? ["season"] : [];
+}
+
+/** The key a play or game row is grouped under: the player, plus its season and week when split. */
+export function splitKeyer(
+  cols: Readonly<Record<string, ArrayLike<unknown>>>,
+  split: Split | null | undefined,
+): (playerId: string, row: number) => string {
+  const columns = splitColumns(split).map((c) => cols[c]!);
+  return (playerId, row) => [playerId, ...columns.map((c) => String(c[row]))].join("|");
+}
+
+/** The split columns' values at a row, to put on the result row. */
+export function splitValues(
+  cols: Readonly<Record<string, ArrayLike<unknown>>>,
+  split: Split | null | undefined,
+  row: number,
+): Record<string, unknown> {
+  return Object.fromEntries(splitColumns(split).map((c) => [c, cols[c]![row]]));
+}
+
+/**
+ * Merge per-group results on player_id (and season and week when split); fills missing metrics
+ * with null. Sort by first stat descending.
+ */
+export function mergeStatQueryResults(
+  results: QueryResult[],
+  selectedStatIds: string[],
+  split?: Split | null,
+): QueryResult {
   const merged = new Map<string, Record<string, unknown>>();
+  const groupColumns = splitColumns(split);
 
   for (const res of results) {
     for (const row of res.rows) {
@@ -53,10 +84,11 @@ export function mergeStatQueryResults(results: QueryResult[], selectedStatIds: s
       if (!pid) {
         continue;
       }
-      if (!merged.has(pid)) {
-        merged.set(pid, { player_id: pid });
+      const key = [pid, ...groupColumns.map((c) => String(row[c]))].join("|");
+      if (!merged.has(key)) {
+        merged.set(key, { player_id: pid, ...Object.fromEntries(groupColumns.map((c) => [c, row[c]])) });
       }
-      const acc = merged.get(pid)!;
+      const acc = merged.get(key)!;
       for (const col of res.columns) {
         if (col === "player_id") {
           continue;
@@ -66,9 +98,12 @@ export function mergeStatQueryResults(results: QueryResult[], selectedStatIds: s
     }
   }
 
-  const columns = ["player_id", ...selectedStatIds.map(metricSelectAlias)];
+  const columns = ["player_id", ...groupColumns, ...selectedStatIds.map(metricSelectAlias)];
   const rows = Array.from(merged.values()).map((row) => {
     const out: Record<string, unknown> = { player_id: row.player_id };
+    for (const c of groupColumns) {
+      out[c] = row[c];
+    }
     for (const id of selectedStatIds) {
       const a = metricSelectAlias(id);
       out[a] = row[a] ?? null;
@@ -84,6 +119,13 @@ export function mergeStatQueryResults(results: QueryResult[], selectedStatIds: s
     return Number.isNaN(n) ? null : n;
   };
   rows.sort((a, b) => {
+    // A split reads in time order: season, then week, then the first stat within each.
+    for (const c of groupColumns) {
+      const byTime = Number(a[c]) - Number(b[c]);
+      if (byTime !== 0) {
+        return byTime;
+      }
+    }
     const va = rankOf(a);
     const vb = rankOf(b);
     if (va === null || vb === null) {

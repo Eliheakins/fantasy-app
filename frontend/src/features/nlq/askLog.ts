@@ -18,6 +18,8 @@ const loggedQuerySchema = z.object({
   granularity: queryIntentSchema.shape.granularity,
   order: z.object({ metric: z.string(), direction: z.enum(["asc", "desc"]) }).nullable(),
   limit: z.number().int().nullable(),
+  // Logs written before splits existed have no split.
+  split: z.enum(["season", "week"]).nullable().default(null),
 });
 
 const entrySchema = z.object({

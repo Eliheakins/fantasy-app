@@ -12,7 +12,7 @@ import {
 import { getStatById, type PlayerRole, STAT_DEFINITIONS } from "@/shared/config/statDictionary";
 import { MAX_SELECTED_STATS, type QueryOrder } from "@/shared/lib/queryUrl";
 import type { QueryIntent } from "@/shared/lib/schemas/nlqIntent";
-import type { GranularityMode } from "@/shared/types/queryBuilder";
+import type { GranularityMode, Split } from "@/shared/types/queryBuilder";
 
 import { NAME_SUFFIXES, type PlayerMatch, tokenize } from "./resolvePlayers";
 
@@ -128,6 +128,39 @@ const RANK_DIRECTION = new Map<string, "desc" | "asc" | "best" | "worst">([
 const LEADERBOARD_CUES = new Set(["led", "leader", "leaders", "leading", "top", "leaderboard", ...RANK_DIRECTION.keys()]);
 /** Words a leaderboard question uses around its stat; read as filler only when no player is named. */
 const LEADERBOARD_WORDS = new Set([...LEADERBOARD_CUES, "who", "league", "nfl", "lead"]);
+/** "by season", "each game", "every year": a word that asks for a split, then the unit. */
+const SPLIT_LEADS = new Set(["by", "each", "every"]);
+const SPLIT_UNITS = new Map<string, Split>([
+  ["season", "season"],
+  ["seasons", "season"],
+  ["year", "season"],
+  ["years", "season"],
+  ["week", "week"],
+  ["weeks", "week"],
+  ["game", "week"],
+  ["games", "week"],
+]);
+
+/** Which split the words ask for, and where they are; "season by season" counts like "by season". */
+function findSplit(tokens: readonly string[]): { split: Split | "both" | null; at: number[] } {
+  const asked = new Set<Split>();
+  const at: number[] = [];
+  tokens.forEach((token, i) => {
+    const unit = SPLIT_UNITS.get(tokens[i + 1] ?? "");
+    if (SPLIT_LEADS.has(token) && unit) {
+      asked.add(unit);
+      at.push(i, i + 1);
+      if (tokens[i - 1] !== undefined && SPLIT_UNITS.get(tokens[i - 1]!) === unit) {
+        at.push(i - 1);
+      }
+    }
+  });
+  return { split: asked.size > 1 ? "both" : ([...asked][0] ?? null), at };
+}
+
+/** The split a question asks for, whichever path reads the rest of it; "both" means it asks for two. */
+export const splitAsked = (question: string): Split | "both" | null => findSplit(wordsOf(question)).split;
+
 const DEFAULT_LEADERBOARD_LIMIT = 10;
 const MAX_LEADERBOARD_LIMIT = 100;
 /** A rate or per-game ranking needs a floor of plays, or a player with one play tops it. */
@@ -270,6 +303,15 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
         return ambiguous(`A leaderboard shows 1 to ${MAX_LEADERBOARD_LIMIT} rows.`);
       }
     }
+  }
+
+  // The split is applied by Ask whichever path answers; here its words only count as read.
+  const split = findSplit(tokens);
+  if (split.split === "both") {
+    return ambiguous("It asks to split by season and by week at once.");
+  }
+  for (const at of split.at) {
+    used[at] = true;
   }
 
   const chipIds = new Set(chipGroups.flatMap((g) => g.options.map((o) => o.id)));

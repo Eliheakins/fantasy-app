@@ -32,7 +32,7 @@ export function useExploreQueryExecution() {
   const [running, setRunning] = useState(false);
   const runLatest = useRef(createLatestRunner()).current;
 
-  const { players, stats, granularity, minPlays, order, limit } = state;
+  const { players, stats, granularity, minPlays, order, limit, split } = state;
   const league = isLeagueQuery(state);
 
   const executeQuery = useCallback(async () => {
@@ -75,6 +75,7 @@ export function useExploreQueryExecution() {
             minPlays,
             order,
             limit,
+            split,
             chipGroups: getFilterChipGroups(),
           },
           browserColumnStore,
@@ -96,7 +97,7 @@ export function useExploreQueryExecution() {
         setRunning(false);
       }
     }
-  }, [players, league, order, limit, sources, playerGame, stats, minPlays, filterChipState, granularity, runLatest, currentKey]);
+  }, [players, league, order, limit, split, sources, playerGame, stats, minPlays, filterChipState, granularity, runLatest, currentKey]);
 
   useEffect(() => () => runLatest.cancel(), [runLatest]);
 

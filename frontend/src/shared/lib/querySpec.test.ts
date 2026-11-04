@@ -64,9 +64,7 @@ describe("unsupportedReasons", () => {
     expect(unsupportedReasons(teams)).toEqual(["Team queries aren't supported yet."]);
   });
 
-  it("says grouping by season or week is not supported yet", () => {
-    expect(unsupportedReasons({ ...base, group_by: ["season" as const] })).toEqual([
-      "Splitting results by season or week isn't supported yet.",
-    ]);
+  it("runs a split by season or week", () => {
+    expect(unsupportedReasons({ ...base, group_by: ["season" as const, "week" as const] })).toEqual([]);
   });
 });

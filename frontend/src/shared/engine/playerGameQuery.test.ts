@@ -219,3 +219,42 @@ describe("a league query from the player-game table", () => {
     expect(new Set(reads.map((r) => r.url))).toEqual(new Set([TABLE.url]));
   });
 });
+
+describe("runPlayerGameQuery split by season or week", () => {
+  it("gives one row per season with the season as a column", async () => {
+    const { store } = memoryStore();
+
+    const result = await runPlayerGameQuery(params({ filterChipState: {}, split: "season" }), TABLE, store);
+
+    expect(result.columns).toEqual(["player_id", "season", "m_pass_yards"]);
+    expect(result.rows).toEqual(
+      expect.arrayContaining([
+        { player_id: QB, season: 2023, m_pass_yards: 900 },
+        { player_id: QB, season: 2022, m_pass_yards: 50 },
+      ]),
+    );
+    expect(result.rows).toHaveLength(2);
+  });
+
+  it("gives one row per week, keeping the season", async () => {
+    const { store } = memoryStore();
+
+    const result = await runPlayerGameQuery(params({ split: "week" }), TABLE, store);
+
+    expect(result.rows).toEqual(
+      expect.arrayContaining([
+        { player_id: QB, season: 2023, week: 1, m_pass_yards: 300 },
+        { player_id: QB, season: 2023, week: 2, m_pass_yards: 200 },
+      ]),
+    );
+    expect(result.rows).toHaveLength(2);
+  });
+
+  it("divides by the games within each season for per game", async () => {
+    const { store } = memoryStore();
+
+    const result = await runPlayerGameQuery(params({ split: "season", granularity: "per_game" }), TABLE, store);
+
+    expect(result.rows).toEqual([{ player_id: QB, season: 2023, m_pass_yards: 250 }]);
+  });
+});
