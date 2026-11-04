@@ -53,22 +53,37 @@ def _validate(raw: Any, stat_ids: set[str], filter_ids: set[str]) -> dict[str, A
     return parsed.model_dump()
 
 
+def _answer(c: dict[str, Any]) -> tuple[Any, ...]:
+    return (sorted(c.get("stats", [])), sorted(c.get("filters", [])), c.get("granularity"))
+
+
 def promote(
     exported: Any, existing: dict[str, list[dict[str, Any]]], catalog: dict[str, Any]
-) -> list[dict[str, Any]]:
-    """The exported cases to add: valid against the catalog and not already in any set."""
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """
+    The exported cases to add (valid against the catalog, not already in any set) and why the
+    others were skipped. A skipped question whose answer differs needs a person to decide.
+    """
     if not isinstance(exported, list):
         raise PromoteError("the export must be a list of cases")
     stat_ids = {s["id"] for s in catalog["stats"]}
     filter_ids = {f["id"] for f in catalog["filters"]}
-    seen = {_key(c["q"]) for cases in existing.values() for c in cases}
+    seen = {_key(c["q"]): c for cases in existing.values() for c in cases}
     added: list[dict[str, Any]] = []
+    skipped: list[str] = []
     for raw in exported:
         valid = _validate(raw, stat_ids, filter_ids)
-        if _key(valid["q"]) not in seen:
-            seen.add(_key(valid["q"]))
+        earlier = seen.get(_key(valid["q"]))
+        if earlier is None:
+            seen[_key(valid["q"])] = valid
             added.append(valid)
-    return added
+        elif earlier in added:
+            continue  # the same question exported twice: the first fix stands
+        else:
+            differs = _answer(earlier) != _answer(valid)
+            note = ", with a different expected answer" if differs else ""
+            skipped.append(f"{valid['q']!r}: already in an eval set{note}")
+    return added, skipped
 
 
 def _read(path: Path) -> Any:
@@ -84,7 +99,7 @@ def main(argv: list[str], eval_dir: Path = EVAL_DIR) -> int:
         return 2
     try:
         existing = {name: _read(eval_dir / f"{name}.json") for name in SETS}
-        added = promote(_read(Path(argv[0])), existing, _read(eval_dir / "catalog.json"))
+        added, skipped = promote(_read(Path(argv[0])), existing, _read(eval_dir / "catalog.json"))
     except PromoteError as e:
         print(f"promote: {e}", file=sys.stderr)
         return 1
@@ -92,6 +107,8 @@ def main(argv: list[str], eval_dir: Path = EVAL_DIR) -> int:
     lines = ",\n".join(f"  {json.dumps(c)}" for c in corrections)
     (eval_dir / "corrections.json").write_text(f"[\n{lines}\n]\n" if corrections else "[]\n")
     print(f"added {len(added)} correction(s); corrections.json now has {len(corrections)}")
+    for line in skipped:
+        print(f"skipped {line}")
     return 0
 
 

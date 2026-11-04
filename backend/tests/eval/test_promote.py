@@ -24,21 +24,31 @@ def case(q: str, stats: list[str] | None = None, filters: list[str] | None = Non
 def test_appends_a_valid_correction_after_the_existing_ones():
     existing = {"cases": [], "heldout": [], "corrections": [case("Old question")]}
 
-    added = promote([case("Mahomes passing yards in 2023")], existing, CATALOG)
+    added, skipped = promote([case("Mahomes passing yards in 2023")], existing, CATALOG)
 
     assert added == [case("Mahomes passing yards in 2023")]
+    assert skipped == []
 
 
 def test_skips_questions_already_in_any_set_ignoring_case_and_spacing():
     existing = {"cases": [case("Mahomes passing yards in 2023")], "heldout": [], "corrections": []}
 
-    added = promote([case("  mahomes  PASSING yards in 2023 ")], existing, CATALOG)
+    added, skipped = promote([case("  mahomes  PASSING yards in 2023 ")], existing, CATALOG)
 
     assert added == []
+    assert skipped == ["'  mahomes  PASSING yards in 2023 ': already in an eval set"]
+
+
+def test_flags_a_skipped_question_whose_expected_answer_differs():
+    existing = {"cases": [case("Chubb ypc", ["ypc"])], "heldout": [], "corrections": []}
+
+    _, skipped = promote([case("Chubb ypc", ["rush_yards"])], existing, CATALOG)
+
+    assert skipped == ["'Chubb ypc': already in an eval set, with a different expected answer"]
 
 
 def test_keeps_only_the_first_of_a_question_exported_twice():
-    added = promote(
+    added, _ = promote(
         [case("Chubb ypc", ["ypc"]), case("chubb ypc", ["rush_yards"])],
         {"cases": [], "heldout": [], "corrections": []},
         CATALOG,

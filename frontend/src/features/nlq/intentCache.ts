@@ -62,9 +62,22 @@ export function storeIntent(storage: StorageLike, key: string, value: CachedInte
     return;
   }
   const { [key]: _replaced, ...others } = cache;
-  const entries = Object.entries({ ...others, [key]: value }).slice(-MAX_CACHE_ENTRIES);
+  writeCache(storage, Object.fromEntries(Object.entries({ ...others, [key]: value }).slice(-MAX_CACHE_ENTRIES)));
+}
+
+/** Drops the correction saved for a question, leaving any model answer in place. */
+export function forgetCorrection(storage: StorageLike, key: string): void {
+  const cache = readIntentCache(storage);
+  if (cache[key]?.source !== "correction") {
+    return;
+  }
+  const { [key]: _dropped, ...others } = cache;
+  writeCache(storage, others);
+}
+
+function writeCache(storage: StorageLike, cache: IntentCache): void {
   try {
-    storage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(entries)));
+    storage.setItem(STORAGE_KEY, JSON.stringify(cache));
   } catch {
     // Full or blocked storage only costs the speed-up.
   }

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   cacheKey,
   catalogSignature,
+  forgetCorrection,
   lookupIntent,
   MAX_CACHE_ENTRIES,
   normalizeQuestion,
@@ -102,5 +103,27 @@ describe("storeIntent and lookupIntent", () => {
 
     expect(readIntentCache(broken)).toEqual({});
     expect(() => storeIntent(broken, "k", { intent: INTENT, source: "model" })).not.toThrow();
+  });
+});
+
+describe("forgetCorrection", () => {
+  it("removes a saved correction so the question is read afresh", () => {
+    const storage = memoryStorage();
+    storeIntent(storage, "k", { intent: INTENT, source: "correction" });
+    storeIntent(storage, "other", { intent: INTENT, source: "correction" });
+
+    forgetCorrection(storage, "k");
+
+    expect(lookupIntent(readIntentCache(storage), "k")).toBeUndefined();
+    expect(lookupIntent(readIntentCache(storage), "other")).toBeDefined();
+  });
+
+  it("keeps a model answer, which a reverted edit says nothing about", () => {
+    const storage = memoryStorage();
+    storeIntent(storage, "k", { intent: INTENT, source: "model" });
+
+    forgetCorrection(storage, "k");
+
+    expect(lookupIntent(readIntentCache(storage), "k")?.source).toBe("model");
   });
 });
