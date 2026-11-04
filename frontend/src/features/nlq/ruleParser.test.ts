@@ -449,6 +449,8 @@ describe("splitting by season or week", () => {
     ["Patrick Mahomes passing yards game by game in 2023", "week"],
     ["Patrick Mahomes passing yards in 2023", null],
     ["Patrick Mahomes passing yards per game in 2023", null],
+    ["Patrick Mahomes passing yards per season", "season"],
+    ["Patrick Mahomes passing yards by week 5 in 2023", null],
   ])("reads %s as a %s split", (question, split) => {
     expect(splitAsked(question)).toBe(split);
   });
@@ -458,6 +460,16 @@ describe("splitting by season or week", () => {
 
     expect(result.status).toBe("resolved");
     expect(result.status === "resolved" && result.intent).toEqual({ stat_ids: ["pass_yards"], filter_ids: [], granularity: "total" });
+  });
+
+  it("does not read week 5 as a split; there is no single-week filter, so it is handed over", () => {
+    expect(parse("Patrick Mahomes passing yards by week 5 in 2023").status).not.toBe("resolved");
+  });
+
+  it("asks a weekly leaderboard for a single game's worth of plays, not a season's", () => {
+    const result = parse("top 5 completion percentage by week in 2023");
+
+    expect(result.status === "resolved" && result.leaderboard?.minPlays).toBe(10);
   });
 
   it("hands over a question that asks for both splits", () => {

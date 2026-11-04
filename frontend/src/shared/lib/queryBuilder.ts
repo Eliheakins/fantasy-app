@@ -53,7 +53,13 @@ export function splitKeyer(
   cols: Readonly<Record<string, ArrayLike<unknown>>>,
   split: Split | null | undefined,
 ): (playerId: string, row: number) => string {
-  const columns = splitColumns(split).map((c) => cols[c]!);
+  const columns = splitColumns(split).map((c) => {
+    const column = cols[c];
+    if (!column) {
+      throw new Error(`The data has no ${c} column to split by.`);
+    }
+    return column;
+  });
   return (playerId, row) => [playerId, ...columns.map((c) => String(c[row]))].join("|");
 }
 

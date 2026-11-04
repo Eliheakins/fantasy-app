@@ -129,7 +129,11 @@ const LEADERBOARD_CUES = new Set(["led", "leader", "leaders", "leading", "top", 
 /** Words a leaderboard question uses around its stat; read as filler only when no player is named. */
 const LEADERBOARD_WORDS = new Set([...LEADERBOARD_CUES, "who", "league", "nfl", "lead"]);
 /** "by season", "each game", "every year": a word that asks for a split, then the unit. */
-const SPLIT_LEADS = new Set(["by", "each", "every"]);
+const SPLIT_LEADS = new Set(["by", "each", "every", "per"]);
+/** "per game" is a granularity, so "per" only splits by season. */
+const PER_SPLITS = new Set(["season", "seasons", "year", "years"]);
+/** A weekly ranking needs a game's worth of plays to qualify, not a season's. */
+const WEEKLY_LEADERBOARD_MIN_PLAYS = 10;
 const SPLIT_UNITS = new Map<string, Split>([
   ["season", "season"],
   ["seasons", "season"],
@@ -146,8 +150,11 @@ function findSplit(tokens: readonly string[]): { split: Split | "both" | null; a
   const asked = new Set<Split>();
   const at: number[] = [];
   tokens.forEach((token, i) => {
-    const unit = SPLIT_UNITS.get(tokens[i + 1] ?? "");
-    if (SPLIT_LEADS.has(token) && unit) {
+    const next = tokens[i + 1] ?? "";
+    const unit = SPLIT_UNITS.get(next);
+    // "by week 5" names a week, not a split.
+    const namesOne = /^\d+$/.test(tokens[i + 2] ?? "");
+    if (SPLIT_LEADS.has(token) && unit && !namesOne && (token !== "per" || PER_SPLITS.has(next))) {
       asked.add(unit);
       at.push(i, i + 1);
       if (tokens[i - 1] !== undefined && SPLIT_UNITS.get(tokens[i - 1]!) === unit) {
@@ -513,7 +520,8 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
   if (typeof direction !== "string") {
     return ambiguous(direction.reason);
   }
-  const minPlays = intent.granularity === "total" ? 0 : LEADERBOARD_MIN_PLAYS;
+  const minPlays =
+    intent.granularity === "total" ? 0 : split.split === "week" ? WEEKLY_LEADERBOARD_MIN_PLAYS : LEADERBOARD_MIN_PLAYS;
   return {
     status: "resolved",
     intent,
