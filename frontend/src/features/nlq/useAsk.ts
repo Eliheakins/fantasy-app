@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getStatById, type PlayerRole } from "@/shared/config/statDictionary";
+import { getFilterChipGroups } from "@/shared/lib/filterChipGroups";
 import { getPlayerDictionary } from "@/shared/lib/players";
 import { type QueryIntent, requestIntent } from "@/shared/lib/nlqApi";
 import { MAX_PINNED_PLAYERS } from "@/shared/lib/queryUrl";
 import { specFromIntent, unsupportedReasons } from "@/shared/lib/querySpec";
 import type { PlayerDictionaryRow } from "@/shared/lib/schemas/players";
 import { useQueryState } from "@/shared/lib/useQueryState";
+import { useManifestStore } from "@/stores/useManifestStore";
 
+import { type AnswerPath, interpretQuestion } from "./interpretQuestion";
 import { withDefaultSeasonType } from "./intentFilters";
 import { narrowByRoles, type PlayerMatch, pickCandidate, resolvePlayers } from "./resolvePlayers";
 
@@ -42,6 +45,8 @@ export function useAsk() {
   const [resolved, setResolved] = useState<PlayerDictionaryRow[]>([]);
   const [choices, setChoices] = useState<PlayerMatch[]>([]);
   const [intent, setIntent] = useState<QueryIntent | null>(null);
+  const [answeredBy, setAnsweredBy] = useState<{ question: string; path: AnswerPath; unrecognized: string[] } | null>(null);
+  const [pending, setPending] = useState<{ path: AnswerPath; unrecognized: string[] }>({ path: "model", unrecognized: [] });
 
   // Each ask gets a number; leaving the page, going back or asking again makes older ones stale, so a
   // slow model reply cannot replace an answer the user has moved past.
@@ -64,7 +69,7 @@ export function useAsk() {
   }, [urlQuestion]);
 
   const show = useCallback(
-    (players: PlayerDictionaryRow[], next: QueryIntent, asked: string) => {
+    (players: PlayerDictionaryRow[], next: QueryIntent, asked: string, path: AnswerPath, unrecognized: string[]) => {
       const ids = [...new Set(players.map((p) => p.gsis_id))].slice(0, MAX_PINNED_PLAYERS);
       const blocked = unsupportedReasons(specFromIntent(next, ids));
       if (blocked.length > 0) {
@@ -72,6 +77,7 @@ export function useAsk() {
         setPhase("idle");
         return;
       }
+      setAnsweredBy({ question: asked, path, unrecognized });
       showQuery(
         {
           players: ids,
@@ -113,16 +119,24 @@ export function useAsk() {
         return;
       }
 
-      const outcome = await requestIntent(trimmed);
+      const interpretation = await interpretQuestion({
+        question: trimmed,
+        matches,
+        seasons: useManifestStore.getState().seasons,
+        chipGroups: getFilterChipGroups(),
+        askModel: requestIntent,
+      });
       if (request !== currentRequest.current) {
         return;
       }
-      if (outcome.outcome === "unsupported") {
-        setMessage(outcome.reason);
+      if (interpretation.kind === "message") {
+        setMessage(interpretation.text);
         setPhase("idle");
         return;
       }
-      const next = outcome.intent;
+      const next = interpretation.intent;
+      const unrecognized = interpretation.unrecognized ?? [];
+      setPending({ path: interpretation.path, unrecognized });
       const roles = rolesOf(next);
       const sure: PlayerDictionaryRow[] = [];
       const unsure: PlayerMatch[] = [];
@@ -142,7 +156,7 @@ export function useAsk() {
         setPhase("choosing");
         return;
       }
-      show(sure, next, trimmed);
+      show(sure, next, trimmed, interpretation.path, unrecognized);
     } catch (e) {
       if (request === currentRequest.current) {
         setMessage(errorText(e));
@@ -163,13 +177,28 @@ export function useAsk() {
       if (remaining.length > 0) {
         return;
       }
-      show(players, intent, question.trim());
+      show(players, intent, question.trim(), pending.path, pending.unrecognized);
     },
-    [intent, choices, resolved, show, question],
+    [intent, choices, resolved, show, question, pending],
   );
 
   /** True when the URL holds a query to show: players and at least one stat. */
   const hasResult = state.players.length > 0 && state.stats.length > 0;
 
-  return { question, setQuestion, phase, message, resolved, choices, onAsk, onChoose, hasResult };
+  // Which path answered is known only for the answer produced in this session, not after a reload.
+  const current = answeredBy && answeredBy.question === urlQuestion ? answeredBy : null;
+
+  return {
+    question,
+    setQuestion,
+    phase,
+    message,
+    resolved,
+    choices,
+    onAsk,
+    onChoose,
+    hasResult,
+    path: current?.path ?? null,
+    unrecognized: current?.unrecognized ?? [],
+  };
 }

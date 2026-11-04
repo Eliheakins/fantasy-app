@@ -11,7 +11,8 @@
     "check": "tsc --noEmit && eslint . && vitest run",
     "export:catalog": "vite-node scripts/exportIntentCatalog.ts",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "eval:rules": "vite-node scripts/evalRules.ts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.2",

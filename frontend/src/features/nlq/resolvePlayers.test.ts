@@ -15,13 +15,37 @@ const KEENAN_ALLEN = row("ka", "Keenan Allen", "WR", "CHI");
 const JOSH_ALLEN_LB = row("jl", "Josh Allen", "LB", "JAX");
 const WILL_LEVIS = row("wl", "Will Levis", "QB", "TEN");
 const OBJ = row("o", "Odell Beckham Jr.", "WR", "MIA");
-const DICT = [MAHOMES, KELCE, JOSH_ALLEN, KEENAN_ALLEN, JOSH_ALLEN_LB, WILL_LEVIS, OBJ];
+const KYLE_LONG = row("kl", "Kyle Long", "OT", "CHI");
+const DICT = [MAHOMES, KELCE, JOSH_ALLEN, KEENAN_ALLEN, JOSH_ALLEN_LB, WILL_LEVIS, OBJ, KYLE_LONG];
 
 const phrases = (q: string) => resolvePlayers(q, DICT).map((m) => m.phrase);
 
 describe("tokenize", () => {
   it("lowercases and drops apostrophes and punctuation", () => {
     expect(tokenize("Ja'Marr Chase, 2023!")).toEqual(["jamarr", "chase", "2023"]);
+  });
+
+  it("drops a possessive 's so 'Burrow's yards' still names Burrow", () => {
+    expect(tokenize("Burrow's passing yards")).toEqual(["burrow", "passing", "yards"]);
+    expect(tokenize("Burrow\u2019s passing yards")).toEqual(["burrow", "passing", "yards"]);
+  });
+
+  it("keeps apostrophes inside names that are not possessives", () => {
+    expect(tokenize("D'Andre Swift and Ke'Shawn Vaughn")).toEqual(["dandre", "swift", "and", "keshawn", "vaughn"]);
+  });
+});
+
+describe("resolvePlayers and everyday football words", () => {
+  it("does not take 'long' or 'short' in '3rd and long' for a player's surname", () => {
+    expect(phrases("Mahomes passing yards on 3rd and long")).toEqual(["mahomes"]);
+  });
+
+  it("still finds the player when the full name is used", () => {
+    expect(phrases("Kyle Long snaps")).toEqual(["kyle long"]);
+  });
+
+  it("finds a player named in the possessive", () => {
+    expect(phrases("What were Mahomes's passing yards in 2023")).toEqual(["mahomes"]);
   });
 });
 

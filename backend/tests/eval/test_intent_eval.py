@@ -64,7 +64,13 @@ def _record_run(model: str, passed: int, total: int, failures: list[str]) -> Non
 async def test_intent_pass_rate_meets_threshold():
     settings = get_settings()
     catalog = json.loads((EVAL_DIR / "catalog.json").read_text())
-    cases = json.loads((EVAL_DIR / "cases.json").read_text())
+    # The held-out set was written before the rules parser. The model is scored on it too, so both
+    # paths can be compared on the same questions (`npm run eval:rules` in frontend/ scores rules).
+    cases = [
+        {**c, "set": name}
+        for name in ("cases", "heldout")
+        for c in json.loads((EVAL_DIR / f"{name}.json").read_text())
+    ]
     client = AsyncOpenAI(
         base_url=settings.llm_base_url, api_key="local", timeout=settings.llm_timeout_seconds
     )
@@ -86,9 +92,26 @@ async def test_intent_pass_rate_meets_threshold():
     rate = passed / len(cases)
     _record_run(settings.llm_model, passed, len(cases), failures)
     report = "\n".join(failures)
-    print(f"\nintent eval: {passed}/{len(cases)} passed ({rate:.0%})\n{report}")
-    refusals = [c["q"] for c in cases if c.get("unsupported")]
-    missed = [q for q in refusals if any(f.startswith(repr(q)) for f in failures)]
+    by_set = {
+        name: sum(
+            1
+            for c in cases
+            if c["set"] == name and not any(f.startswith(repr(c["q"])) for f in failures)
+        )
+        for name in ("cases", "heldout")
+    }
+    totals = {name: sum(1 for c in cases if c["set"] == name) for name in by_set}
+    split = ", ".join(f"{name} {by_set[name]}/{totals[name]}" for name in by_set)
+    print(f"\nintent eval: {passed}/{len(cases)} passed ({rate:.0%}); {split}\n{report}")
+    # Only the original cases gate the run. The held-out refusals are reported but do not fail it:
+    # the model currently answers all seven (see issue #9), so gating on them would keep this red.
+    gated = [c for c in cases if c["set"] == "cases"]
+    gated_failures = [f for f in failures if any(f.startswith(repr(c["q"])) for c in gated)]
+    gated_rate = (len(gated) - len(gated_failures)) / len(gated)
+    refusals = [c["q"] for c in gated if c.get("unsupported")]
+    missed = [q for q in refusals if any(f.startswith(repr(q)) for f in gated_failures)]
     refusal_rate = 1 - len(missed) / len(refusals) if refusals else 1.0
-    assert rate >= MIN_PASS_RATE, f"pass rate {rate:.0%} < {MIN_PASS_RATE:.0%}\n{report}"
+    assert gated_rate >= MIN_PASS_RATE, (
+        f"pass rate {gated_rate:.0%} < {MIN_PASS_RATE:.0%}\n{report}"
+    )
     assert refusal_rate >= MIN_REFUSAL_RATE, f"refusal rate {refusal_rate:.0%}\n{report}"

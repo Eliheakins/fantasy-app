@@ -203,3 +203,52 @@ export function buildFilterChipGroups(seasons: readonly number[]): FilterChipGro
 export function getAllFilterChipIds(groups: readonly FilterChipGroup[]): string[] {
   return groups.flatMap((g) => g.options.map((o) => o.id));
 }
+
+/**
+ * Everyday phrases for each chip, as the rules parser reads them: lowercase, plain words, no punctuation.
+ * Season chips are not listed; the parser builds those from the years in a question. A chip with no entry
+ * (the red-zone flag) cannot be reached by words, because a second chip already covers the same phrase.
+ */
+export const CHIP_PHRASES: Readonly<Record<string, readonly string[]>> = {
+  "down-1": ["first down", "1st down"],
+  "down-2": ["second down", "2nd down"],
+  "down-3": ["third down", "3rd down"],
+  "down-4": ["fourth down", "4th down"],
+  "ytg-short": ["short yardage", "short distance"],
+  "ytg-long": ["long distance"],
+  "week-early": ["early season", "early in the season"],
+  "week-mid": ["midseason", "mid season"],
+  "week-late": ["week 13 or later", "late season", "late in the season"],
+  "loc-home": ["at home", "home games", "home game", "home"],
+  "loc-away": ["on the road", "road games", "road game", "away games", "away game", "away from home", "away"],
+  "field-redzone": ["red zone", "redzone", "inside the 20"],
+  "gtg-yes": ["goal to go"],
+  "stype-reg": ["regular season"],
+  "stype-post": ["playoffs", "playoff", "postseason", "post season"],
+  "qtr-1": ["first quarter", "1st quarter", "q1"],
+  "qtr-2": ["second quarter", "2nd quarter", "q2"],
+  "qtr-3": ["third quarter", "3rd quarter", "q3"],
+  "qtr-4": ["fourth quarter", "4th quarter", "q4"],
+  "gclk-first-half": ["first half", "1st half"],
+  "gclk-second-half": ["second half", "2nd half"],
+  "score-leading": ["when leading", "while leading", "when ahead", "while ahead"],
+  "score-trailing": ["when trailing", "while trailing", "when behind", "while behind"],
+  "pers-11": ["11 personnel"],
+  "pers-12": ["12 personnel"],
+  "pers-21": ["21 personnel"],
+  "pers-10": ["10 personnel"],
+  "dib-lte6": ["light box"],
+  "dib-gte7": ["heavy box", "stacked box"],
+  "pr-lte3": ["three or fewer rushers", "3 or fewer rushers"],
+  "pr-gte4": ["four or more rushers", "4 or more rushers"],
+  "wind-gte15": ["windy games", "windy", "in the wind"],
+  "temp-lte32": ["cold weather", "cold games", "freezing"],
+};
+
+/** A phrase that means more than one chip at once, such as "third and long". */
+export const CHIP_COMBO_PHRASES: Readonly<Record<string, readonly string[]>> = {
+  "third and long": ["down-3", "ytg-long"],
+  "3rd and long": ["down-3", "ytg-long"],
+  "third and short": ["down-3", "ytg-short"],
+  "3rd and short": ["down-3", "ytg-short"],
+};

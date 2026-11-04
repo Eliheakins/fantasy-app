@@ -1,0 +1,75 @@
+/**
+ * Scores the rules parser against the eval questions (`backend/tests/eval/cases.json` and
+ * `heldout.json`). Shared by the CI test and the printable report (`npm run eval:rules`).
+ */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+import { buildFilterChipGroups } from "@/shared/config/queryBuilderOptions";
+import type { PlayerDictionaryRow } from "@/shared/lib/schemas/players";
+import type { GranularityMode } from "@/shared/types/queryBuilder";
+
+import { resolvePlayers } from "./resolvePlayers";
+import { parseRules, type RuleResult } from "./ruleParser";
+
+export interface EvalCase {
+  q: string;
+  stats?: string[];
+  filters?: string[];
+  /** null means the case does not check it. */
+  granularity?: GranularityMode | null;
+  /** The question must be refused. */
+  unsupported?: boolean;
+  /** The rules parser must hand this one over rather than guess. */
+  rules?: "defer";
+  trap?: string;
+}
+
+/**
+ * correct: resolved to the expected query, or refused a question that should be refused.
+ * deferred: handed to the model. wrong: answered a question it should not have, or answered it differently.
+ */
+export type Verdict = "correct" | "deferred" | "wrong";
+
+const sameSet = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((x) => b.includes(x));
+
+export function judge(c: EvalCase, result: RuleResult): Verdict {
+  if (result.status === "ambiguous" || result.status === "unknown") {
+    return "deferred";
+  }
+  if (result.status === "unsupported") {
+    return c.unsupported ? "correct" : "wrong";
+  }
+  if (c.unsupported || c.rules === "defer") {
+    return "wrong";
+  }
+  const { intent } = result;
+  const matches =
+    sameSet(intent.stat_ids, c.stats ?? []) &&
+    sameSet(intent.filter_ids, c.filters ?? []) &&
+    (c.granularity == null || intent.granularity === c.granularity);
+  return matches ? "correct" : "wrong";
+}
+
+const EVAL_DIR = fileURLToPath(new URL("../../../../backend/tests/eval/", import.meta.url));
+const readJson = <T>(name: string): T => JSON.parse(readFileSync(`${EVAL_DIR}${name}`, "utf8")) as T;
+
+export interface EvalRow {
+  set: "cases" | "heldout";
+  case: EvalCase;
+  result: RuleResult;
+  verdict: Verdict;
+}
+
+export function runRulesEval(seasons: readonly number[]): EvalRow[] {
+  const players = readJson<PlayerDictionaryRow[]>("players.fixture.json");
+  const chipGroups = buildFilterChipGroups(seasons);
+
+  return (["cases", "heldout"] as const).flatMap((set) =>
+    readJson<EvalCase[]>(`${set}.json`).map((c): EvalRow => {
+      const result = parseRules(c.q, { matches: resolvePlayers(c.q, players), seasons, chipGroups });
+      return { set, case: c, result, verdict: judge(c, result) };
+    }),
+  );
+}
