@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 
 import { ExploreMobileBuilderDrawer } from "@/features/explore/ExploreMobileBuilderDrawer";
 import { ExploreResultsCanvas } from "@/features/explore/ExploreResultsCanvas";
@@ -10,6 +10,7 @@ import {
 import { useExplorePlayerSearch } from "@/features/explore/useExplorePlayerSearch";
 import { useExploreQueryExecution } from "@/features/explore/useExploreQueryExecution";
 import { PageHeader } from "@/shared/components/PageHeader";
+import { useRouteMemory } from "@/stores/useRouteMemory";
 
 /**
  * Guided query UI: sidebar (who / what / context) + results canvas.
@@ -17,6 +18,13 @@ import { PageHeader } from "@/shared/components/PageHeader";
 export function QueryBuilderPanel() {
   const playerSearch = useExplorePlayerSearch();
   const queryExec = useExploreQueryExecution();
+  const location = useLocation();
+  const rememberExplore = useRouteMemory((s) => s.rememberExplore);
+
+  // The "Explore" tab returns here with the same query after a visit to Ask.
+  useEffect(() => {
+    rememberExplore(location.search);
+  }, [location.search, rememberExplore]);
 
   const [mobileBuilderOpen, setMobileBuilderOpen] = useState(false);
   const [mobileActiveSnap, setMobileActiveSnap] = useState<number | string | null>(1);

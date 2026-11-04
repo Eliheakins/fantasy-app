@@ -1,4 +1,4 @@
-import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
+import { useQueryState } from "@/shared/lib/useQueryState";
 
 import { GranularitySelector } from "@/features/explore/GranularitySelector";
 import { MinPlaysSlider } from "@/features/explore/MinPlaysSlider";
@@ -8,8 +8,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
  * Granularity + min plays in one collapsible block (sidebar height).
  */
 export function AggregationSection() {
-  const activeGranularity = useQueryBuilderStore((s) => s.activeGranularity);
-  const minPlays = useQueryBuilderStore((s) => s.minPlays);
+  const { state } = useQueryState();
+  const activeGranularity = state.granularity;
+  const minPlays = state.minPlays;
 
   const summary = `${activeGranularity.replace(/_/g, " ")} · min ${minPlays} plays`;
 

@@ -1,5 +1,7 @@
 import { NavLink } from "react-router-dom";
 
+import { useRouteMemory } from "@/stores/useRouteMemory";
+
 import { cn } from "@/shared/lib/utils";
 
 const linkClass =
@@ -8,6 +10,8 @@ const linkClass =
 const activeClass = "bg-input text-ink";
 
 export function AppNav() {
+  const exploreSearch = useRouteMemory((s) => s.exploreSearch);
+
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface/95 backdrop-blur-sm">
       <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-2 px-4 lg:px-6">
@@ -21,7 +25,7 @@ export function AppNav() {
           The Bridge
         </NavLink>
         <nav className="flex flex-1 flex-wrap items-center gap-1" aria-label="Main">
-          <NavLink to="/explore" className={({ isActive }) => cn(linkClass, isActive && activeClass)}>
+          <NavLink to={{ pathname: "/explore", search: exploreSearch }} className={({ isActive }) => cn(linkClass, isActive && activeClass)}>
             Explore
           </NavLink>
           <NavLink to="/ask" className={({ isActive }) => cn(linkClass, isActive && activeClass)}>

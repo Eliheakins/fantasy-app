@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getStatById, type PlayerRole } from "@/shared/config/statDictionary";
-import { getPlayerDictionary, getPlayersByIds } from "@/shared/lib/players";
+import { getPlayerDictionary } from "@/shared/lib/players";
 import { type QueryIntent, requestIntent } from "@/shared/lib/nlqApi";
+import { MAX_PINNED_PLAYERS } from "@/shared/lib/queryUrl";
 import { specFromIntent, unsupportedReasons } from "@/shared/lib/querySpec";
 import type { PlayerDictionaryRow } from "@/shared/lib/schemas/players";
-import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
-import { MAX_PINNED_PLAYERS, useWorkbenchStore } from "@/stores/useWorkbenchStore";
+import { useQueryState } from "@/shared/lib/useQueryState";
 
 import { withDefaultSeasonType } from "./intentFilters";
 import { narrowByRoles, type PlayerMatch, pickCandidate, resolvePlayers } from "./resolvePlayers";
 
-export type AskPhase = "idle" | "working" | "choosing" | "done";
+export type AskPhase = "idle" | "working" | "choosing";
 
 const NO_PLAYER_MESSAGE =
   "I couldn't find a player in that question. Name one by last or full name, like " +
@@ -30,22 +30,21 @@ function errorText(e: unknown): string {
 }
 
 /**
- * Ask flow: match players locally, let the model pick stats/filters, then hand the result to the
- * Explore stores. The Explore query hook runs the query, so Ask and Explore always agree.
+ * Ask flow: match players locally, let the model pick stats and filters, then show the answer by
+ * navigating to a URL that holds the question and the query. Reloading or going back shows the
+ * same answer without asking the model again, and Explore's own URL is never touched.
  */
 export function useAsk() {
-  const [question, setQuestion] = useState("");
+  const { state, question: urlQuestion, showQuery } = useQueryState();
+  const [question, setQuestion] = useState(urlQuestion);
   const [phase, setPhase] = useState<AskPhase>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [resolved, setResolved] = useState<PlayerDictionaryRow[]>([]);
   const [choices, setChoices] = useState<PlayerMatch[]>([]);
   const [intent, setIntent] = useState<QueryIntent | null>(null);
 
-  const setPins = useWorkbenchStore((s) => s.setPins);
-  const applyIntent = useQueryBuilderStore((s) => s.applyIntent);
-
-  // Each ask gets a number; leaving the page or asking again makes older ones stale, so a slow
-  // model reply cannot replace pins or stats the user has set since.
+  // Each ask gets a number; leaving the page, going back or asking again makes older ones stale, so a
+  // slow model reply cannot replace an answer the user has moved past.
   const currentRequest = useRef(0);
   useEffect(() => {
     return () => {
@@ -53,38 +52,40 @@ export function useAsk() {
     };
   }, []);
 
-  const apply = useCallback(
-    async (players: PlayerDictionaryRow[], next: QueryIntent, request: number) => {
-      const unique = [...new Map(players.map((p) => [p.gsis_id, p])).values()].slice(
-        0,
-        MAX_PINNED_PLAYERS,
-      );
-      const blocked = unsupportedReasons(
-        specFromIntent(
-          next,
-          unique.map((p) => p.gsis_id),
-        ),
-      );
+  // The URL is the answer on screen: when it changes (back, forward, a new answer), the box shows its question.
+  useEffect(() => {
+    currentRequest.current += 1;
+    setQuestion(urlQuestion);
+    setMessage(null);
+    setResolved([]);
+    setChoices([]);
+    setIntent(null);
+    setPhase("idle");
+  }, [urlQuestion]);
+
+  const show = useCallback(
+    (players: PlayerDictionaryRow[], next: QueryIntent, asked: string) => {
+      const ids = [...new Set(players.map((p) => p.gsis_id))].slice(0, MAX_PINNED_PLAYERS);
+      const blocked = unsupportedReasons(specFromIntent(next, ids));
       if (blocked.length > 0) {
         setMessage(blocked.join(" "));
         setPhase("idle");
         return;
       }
-      const found = await getPlayersByIds(unique.map((p) => p.gsis_id));
-      if (request !== currentRequest.current) {
-        return;
-      }
-      setPins(found);
-      applyIntent({
-        statIds: next.stat_ids,
-        filterIds: withDefaultSeasonType(next.filter_ids),
-        granularity: next.granularity,
-      });
-      setResolved(unique);
-      setIntent(next);
-      setPhase("done");
+      showQuery(
+        {
+          players: ids,
+          stats: next.stat_ids,
+          filters: withDefaultSeasonType(next.filter_ids),
+          granularity: next.granularity,
+          minPlays: 0,
+        },
+        asked,
+      );
+      // The same question can be asked twice, which leaves the URL's question unchanged.
+      setPhase("idle");
     },
-    [setPins, applyIntent],
+    [showQuery],
   );
 
   const onAsk = useCallback(async () => {
@@ -141,17 +142,17 @@ export function useAsk() {
         setPhase("choosing");
         return;
       }
-      await apply(sure, next, request);
+      show(sure, next, trimmed);
     } catch (e) {
       if (request === currentRequest.current) {
         setMessage(errorText(e));
         setPhase("idle");
       }
     }
-  }, [question, apply]);
+  }, [question, show]);
 
   const onChoose = useCallback(
-    async (player: PlayerDictionaryRow) => {
+    (player: PlayerDictionaryRow) => {
       if (!intent) {
         return;
       }
@@ -162,19 +163,13 @@ export function useAsk() {
       if (remaining.length > 0) {
         return;
       }
-      setPhase("working");
-      const request = ++currentRequest.current;
-      try {
-        await apply(players, intent, request);
-      } catch (e) {
-        if (request === currentRequest.current) {
-          setMessage(errorText(e));
-          setPhase("idle");
-        }
-      }
+      show(players, intent, question.trim());
     },
-    [intent, choices, resolved, apply],
+    [intent, choices, resolved, show, question],
   );
 
-  return { question, setQuestion, phase, message, resolved, choices, onAsk, onChoose };
+  /** True when the URL holds a query to show: players and at least one stat. */
+  const hasResult = state.players.length > 0 && state.stats.length > 0;
+
+  return { question, setQuestion, phase, message, resolved, choices, onAsk, onChoose, hasResult };
 }

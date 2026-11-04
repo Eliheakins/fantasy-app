@@ -1,5 +1,5 @@
 import { useFilterChipGroups } from "@/shared/lib/filterChipGroups";
-import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
+import { useQueryState } from "@/shared/lib/useQueryState";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/shared/components/ui/accordion";
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
@@ -8,8 +8,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-grou
  * The Context — grouped multi-select chips; each group is collapsible.
  */
 export function FilterChipsBar() {
-  const filterState = useQueryBuilderStore((s) => s.filterChipState);
-  const applyFilterGroup = useQueryBuilderStore((s) => s.applyFilterGroup);
+  const { filterChipState: filterState, applyFilterGroup } = useQueryState();
   const groups = useFilterChipGroups();
 
   return (
@@ -55,7 +54,7 @@ export function FilterChipsBar() {
                 <ToggleGroup
                   type="multiple"
                   value={value}
-                  onValueChange={(next) => applyFilterGroup(group, next)}
+                  onValueChange={(next) => applyFilterGroup(optionIds, next)}
                   className="flex flex-wrap justify-start gap-2 pb-2"
                   size="sm"
                   aria-label={group.label}

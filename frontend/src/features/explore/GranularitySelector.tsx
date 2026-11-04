@@ -1,7 +1,7 @@
 import { getStatById } from "@/shared/config/statDictionary";
 import { cn } from "@/shared/lib/utils";
 import type { GranularityMode } from "@/shared/types/queryBuilder";
-import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
+import { useQueryState } from "@/shared/lib/useQueryState";
 
 import { ToggleGroup, ToggleGroupItem } from "@/shared/components/ui/toggle-group";
 
@@ -17,9 +17,9 @@ interface GranularitySelectorProps {
 }
 
 export function GranularitySelector({ embedded = false }: GranularitySelectorProps) {
-  const selectedStatIds = useQueryBuilderStore((s) => s.selectedStatIds);
-  const activeGranularity = useQueryBuilderStore((s) => s.activeGranularity);
-  const setGranularity = useQueryBuilderStore((s) => s.setActiveGranularity);
+  const { state, setActiveGranularity: setGranularity } = useQueryState();
+  const selectedStatIds = state.stats;
+  const activeGranularity = state.granularity;
 
   const rateLocked = selectedStatIds.some((id) => getStatById(id)?.rate_only);
 

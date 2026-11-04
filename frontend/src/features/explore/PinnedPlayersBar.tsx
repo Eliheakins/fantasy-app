@@ -1,4 +1,6 @@
-import { MAX_PINNED_PLAYERS, useWorkbenchStore } from "@/stores/useWorkbenchStore";
+import { MAX_PINNED_PLAYERS } from "@/shared/lib/queryUrl";
+import { usePinnedPlayers } from "@/shared/lib/usePinnedPlayers";
+import { useQueryState } from "@/shared/lib/useQueryState";
 
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
@@ -7,9 +9,8 @@ import { cn } from "@/shared/lib/utils";
  * Pinned players as removable chips (used under The Who).
  */
 export function PinnedPlayersBar() {
-  const pinnedPlayers = useWorkbenchStore((s) => s.pinnedPlayers);
-  const unpinPlayer = useWorkbenchStore((s) => s.unpinPlayer);
-  const clearPins = useWorkbenchStore((s) => s.clearPins);
+  const { state, unpinPlayer, clearPins } = useQueryState();
+  const pinnedPlayers = usePinnedPlayers(state.players);
 
   return (
     <div className="space-y-3">

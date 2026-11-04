@@ -6,7 +6,8 @@ import {
 } from "@/shared/config/statDictionary";
 import { describeStat } from "@/shared/lib/queryBuilder";
 import { cn } from "@/shared/lib/utils";
-import { MAX_SELECTED_STATS, useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
+import { MAX_SELECTED_STATS } from "@/shared/lib/queryUrl";
+import { useQueryState } from "@/shared/lib/useQueryState";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/shared/components/ui/accordion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/components/ui/tooltip";
@@ -43,8 +44,8 @@ function StatHelpButton({ label, help }: { label: string; help: string }) {
  * The What — multi-select metrics; outer section collapsible, inner accordion per category.
  */
 export function StatDictionaryPanel({ className }: StatDictionaryPanelProps) {
-  const selectedIds = useQueryBuilderStore((s) => s.selectedStatIds);
-  const toggleStatId = useQueryBuilderStore((s) => s.toggleStatId);
+  const { state, toggleStatId } = useQueryState();
+  const selectedIds = state.stats;
 
   const atCap = selectedIds.length >= MAX_SELECTED_STATS;
 

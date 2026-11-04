@@ -3,15 +3,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getPlayers, searchPlayers } from "@/shared/lib/players";
 import type { NFLPlayer } from "@/shared/types/workbench";
-import { MAX_PINNED_PLAYERS, useWorkbenchStore } from "@/stores/useWorkbenchStore";
+import { MAX_PINNED_PLAYERS } from "@/shared/lib/queryUrl";
+import { usePinnedPlayers } from "@/shared/lib/usePinnedPlayers";
+import { useQueryState } from "@/shared/lib/useQueryState";
 
 export function useExplorePlayerSearch() {
   const [query, setQuery] = useState("");
   const [debounced, setDebounced] = useState("");
   const [pinMessage, setPinMessage] = useState<string | null>(null);
 
-  const pinnedPlayers = useWorkbenchStore((s) => s.pinnedPlayers);
-  const tryPinPlayer = useWorkbenchStore((s) => s.tryPinPlayer);
+  const { state, pinPlayer } = useQueryState();
+  const pinnedPlayers = usePinnedPlayers(state.players);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebounced(query), 250);
@@ -36,13 +38,10 @@ export function useExplorePlayerSearch() {
         return;
       }
 
-      if (tryPinPlayer(p)) {
-        setQuery("");
-      } else {
-        setPinMessage("Could not pin (duplicate or limit).");
-      }
+      pinPlayer(p.gsis_id);
+      setQuery("");
     },
-    [pinnedPlayers, tryPinPlayer],
+    [pinnedPlayers, pinPlayer],
   );
 
   const suggestions = useMemo(() => searchQ.data ?? [], [searchQ.data]);

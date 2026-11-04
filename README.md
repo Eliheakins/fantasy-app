@@ -13,6 +13,26 @@ Everything runs on your machine. Data lives in `backend/data/`.
 2. `POST /nlq/intent` sends the question and the stat/filter catalog to a local model, which returns `{outcome: "query", intent: {stat_ids, filter_ids, granularity}}`, or `{outcome: "unsupported", reason}` when no stat can answer (salary, fantasy points, opinions). The reply is validated, with one retry on a bad reply.
 3. The Explore query builder hands the stats and filters to the in-browser engine. The answer text is built from the result rows, not by the model.
 4. Questions default to the regular season unless they mention the playoffs.
+5. The answer is a link: the question and the query it became live in the URL, so reload, back/forward and sharing show the same result without asking the model again.
+
+## Links
+
+The query on Explore and Ask is in the URL as readable parameters, one `p`, `s` and `f` per value:
+
+```
+/explore?p=00-0033873&s=pass_yards&s=pass_sack_rate&f=season-2023&f=stype-reg&g=per_game&m=20
+```
+
+| Parameter | Meaning |
+|-----------|---------|
+| `p` | Player GSIS id (up to 5) |
+| `s` | Stat id from `metrics/metrics.json` (up to 5) |
+| `f` | Filter chip id, such as `season-2023`, `stype-reg`, `down-3` |
+| `g` | `total`, `per_game` or `per_play` (default) |
+| `m` | Minimum rows per player, 0 to 500 |
+| `q` | Ask only: the question that produced the query |
+
+Values the app does not recognise are ignored, so an old or edited link still opens. Explore and Ask each keep their own query; asking a question does not change Explore.
 
 ## Setup
 

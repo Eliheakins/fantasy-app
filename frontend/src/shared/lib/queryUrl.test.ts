@@ -1,0 +1,196 @@
+import { describe, expect, it } from "vitest";
+
+import { buildFilterChipGroups, getAllFilterChipIds } from "@/shared/config/queryBuilderOptions";
+
+import {
+  applyFilterGroup,
+  clearPins,
+  EMPTY_QUERY,
+  MAX_PINNED_PLAYERS,
+  MAX_SELECTED_STATS,
+  parseQuery,
+  pinPlayer,
+  type QueryState,
+  serializeQuery,
+  setGranularity,
+  setMinPlays,
+  toggleFilter,
+  toggleStat,
+  unpinPlayer,
+  writeQuery,
+} from "./queryUrl";
+
+const KNOWN_FILTERS = new Set(getAllFilterChipIds(buildFilterChipGroups([2023, 2024])));
+const params = (search: string) => new URLSearchParams(search);
+const parse = (search: string) => parseQuery(params(search), KNOWN_FILTERS);
+
+const FULL: QueryState = {
+  players: ["00-0033873", "00-0034857"],
+  stats: ["pass_yards", "pass_tds"],
+  filters: ["season-2023", "stype-reg", "down-3"],
+  granularity: "per_game",
+  minPlays: 25,
+};
+
+describe("serializeQuery and parseQuery", () => {
+  it("round-trips a full query", () => {
+    expect(parse(serializeQuery(FULL).toString())).toEqual(FULL);
+  });
+
+  it("writes readable repeated parameters, one per player, stat and filter", () => {
+    const text = serializeQuery({
+      ...EMPTY_QUERY,
+      players: ["00-0033873"],
+      stats: ["pass_yards"],
+      filters: ["season-2023"],
+    }).toString();
+
+    expect(text).toBe("p=00-0033873&s=pass_yards&f=season-2023");
+  });
+
+  it("leaves out anything at its default, so the empty query is an empty string", () => {
+    expect(serializeQuery(EMPTY_QUERY).toString()).toBe("");
+    expect(serializeQuery({ ...EMPTY_QUERY, granularity: "per_game" }).toString()).toBe("g=per_game");
+    expect(serializeQuery({ ...EMPTY_QUERY, minPlays: 10 }).toString()).toBe("m=10");
+  });
+
+  it("parses an empty or unrelated query string to the empty query", () => {
+    expect(parse("")).toEqual(EMPTY_QUERY);
+    expect(parse("utm_source=x&q=hello")).toEqual(EMPTY_QUERY);
+  });
+
+  it("drops stat ids the app does not know, repeats, and anything past the cap", () => {
+    const many = ["pass_yards", "pass_tds", "rec_yards", "rec_receptions", "rush_yards", "rush_tds"];
+
+    expect(parse("s=nope&s=pass_yards&s=pass_yards").stats).toEqual(["pass_yards"]);
+    expect(parse(many.map((s) => `s=${s}`).join("&")).stats).toHaveLength(MAX_SELECTED_STATS);
+  });
+
+  it("drops player ids that are not plain ids, repeats, and anything past the pin limit", () => {
+    const ids = Array.from({ length: 8 }, (_, i) => `00-000000${i}`);
+
+    expect(parse("p=%3Cscript%3E&p=a b&p=00-0033873&p=00-0033873").players).toEqual(["00-0033873"]);
+    expect(parse(ids.map((p) => `p=${p}`).join("&")).players).toHaveLength(MAX_PINNED_PLAYERS);
+  });
+
+  it("drops filter ids that are not chips in the current data", () => {
+    expect(parse("f=season-2023&f=season-1999&f=bogus").filters).toEqual(["season-2023"]);
+  });
+
+  it("falls back to the default granularity for a value it does not know", () => {
+    expect(parse("g=weekly").granularity).toBe("per_play");
+    expect(parse("g=total&s=pass_yards").granularity).toBe("total");
+  });
+
+  it("forces per-play when a rate stat is selected, as the query builder always did", () => {
+    expect(parse("s=eff_epa&g=total").granularity).toBe("per_play");
+    expect(parse("s=eff_epa&s=pass_yards&g=per_game").granularity).toBe("per_play");
+  });
+
+  it("clamps the minimum plays to a whole number from 0 to 500 and ignores junk", () => {
+    expect(parse("m=25.7").minPlays).toBe(26);
+    expect(parse("m=-4").minPlays).toBe(0);
+    expect(parse("m=9000").minPlays).toBe(500);
+    expect(parse("m=lots").minPlays).toBe(0);
+  });
+
+  it("accepts any well-formed filter id when the chips are not known yet", () => {
+    expect(parseQuery(params("f=season-2023&f=%3Cx%3E")).filters).toEqual(["season-2023"]);
+  });
+});
+
+describe("writeQuery", () => {
+  it("replaces the query keys and keeps every other parameter, such as the question", () => {
+    const next = writeQuery(params("q=Mahomes+yards&p=old&s=pass_tds&g=total"), {
+      ...EMPTY_QUERY,
+      players: ["00-0033873"],
+      stats: ["pass_yards"],
+    });
+
+    expect(next.get("q")).toBe("Mahomes yards");
+    expect(next.getAll("p")).toEqual(["00-0033873"]);
+    expect(next.getAll("s")).toEqual(["pass_yards"]);
+    expect(next.has("g")).toBe(false);
+  });
+
+  it("does not modify the parameters it was given", () => {
+    const original = params("p=a&s=pass_yards");
+
+    writeQuery(original, EMPTY_QUERY);
+
+    expect(original.toString()).toBe("p=a&s=pass_yards");
+  });
+});
+
+describe("query transitions", () => {
+  it("adds and removes a stat, and stops at the cap", () => {
+    let state = toggleStat(EMPTY_QUERY, "pass_yards");
+    expect(state.stats).toEqual(["pass_yards"]);
+
+    state = toggleStat(state, "pass_yards");
+    expect(state.stats).toEqual([]);
+
+    for (const id of ["pass_yards", "pass_tds", "rec_yards", "rec_receptions", "rush_yards", "rush_tds"]) {
+      state = toggleStat(state, id);
+    }
+    expect(state.stats).toHaveLength(MAX_SELECTED_STATS);
+  });
+
+  it("ignores a stat id it does not know", () => {
+    expect(toggleStat(EMPTY_QUERY, "nope")).toEqual(EMPTY_QUERY);
+  });
+
+  it("moves to per-play when a rate stat is added, and keeps the choice otherwise", () => {
+    const total = setGranularity(toggleStat(EMPTY_QUERY, "pass_yards"), "total");
+
+    expect(toggleStat(total, "eff_epa").granularity).toBe("per_play");
+    expect(setGranularity(toggleStat(EMPTY_QUERY, "eff_epa"), "per_game").granularity).toBe("per_play");
+    expect(total.granularity).toBe("total");
+  });
+
+  it("sets the minimum plays within bounds", () => {
+    expect(setMinPlays(EMPTY_QUERY, 40.4).minPlays).toBe(40);
+    expect(setMinPlays(EMPTY_QUERY, 900).minPlays).toBe(500);
+    expect(setMinPlays(EMPTY_QUERY, -1).minPlays).toBe(0);
+  });
+
+  it("toggles one filter chip", () => {
+    const on = toggleFilter(EMPTY_QUERY, "down-3");
+    expect(on.filters).toEqual(["down-3"]);
+    expect(toggleFilter(on, "down-3").filters).toEqual([]);
+  });
+
+  it("sets exactly the chosen chips of a group and leaves other groups alone", () => {
+    const start: QueryState = { ...EMPTY_QUERY, filters: ["down-1", "down-3", "qtr-4"] };
+
+    const next = applyFilterGroup(start, ["down-1", "down-2", "down-3", "down-4"], ["down-2"]);
+
+    expect(next.filters).toEqual(["qtr-4", "down-2"]);
+  });
+
+  it("pins a player once, up to the limit, and refuses beyond that", () => {
+    let state = pinPlayer(EMPTY_QUERY, "a");
+    expect(pinPlayer(state, "a")).toEqual(state);
+
+    for (let i = 0; i < MAX_PINNED_PLAYERS + 2; i++) {
+      state = pinPlayer(state, `p${i}`);
+    }
+    expect(state.players).toHaveLength(MAX_PINNED_PLAYERS);
+  });
+
+  it("unpins one player and clears all, without touching the rest of the query", () => {
+    const state = unpinPlayer(FULL, "00-0033873");
+    expect(state.players).toEqual(["00-0034857"]);
+    expect(state.stats).toEqual(FULL.stats);
+
+    expect(clearPins(FULL).players).toEqual([]);
+    expect(clearPins(FULL).filters).toEqual(FULL.filters);
+  });
+
+  it("never mutates the state it is given", () => {
+    const frozen = Object.freeze({ ...FULL, players: Object.freeze([...FULL.players]) as string[] });
+
+    expect(() => pinPlayer(frozen, "x")).not.toThrow();
+    expect(frozen.players).toEqual(FULL.players);
+  });
+});

@@ -5,19 +5,17 @@ import { runStatQuery } from "@/shared/engine/statQuery";
 import { seasonSources } from "@/shared/lib/dataSources";
 import { getFilterChipGroups } from "@/shared/lib/filterChipGroups";
 import { createLatestRunner } from "@/shared/lib/latestRun";
+import { usePinnedPlayers } from "@/shared/lib/usePinnedPlayers";
+import { useQueryState } from "@/shared/lib/useQueryState";
 import { describeQuery } from "@/shared/lib/queryBuilder";
 import type { QueryResult } from "@/shared/types/workbench";
 import { useManifestStore } from "@/stores/useManifestStore";
-import { useQueryBuilderStore } from "@/stores/useQueryBuilderStore";
-import { useWorkbenchStore } from "@/stores/useWorkbenchStore";
 
+/** Runs the query in the URL and keeps its result; only the latest run may set state. */
 export function useExploreQueryExecution() {
-  const pinnedPlayers = useWorkbenchStore((s) => s.pinnedPlayers);
+  const { state, filterChipState } = useQueryState();
   const manifest = useManifestStore((s) => s.manifest);
-  const selectedStatIds = useQueryBuilderStore((s) => s.selectedStatIds);
-  const activeGranularity = useQueryBuilderStore((s) => s.activeGranularity);
-  const minPlays = useQueryBuilderStore((s) => s.minPlays);
-  const filterChipState = useQueryBuilderStore((s) => s.filterChipState);
+  const pinnedPlayers = usePinnedPlayers(state.players);
 
   const sources = useMemo(() => seasonSources(manifest), [manifest]);
 
@@ -25,8 +23,9 @@ export function useExploreQueryExecution() {
   const [error, setError] = useState<string | null>(null);
   const [details, setDetails] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
-  // Only the latest run may set state; an older, slower one is aborted and ignored.
   const runLatest = useRef(createLatestRunner()).current;
+
+  const { players, stats, granularity, minPlays } = state;
 
   const executeQuery = useCallback(async () => {
     setError(null);
@@ -39,7 +38,7 @@ export function useExploreQueryExecution() {
       setError(message);
     };
 
-    if (pinnedPlayers.length === 0) {
+    if (players.length === 0) {
       invalid("Pin at least one player in The Who, then run again.");
       return;
     }
@@ -47,23 +46,23 @@ export function useExploreQueryExecution() {
       invalid("The data has no seasons yet. Build it with: uv run python backend/scripts/build_data.py");
       return;
     }
-    if (selectedStatIds.length === 0) {
+    if (stats.length === 0) {
       invalid("Select at least one metric.");
       return;
     }
 
     setRunning(true);
-    setDetails(describeQuery({ statIds: selectedStatIds, granularity: activeGranularity, filterChipState, minPlays }));
+    setDetails(describeQuery({ statIds: stats, granularity, filterChipState, minPlays }));
     let stale = false;
     try {
       const outcome = await runLatest((signal) =>
         runStatQuery(
           {
-            statIds: selectedStatIds,
+            statIds: stats,
             filterChipState,
-            gsisIds: pinnedPlayers.map((p) => p.gsis_id),
+            gsisIds: players,
             sources,
-            granularity: activeGranularity,
+            granularity,
             minPlays,
             chipGroups: getFilterChipGroups(),
           },
@@ -85,12 +84,12 @@ export function useExploreQueryExecution() {
         setRunning(false);
       }
     }
-  }, [pinnedPlayers, sources, selectedStatIds, minPlays, filterChipState, activeGranularity, runLatest]);
+  }, [players, sources, stats, minPlays, filterChipState, granularity, runLatest]);
 
   useEffect(() => () => runLatest.cancel(), [runLatest]);
 
   useEffect(() => {
-    if (pinnedPlayers.length === 0 || sources.length === 0) {
+    if (players.length === 0 || sources.length === 0) {
       // Nothing to show: stop any run still in flight so it cannot land results for players no longer pinned.
       runLatest.cancel();
       setRunning(false);
@@ -98,7 +97,7 @@ export function useExploreQueryExecution() {
       setDetails(null);
       return;
     }
-    if (selectedStatIds.length === 0) {
+    if (stats.length === 0) {
       runLatest.cancel();
       setRunning(false);
       setResult(null);
@@ -107,7 +106,7 @@ export function useExploreQueryExecution() {
       return;
     }
     void executeQuery();
-  }, [activeGranularity, selectedStatIds, minPlays, filterChipState, pinnedPlayers, sources, executeQuery, runLatest]);
+  }, [players, stats, sources, executeQuery, runLatest]);
 
   return {
     result,
