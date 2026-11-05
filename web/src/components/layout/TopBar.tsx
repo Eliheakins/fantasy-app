@@ -24,10 +24,10 @@ function useNow(): Date {
 }
 
 const WEEKS = Array.from({ length: LAST_WEEK - FIRST_WEEK + 1 }, (_, i) => i + FIRST_WEEK);
-/** Selects in the light header: a white pill with a border, 44 px high. */
-const PILL = "min-h-[44px] w-full border-panel-line bg-white text-ink hover:bg-panel md:w-auto md:min-w-32 [&_svg]:text-muted";
+/** Selects on the Forest band: a darker-green pill with white text, 44 px high. */
+const PILL = "min-h-[44px] w-full border-white/15 bg-focus text-white shadow-none hover:bg-chrome-tabs md:w-auto md:min-w-32 [&_svg]:text-chrome-text";
 
-/** The header row: team name over "Updated …", league, team and week selects, and the Ask field. */
+/** The Forest brand row: team name over "Updated …", league, team and week selects, and the Ask field. */
 export function TopBar() {
   const now = useNow();
   const { leagues, league, setLeague } = useLeague();
@@ -44,10 +44,10 @@ export function TopBar() {
   const list = leagues.kind === "ready" ? leagues.data : [];
   return (
     <header>
-      <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center gap-x-4 gap-y-2 px-[var(--page-pad)] py-3">
+      <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center gap-x-4 gap-y-2 px-[var(--page-pad)] py-3 md:min-h-[64px] md:py-2">
         <div className="min-w-0 flex-1 md:flex-none">
-          <p className="truncate font-display text-[24px] font-semibold leading-8 text-forest">{shown?.team_name ?? "Fantasy"}</p>
-          <p className="min-h-4 text-caption text-muted">
+          <p className="truncate font-display text-[24px] font-semibold leading-8 text-white">{shown?.team_name ?? "Fantasy"}</p>
+          <p className="min-h-4 text-caption text-chrome-text">
             {status.kind === "ready" ? (live ?? `Updated ${updated ? formatAsOf(updated) : "unknown"}`) : null}
           </p>
         </div>

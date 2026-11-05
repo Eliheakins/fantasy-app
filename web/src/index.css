@@ -38,6 +38,10 @@
   --lf-faint: #64706a;
   --lf-forest: #123d2c;
   --lf-focus: #1f5a43;
+  /* Forest header band (G3): tab row, light text and the mint accent on #123D2C */
+  --lf-chrome-tabs: #1a4a37;
+  --lf-chrome-text: #cfe5d9;
+  --lf-chrome-accent: #9fe0bc;
   --lf-chart-other: #b9c4be;
   --lf-better: #157a3d;
   --lf-worse: #b4261a;
@@ -47,7 +51,7 @@
   --page-pad: 24px;
   --row-y: 8px;
   /* height of the sticky header (team row and tabs) from 768 px up; other sticky parts sit below it */
-  --chrome-h: 108px;
+  --chrome-h: 112px;
 }
 
 /* Small screens: tighten the page padding so tables stay readable. */
@@ -71,6 +75,9 @@
   --color-faint: var(--lf-faint);
   --color-forest: var(--lf-forest);
   --color-focus: var(--lf-focus);
+  --color-chrome-tabs: var(--lf-chrome-tabs);
+  --color-chrome-text: var(--lf-chrome-text);
+  --color-chrome-accent: var(--lf-chrome-accent);
   --color-chart-other: var(--lf-chart-other);
   --color-better: var(--lf-better);
   --color-worse: var(--lf-worse);
@@ -169,7 +176,6 @@ nav a {
   transition: background-color 120ms, color 120ms;
 }
 nav[aria-label="Main tabs"] {
-  border-top-color: var(--lf-line);
   padding-bottom: env(safe-area-inset-bottom);
 }
 /* Phone tab bar: five tabs, a small label; the active tab gets a bar on top. */
@@ -181,7 +187,7 @@ nav[aria-label="Main tabs"] a {
   border-radius: 0;
 }
 nav[aria-label="Main tabs"] a[aria-current="page"] {
-  box-shadow: inset 0 3px 0 var(--lf-forest);
+  box-shadow: inset 0 3px 0 var(--lf-chrome-accent);
 }
 .tab-bar-offset {
   padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
@@ -190,6 +196,10 @@ nav[aria-label="Main tabs"] a[aria-current="page"] {
   .tab-bar-offset {
     padding-bottom: 0;
   }
+}
+/* On the Forest band the focus ring is white: #1F5A43 would vanish against #123D2C. */
+.on-chrome *:focus-visible {
+  outline-color: #ffffff;
 }
 /* Programmatic focus on a tabindex=-1 target (the page h1, main) moves screen readers without drawing a box. */
 [tabindex="-1"]:focus-visible {
@@ -228,4 +238,10 @@ select:disabled {
   color: var(--lf-muted);
   box-shadow: inset 0 0 0 1px var(--lf-panel-line);
   cursor: not-allowed;
+}
+/* On the Forest band a disabled select stays dark: an outlined pill with light text (9.2:1). */
+.on-chrome button:disabled {
+  background: transparent;
+  color: var(--lf-chrome-text);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25);
 }
