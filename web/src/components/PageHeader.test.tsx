@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { render, screen } from "@testing-library/react";
 import { PageHeader } from "./PageHeader";
 import { Section } from "./Section";
@@ -31,7 +32,18 @@ describe("Section", () => {
     render(<Section title="Adds" caption="Best pickups" howCalculated="Method text">body</Section>);
     expect(screen.getByRole("region", { name: "Adds" })).toBeInTheDocument();
     expect(screen.getByText("Best pickups")).toBeInTheDocument();
-    expect(screen.getByText("How this is calculated").closest("details")).not.toHaveAttribute("open");
+    const toggle = screen.getByRole("button", { name: "How this is calculated" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Method text")).toBeNull();
+  });
+
+  it("puts the method link on the heading row and opens the note below", async () => {
+    render(<Section title="Adds" howCalculated="Method text">body</Section>);
+    const toggle = screen.getByRole("button", { name: "How this is calculated" });
+    expect(toggle.parentElement).toContainElement(screen.getByRole("heading", { name: "Adds" }));
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Method text")).toBeInTheDocument();
   });
 
   it("omits the disclosure without a method note", () => {

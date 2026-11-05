@@ -72,11 +72,25 @@ export function startAnswer(rows: readonly LineupRow[], sleeperKnown: boolean): 
   return `Start ${starts.map((r) => `${r.full_name} at ${slotLabel(r.slot)}`).join(", ")}`;
 }
 
-/** "Week 8 is over: won 127.9 to 107.5" once my matchup is final; null while any game is left. */
-export function weekOverText(week: number, board: readonly ScoreboardRow[] | null): string | null {
+export type WeekResult = { me: number; them: number; outcome: "won" | "lost" | "tied" };
+
+/** My final score, the opponent's and the outcome once my matchup is final; null while any game is left. */
+export function weekResult(board: readonly ScoreboardRow[] | null): WeekResult | null {
   const row = board?.find(isMine);
   if (!row || row.status !== "Final") return null;
   const [me, them] = orderedSides(row);
-  const result = me.points > them.points ? "won" : me.points < them.points ? "lost" : "tied";
-  return `Week ${week} is over: ${result} ${formatNumber(me.points)} to ${formatNumber(them.points)}`;
+  const outcome = me.points > them.points ? "won" : me.points < them.points ? "lost" : "tied";
+  return { me: me.points, them: them.points, outcome };
+}
+
+/** "Week 8 is over: won 127.9 to 107.5" once my matchup is final; null while any game is left. */
+export function weekOverText(week: number, board: readonly ScoreboardRow[] | null): string | null {
+  const r = weekResult(board);
+  return r && `Week ${week} is over: ${r.outcome} ${formatNumber(r.me)} to ${formatNumber(r.them)}`;
+}
+
+/** "Won by 20.4", "Lost by 11.5" or "Tied". */
+export function resultText(r: WeekResult): string {
+  if (r.outcome === "tied") return "Tied";
+  return `${r.outcome === "won" ? "Won" : "Lost"} by ${formatNumber(Math.abs(r.me - r.them))}`;
 }

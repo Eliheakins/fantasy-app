@@ -5,13 +5,13 @@ import { RadioGroup } from "@/components/RadioGroup";
 import { useLeague, useLeagueApi } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
 import { usePageEyebrow, useWeek } from "@/lib/week";
-import { Section } from "@/components/Section";
 import type { ScoreboardRow } from "@/features/scoreboard/logic";
+import { ChevronDown } from "lucide-react";
 import { Explain, ExplainDelta, NOISE_PERCENT, formatNumber, formatPercent } from "@/viz";
 import { CloseCalls } from "@/features/lineup/CloseCalls";
-import { TeamRanges } from "@/features/lineup/TeamRanges";
-import { OPTION_OF, recommendedObjective, slotCalls, startAnswer, weekOverText } from "@/features/lineup/calls";
-import { SLEEPER_POINTS_WHY, SLEEPER_WIN_WHY, winChanceWhy } from "@/features/lineup/explain";
+import { ResultPanel } from "@/features/lineup/ResultPanel";
+import { OPTION_OF, recommendedObjective, slotCalls, startAnswer, weekOverText, weekResult } from "@/features/lineup/calls";
+import { SLEEPER_WIN_WHY, winChanceWhy } from "@/features/lineup/explain";
 import { Comparison } from "@/features/lineup/Comparison";
 import { PlayerTable } from "@/features/lineup/PlayerTables";
 import {
@@ -22,7 +22,6 @@ import {
   type LineupRow,
   type ObjectiveKey,
   type WinProbability,
-  gapIsNoise,
   labelOf,
   headline,
   lineupsDiffer,
@@ -30,15 +29,6 @@ import {
   sleeperKnown,
   splitLineup,
 } from "@/features/lineup/logic";
-
-function Metric({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="text-caption text-muted">{label}</div>
-      <div className="text-heading font-semibold tabular-nums">{children}</div>
-    </div>
-  );
-}
 
 /** `shown` is the team total with K and DEF, like the range bars; without the simulation it is the skill slots only. */
 function Answer({ shown, skillOnly, win, sleeperWin, option }: { shown: number; skillOnly: boolean; win: number | null; sleeperWin: number | null; option: WinProbability["options"][number] | undefined }) {
@@ -78,9 +68,10 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
   const h = headline(rows, odds?.summaries[objective]);
   const shownOption = odds?.options.find((o) => o.option === OPTION_OF[objective]);
   const over = weekOverText(week, board);
+  const result = weekResult(board);
   const sleeperOption = odds?.options.find((o) => o.option === "sleeper_now");
   return (
-    <div>
+    <div className="max-w-[960px]">
       <PageHeader
         title={over ?? startAnswer(rows, known)}
         eyebrow={eyebrow}
@@ -88,29 +79,17 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
           ? "Every game is final, so there is nothing left to set."
           : <Answer shown={shownOption?.expected_points ?? h.shown} skillOnly={!shownOption} win={h.win} sleeperWin={sleeperOption?.win_prob ?? null} option={shownOption} />}
       />
+      <ResultPanel result={result} option={shownOption} win={hasOdds ? h.win : null} shown={h.shown} now={h.now} gap={h.gap} />
       <CloseCalls calls={slotCalls(odds, objective)} rows={rows} objective={objective} />
-      {shownOption && (
-        <Section title="Team scores" caption="Where each team's week lands: the bar is the 10 to 90% range, the mark is the median.">
-          <TeamRanges option={shownOption} />
-        </Section>
-      )}
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Metric label="Lineup shown, skill slots">{formatNumber(h.shown)} pts</Metric>
-        {h.now !== null && (
-          <Metric label="Set in Sleeper now, skill slots">
-            {formatNumber(h.now)} pts{" "}
-            {h.gap !== null && (gapIsNoise(h.gap)
-              ? <span className="text-caption font-normal text-muted">same as shown</span>
-              : <ExplainDelta points={h.gap} className="text-body" why={SLEEPER_POINTS_WHY} />)}
-          </Metric>
-        )}
-        {hasOdds && h.win !== null && <Metric label="Chance to win"><Explain why={winChanceWhy(shownOption)}>{formatPercent(h.win)}</Explain></Metric>}
-      </div>
-      {hasOdds && (
-        <details className="mt-6">
-          <summary className="flex min-h-[44px] cursor-pointer items-center text-heading font-semibold">Other ways to pick</summary>
+      {hasOdds && !result && (
+        <details className="group mt-8">
+          <summary className="inline-flex min-h-[44px] cursor-pointer list-none items-center gap-2 rounded-full border border-panel-line bg-white px-4 font-medium text-ink hover:bg-panel [&::-webkit-details-marker]:hidden">
+            Other ways to pick
+            <ChevronDown aria-hidden size={16} className="text-muted transition-transform group-open:rotate-180" />
+          </summary>
+          <p className="mt-2 text-caption text-muted">Optimize for expected points, win chance, ceiling or floor, and compare what each would start.</p>
           {odds.script && (
-            <p className="text-body">{odds.script}. We start from {labelOf(recommended)}{chosen ? ` (showing ${labelOf(chosen)})` : ""}.</p>
+            <p className="mt-4 text-body">{odds.script}. We start from {labelOf(recommended)}{chosen ? ` (showing ${labelOf(chosen)})` : ""}.</p>
           )}
           {differ && (
             <RadioGroup
@@ -129,16 +108,17 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
           <div className="mt-4"><Comparison rows={odds.comparison} /></div>
         </details>
       )}
-      <div className="mt-8">
+      <div className="mt-10">
         <PlayerTable
           title="Start"
           rows={start}
           known={known}
-          caption="Points are for this week; the bar is the 10 to 90% range with the median marked."
+          final={result !== null}
+          caption={result ? "Every game is final: points scored this week." : "Points are for this week; the bar is the 10 to 90% range with the median marked."}
           howCalculated={CAVEAT_BASE + (known ? "" : CAVEAT_UNKNOWN)}
         />
       </div>
-      {bench.length > 0 && <PlayerTable title="Bench" rows={bench} known={known} />}
+      {bench.length > 0 && <PlayerTable title="Bench" rows={bench} known={known} final={result !== null} />}
     </div>
   );
 }

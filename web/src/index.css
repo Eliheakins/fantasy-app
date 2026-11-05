@@ -6,6 +6,10 @@
 :root {
   --font-body: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: Newsreader, Georgia, "Times New Roman", serif;
+  --fs-h1: 40px;
+  --lh-h1: 48px;
+  --fs-section: 20px;
+  --lh-section: 28px;
   --fs-display: 28px;
   --lh-display: 36px;
   --fs-title: 24px;
@@ -47,6 +51,8 @@
 @media (max-width: 767px) {
   :root {
     --page-pad: 12px;
+    --fs-h1: 30px;
+    --lh-h1: 36px;
   }
 }
 
@@ -75,6 +81,10 @@
   --color-destructive: var(--lf-warning);
   --text-display: var(--fs-display);
   --text-display--line-height: var(--lh-display);
+  --text-h1: var(--fs-h1);
+  --text-h1--line-height: var(--lh-h1);
+  --text-section: var(--fs-section);
+  --text-section--line-height: var(--lh-section);
   --text-title: var(--fs-title);
   --text-title--line-height: var(--lh-title);
   --text-heading: var(--fs-heading);

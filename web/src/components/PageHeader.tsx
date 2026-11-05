@@ -15,15 +15,15 @@ type Props = {
 /** The page's one h1, with the same weight, size and spacing everywhere. Focus lands here on navigation. */
 export function PageHeader({ title, eyebrow, answer, subtitle, actions }: Props) {
   return (
-    <div className="mb-6">
+    <div className="mb-8">
       {eyebrow && <p className="mb-1 text-caption font-semibold uppercase tracking-wide text-muted">{eyebrow}</p>}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 id={PAGE_HEADING_ID} tabIndex={-1} className="text-title font-semibold outline-none">
+        <h1 id={PAGE_HEADING_ID} tabIndex={-1} className="text-h1 font-semibold text-ink outline-none">
           {title}
         </h1>
         {actions}
       </div>
-      {answer && <p className="measure mt-1 text-heading">{answer}</p>}
+      {answer && <p className="measure mt-2 text-[17px] leading-7 text-label">{answer}</p>}
       {subtitle && <p className="measure mt-1 text-caption text-muted">{subtitle}</p>}
     </div>
   );

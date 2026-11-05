@@ -1,4 +1,4 @@
-import { type RenderResult, render as rtlRender, screen } from "@testing-library/react";
+import { type RenderResult, render as rtlRender, screen, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
@@ -79,7 +79,19 @@ describe("LineupView answer and evidence", () => {
   });
   test("a missing simulation option leaves out the team scores", () => {
     render(<LineupView base={cookRows} odds={{ ...withCalls, options: [option("ceiling")] }} week={3} />);
-    expect(screen.queryByRole("heading", { name: "Team scores" })).toBeNull();
+    expect(screen.queryByRole("img", { name: /^Your team:/ })).toBeNull();
+    expect(within(screen.getByRole("region", { name: "Your matchup" })).queryByText("Opponent, median")).toBeNull();
+  });
+  test("the tinted panel holds both team totals, the chance to win and the lineup against Sleeper", () => {
+    render(<LineupView base={cookRows} odds={withCalls} week={3} />);
+    const panel = screen.getByRole("region", { name: "Your matchup" });
+    expect(panel.className).toContain("bg-panel");
+    expect(within(panel).getByText("You, median").nextElementSibling).toHaveTextContent("120.0");
+    expect(within(panel).getByText("Opponent, median").nextElementSibling).toHaveTextContent("115.0");
+    expect(within(panel).getByText("Chance to win")).toBeInTheDocument();
+    expect(within(panel).getByText("Skill slots, shown vs Sleeper")).toBeInTheDocument();
+    expect(within(panel).getByRole("img", { name: /^Your team:/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Close calls" }).closest("section")!.className).not.toContain("bg-panel");
   });
   test("locked starters are not counted as clear slots", () => {
     const locked = cookRows.map((r) => (r.gsis_id === "rb1" ? { ...r, locked: true } : r));
@@ -93,6 +105,14 @@ describe("LineupView answer and evidence", () => {
     render(<LineupView base={allLocked} odds={withCalls} week={3} board={board} />);
     expect(screen.getByRole("heading", { level: 1, name: "Week 3 is over: won 127.9 to 107.5" })).toBeTruthy();
     expect(screen.queryByText(/slots? (is|are) clear/)).toBeNull();
+    const panel = screen.getByRole("region", { name: "Your matchup" });
+    expect(within(panel).getByText("You, final").nextElementSibling).toHaveTextContent("127.9");
+    expect(within(panel).getByText("Opponent, final").nextElementSibling).toHaveTextContent("107.5");
+    expect(within(panel).getByText("Result").nextElementSibling).toHaveTextContent("Won by 20.4");
+    expect(screen.queryByRole("img", { name: /^Your team:/ })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: /Range/ })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Status" })).toBeNull();
+    expect(screen.getAllByRole("columnheader", { name: "Points" }).length).toBeGreaterThan(0);
   });
   test("a pick made under one label is dropped when the label flips; clicking after a derived default works", async () => {
     const underdog = { ...withCalls, script: "Underdog (40% to win): variance helps" };
@@ -121,7 +141,14 @@ describe("LineupView", () => {
     expect(screen.queryByRole("radiogroup")).toBeNull();
     expect(screen.getByRole("heading", { name: "Bench" })).toBeTruthy();
     expect(screen.getAllByText("Locked").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Questionable").length).toBeGreaterThan(0);
+    const injury = screen.getAllByText("Questionable");
+    expect(injury.length).toBeGreaterThan(0);
+    expect(injury[0]!.className).toContain("text-warning");
+    expect(injury[0]!.className).not.toContain("border");
+  });
+  test("a table with no ranges drops the range column", () => {
+    render(<LineupView base={[row("a", { p10: 10, p90: 10, locked: true })]} odds={null} week={0} />);
+    expect(screen.queryByRole("columnheader", { name: /Range/ })).toBeNull();
   });
   test("one distinct lineup hides the switch and the table", () => {
     render(<LineupView base={[row("a")]} odds={odds} week={0} />);

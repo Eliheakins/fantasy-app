@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ApiState } from "@/api/envelope";
 import { LeagueView as League } from "./LeagueView";
@@ -50,10 +50,12 @@ describe("League page", () => {
     expect(screen.getByText("4-2")).toBeInTheDocument();
     expect(screen.getByText("86%")).toBeInTheDocument();
   });
-  it("shows the positional strength grid with its measure and weighting", () => {
+  it("shows the positional strength grid with its measure and weighting", async () => {
     respond();
     render(<League />);
     expect(screen.getByRole("table", { name: "Positional strength by team" })).toBeInTheDocument();
+    const section = screen.getByRole("region", { name: "Positional strength" });
+    await userEvent.click(within(section).getByRole("button", { name: "How this is calculated" }));
     expect(screen.getByText(/above a free-agent stand-in.*75% starters, 25% bench depth/)).toBeInTheDocument();
   });
   it("what-if shows deltas for a well-sampled outcome and hides a thin one with a note", async () => {

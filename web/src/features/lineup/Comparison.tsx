@@ -8,13 +8,13 @@ export function Comparison({ rows }: { rows: readonly ComparisonRow[] }) {
   const [only] = groups;
   if (!only) return null;
   const note = collapsedNote(groups);
-  const how = <>{note && <p>{note}</p>}<p>{COMPARISON_CAPTION}</p></>;
+  const how = COMPARISON_CAPTION;
   if (groups.length === 1) {
     const r = only.row;
     const [lo, mid, hi] = [r.floor, r.median, r.ceiling].map((v) => formatNumber(v, 0));
     const spread = lo === hi ? `${mid} pts` : `${lo} to ${hi} pts (median ${mid})`;
     return (
-      <Section title="Compare lineups" howCalculated={how}>
+      <Section title="Compare lineups" caption={note} howCalculated={how}>
         <p className="text-body">
           Every way of choosing picks this lineup: {formatPercent(r.win_prob)} to win, team score {spread}.
         </p>
@@ -22,10 +22,10 @@ export function Comparison({ rows }: { rows: readonly ComparisonRow[] }) {
     );
   }
   return (
-    <Section title="Compare lineups" howCalculated={how}>
+    <Section title="Compare lineups" caption={note} howCalculated={how}>
       <table className="hidden w-full text-body lg:table">
         <thead>
-          <tr className="border-b border-line text-left text-caption text-muted">
+          <tr className="border-b-[1.5px] border-ink text-left text-caption text-muted">
             <th className="py-2 pr-3 font-normal">Lineup</th>
             <th className="pr-3 font-normal">Chance to win</th>
             <th className="pr-3 text-right font-normal">Floor, 10% (pts)</th>

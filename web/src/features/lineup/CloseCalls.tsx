@@ -5,7 +5,7 @@ import { type LineupRow, type ObjectiveKey, slotLabel } from "./logic";
 
 const LIST_ITEM = "flex min-h-[44px] flex-wrap items-center gap-x-3 border-b border-line py-2 last:border-b-0";
 
-/** The page's one tinted panel: the slots that are genuinely close, then what to do if a starter is scratched. */
+/** The slots that are genuinely close, then what to do if a starter is scratched. */
 export function CloseCalls({ calls, rows, objective }: { calls: readonly SlotCall[]; rows: readonly LineupRow[]; objective: ObjectiveKey }) {
   const names = Object.fromEntries(rows.map((r) => [r.gsis_id, r.full_name]));
   const locked = new Set(rows.filter((r) => r.locked).map((r) => r.gsis_id));
@@ -15,8 +15,8 @@ export function CloseCalls({ calls, rows, objective }: { calls: readonly SlotCal
   const open = close.length + clear.length;
   if (open === 0 && fallbacks.length === 0) return null;
   return (
-    <section aria-labelledby="close-calls" className="rounded-xl bg-panel p-4">
-      <h2 id="close-calls" className="text-heading font-semibold">Close calls</h2>
+    <section aria-labelledby="close-calls" className="mt-10">
+      <h2 id="close-calls" className="text-section font-semibold">Close calls</h2>
       {open > 0 && close.length === 0 && <p className="mt-2 text-body">No slot is close.</p>}
       {close.length > 0 && (
         <ul className="mt-2">

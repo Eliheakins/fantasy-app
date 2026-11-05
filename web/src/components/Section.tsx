@@ -1,4 +1,4 @@
-import { type ReactNode, useId } from "react";
+import { type ReactNode, useId, useState } from "react";
 
 type Props = {
   title: string;
@@ -11,21 +11,30 @@ type Props = {
   level?: 2 | 3;
 };
 
-/** An h2 section: heading, optional caption and method note, then the content. */
+/** An h2 section: heading with an optional "How this is calculated" link on the same row, caption, then the content. */
 export function Section({ title, caption, howCalculated, children, level = 2 }: Props) {
   const id = useId();
+  const [open, setOpen] = useState(false);
   const Heading = level === 3 ? "h3" : "h2";
   return (
-    <section aria-labelledby={id} className="mt-8 border-t border-line pt-6 first:mt-0 first:border-t-0 first:pt-0">
-      <Heading id={id} className="text-heading font-semibold">{title}</Heading>
+    <section aria-labelledby={id} className="mt-10 border-t border-line pt-6 first:mt-0 first:border-t-0 first:pt-0">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+        <Heading id={id} className={level === 3 ? "text-heading font-semibold" : "text-section font-semibold"}>{title}</Heading>
+        {howCalculated && (
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={open ? `${id}-method` : undefined}
+            onClick={() => setOpen((o) => !o)}
+            className="-my-3 inline-flex min-h-[44px] items-center text-caption text-muted underline underline-offset-2 hover:text-ink"
+          >
+            How this is calculated
+          </button>
+        )}
+      </div>
       {caption && <p className="measure mt-1 text-caption text-muted">{caption}</p>}
-      {howCalculated && (
-        <details className="measure mt-1 text-caption text-muted">
-          <summary className="flex min-h-[44px] cursor-pointer items-center">How this is calculated</summary>
-          <div className="pb-2">{howCalculated}</div>
-        </details>
-      )}
-      <div className="mt-2">{children}</div>
+      {howCalculated && open && <div id={`${id}-method`} className="measure mt-2 rounded-lg border border-line p-3 text-caption text-muted">{howCalculated}</div>}
+      <div className="mt-3">{children}</div>
     </section>
   );
 }
