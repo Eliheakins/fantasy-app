@@ -22,6 +22,7 @@ Every recommendation is scored by its effect on **win probability or title odds*
 | **Digest** | Last week's results, projection misses, the odds change since the last run, my top waiver adds and trade ideas (built by `make refresh`), and players to watch (falling snap share or market value, injury flags). |
 | **Players** | Player outlook: who is likely to improve or regress (return from injury, teammates out, injury risk). |
 | **Explore** | Query NFL play-by-play in the browser: pin players or teams, pick up to five stats, set filters (season, down, situation), rank or split the rows, and chart two stats. Needs `make stat-data`. The nav rail groups pages as Decide, Season and Research; on a phone, the last tab, More, holds the pages without a tab. |
+| **Ask** | Ask an NFL stats question in plain language, like "Mahomes passing yards and touchdowns in 2023". Built-in rules read what they can and a local model (`make ask-model`) reads the rest; the numbers come from the same browser engine as Explore. The History tab keeps what you asked in this browser. Needs `make stat-data`. |
 | **Model** | Scorecard of the learned, baseline and Sleeper projections against actual points. |
 
 ## How the numbers are made
@@ -105,7 +106,6 @@ src/fantasy/
   sim/                 pure logic: lineups, sampler, season simulation, moves, injuries, effects
 src/nfl_stat/          the merged stat app backend: data build (`make stat-data`), Ask intent endpoint, shard serving
 metrics/metrics.json   stat definitions (SQL, aliases) read by the stat app
-stat-import/           the stat app frontend, (Ask and History pages), until it moves into web/ (#70)
 web/                   React UI (Vite, TypeScript)
 tests/                 pytest suite (tests/stat/ is the stat app's)
 research/              one-off analysis scripts behind decisions.md

@@ -1,4 +1,4 @@
-import { ClipboardList, Compass, Gauge, House, ListOrdered, Newspaper, Repeat, TrendingUp, Trophy, UserPlus, Users } from "lucide-react";
+import { ClipboardList, Compass, Gauge, House, ListOrdered, MessageCircleQuestion, Newspaper, Repeat, TrendingUp, Trophy, UserPlus, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 /** Rail groups in display order. */
@@ -16,7 +16,7 @@ type NavItem = {
   tab?: true;
 };
 
-/** Nav entries for the rail, tab bar and More sheet. Add a page here and in routes.tsx. (Ask joins Research in the Ask slice.) */
+/** Nav entries for the rail, tab bar and More sheet. Add a page here and in routes.tsx. */
 export const NAV_ITEMS = [
   { path: "/", label: "Home", icon: House, title: "Home", group: "Decide", tab: true },
   { path: "/lineup", label: "Lineup", icon: ClipboardList, title: "Lineup", group: "Decide", tab: true },
@@ -28,6 +28,7 @@ export const NAV_ITEMS = [
   { path: "/digest", label: "Digest", icon: Newspaper, title: "Weekly digest", group: "Season" },
   { path: "/players", label: "Players", icon: Users, title: "Player outlook", group: "Research" },
   { path: "/explore", label: "Explore", icon: Compass, title: "Explore", group: "Research" },
+  { path: "/ask", label: "Ask", icon: MessageCircleQuestion, title: "Ask", group: "Research" },
   { path: "/scorecard", label: "Model", icon: Gauge, title: "Model scorecard", group: "Research" },
 ] as const satisfies readonly NavItem[];
 

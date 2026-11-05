@@ -81,6 +81,28 @@ describe("nav links", () => {
   });
 });
 
+describe("Ask nav entry", () => {
+  it("sits in the Research group after Explore, and in the More sheet on phones", async () => {
+    renderAt("/lineup?league=a&team=2");
+
+    const research = within(rail().getByRole("list", { name: "Research" }));
+    expect(research.getAllByRole("link").map((l) => l.textContent?.trim())).toEqual(["Players", "Explore", "Ask", "Model"]);
+    expect(tabs().queryByRole("link", { name: "Ask" })).toBeNull();
+    await userEvent.click(tabs().getByRole("button", { name: "More" }));
+    expect(within(screen.getByRole("dialog")).getByRole("link", { name: "Ask" })).toBeInTheDocument();
+  });
+
+  it("links carry only league and team from an Ask URL, and the Ask link drops the question", () => {
+    renderAt("/ask?league=a&team=2&q=Mahomes+yards&p=00-1&s=pass_yards&f=season-2025");
+
+    const links = [...rail().getAllByRole("link"), ...tabs().getAllByRole("link")].filter((l) => l.textContent?.trim() !== "Explore");
+    for (const link of links) {
+      expect([...search(link).keys()].sort()).toEqual(["league", "team"]);
+    }
+    expect(rail().getByRole("link", { name: "Ask" })).toHaveAttribute("href", "/ask?league=a&team=2");
+  });
+});
+
 describe("rail", () => {
   it("shows the three group labels and every entry under its group", () => {
     renderAt("/");

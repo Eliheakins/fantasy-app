@@ -2,14 +2,13 @@ import { STAT_DEFINITIONS } from "@/stat/config/statDictionary";
 
 import { currentSeason, statLink } from "./statLink";
 
-const BASE = "http://stat.test";
-const link = (position: string, gsisId: string | null = "00-0033873", base = BASE) =>
-  statLink({ gsisId, position, season: 2026, base });
+const link = (position: string, gsisId: string | null = "00-0033873", search = "") =>
+  statLink({ gsisId, position, season: 2026, search });
 
 describe("statLink", () => {
   it("opens a WR's weekly receiving log for the season", () => {
     expect(link("WR")).toBe(
-      "http://stat.test/explore?p=00-0033873&s=rec_receptions&s=rec_yards&f=season-2026&f=stype-reg&by=week&g=total",
+      "/explore?p=00-0033873&s=rec_receptions&s=rec_yards&f=season-2026&f=stype-reg&by=week&g=total",
     );
   });
   it("uses the receiving set for a TE", () => {
@@ -29,11 +28,15 @@ describe("statLink", () => {
     expect(link("wr")).toBe(link("WR"));
     expect(link("constructor")).toBeNull();
   });
-  it("trims trailing slashes from the base", () => {
-    expect(link("QB", "00-1", "http://stat.test//")).toMatch(/^http:\/\/stat\.test\/explore\?/);
+  it("keeps the viewed league and team, and nothing else from the current URL", () => {
+    const url = new URL(link("QB", "00-1", "?league=a&team=2&q=old&s=rush_yards") ?? "", "http://x");
+    expect(url.pathname).toBe("/explore");
+    expect([url.searchParams.get("league"), url.searchParams.get("team")]).toEqual(["a", "2"]);
+    expect(url.searchParams.getAll("s")).toEqual(["pass_yards", "pass_tds"]);
+    expect(url.searchParams.has("q")).toBe(false);
   });
   it("takes the season from the argument", () => {
-    expect(statLink({ gsisId: "00-1", position: "QB", season: 2031, base: BASE })).toContain("f=season-2031&");
+    expect(statLink({ gsisId: "00-1", position: "QB", season: 2031 })).toContain("f=season-2031&");
   });
 });
 
@@ -50,7 +53,7 @@ describe("statLink stat ids", () => {
   it("only uses stat ids that exist in metrics.json", () => {
     const known = new Set(STAT_DEFINITIONS.map((s) => s.id));
     const used = ["QB", "RB", "WR", "TE"].flatMap((pos) =>
-      [...new URL(link(pos) ?? "").searchParams.getAll("s")],
+      [...new URL(link(pos) ?? "", "http://x").searchParams.getAll("s")],
     );
 
     expect(used.length).toBeGreaterThan(0);

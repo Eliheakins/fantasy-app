@@ -5,13 +5,14 @@ import { type IntentOutcome, intentOutcomeSchema, type QueryIntent } from "@/sta
 
 export type { IntentOutcome, QueryIntent };
 
-export function requestIntent(question: string, seasons: readonly number[]): Promise<IntentOutcome> {
+export function requestIntent(question: string, seasons: readonly number[], signal?: AbortSignal): Promise<IntentOutcome> {
   return requestJson(joinUrl(API_BASE, "nlq/intent"), intentOutcomeSchema, {
     what: "the Ask service",
     unreachableHint: START_API_HINT,
     init: {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      signal,
+      headers: { "Content-Type": "application/json", "X-Requested-With": "fantasy-app" },
       body: JSON.stringify({ question, ...buildIntentCatalog(seasons) }),
     },
   });

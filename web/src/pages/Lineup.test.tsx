@@ -1,8 +1,13 @@
-import { render, screen } from "@testing-library/react";
+import { type RenderResult, render as rtlRender, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
 import { LineupView } from "./Lineup";
 import type { LineupRow, WinProbability } from "@/features/lineup/logic";
+
+/** Player names link to Explore, which needs a router. */
+const render = (ui: ReactElement): RenderResult => rtlRender(<MemoryRouter>{ui}</MemoryRouter>);
 
 const row = (id: string, o: Partial<LineupRow> = {}): LineupRow => ({
   slot: "RB", gsis_id: id, full_name: `Player ${id}`, position: "RB", projection: 10, p10: 4, p90: 18,

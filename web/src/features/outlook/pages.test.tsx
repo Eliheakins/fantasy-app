@@ -1,9 +1,14 @@
-import { render, screen } from "@testing-library/react";
+import { type RenderResult, render as rtlRender, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import type { ApiState } from "@/api/envelope";
 import Outlook from "@/pages/Outlook";
 import Players from "@/pages/Players";
 import { HISTORY_WAIT_MESSAGE } from "./logic";
+
+/** Player names link to Explore, which needs a router. */
+const render = (ui: ReactElement): RenderResult => rtlRender(<MemoryRouter>{ui}</MemoryRouter>);
 
 let responder: (path: string) => ApiState<unknown>;
 const paths: string[] = [];

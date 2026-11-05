@@ -796,3 +796,11 @@ Two research agents surveyed the decision code (assumptions with file and line) 
 - **Data.** Shards live in `data/stat/` (gitignored with `data/`), built by `make stat-data`. `data/stat` holds nflverse data only, since it is served; league and `nfl_ecr` data stay out.
 - **Packaging.** `module-name = ["fantasy", "nfl_stat"]` for uv_build. Added openai, pydantic-settings, pyarrow, uvicorn (explicit; it was only present transitively before) and dev pytest-asyncio. DuckDB stays as a dev dependency, a change from the plan: `test_metric_reference_values.py` runs the metric SQL on the shards with it. pytest-cov and hatchling dropped.
 - **Dropped from the stat repo:** its pyproject, uv.lock, README, .gitignore, root package.json, `backend/scripts/build_data.py` (a one-line wrapper of `python -m nfl_stat.pipeline.cli`), `scripts/dev/test_duckdb.py`, `.github/workflows/ci.yml` (this repo has no CI, and it pointed at removed paths).
+
+## 2026-11-04: Ask page merged, stat-import removed (#70, slice S2d)
+
+- **Ask** is `pages/Ask.tsx` with History as a tab inside it (no nav entry of its own); Ask is in the Research nav group. Its URL keeps `league` and `team`, plus its own `q` and query params; nav links carry only `league` and `team`.
+- **Request.** `requestIntent` sends `X-Requested-With: fantasy-app`. With the endpoint down the rules parser still answers what it can and the rest is explained.
+- **History** (`localStorage`) is per origin: the stat app's old entries do not carry over.
+- **eval:rules** is `ruleParser.eval.test.ts` (pins the README's counts); `export:catalog` is `UPDATE_CATALOG=1 npx vitest run nlqCatalog.test.ts`. `stat-import/` is deleted.
+- **Player links** (`statLink`) open the in-app Explore in the same tab and keep league and team; `VITE_STAT_APP_URL` is gone.

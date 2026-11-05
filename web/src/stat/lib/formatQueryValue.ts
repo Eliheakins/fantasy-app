@@ -6,7 +6,9 @@ export function formatQueryValue(v: unknown): string {
     return "—";
   }
   if (typeof v === "number" && !Number.isInteger(v)) {
-    return v.toFixed(4);
+    // Per-game and per-play values carry no more precision than the data supports: one decimal from 10 up, two from 1, three below.
+    const abs = Math.abs(v);
+    return v.toFixed(abs >= 10 ? 1 : abs >= 1 ? 2 : 3);
   }
   return String(v);
 }

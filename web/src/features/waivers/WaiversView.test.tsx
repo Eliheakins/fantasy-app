@@ -1,8 +1,13 @@
-import { render, screen } from "@testing-library/react";
+import { type RenderResult, render as rtlRender, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { ApiState } from "@/api/envelope";
 import { WaiversView } from "./WaiversView";
+
+/** Player names link to Explore, which needs a router. */
+const render = (ui: ReactElement): RenderResult => rtlRender(<MemoryRouter>{ui}</MemoryRouter>);
 
 const ready = <T,>(data: T): ApiState<T> => ({ kind: "ready", data });
 const add = {

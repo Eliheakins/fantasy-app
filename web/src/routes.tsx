@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { NAV_ITEMS, type NavPath } from "@/nav";
+import Ask from "@/pages/Ask";
 import Explore from "@/pages/Explore";
 import DevViz from "@/pages/DevViz";
 import Digest from "@/pages/Digest";
@@ -28,6 +29,7 @@ const PAGES: Record<NavPath, ReactNode> = {
   "/digest": <Digest />,
   "/players": <Players />,
   "/explore": <Explore />,
+  "/ask": <Ask />,
   "/scorecard": <Scorecard />,
 };
 

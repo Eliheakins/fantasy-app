@@ -16,6 +16,30 @@ afterEach(() => {
 });
 
 describe("requestIntent", () => {
+  it("sends X-Requested-With: fantasy-app, which the server requires on POST", async () => {
+    mockFetch(200, { outcome: "unsupported", reason: "No." });
+
+    await requestIntent("x", FIXTURE_SEASONS);
+
+    const init = vi.mocked(fetch).mock.calls[0]?.[1];
+    expect(new Headers(init?.headers).get("X-Requested-With")).toBe("fantasy-app");
+    expect(new Headers(init?.headers).get("Content-Type")).toBe("application/json");
+  });
+
+  it("passes the abort signal to fetch and rejects when aborted", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init: RequestInit) => new Promise((_, reject) => init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))))),
+    );
+    const controller = new AbortController();
+
+    const pending = requestIntent("x", FIXTURE_SEASONS, controller.signal);
+    controller.abort();
+
+    await expect(pending).rejects.toThrow();
+    expect(vi.mocked(fetch).mock.calls[0]?.[1]?.signal).toBe(controller.signal);
+  });
+
   it("returns a query outcome with the validated intent", async () => {
     mockFetch(200, {
       outcome: "query",
