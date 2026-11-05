@@ -19,13 +19,13 @@ export function ExploreMobileBuilderDrawer({ sidebarScrollProps, running, onExec
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       {/* In the page flow, not floating, so it never covers table cells. */}
-      <Dialog.Trigger className="flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-line bg-panel text-body font-medium text-ink lg:hidden">
+      <Dialog.Trigger className="flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-line bg-surface text-body font-medium text-ink lg:hidden">
         <SlidersHorizontal size={18} aria-hidden />
         Open query builder
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-40 bg-page/70" />
-        <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 flex max-h-dvh flex-col rounded-t-2xl border-x border-t border-line bg-panel outline-hidden">
+        <Dialog.Content className="fixed inset-x-0 bottom-0 z-50 flex max-h-dvh flex-col rounded-t-2xl border-x border-t border-line bg-surface outline-hidden">
           <div className="flex shrink-0 items-center justify-between px-4 pt-2">
             <Dialog.Title className="text-heading font-semibold">Query builder</Dialog.Title>
             <Dialog.Close aria-label="Close query builder" className="flex h-11 w-11 items-center justify-center rounded-full text-ink">

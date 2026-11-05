@@ -2,7 +2,8 @@
 @import "tw-animate-css";
 
 /* Look F tokens (light only; docs/spec/dashboard.md "Look F" and the contrast table). Semantic colour only for
-   change (better/worse) and warnings; green is frame (header name, active tab, panel tint, selection, focus); ranges grey. */
+   change (better/worse) and warnings; green is frame (header band, sage page and panels, headings, links, selection,
+   focus, my series and rows); ranges grey. Every text pair is 4.5:1 or better: see the contrast table in the spec. */
 :root {
   --font-body: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: Newsreader, Georgia, "Times New Roman", serif;
@@ -28,21 +29,26 @@
 
 :root {
   color-scheme: light;
-  --lf-page: #fbfbf8;
-  --lf-panel: #edf3ee;
-  --lf-panel-line: #d6e3da;
-  --lf-line: #e4e8e3;
+  --lf-page: #f1f5f2;
+  /* fields, popovers and menus: white so they stand off the sage page */
+  --lf-surface: #ffffff;
+  /* the key panel (one per page), my rows, selection; light enough that better #157A3D keeps 4.5:1 */
+  --lf-panel: #e0eee4;
+  --lf-panel-line: #c9dbcf;
+  --lf-line: #d9e3dc;
+  /* table header rows */
+  --lf-band: #e8f0ea;
   --lf-ink: #13201a;
   --lf-label: #2e3a33;
   --lf-muted: #56635c;
-  --lf-faint: #64706a;
+  --lf-faint: #5e6a64;
   --lf-forest: #123d2c;
   --lf-focus: #1f5a43;
   /* Forest header band (G3): tab row, light text and the mint accent on #123D2C */
   --lf-chrome-tabs: #1a4a37;
   --lf-chrome-text: #cfe5d9;
   --lf-chrome-accent: #9fe0bc;
-  --lf-chart-other: #b9c4be;
+  --lf-chart-other: #a3b0a9;
   --lf-better: #157a3d;
   --lf-worse: #b4261a;
   --lf-warning: #6b4200;
@@ -66,6 +72,7 @@
 
 @theme inline {
   --color-page: var(--lf-page);
+  --color-surface: var(--lf-surface);
   --color-panel: var(--lf-panel);
   --color-panel-line: var(--lf-panel-line);
   --color-line: var(--lf-line);
@@ -143,6 +150,39 @@ h1,
   max-width: var(--measure);
 }
 
+/* The page's one key result: stronger sage under a 3px Forest rule. */
+.key-panel {
+  background: var(--lf-panel);
+  border-top: 3px solid var(--lf-forest);
+  border-radius: 2px 2px 0.75rem 0.75rem;
+  padding: 1.25rem;
+}
+
+/* My row in a table or list: the panel sage with a Forest bar on the left. */
+.mine-row {
+  background: var(--lf-panel);
+  box-shadow: inset 4px 0 0 var(--lf-forest);
+}
+
+/* Section headings carry a short Forest bar, so each section start is easy to find. */
+h2.text-section::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 0.8em;
+  margin-right: 10px;
+  border-radius: 2px;
+  background: var(--lf-forest);
+  vertical-align: -0.02em;
+}
+
+/* Links are Forest unless a utility sets their colour (base layer, so utilities win). */
+@layer base {
+  a {
+    color: var(--lf-forest);
+  }
+}
+
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.92em;
@@ -160,8 +200,12 @@ code {
   }
 }
 
-/* Table rhythm; the head rule and row rules live in ResponsiveTable. */
-th {
+/* Table rhythm; the head rule and row rules live in ResponsiveTable. Header rows sit on a light sage band. */
+thead > tr {
+  background: var(--lf-band);
+}
+/* column headers only: a row header (th scope=row) keeps its own colour, ink by default */
+thead th {
   text-transform: var(--th-transform);
   letter-spacing: var(--th-tracking);
   font-size: var(--th-size);

@@ -45,7 +45,7 @@ export function QueryBuilderSidebarScroll({
   return (
     <>
       <section className="space-y-3 border-b border-line pb-5">
-        <h2 className="text-body font-semibold uppercase tracking-wide text-muted">The Who</h2>
+        <h2 className="text-body font-semibold uppercase tracking-wide text-focus">The Who</h2>
         <ToggleGroup
           type="single"
           value={state.subject}
@@ -77,7 +77,7 @@ export function QueryBuilderSidebarScroll({
               />
               {suggestions.length > 0 && debounced.trim().length >= 2 && (
                 <ul
-                  className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-line bg-panel py-1 shadow-sm"
+                  className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-line bg-surface py-1 shadow-sm"
                   role="listbox"
                 >
                   {suggestions.map((p) => (
@@ -135,7 +135,7 @@ export function QueryBuilderSidebarExecuteFooter({
   return (
     <div
       className={cn(
-        "shrink-0 border-t border-line bg-panel p-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
+        "shrink-0 border-t border-line bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
         className,
       )}
     >

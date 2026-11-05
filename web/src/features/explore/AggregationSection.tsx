@@ -27,7 +27,7 @@ export function AggregationSection() {
         <AccordionItem value="aggregation" className="border-0">
           <AccordionTrigger className="py-2 hover:no-underline">
             <div className="flex flex-col items-start gap-0.5 pr-2 text-left">
-              <span className="text-body font-semibold uppercase tracking-wide text-muted">Aggregation</span>
+              <span className="text-body font-semibold uppercase tracking-wide text-focus">Aggregation</span>
               <span className="text-caption font-normal normal-case text-muted">{summary}</span>
             </div>
           </AccordionTrigger>

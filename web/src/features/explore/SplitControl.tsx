@@ -9,7 +9,7 @@ export function SplitControl() {
 
   return (
     <div className="space-y-1">
-      <h3 className="text-caption font-semibold uppercase tracking-wide text-muted">Split by</h3>
+      <h3 className="text-caption font-semibold uppercase tracking-wide text-focus">Split by</h3>
       <p className="mt-0.5 text-caption text-muted">
         One row per player, or one per season or week. With a ranking, it ranks single seasons or games.
       </p>

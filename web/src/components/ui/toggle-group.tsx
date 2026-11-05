@@ -23,9 +23,9 @@ export function ToggleGroupItem({ className, ...props }: ComponentProps<typeof T
   return (
     <ToggleGroupPrimitive.Item
       className={cn(
-        "inline-flex min-h-11 items-center justify-center rounded-full border border-panel-line bg-panel font-medium text-muted transition-colors",
-        "data-[state=off]:hover:text-ink data-[state=off]:hover:border-focus disabled:pointer-events-none",
-        "data-[state=on]:border-focus data-[state=on]:bg-focus data-[state=on]:text-white",
+        "inline-flex min-h-11 items-center justify-center rounded-full border border-panel-line bg-surface font-medium text-forest transition-colors",
+        "data-[state=off]:hover:border-forest disabled:pointer-events-none",
+        "data-[state=on]:border-forest data-[state=on]:bg-forest data-[state=on]:text-white",
         size === "sm" ? "px-2.5 text-caption md:min-h-8" : "px-3 text-body md:min-h-9",
         className,
       )}

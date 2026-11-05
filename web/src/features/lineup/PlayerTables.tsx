@@ -80,7 +80,7 @@ function Wide({ rows, ctx, columns }: { rows: readonly LineupRow[]; ctx: Ctx; co
     <table className="hidden w-full table-fixed text-body lg:table">
       <colgroup>{columns.map((c) => <col key={c.head} style={{ width: c.width }} />)}</colgroup>
       <thead>
-        <tr className="border-b-[1.5px] border-ink text-left text-caption text-muted">
+        <tr className="border-b-[1.5px] border-forest text-left text-caption text-muted">
           {columns.map((c) => <th key={c.head} scope="col" className={`py-2 pr-3 font-normal last:pr-0 ${c.right ? "text-right" : ""}`}>{c.head}</th>)}
         </tr>
       </thead>

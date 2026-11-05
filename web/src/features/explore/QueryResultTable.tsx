@@ -17,7 +17,7 @@ export function QueryResultTable({
     <div className={cn("overflow-x-auto", className)}>
       <table className={cn("w-full border-collapse text-left text-body", minWidthClass)}>
         <thead>
-          <tr className="border-b-[1.5px] border-ink">
+          <tr className="border-b-[1.5px] border-forest">
             {result.columns.map((col) => (
               <th key={col} className="px-3 py-2 font-medium text-muted">
                 {col}

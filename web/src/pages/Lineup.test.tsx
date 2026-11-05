@@ -85,13 +85,13 @@ describe("LineupView answer and evidence", () => {
   test("the tinted panel holds both team totals, the chance to win and the lineup against Sleeper", () => {
     render(<LineupView base={cookRows} odds={withCalls} week={3} />);
     const panel = screen.getByRole("region", { name: "Your matchup" });
-    expect(panel.className).toContain("bg-panel");
+    expect(panel.className).toContain("key-panel");
     expect(within(panel).getByText("You, median").nextElementSibling).toHaveTextContent("120.0");
     expect(within(panel).getByText("Opponent, median").nextElementSibling).toHaveTextContent("115.0");
     expect(within(panel).getByText("Chance to win")).toBeInTheDocument();
     expect(within(panel).getByText("Skill slots, shown vs Sleeper")).toBeInTheDocument();
     expect(within(panel).getByRole("img", { name: /^Your team:/ })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Close calls" }).closest("section")!.className).not.toContain("bg-panel");
+    expect(screen.getByRole("heading", { name: "Close calls" }).closest("section")!.className).not.toContain("key-panel");
   });
   test("locked starters are not counted as clear slots", () => {
     const locked = cookRows.map((r) => (r.gsis_id === "rb1" ? { ...r, locked: true } : r));

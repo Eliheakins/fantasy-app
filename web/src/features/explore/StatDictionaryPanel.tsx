@@ -55,7 +55,7 @@ export function StatDictionaryPanel({ className }: StatDictionaryPanelProps) {
           <AccordionItem value="what" className="border-0">
             <AccordionTrigger className="py-2 hover:no-underline">
               <div className="flex flex-col items-start gap-0.5 pr-2 text-left">
-                <span className="text-body font-semibold uppercase tracking-wide text-muted">The What</span>
+                <span className="text-body font-semibold uppercase tracking-wide text-focus">The What</span>
                 <span className="text-caption font-normal normal-case text-muted">
                   {selectedIds.length}/{MAX_SELECTED_STATS} metrics selected · up to {MAX_SELECTED_STATS} stats
                 </span>
@@ -99,7 +99,7 @@ export function StatDictionaryPanel({ className }: StatDictionaryPanelProps) {
                                         disabled={disableSelect}
                                         onChange={() => toggleStatId(s.id)}
                                         className={cn(
-                                          "mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-line bg-panel text-focus",
+                                          "mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-line bg-surface text-focus",
                                           disableSelect && "cursor-not-allowed",
                                         )}
                                         aria-label={`Select ${s.label}`}
@@ -138,7 +138,7 @@ export function StatDictionaryPanel({ className }: StatDictionaryPanelProps) {
                 </div>
 
                 {selectedIds.length > 0 ? (
-                  <div className="rounded-md border border-line bg-panel/90 p-2">
+                  <div className="rounded-md border border-line bg-surface/90 p-2">
                     <p className="text-caption font-medium text-muted">Preview</p>
                     <ul className="mt-1 max-h-28 space-y-1 overflow-y-auto text-caption leading-snug text-muted">
                       {selectedIds.map((id) => {

@@ -26,9 +26,9 @@ export function GranularitySelector({ embedded = false }: GranularitySelectorPro
   const body = (
     <>
       {!embedded ? (
-        <h2 className="text-body font-semibold uppercase tracking-wide text-muted">Granularity</h2>
+        <h2 className="text-body font-semibold uppercase tracking-wide text-focus">Granularity</h2>
       ) : (
-        <h3 className="text-caption font-semibold uppercase tracking-wide text-muted">Granularity</h3>
+        <h3 className="text-caption font-semibold uppercase tracking-wide text-focus">Granularity</h3>
       )}
       <p className="mt-0.5 text-caption text-muted">
         How the stat is aggregated. Per game divides by the <span className="font-medium text-ink">games played</span>{" "}

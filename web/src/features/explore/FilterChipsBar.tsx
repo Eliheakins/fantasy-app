@@ -13,7 +13,7 @@ export function FilterChipsBar() {
 
   return (
     <section className="border-b border-line pb-5">
-      <h2 className="text-body font-semibold uppercase tracking-wide text-muted">The Context</h2>
+      <h2 className="text-body font-semibold uppercase tracking-wide text-focus">The Context</h2>
       <p className="mt-0.5 text-caption text-muted">
         Toggle filters for the WHERE clause. Within each row, multiple selections join with{" "}
         <span className="font-medium text-ink">OR</span> (or <span className="font-medium text-ink">AND</span> where

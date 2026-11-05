@@ -23,7 +23,7 @@ function NextGame({ p, name }: { p: PlayerProfile; name?: string }) {
     return result ? <p className="text-heading font-semibold tabular-nums">{result}</p> : NOT_AVAILABLE("this player has no projection for the next game");
   }
   return (
-    <div className="space-y-2 rounded-xl bg-panel p-5">
+    <div className="space-y-2 key-panel">
       {result && <p className="text-body font-semibold tabular-nums">{result}</p>}
       <p className="text-heading font-semibold tabular-nums"><Explain why={nextGameWhy(p)}>{formatNumber(p.median)}</Explain> median points, week {p.week}</p>
       <RangeBar domain={domain} width={RANGE_WIDTH} p10={p.p10} p50={p.median} p90={p.p90} name={name ? `${name}, next game` : "Next game"} />

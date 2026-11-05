@@ -33,7 +33,7 @@ function TableForm<T>({ caption, columns, rows, rowKey, isStrong }: FormProps<T>
       <table className="w-full text-body">
         <caption className="sr-only">{caption}</caption>
         <thead>
-          <tr className="border-b-[1.5px] border-ink text-left text-caption text-muted">
+          <tr className="border-b-[1.5px] border-forest text-left text-caption text-muted">
             {columns.map((c) => (
               <th key={c.label} scope="col" className={cn("px-2 py-1 font-normal", c.numeric && columns.indexOf(c) !== head && "text-right")}>
                 {c.label}
@@ -43,7 +43,7 @@ function TableForm<T>({ caption, columns, rows, rowKey, isStrong }: FormProps<T>
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={rowKey(row, i)} className={cn("border-b border-line", isStrong?.(row) && "border-l-4 border-l-focus font-semibold")}>
+            <tr key={rowKey(row, i)} className={cn("border-b border-line", isStrong?.(row) && "mine-row font-semibold")}>
               {columns.map((c, ci) => {
                 const cls = cn("px-2 py-1 align-top", c.numeric && ci !== head && "text-right tabular-nums");
                 return ci === head ? (
@@ -77,9 +77,9 @@ function CardForm<T>({ caption, columns, rows, rowKey, isStrong }: FormProps<T>)
   const key = rest.filter((c) => c.role !== "detail");
   const more = rest.filter((c) => c.role === "detail");
   return (
-    <ul aria-label={caption} className="border-t-[1.5px] border-ink">
+    <ul aria-label={caption} className="border-t-[1.5px] border-forest">
       {rows.map((row, i) => (
-        <li key={rowKey(row, i)} className={cn("border-b border-line py-3", isStrong?.(row) && "border-l-4 border-l-focus pl-3")}>
+        <li key={rowKey(row, i)} className={cn("border-b border-line py-3", isStrong?.(row) && "mine-row pl-3")}>
           <div className={cn("text-body", isStrong?.(row) ? "font-semibold" : "font-medium")}>{head?.render(row)}</div>
           {key.length > 0 && (
             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">
@@ -88,7 +88,7 @@ function CardForm<T>({ caption, columns, rows, rowKey, isStrong }: FormProps<T>)
           )}
           {more.length > 0 && (
             <details className="mt-1">
-              <summary className="flex min-h-[44px] cursor-pointer items-center text-caption text-muted">More</summary>
+              <summary className="flex min-h-[44px] cursor-pointer items-center text-caption text-forest">More</summary>
               <dl className="grid grid-cols-2 gap-x-3 gap-y-2 pb-1">
                 {more.map((c) => <Field key={c.label} column={c} row={row} />)}
               </dl>

@@ -35,7 +35,7 @@ export function PlayerPicker({ onPick, exclude }: Props) {
         placeholder="Type at least two letters of a name"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        className="min-h-[44px] w-full max-w-sm rounded-full border border-panel-line bg-panel px-4 text-body"
+        className="min-h-[44px] w-full max-w-sm rounded-full border border-panel-line bg-surface px-4 text-body"
       />
       <p role="status" className="text-caption text-muted">{status}</p>
       {found.error && <p className="text-body text-warning">The player search failed: {found.error.message}</p>}

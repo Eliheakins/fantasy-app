@@ -26,7 +26,7 @@ export function Section({ title, caption, howCalculated, children, level = 2 }: 
             aria-expanded={open}
             aria-controls={open ? `${id}-method` : undefined}
             onClick={() => setOpen((o) => !o)}
-            className="-my-3 inline-flex min-h-[44px] items-center text-caption text-muted underline underline-offset-2 hover:text-ink"
+            className="-my-3 inline-flex min-h-[44px] items-center text-caption text-focus underline underline-offset-2 hover:text-forest"
           >
             How this is calculated
           </button>

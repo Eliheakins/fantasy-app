@@ -25,7 +25,7 @@ export function Comparison({ rows }: { rows: readonly ComparisonRow[] }) {
     <Section title="Compare lineups" caption={note} howCalculated={how}>
       <table className="hidden w-full text-body lg:table">
         <thead>
-          <tr className="border-b-[1.5px] border-ink text-left text-caption text-muted">
+          <tr className="border-b-[1.5px] border-forest text-left text-caption text-muted">
             <th className="py-2 pr-3 font-normal">Lineup</th>
             <th className="pr-3 font-normal">Chance to win</th>
             <th className="pr-3 text-right font-normal">Floor, 10% (pts)</th>

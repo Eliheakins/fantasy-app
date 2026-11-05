@@ -29,8 +29,8 @@ export function SavedSearches() {
           }}
         >
           <label htmlFor="saved-search-name" className="text-body">Name this search</label>
-          <input id="saved-search-name" value={name} maxLength={MAX_NAME_LENGTH} onChange={(e) => setName(e.target.value)} className="min-h-[44px] rounded-full border border-panel-line bg-panel px-4 text-body" />
-          <button type="submit" disabled={empty || !name.trim() || full} className="min-h-[44px] rounded-full border border-panel-line bg-panel px-4 text-body disabled:opacity-50">
+          <input id="saved-search-name" value={name} maxLength={MAX_NAME_LENGTH} onChange={(e) => setName(e.target.value)} className="min-h-[44px] rounded-full border border-panel-line bg-surface px-4 text-body" />
+          <button type="submit" disabled={empty || !name.trim() || full} className="min-h-[44px] rounded-full border border-panel-line bg-surface px-4 text-body disabled:opacity-50">
             Save search
           </button>
         </form>

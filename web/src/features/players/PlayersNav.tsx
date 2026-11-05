@@ -41,7 +41,7 @@ export function FindPlayersCta() {
   return (
     <Link
       to={{ pathname: "/players/find", search: navSearch("/players/find", search, pathname) }}
-      className="group mb-8 flex min-h-[56px] max-w-2xl items-center gap-3 rounded-full border border-panel-line bg-white px-5 py-2 text-body hover:border-focus hover:bg-panel"
+      className="group mb-8 flex min-h-[56px] max-w-2xl items-center gap-3 rounded-full border border-panel-line bg-surface px-5 py-2 text-body hover:border-forest hover:bg-panel"
     >
       <Search aria-hidden size={18} className="shrink-0 text-forest" />
       <span className="min-w-0 flex-1">

@@ -24,7 +24,7 @@ export function PinnedPlayersBar() {
       </div>
 
       {pinnedPlayers.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-panel py-6 text-center text-body text-muted">
+        <p className="rounded-lg border border-dashed border-line bg-surface py-6 text-center text-body text-muted">
           Pin players from search to compare.
         </p>
       ) : (
@@ -33,7 +33,7 @@ export function PinnedPlayersBar() {
             <div
               key={p.gsis_id}
               className={cn(
-                "inline-flex max-w-full items-center gap-1 rounded-full border border-line bg-panel py-1 pl-3 pr-1 shadow-xs",
+                "inline-flex max-w-full items-center gap-1 rounded-full border border-line bg-surface py-1 pl-3 pr-1 shadow-xs",
                               )}
             >
               <span className="min-w-0 truncate text-body font-medium text-ink">{p.full_name ?? p.gsis_id}</span>

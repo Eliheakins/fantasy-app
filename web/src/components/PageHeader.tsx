@@ -4,7 +4,7 @@ export const PAGE_HEADING_ID = "page-heading";
 
 type Props = {
   title: string;
-  /** Muted caps line above the h1: "page · week · context". */
+  /** Forest-toned caps line above the h1: "page · week · context". */
   eyebrow?: string;
   /** One sentence under the h1 with the key number and its effect. */
   answer?: ReactNode;
@@ -16,7 +16,7 @@ type Props = {
 export function PageHeader({ title, eyebrow, answer, subtitle, actions }: Props) {
   return (
     <div className="mb-8">
-      {eyebrow && <p className="mb-1 text-caption font-semibold uppercase tracking-wide text-muted">{eyebrow}</p>}
+      {eyebrow && <p className="mb-1 text-caption font-semibold uppercase tracking-wide text-focus">{eyebrow}</p>}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 id={PAGE_HEADING_ID} tabIndex={-1} className="text-h1 font-semibold text-ink outline-none">
           {title}

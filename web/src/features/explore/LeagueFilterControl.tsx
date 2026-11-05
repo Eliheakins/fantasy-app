@@ -23,7 +23,7 @@ export function LeagueFilterControl() {
 
   return (
     <div className="space-y-1">
-      <h3 className="text-caption font-semibold uppercase tracking-wide text-muted">League</h3>
+      <h3 className="text-caption font-semibold uppercase tracking-wide text-focus">League</h3>
       <p className="text-caption text-muted">
         Today&apos;s rosters, whatever season you are looking at. It narrows pinned players and rankings.
       </p>

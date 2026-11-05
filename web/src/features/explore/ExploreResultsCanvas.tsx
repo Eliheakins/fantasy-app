@@ -186,14 +186,14 @@ export function ExploreResultsCanvas({
 
         {result && result.rows.length > 0 ? (
           canvasView === "scatter" && twoStatsMode ? (
-            <div className="flex justify-center overflow-x-auto rounded-md border border-line bg-panel py-4">
+            <div className="flex justify-center overflow-x-auto rounded-md border border-line bg-surface py-4">
               <StatScatterChart points={scatterPoints} xLabel={scatterXLabel} yLabel={scatterYLabel} />
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left text-body">
                 <thead>
-                  <tr className="border-b-[1.5px] border-ink">
+                  <tr className="border-b-[1.5px] border-forest">
                     <th className="px-3 py-2 font-medium text-muted">{forTeams ? "Team" : "Player"}</th>
                     {result.columns
                       .filter((col) => col !== idColumn)

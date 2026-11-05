@@ -30,8 +30,8 @@ type Props = {
 export function ResultPanel({ result, option, win, shown, now, gap }: Props) {
   const sleeperNote = gap === null ? null : gapIsNoise(gap) ? "Sleeper's lineup is the same" : <>Sleeper's lineup: <ExplainDelta points={gap} why={SLEEPER_POINTS_WHY} /></>;
   return (
-    <section aria-labelledby="matchup-heading" className="rounded-xl bg-panel p-5">
-      <h2 id="matchup-heading" className="text-caption font-semibold uppercase tracking-wide text-label">Your matchup</h2>
+    <section aria-labelledby="matchup-heading" className="key-panel">
+      <h2 id="matchup-heading" className="text-caption font-semibold uppercase tracking-wide text-focus">Your matchup</h2>
       <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
         {result ? (
           <>

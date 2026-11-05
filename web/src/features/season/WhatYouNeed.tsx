@@ -39,7 +39,7 @@ function Line({ wins, games, row }: ReturnType<typeof needTable>[number]) {
 export function WhatYouNeed() {
   const state = useLeagueApi<WinNeedRow[]>("win-needs");
   return (
-    <section aria-labelledby="what-you-need" className="mb-8 rounded-xl bg-panel p-5">
+    <section aria-labelledby="what-you-need" className="mb-8 key-panel">
       <h2 id="what-you-need" className="text-section font-semibold">What you need</h2>
       <ApiBoundary state={state}>
         {(rows) => {

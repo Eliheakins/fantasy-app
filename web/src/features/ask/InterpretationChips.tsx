@@ -13,7 +13,7 @@ const GRANULARITY_LABELS: Record<GranularityMode, string> = {
 };
 
 const chipClass =
-  "inline-flex items-center gap-1 rounded-full border border-line bg-panel px-2.5 py-0.5 text-caption text-ink " +
+  "inline-flex items-center gap-1 rounded-full border border-line bg-surface px-2.5 py-0.5 text-caption text-ink " +
   "transition hover:border-focus disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-line";
 
 /**
@@ -36,7 +36,7 @@ export function InterpretationChips() {
 
   return (
     <div className="space-y-2" aria-label="How this was read">
-      <p className="text-caption font-medium uppercase tracking-wide text-muted">
+      <p className="text-caption font-medium uppercase tracking-wide text-focus">
         How this was read (click × to remove)
       </p>
       <div className="flex flex-wrap gap-1.5">

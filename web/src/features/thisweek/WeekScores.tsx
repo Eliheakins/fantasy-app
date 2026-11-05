@@ -57,7 +57,7 @@ function Matchup({ row, kickoff }: { row: ScoreboardRow; kickoff: Date | null })
   return (
     <li
       aria-label={`${spoken(first, row.status)}, ${spoken(second, row.status)}, ${status}`}
-      className={cn("grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 px-3 py-2", isMine(row) && "rounded-lg bg-panel")}
+      className={cn("grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 px-3 py-2", isMine(row) && "mine-row rounded-r-lg")}
     >
       <div className="space-y-1">
         <TeamLine side={first} row={row} winner={winner} />

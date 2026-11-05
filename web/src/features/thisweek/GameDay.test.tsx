@@ -61,8 +61,8 @@ describe("game-day block", () => {
     expect(screen.getByText(/Mine: 18\.0 so far.*3 players left/)).toBeInTheDocument();
     expect(screen.getByText(/Theirs: 20\.0 so far.*4 players left/)).toBeInTheDocument();
     expect(screen.getByText(/82\.0 points/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /Game day/ }).closest("section")!.className).toContain("bg-panel");
-    expect(todoPanel().className).not.toContain("bg-panel");
+    expect(screen.getByRole("heading", { name: /Game day/ }).closest("section")!.className).toContain("key-panel");
+    expect(todoPanel().className).not.toContain("key-panel");
   });
 
   it("is absent and asks for nothing more when no game is on", async () => {
@@ -72,7 +72,7 @@ describe("game-day block", () => {
     await waitFor(() => expect(count("/api/status")).toBe(1));
     expect(screen.queryByRole("heading", { name: /Game day/ })).not.toBeInTheDocument();
     expect(count("game-day")).toBe(0);
-    expect(todoPanel().className).toContain("bg-panel");
+    expect(todoPanel().className).toContain("key-panel");
   });
 
   it("goes away and stops asking for game-day numbers when the games end", async () => {
@@ -84,7 +84,7 @@ describe("game-day block", () => {
     const before = count("game-day");
     await client.invalidateQueries({ queryKey: ["api"] });
     expect(count("game-day")).toBe(before);
-    expect(todoPanel().className).toContain("bg-panel");
+    expect(todoPanel().className).toContain("key-panel");
   });
 
   it("says when a league's numbers did not load", async () => {

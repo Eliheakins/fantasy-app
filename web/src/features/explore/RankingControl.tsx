@@ -32,7 +32,7 @@ export function RankingControl() {
 
   return (
     <div className="space-y-1">
-      <h3 className="text-caption font-semibold uppercase tracking-wide text-muted">Ranking</h3>
+      <h3 className="text-caption font-semibold uppercase tracking-wide text-focus">Ranking</h3>
       <p className="mt-0.5 text-caption text-muted">
         Order by one stat and keep the first rows. With no player pinned, it ranks everyone who has the stat.
       </p>

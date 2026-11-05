@@ -36,7 +36,7 @@ describe("WeekScores", () => {
     const games = await within(alpha).findAllByRole("listitem");
     expect(games).toHaveLength(2);
     expect(games[0]).toHaveAccessibleName("Lisan (you) 148.5, Flowers 160.0, Final");
-    expect(games[0]!.className).toContain("bg-panel");
+    expect(games[0]!.className).toContain("mine-row");
     expect(games[1]).toHaveAccessibleName("Seals 120.0, tsd 99.3, Final");
     expect(await screen.findByRole("heading", { name: "Beta" })).toBeInTheDocument();
   });

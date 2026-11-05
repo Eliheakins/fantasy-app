@@ -17,9 +17,9 @@ export function MinPlaysSlider({ className, embedded = false }: MinPlaysSliderPr
       <div className="flex items-center justify-between gap-4">
         <div>
           {!embedded ? (
-            <h2 className="text-body font-semibold uppercase tracking-wide text-muted">Min plays</h2>
+            <h2 className="text-body font-semibold uppercase tracking-wide text-focus">Min plays</h2>
           ) : (
-            <h3 className="text-caption font-semibold uppercase tracking-wide text-muted">Min plays</h3>
+            <h3 className="text-caption font-semibold uppercase tracking-wide text-focus">Min plays</h3>
           )}
           <p className="mt-0.5 text-caption text-muted">
             HAVING <code className="rounded bg-panel px-0.5 font-mono text-caption text-ink">COUNT(*) ≥</code>{" "}

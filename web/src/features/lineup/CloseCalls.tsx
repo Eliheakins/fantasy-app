@@ -30,7 +30,7 @@ export function CloseCalls({ calls, rows, objective }: { calls: readonly SlotCal
       )}
       {clear.length > 0 && (
         <details className="mt-1 text-body">
-          <summary className="flex min-h-[44px] cursor-pointer items-center text-muted">
+          <summary className="flex min-h-[44px] cursor-pointer items-center text-forest">
             {clear.length} {clear.length === 1 ? "slot is" : "slots are"} clear
           </summary>
           <ul>

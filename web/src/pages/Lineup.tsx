@@ -83,9 +83,9 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
       <CloseCalls calls={slotCalls(odds, objective)} rows={rows} objective={objective} />
       {hasOdds && !result && (
         <details className="group mt-8">
-          <summary className="no-chevron inline-flex min-h-[44px] cursor-pointer list-none items-center gap-2 rounded-full border border-panel-line bg-white px-4 font-medium text-ink hover:bg-panel [&::-webkit-details-marker]:hidden">
+          <summary className="no-chevron inline-flex min-h-[44px] cursor-pointer list-none items-center gap-2 rounded-full border border-panel-line bg-surface px-4 font-medium text-forest hover:border-forest hover:bg-panel [&::-webkit-details-marker]:hidden">
             Other ways to pick
-            <ChevronDown aria-hidden size={16} className="text-muted transition-transform group-open:rotate-180" />
+            <ChevronDown aria-hidden size={16} className="text-forest transition-transform group-open:rotate-180" />
           </summary>
           <p className="mt-2 text-caption text-muted">Optimize for expected points, win chance, ceiling or floor, and compare what each would start.</p>
           {odds.script && (
@@ -98,7 +98,7 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
               value={objective}
               onChange={(key) => setPicked({ key, under: recommended })}
               className="mt-3 flex flex-wrap gap-2"
-              optionClassName={(on) => `rounded-full border px-3 text-body ${on ? "border-focus bg-focus font-medium text-white" : "border-panel-line bg-panel"}`}
+              optionClassName={(on) => `rounded-full border px-3 text-body ${on ? "border-forest bg-forest font-medium text-white" : "border-panel-line bg-surface text-forest hover:border-forest"}`}
             />
           )}
           {odds.swap?.differs && odds.swap.text && (

@@ -113,7 +113,7 @@ export function NLQPanel() {
 
           {answer ? (
             <section aria-label="Answer" className="space-y-1 border-t border-line pt-3">
-              <p className="text-caption font-medium uppercase tracking-wide text-muted">{answer.context}</p>
+              <p className="text-caption font-medium uppercase tracking-wide text-focus">{answer.context}</p>
               <ul className="space-y-1 text-body text-ink">
                 {answer.parts.map((p, i) => (
                   <li key={answer.lines[i]}>

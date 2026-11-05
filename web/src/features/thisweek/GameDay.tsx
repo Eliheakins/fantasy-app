@@ -71,7 +71,7 @@ export function GameDay({ intervalMs }: { intervalMs: number }) {
   const leagues = useHomeLeagues();
   const list = leagues.kind === "ready" ? leagues.data : [];
   return (
-    <section aria-labelledby="gameday-heading" className="mb-6 rounded-xl bg-panel p-5">
+    <section aria-labelledby="gameday-heading" className="mb-6 key-panel">
       <h2 id="gameday-heading" className="mb-3 text-section font-semibold">Game day: a game is on</h2>
       {leagues.kind === "error" && <p role="alert" className="text-body text-warning">The leagues did not load, so there are no game-day numbers.</p>}
       {(leagues.kind === "loading" || leagues.kind === "running") && <p role="status" className="text-muted">Loading leagues…</p>}

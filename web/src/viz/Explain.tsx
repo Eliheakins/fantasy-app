@@ -37,7 +37,7 @@ export function Explain({ why, children, about, row = false }: ExplainProps) {
             e.preventDefault();
             trigger.current.focus();
           }}
-          className="z-50 max-w-[min(20rem,calc(100vw-16px))] rounded-md border border-line bg-panel px-3 py-2 text-caption leading-relaxed text-ink shadow-sm"
+          className="z-50 max-w-[min(20rem,calc(100vw-16px))] rounded-md border border-line bg-surface px-3 py-2 text-caption leading-relaxed text-ink shadow-sm"
         >
           {why}
         </Popover.Content>

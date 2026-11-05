@@ -30,7 +30,7 @@ function Column({ gsisId, onRemove }: { gsisId: string; onRemove: () => void }) 
         </button>
       </div>
       {unknown && <p className="text-body text-muted">No player in the stat data has the id {gsisId}.</p>}
-      {info && <p className="text-caption uppercase tracking-wide text-muted">{[info.position, info.team].filter(Boolean).join(" · ")}</p>}
+      {info && <p className="text-caption uppercase tracking-wide text-focus">{[info.position, info.team].filter(Boolean).join(" · ")}</p>}
       {info && <PlayerSections gsisId={gsisId} level={3} name={name} />}
     </div>
   );

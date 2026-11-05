@@ -58,7 +58,7 @@ export default function Moves() {
   return (
     <div className="flex flex-col">
       <PageHeader title={header.title} eyebrow={eyebrow} answer={header.answer} />
-      <section aria-labelledby="moves-heading" className="mb-8 rounded-xl bg-panel p-5">
+      <section aria-labelledby="moves-heading" className="mb-8 key-panel">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 id="moves-heading" className="text-section font-semibold">Moves, best first</h2>
           <ToggleGroup type="single" aria-label="Moves view" value={view} onValueChange={choose}>

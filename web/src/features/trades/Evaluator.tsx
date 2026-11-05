@@ -57,7 +57,7 @@ export function Evaluator({ league, scope = league, partners, mine, debounceMs =
           id={selectId}
           value={partner ?? ""}
           onChange={(e) => setDraft({ partner: Number(e.target.value), give: draft.give, get: [] })}
-          className="h-[44px] w-full max-w-sm rounded-full border border-panel-line bg-panel px-4"
+          className="h-[44px] w-full max-w-sm rounded-full border border-panel-line bg-surface px-4"
         >
           {partners.map((p) => (
             <option key={p.roster_id} value={p.roster_id}>{p.team_name}</option>
