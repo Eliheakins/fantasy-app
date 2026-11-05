@@ -2,9 +2,11 @@ import { GameDay, useLiveStatus } from "./GameDay";
 import { SinceLastLooked } from "./SinceLastLooked";
 import { TodoList } from "./TodoList";
 import { useTodos } from "./useTodos";
+import { WeekScores } from "./WeekScores";
+import { firstKickoff } from "@/features/scoreboard/logic";
 import { WeekStrip } from "./WeekStrip";
 
-/** The week strip, the to-do list for both leagues (the page's tinted panel, unless game day takes it) and the visit changes. */
+/** The week strip, the to-do list for both leagues (the page's tinted panel, unless game day takes it), every matchup's score and the visit changes. */
 export function ThisWeekBoard() {
   const { pending, todos, failed, calendar, calendarFailed, leaguesError, now } = useTodos();
   const { live, intervalMs } = useLiveStatus();
@@ -27,6 +29,7 @@ export function ThisWeekBoard() {
           Ordered by what expires first, then by effect: playoff-odds change first, then fantasy points, then items with no number. The two units are not converted into each other.
         </p>
       </section>
+      <WeekScores kickoff={calendar ? firstKickoff(calendar.kickoffs) : null} />
       <SinceLastLooked />
     </>
   );

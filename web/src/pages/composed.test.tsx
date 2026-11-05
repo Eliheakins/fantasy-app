@@ -18,7 +18,6 @@ vi.mock("@/features/season/RootFor", async () => ({ RootForSection: (await impor
 vi.mock("@/features/season/SeasonOdds", async () => ({ SeasonOdds: (await import("@/test/stubPage")).stubSection("odds chart") }));
 vi.mock("@/features/league/LeagueView", async () => ({ LeagueView: (await import("@/test/stubPage")).stubSection("league") }));
 vi.mock("@/features/players/PlayersView", async () => ({ PlayersView: (await import("@/test/stubPage")).stubSection("players") }));
-vi.mock("@/pages/Scoreboard", () => ({ default: () => <p>scores</p> }));
 
 describe("composed pages", () => {
   it.each([

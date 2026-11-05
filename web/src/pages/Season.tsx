@@ -1,4 +1,3 @@
-import { Section } from "@/components/Section";
 import { LeagueView } from "@/features/league/LeagueView";
 import { OutlookView } from "@/features/outlook/OutlookView";
 import { RootForSection } from "@/features/season/RootFor";
@@ -6,9 +5,8 @@ import { SeasonHeader } from "@/features/season/SeasonHeader";
 import { SeasonOdds } from "@/features/season/SeasonOdds";
 import { WhatYouNeed } from "@/features/season/WhatYouNeed";
 import { usePageEyebrow } from "@/lib/week";
-import Scoreboard from "@/pages/Scoreboard";
 
-/** Season: the odds answer, what you need, who to root for, the odds chart, then the outlook tables, scores and league sections. */
+/** Season: the odds answer, what you need, who to root for, the odds chart, then the outlook tables and league sections. */
 export default function Season() {
   const eyebrow = usePageEyebrow("Season", true);
   return (
@@ -20,9 +18,6 @@ export default function Season() {
       </div>
       <SeasonOdds />
       <OutlookView history={false} />
-      <Section title="Scores" caption="This week's matchups, from the week picker in the top bar.">
-        <Scoreboard />
-      </Section>
       <LeagueView />
     </div>
   );
