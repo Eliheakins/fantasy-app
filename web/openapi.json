@@ -1382,15 +1382,6 @@
             }
           },
           {
-            "name": "gsis_id",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Gsis Id"
-            }
-          },
-          {
             "name": "season",
             "in": "query",
             "required": true,
@@ -1399,6 +1390,22 @@
               "maximum": 2100,
               "minimum": 1999,
               "title": "Season"
+            }
+          },
+          {
+            "name": "gsis_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Gsis Id"
             }
           }
         ],
@@ -5593,6 +5600,10 @@
       },
       "PlayerPointsRow": {
         "properties": {
+          "gsis_id": {
+            "type": "string",
+            "title": "Gsis Id"
+          },
           "week": {
             "type": "integer",
             "title": "Week"
@@ -5605,6 +5616,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
+          "gsis_id",
           "week",
           "points"
         ],

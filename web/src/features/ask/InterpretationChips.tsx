@@ -1,5 +1,7 @@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useLeagueName } from "@/lib/league";
 import { getStatById } from "@/stat/config/statDictionary";
+import { statLabel } from "@/stat/lib/queryBuilder";
 import { useFilterChipGroups } from "@/features/explore/filterChipGroups";
 import { useQueryState } from "@/features/explore/useQueryState";
 import type { GranularityMode } from "@/stat/types/queryBuilder";
@@ -25,6 +27,11 @@ export function InterpretationChips() {
   const filterLabels = new Map(
     chipGroups.flatMap((g) => g.options.map((o): [string, string] => [o.id, `${g.label}: ${o.label}`])),
   );
+  const leagueName = useLeagueName();
+  const nameOf = (id: string) => {
+    const stat = getStatById(id);
+    return stat ? statLabel(stat, leagueName) : id;
+  };
   const keepsRanking = (id: string) => state.order?.metric === id;
 
   return (
@@ -40,9 +47,9 @@ export function InterpretationChips() {
             className={chipClass}
             disabled={state.stats.length === 1 || keepsRanking(id)}
             onClick={() => toggleStatId(id)}
-            aria-label={`Remove ${getStatById(id)?.label ?? id}`}
+            aria-label={`Remove ${nameOf(id)}`}
           >
-            {getStatById(id)?.label ?? id} <span aria-hidden>×</span>
+            {nameOf(id)} <span aria-hidden>×</span>
           </button>
         ))}
         {state.filters.map((id) => (

@@ -409,6 +409,20 @@
         "rushing efficiency",
         "ngs rush efficiency"
       ]
+    },
+    {
+      "id": "league_pts",
+      "label": "League points",
+      "category": "fantasy",
+      "aliases": [
+        "fantasy points",
+        "league points",
+        "points in my league",
+        "fantasy pts",
+        "league pts",
+        "fantasy score",
+        "my league points"
+      ]
     }
   ],
   "filters": [

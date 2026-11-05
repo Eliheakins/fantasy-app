@@ -44,8 +44,8 @@ describe("rules parser against the eval questions", () => {
     const of = (set: string, verdict: string, from = rows.filter((r) => r.set === set)) =>
       from.filter((r) => r.verdict === verdict).length;
 
-    // cases.json: 40/40 answerable correct, 0 wrong.
-    expect([of("cases", "correct", answerable("cases")), answerable("cases").length, of("cases", "wrong")]).toEqual([40, 40, 0]);
+    // cases.json: 43/43 answerable correct (40/40 before the league points stat), 0 wrong.
+    expect([of("cases", "correct", answerable("cases")), answerable("cases").length, of("cases", "wrong")]).toEqual([43, 43, 0]);
     // heldout.json: 25/25 answerable correct (two more deferred on purpose), 0 wrong, 1 trap refused, 7 handed to the model.
     const held = rows.filter((r) => r.set === "heldout");
     expect([of("heldout", "correct", answerable("heldout")), answerable("heldout").length, of("heldout", "wrong")]).toEqual([25, 25, 0]);

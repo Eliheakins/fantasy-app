@@ -7,12 +7,13 @@ import rawMetrics from "../../../../metrics/metrics.json";
 
 import {
   type MetricDefinitionData,
+  type MetricSource,
   type PlayerRole,
   type PlayTypeScope,
   parseMetricsFile,
 } from "@/stat/lib/schemas/metrics";
 
-export type { PlayerRole, PlayTypeScope };
+export type { MetricSource, PlayerRole, PlayTypeScope };
 
 /** Category ids come from the metrics file, so a new category needs no code change. */
 export type StatCategory = string;
@@ -25,6 +26,9 @@ export interface StatDefinition {
   /** Shown in a ? tooltip (hover/focus). Prefer this over duplicating `description`. */
   help?: string;
   category: StatCategory;
+  /** "league": points under the selected league's scoring; the engine joins them by player, season and week. */
+  source: MetricSource;
+  /** Meaningless for a league stat (placeholder); use `source` first. */
   playerRole: PlayerRole;
   playType: PlayTypeScope;
   /**
@@ -58,8 +62,9 @@ function toStat(m: MetricDefinitionData): StatDefinition {
     description: m.description ?? undefined,
     help: m.help ?? undefined,
     category: m.category,
-    playerRole: m.player_role,
-    playType: m.play_type,
+    source: m.source,
+    playerRole: m.player_role ?? "receiver",
+    playType: m.play_type ?? "all",
     base_sql: m.base_sql,
     rate_only: m.rate_only,
     better: m.better ?? undefined,

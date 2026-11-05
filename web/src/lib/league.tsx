@@ -54,6 +54,13 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
   return <LeagueContext.Provider value={value}>{children}</LeagueContext.Provider>;
 }
 
+/** The selected league's display name, or null with no provider, no league or the list not loaded. */
+export function useLeagueName(): string | null {
+  const value = useContext(LeagueContext);
+  if (!value || value.league === null || value.leagues.kind !== "ready") return null;
+  return value.leagues.data.find((l) => l.league_key === value.league)?.name ?? null;
+}
+
 export function useLeague(): LeagueContextValue {
   const value = useContext(LeagueContext);
   if (!value) throw new Error("useLeague must be used inside LeagueProvider");

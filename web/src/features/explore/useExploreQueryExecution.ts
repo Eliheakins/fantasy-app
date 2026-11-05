@@ -8,6 +8,8 @@ import { useManifest } from "@/features/explore/manifest";
 import { createLatestRunner } from "@/stat/lib/latestRun";
 import { useLeague } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
+import { useLeaguePoints } from "@/features/explore/useLeaguePoints";
+import { isLeagueStat } from "@/stat/engine/leaguePointsQuery";
 import { playerSetFor, useLeagueOwners } from "@/features/explore/useLeagueOwners";
 import { usePinnedPlayers } from "@/features/explore/usePinnedPlayers";
 import { isLeagueQuery } from "@/stat/lib/queryUrl";
@@ -47,11 +49,24 @@ export function useExploreQueryExecution() {
     () => (rosterFilter && owners ? playerSetFor(rosterFilter, [...owners.values()]) : null),
     [rosterFilter, owners],
   );
+  // League points come from the fantasy API, one fetch per season. With no season chip only the latest
+  // is fetched (a split by season asks for them all); the result says so in a notice.
+  const wantsPoints = !forTeams && stats.some(isLeagueStat);
+  const { pointSeasons, latestOnly } = useMemo(() => {
+    const years = sources.map((s) => s.year);
+    const chosen = years.filter((y) => filterChipState[`season-${y}`]);
+    if (chosen.length > 0 || split === "season") {
+      return { pointSeasons: chosen.length > 0 ? chosen : years, latestOnly: false };
+    }
+    return { pointSeasons: years.length > 0 ? [Math.max(...years)] : [], latestOnly: true };
+  }, [sources, filterChipState, split]);
+  const points = useLeaguePoints(wantsPoints ? leagueKey : null, pointSeasons, league ? null : players);
+  const pointsRows = points.kind === "ready" ? points.rows : null;
   // The result belongs to the league, viewed team and loaded rosters it was computed for, too.
   const { team } = useTeam();
   const currentKey = useMemo(
-    () => `${queryKey(state)}|${leagueKey}|${team}|${playerSet ? "set" : "none"}`,
-    [state, leagueKey, team, playerSet],
+    () => `${queryKey(state)}|${leagueKey}|${team}|${playerSet ? "set" : "none"}|${pointsRows ? "pts" : "none"}`,
+    [state, leagueKey, team, playerSet, pointsRows],
   );
   // A filter that cannot apply (team rows, or no league at all) would be inert and could not be cleared.
   const inert = state.roster !== null && (forTeams || (leagues.kind === "ready" && leagueKey === null));
@@ -88,8 +103,17 @@ export function useExploreQueryExecution() {
       return;
     }
 
-    if (state.roster && !forTeams && leagues.kind === "loading") {
-      return; // the league list decides whether the filter applies at all
+    if ((state.roster || wantsPoints) && !forTeams && leagues.kind === "loading") {
+      return; // the league list decides whether the filter or league points apply at all
+    }
+    if (wantsPoints && leagueKey !== null) {
+      if (points.kind === "error") {
+        invalid(`League points did not load: ${points.message}`);
+        return;
+      }
+      if (points.kind === "loading") {
+        return; // wait for the points rather than show a half-answered query
+      }
     }
     if (rosterFilter && !playerSet) {
       // Never show unrestricted rows as the answer to a restricted query: wait for the league's rosters.
@@ -112,6 +136,7 @@ export function useExploreQueryExecution() {
             playerSet,
             sources,
             playerGame,
+            leaguePoints: pointsRows,
             granularity,
             minPlays,
             order,
@@ -128,7 +153,17 @@ export function useExploreQueryExecution() {
         stale = true;
         return;
       }
-      setResult(outcome.value);
+      setResult(
+        wantsPoints && latestOnly
+          ? {
+              ...outcome.value,
+              notices: [
+                ...(outcome.value.notices ?? []),
+                `League points cover only the latest season (${pointSeasons[0]}) because no season is picked. Pick seasons to see more.`,
+              ],
+            }
+          : outcome.value,
+      );
       setResultKey(currentKey);
       setError(null);
     } catch (e) {
@@ -158,6 +193,12 @@ export function useExploreQueryExecution() {
     granularity,
     rosterFilter,
     playerSet,
+    pointsRows,
+    wantsPoints,
+    latestOnly,
+    pointSeasons,
+    leagueKey,
+    points.kind,
     state.roster,
     leagues.kind,
     ownersState.kind,

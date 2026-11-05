@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import re
+import tomllib
+from pathlib import Path
 from typing import Any
 
 import pytest
 from pydantic import ValidationError
 
+from nfl_stat.core.config import REPO_ROOT
 from nfl_stat.pipeline.nfl_pipeline import NGS_COLS, PART_COLS, PBP_COLS
-from nfl_stat.schemas.metrics import MetricsFile, load_metrics
+from nfl_stat.schemas.metrics import METRICS_PATH, MetricsFile, load_metrics
 
 # Columns a metric's SQL may name: the play-by-play columns plus what the build derives.
 KNOWN_COLUMNS = set(PBP_COLS) | set(PART_COLS) | set(NGS_COLS) | {"is_red_zone"}
@@ -177,3 +180,45 @@ def test_metric_sql_is_unqualified_because_the_builder_adds_the_table_alias():
     qualified = [m.id for m in load_metrics().metrics if re.search(r"\b(main|sub)\.", m.base_sql)]
 
     assert qualified == []
+
+
+def _league_metric(**overrides: Any) -> dict[str, Any]:
+    base: dict[str, Any] = {
+        "id": "league_pts",
+        "label": "League points",
+        "category": "passing",
+        "source": "league",
+        "rate_only": False,
+        "aliases": ["league points"],
+    }
+    return {**base, **overrides}
+
+
+def test_a_league_metric_has_no_play_sql_and_a_play_metric_needs_it():
+    loaded = MetricsFile.model_validate(_file(_league_metric())).metrics[0]
+    assert loaded.source == "league" and loaded.base_sql == ""
+
+    for bad in (
+        {"base_sql": "SUM(yards_gained)"},
+        {"play_filter": "sack = 0"},
+        {"player_game_column": "passing_yards"},
+    ):
+        with pytest.raises(ValidationError):
+            MetricsFile.model_validate(_file(_league_metric(**bad)))
+    with pytest.raises(ValidationError):
+        MetricsFile.model_validate(_file(_metric(source="league", base_sql="SUM(yards_gained)")))
+    with pytest.raises(ValidationError):
+        MetricsFile.model_validate(_file(_metric(source="sleeper")))
+
+
+def test_the_real_file_has_one_generic_league_metric_and_names_no_league():
+    league = [m for m in load_metrics().metrics if m.source == "league"]
+    assert [m.id for m in league] == ["league_pts"]
+    assert {"fantasy points", "league points", "points in my league"} <= set(league[0].aliases)
+
+    text = METRICS_PATH.read_text(encoding="utf-8").lower()
+    catalog = (Path(__file__).parent / "eval" / "catalog.json").read_text(encoding="utf-8").lower()
+    leagues = tomllib.loads((REPO_ROOT / "config.toml").read_text())["leagues"]
+    names_and_ids = [*leagues, *(cfg["id"] for cfg in leagues.values())]
+    for word in [*names_and_ids, "yinz"]:
+        assert word.lower() not in text and word.lower() not in catalog, word

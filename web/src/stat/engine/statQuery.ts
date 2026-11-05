@@ -15,6 +15,7 @@ import type { GranularityMode, Side, Split } from "@/stat/types/queryBuilder";
 import type { QueryResult } from "@/stat/types/workbench";
 
 import type { ColumnSource, ColumnStore } from "./columns";
+import { isLeagueStat, leaguePointsProblem, runLeaguePointsQuery, type LeaguePointsRow } from "./leaguePointsQuery";
 import { canServeFromPlayerGame, runPlayerGameQuery, wantedPlayers } from "./playerGameQuery";
 import {
   columnsIn,
@@ -50,6 +51,11 @@ export interface StatQueryParams {
   playerSet?: PlayerSet | null;
   /** The season files that hold these players; season chips narrow which of them are read. */
   sources: ColumnSource[];
+  /**
+   * The selected league's regular-season weekly points (null when no league is picked); a league
+   * stat reads these instead of the shards.
+   */
+  leaguePoints?: LeaguePointsRow[] | null;
   /** The tier-1 player-game table; counting stats come from it when no situational filter is on. */
   playerGame?: ColumnSource | null;
   granularity: GranularityMode;
@@ -175,7 +181,33 @@ export async function runStatQuery(
   return orderAndLimit(result, params.order ?? null, params.limit ?? null);
 }
 
+/** Splits league stats from play stats: each is answered where its data is, then the rows are joined by player. */
 async function runUnordered(params: StatQueryParams, store: ColumnStore, signal?: AbortSignal): Promise<QueryResult> {
+  const leagueIds = params.statIds.filter(isLeagueStat);
+  if (leagueIds.length === 0) {
+    return runPlayStats(params, store, signal);
+  }
+  const problem = leaguePointsProblem(params);
+  if (problem) {
+    throw new Error(problem);
+  }
+  const league = runLeaguePointsQuery(params, leagueIds);
+  const playIds = params.statIds.filter((id) => !isLeagueStat(id));
+  if (playIds.length === 0) {
+    return league;
+  }
+  const plays = await runPlayStats({ ...params, statIds: playIds }, store, signal);
+  // The play rows are the base (a left join): minimum plays and role already cut them, and a player
+  // with points but no play rows must not pad the table.
+  const rowKey = (r: Record<string, unknown>) =>
+    ["player_id", ...splitColumns(params.split)].map((c) => String(r[c])).join("|");
+  const base = new Set(plays.rows.map(rowKey));
+  const kept = { ...league, rows: league.rows.filter((r) => base.has(rowKey(r))) };
+  const merged = mergeStatQueryResults([plays, kept], params.statIds, params.split, params.teams ? "team_id" : "player_id");
+  return { ...merged, notices: [...(plays.notices ?? []), ...(kept.notices ?? [])] };
+}
+
+async function runPlayStats(params: StatQueryParams, store: ColumnStore, signal?: AbortSignal): Promise<QueryResult> {
   const teams = params.teams ?? null;
   if (!teams && params.playerGame && canServeFromPlayerGame(params)) {
     return runPlayerGameQuery(params, params.playerGame, store, signal);

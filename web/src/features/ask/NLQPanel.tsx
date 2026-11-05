@@ -9,6 +9,7 @@ import { useExploreQueryExecution } from "@/features/explore/useExploreQueryExec
 import { Callout } from "@/components/Callout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useLeagueName } from "@/lib/league";
 import { TEAMS } from "@/stat/config/teams";
 import { isLeagueQuery, serializeQuery } from "@/stat/lib/queryUrl";
 import { useQueryState } from "@/features/explore/useQueryState";
@@ -46,6 +47,7 @@ export function NLQPanel() {
     [ask.phase, ask.resolved, exec.pinnedPlayers],
   );
 
+  const leagueName = useLeagueName();
   const answer = useMemo(() => {
     if (!showingAnswer || !exec.result || exec.result.rows.length === 0) {
       return null;
@@ -62,8 +64,9 @@ export function NLQPanel() {
           : new Map(exec.namedPlayers.map((p) => [p.gsis_id, p.full_name ?? p.gsis_id])),
       ranked: isLeagueQuery(state),
       idColumn: state.subject === "teams" ? "team_id" : "player_id",
+      leagueName,
     });
-  }, [showingAnswer, exec.result, exec.namedPlayers, state, chipGroups]);
+  }, [showingAnswer, exec.result, exec.namedPlayers, state, chipGroups, leagueName]);
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !busy) {

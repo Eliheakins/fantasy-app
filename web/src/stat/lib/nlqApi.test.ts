@@ -26,6 +26,18 @@ describe("requestIntent", () => {
     expect(new Headers(init?.headers).get("Content-Type")).toBe("application/json");
   });
 
+  it("sends the generic league stat and never a league name", async () => {
+    mockFetch(200, { outcome: "unsupported", reason: "No." });
+
+    await requestIntent("Bijan fantasy points", FIXTURE_SEASONS);
+
+    const body = String(vi.mocked(fetch).mock.calls[0]?.[1]?.body);
+    expect(JSON.parse(body).stats.find((s: { id: string }) => s.id === "league_pts")).toMatchObject({
+      label: "League points",
+    });
+    expect(body).not.toMatch(/colgate|yinz|1394105943137992704|1385108353306361856/i);
+  });
+
   it("passes the abort signal to fetch and rejects when aborted", async () => {
     vi.stubGlobal(
       "fetch",

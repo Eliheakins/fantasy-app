@@ -28,6 +28,10 @@
     {
       "id": "ngs_rushing",
       "label": "NGS · Rushing"
+    },
+    {
+      "id": "fantasy",
+      "label": "Fantasy"
     }
   ],
   "metrics": [
@@ -945,6 +949,24 @@
         "ngs rush efficiency"
       ],
       "reference_values": []
+    },
+    {
+      "id": "league_pts",
+      "label": "League points",
+      "category": "fantasy",
+      "source": "league",
+      "rate_only": false,
+      "better": "higher",
+      "help": "Fantasy points under the scoring of the league picked at the top of the page. Regular-season games only, one value per week; per game counts weeks with a points row. Needs a league selected, works for players (not teams), and cannot be combined with play filters such as down or red zone.",
+      "aliases": [
+        "fantasy points",
+        "league points",
+        "points in my league",
+        "fantasy pts",
+        "league pts",
+        "fantasy score",
+        "my league points"
+      ]
     }
   ]
 }

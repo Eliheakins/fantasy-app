@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { getStatById } from "@/stat/config/statDictionary";
 import { TEAMS } from "@/stat/config/teams";
-import { formatMetricValueHeader, metricSelectAlias } from "@/stat/lib/queryBuilder";
+import { formatMetricValueHeader, metricSelectAlias, statLabel } from "@/stat/lib/queryBuilder";
 import { formatQueryValue } from "@/stat/lib/formatQueryValue";
 import type { NFLPlayer, QueryResult } from "@/stat/types/workbench";
 import { useQueryState } from "@/features/explore/useQueryState";
+import { useLeagueName } from "@/lib/league";
 import { useLeagueOwners } from "@/features/explore/useLeagueOwners";
 import { isLeagueQuery } from "@/stat/lib/queryUrl";
 
@@ -37,6 +38,7 @@ export function ExploreResultsCanvas({
   const activeGranularity = state.granularity;
   const minPlays = state.minPlays;
 
+  const leagueName = useLeagueName();
   const [canvasView, setCanvasView] = useState<"table" | "scatter">("table");
   const [swapScatterAxes, setSwapScatterAxes] = useState(false);
 
@@ -57,10 +59,10 @@ export function ExploreResultsCanvas({
     ]);
     for (const id of selectedStatIds) {
       const st = getStatById(id);
-      headers.set(metricSelectAlias(id), formatMetricValueHeader(st, activeGranularity));
+      headers.set(metricSelectAlias(id), formatMetricValueHeader(st, activeGranularity, leagueName));
     }
     return headers;
-  }, [selectedStatIds, activeGranularity]);
+  }, [selectedStatIds, activeGranularity, leagueName]);
 
   const forTeams = state.subject === "teams";
   const { byPlayer: owners } = useLeagueOwners();
@@ -116,7 +118,7 @@ export function ExploreResultsCanvas({
     const labels = selectedStatIds
       .map((id) => getStatById(id))
       .filter(Boolean)
-      .map((s) => s!.label);
+      .map((s) => statLabel(s!, leagueName));
     const gran = activeGranularity === "total" ? "totals" : activeGranularity === "per_game" ? "per game" : "per play";
     const ranking =
       state.order && state.limit !== null
@@ -124,7 +126,7 @@ export function ExploreResultsCanvas({
         : "";
     const split = state.split ? ` · by ${state.split}` : "";
     return `${labels.join(" · ")} · ${gran} · min ${minPlays} plays${ranking}${split}`;
-  }, [selectedStatIds, activeGranularity, minPlays, state.order, state.limit, state.split]);
+  }, [selectedStatIds, activeGranularity, minPlays, state.order, state.limit, state.split, leagueName]);
 
   return (
     <section aria-labelledby="explore-results-heading" className="card min-h-[160px] space-y-3 overflow-hidden">
@@ -171,6 +173,11 @@ export function ExploreResultsCanvas({
       <div className="space-y-3 text-body">
         {running && <p className="text-caption text-muted">Updating…</p>}
         {error ? <Callout variant="error">{error}</Callout> : null}
+        {(result?.notices ?? []).map((notice) => (
+          <Callout key={notice} variant="warn">
+            {notice}
+          </Callout>
+        ))}
 
         {result && result.rows.length > 0 ? (
           canvasView === "scatter" && twoStatsMode ? (

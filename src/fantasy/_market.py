@@ -56,19 +56,21 @@ def player_weeks(league_key: str, gsis_id: str, n: int = 4) -> pl.DataFrame:
     return rows.select("week", "projection").sort("week")
 
 
-def player_points(league_key: str, gsis_id: str, season: int) -> pl.DataFrame:
-    """One player's regular-season points per week under this league's scoring."""
+def player_points(league_key: str, gsis_id: str | None, season: int) -> pl.DataFrame:
+    """Regular-season points per week under this league's scoring: one player's, or everyone's."""
     data, _ = _league(league_key)
     path = store.table_path("player_points", "derived", store.DATA_DIR)
     if not path.exists():
         raise FileNotFoundError(f"{path} does not exist; run the stage that writes 'player_points'")
-    rows = pl.scan_parquet(path).filter(
+    keep = (
         (pl.col("league_id") == data.league_id)
-        & (pl.col("gsis_id") == gsis_id)
         & (pl.col("season") == season)
         & (pl.col("season_type") == "REG")
     )
-    return rows.select("week", "points").sort("week").collect()
+    if gsis_id is not None:
+        keep = keep & (pl.col("gsis_id") == gsis_id)
+    rows = pl.scan_parquet(path).filter(keep)
+    return rows.select("gsis_id", "week", "points").sort("gsis_id", "week").collect()
 
 
 def trade_partners(league_key: str) -> pl.DataFrame:

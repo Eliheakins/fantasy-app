@@ -41,6 +41,8 @@
   {"q": "Mahomes first down rate in 2023", "stats": ["eff_first_down"], "filters": ["season-2023"], "granularity": null},
   {"q": "Patrick Mahomes salary in 2023", "unsupported": true},
   {"q": "Is Mahomes better than Tom Brady?", "unsupported": true},
-  {"q": "Josh Allen fantasy points in 2023", "unsupported": true},
+  {"q": "Josh Allen fantasy points in 2023", "stats": ["league_pts"], "filters": ["season-2023"], "granularity": "total"},
+  {"q": "Bijan Robinson fantasy points per game in 2023", "stats": ["league_pts"], "filters": ["season-2023"], "granularity": "per_game"},
+  {"q": "Lamar Jackson points in my league in 2022", "stats": ["league_pts"], "filters": ["season-2022"], "granularity": "total"},
   {"q": "How many Super Bowls has Mahomes won?", "unsupported": true}
 ]

@@ -16,8 +16,9 @@ import { useExploreQueryExecution } from "./useExploreQueryExecution";
 vi.mock("@/stat/engine/statQuery", () => ({
   runStatQuery: vi.fn(async () => ({ columns: ["player_id"], rows: [] })),
 }));
+const { sources } = vi.hoisted(() => ({ sources: { current: [{ year: 2024, url: "mem://2024" }, { year: 2025, url: "mem://2025" }] } }));
 vi.mock("@/stat/lib/dataSources", () => ({
-  seasonSources: () => [{ year: 2025, url: "mem://2025" }],
+  seasonSources: () => sources.current,
   playerGameSource: () => null,
 }));
 vi.mock("@/stat/lib/players", () => ({ getPlayersByIds: async () => [] }));
@@ -38,6 +39,7 @@ function mockFetch(leagues: unknown[] = [{ league_key: "a", name: "A" }], unmatc
     const routes: Record<string, unknown> = {
       "/api/leagues": leagues,
       "/api/leagues/a/teams": [team(1, "Mine", true), team(2, "Rival", false)],
+      "/api/leagues/a/player-points": [{ gsis_id: "00-A", week: 1, points: 12.5 }],
       "/api/leagues/a/owners": { rows: query.includes("team=2") ? RIVAL_VIEW : MINE, unmatched },
     };
     return Response.json(ok(routes[path] ?? []));
@@ -220,3 +222,107 @@ describe("owner on result rows", () => {
     expect(faRow.textContent).toBe("Fay5");
   });
 });
+
+describe("League points fetch cost", () => {
+  const pointUrls = (urls: string[]) => urls.filter((u) => u.includes("player-points"));
+
+  it("fetches only the latest season when no season is chosen, and says so", async () => {
+    const urls = mockFetch();
+    vi.mocked(runStatQuery).mockResolvedValue({ columns: ["player_id"], rows: [] });
+    renderAt("/explore?league=a&s=league_pts&o=league_pts&n=5", <RunWithCanvas />);
+
+    await waitFor(() => expect(runStatQuery).toHaveBeenCalled());
+    expect(pointUrls(urls)).toEqual(["/api/leagues/a/player-points?season=2025"]);
+    expect(vi.mocked(runStatQuery).mock.calls.at(-1)?.[0].leaguePoints?.every((r) => r.season === 2025)).toBe(true);
+    expect((await screen.findByText(/only the latest season \(2025\)/)).textContent).toMatch(/pick seasons/i);
+  });
+
+  it("fetches every season for a split by season, and the chosen seasons otherwise", async () => {
+    const urls = mockFetch();
+    renderAt("/explore?league=a&s=league_pts&o=league_pts&n=5&by=season", <Run />);
+    await waitFor(() => expect(pointUrls(urls)).toHaveLength(2));
+    expect(pointUrls(urls).sort()).toEqual([
+      "/api/leagues/a/player-points?season=2024",
+      "/api/leagues/a/player-points?season=2025",
+    ]);
+  });
+
+  it("asks per pinned player instead of for everyone", async () => {
+    const urls = mockFetch();
+    renderAt("/explore?league=a&s=league_pts&p=00-A", <Run />);
+
+    await waitFor(() => expect(pointUrls(urls)).toHaveLength(1));
+    expect(pointUrls(urls)).toEqual(["/api/leagues/a/player-points?season=2025&gsis_id=00-A"]);
+  });
+
+  it("does not hang or fetch when the data has no seasons", async () => {
+    const urls = mockFetch();
+    sources.current = [];
+    try {
+      renderAt("/explore?league=a&s=league_pts&p=00-A", <RunWithCanvas />);
+      await waitFor(() => expect(urls).toContain("/api/leagues"));
+      await new Promise((r) => setTimeout(r, 50));
+      expect(pointUrls(urls)).toEqual([]);
+      expect(runStatQuery).not.toHaveBeenCalled();
+      expect(screen.queryByText("Updating…")).toBeNull();
+    } finally {
+      sources.current = [{ year: 2024, url: "mem://2024" }, { year: 2025, url: "mem://2025" }];
+    }
+  });
+});
+
+describe("League points in the query", () => {
+  afterEach(() => vi.mocked(runStatQuery).mockImplementation(async () => ({ columns: ["player_id"], rows: [] })));
+  const lastPoints = () => vi.mocked(runStatQuery).mock.calls.at(-1)?.[0].leaguePoints;
+
+  it("fetches the league's weekly points for the season and hands them to the engine", async () => {
+    const urls = mockFetch();
+    renderAt("/explore?league=a&s=league_pts&o=league_pts&n=5", <Run />);
+
+    await waitFor(() => expect(lastPoints()).toEqual([{ gsis_id: "00-A", week: 1, points: 12.5, season: 2025 }]));
+    expect(urls).toContain("/api/leagues/a/player-points?season=2025");
+  });
+
+  it("does not fetch points for a query without a league stat", async () => {
+    const urls = mockFetch();
+    renderAt(RANKED, <Run />);
+
+    await waitFor(() => expect(runStatQuery).toHaveBeenCalled());
+    expect(urls.some((u) => u.includes("player-points"))).toBe(false);
+    expect(lastPoints()).toBeNull();
+  });
+
+  it("shows the engine's no-league message when no league is picked", async () => {
+    mockFetch([]);
+    vi.mocked(runStatQuery).mockRejectedValueOnce(new Error("Pick a league first."));
+    renderAt("/explore?s=league_pts&o=league_pts&n=5", <RunWithCanvas />);
+
+    expect(await screen.findByText("Pick a league first.")).toBeTruthy();
+    expect(vi.mocked(runStatQuery).mock.calls.at(-1)?.[0].leaguePoints).toBeNull();
+  });
+
+  it("names the selected league in the column header and the chip, and the engine got no league name", async () => {
+    mockFetch();
+    vi.mocked(runStatQuery).mockResolvedValue({
+      columns: ["player_id", "m_league_pts"],
+      rows: [{ player_id: "00-A", m_league_pts: 12.5 }],
+    });
+    renderAt("/explore?league=a&s=league_pts&p=00-A", <RunWithCanvas />);
+
+    expect(await screen.findByText("League points (A) (per game)")).toBeTruthy();
+    expect(JSON.stringify(vi.mocked(runStatQuery).mock.calls.at(-1)?.[0].statIds)).toBe('["league_pts"]');
+  });
+
+  it("shows the engine's notices above the table", async () => {
+    mockFetch();
+    vi.mocked(runStatQuery).mockResolvedValue({ columns: ["player_id"], rows: [], notices: ["Down filters cannot apply."] });
+    renderAt("/explore?league=a&s=league_pts&o=league_pts&n=5", <RunWithCanvas />);
+
+    expect(await screen.findByText("Down filters cannot apply.")).toBeTruthy();
+  });
+});
+
+function RunWithCanvas() {
+  const run = useExploreQueryExecution();
+  return <ExploreResultsCanvas {...run} />;
+}

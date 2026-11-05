@@ -7,7 +7,8 @@ export function effectiveGranularity(stat: StatDefinition | undefined, requested
   if (stat?.rate_only) {
     return "per_play";
   }
-  return requested;
+  // A weekly points total has no plays to divide by.
+  return stat?.source === "league" && requested === "per_play" ? "per_game" : requested;
 }
 
 /** Safe column alias for a stat id in a result row. */
@@ -171,6 +172,9 @@ export function describeStat(stat: StatDefinition | undefined): string {
   if (!stat) {
     return "";
   }
+  if (stat.source === "league") {
+    return "points under the selected league's scoring · weekly regular-season rows";
+  }
   const role = stat.playerRole;
   const pt = stat.playType === "all" ? "all plays" : stat.playType;
   const sqlPreview = stat.base_sql.length > 72 ? `${stat.base_sql.slice(0, 72)}…` : stat.base_sql;
@@ -194,6 +198,9 @@ export function describeQuery(params: {
     if (!stat) {
       return [];
     }
+    if (stat.source === "league") {
+      return [`${stat.label} (${effectiveGranularity(stat, params.granularity)}): the selected league's weekly points`];
+    }
     const rows = [
       `${stat.playerRole} ${stat.playType === "all" ? "plays" : `${stat.playType} plays`}`,
       stat.playFilter ? `only where ${stat.playFilter}` : null,
@@ -210,20 +217,30 @@ export function describeQuery(params: {
   return lines.join("\n");
 }
 
-export function formatMetricValueHeader(stat: StatDefinition | undefined, granularity: GranularityMode): string {
+/** A stat's label; a league stat names the selected league, which only the UI knows (the catalog stays generic). */
+export function statLabel(stat: StatDefinition, leagueName?: string | null): string {
+  return stat.source === "league" && leagueName ? `${stat.label} (${leagueName})` : stat.label;
+}
+
+export function formatMetricValueHeader(
+  stat: StatDefinition | undefined,
+  granularity: GranularityMode,
+  leagueName?: string | null,
+): string {
   if (!stat) {
     return "metric_value";
   }
+  const label = statLabel(stat, leagueName);
   const g = effectiveGranularity(stat, granularity);
   const pct = stat.percent_format ? " %" : "";
   if (stat.rate_only) {
-    return `${stat.label}${pct} (rate)`;
+    return `${label}${pct} (rate)`;
   }
   if (g === "total") {
-    return `${stat.label}${pct} (total)`;
+    return `${label}${pct} (total)`;
   }
   if (g === "per_game") {
-    return `${stat.label}${pct} (per game)`;
+    return `${label}${pct} (per game)`;
   }
-  return `${stat.label}${pct} (per play)`;
+  return `${label}${pct} (per play)`;
 }

@@ -247,6 +247,7 @@ class MarketValueRow(Row):
 
 
 class PlayerPointsRow(Row):
+    gsis_id: str
     week: int
     points: float
 

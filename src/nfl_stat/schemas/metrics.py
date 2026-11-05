@@ -43,10 +43,14 @@ class MetricDefinition(BaseModel):
     id: str = Field(..., pattern=r"^[a-z][a-z0-9_]*$")
     label: str = Field(..., min_length=1)
     category: str
-    player_role: PlayerRole
-    play_type: PlayType
+    source: Literal["pbp", "league"] = Field(
+        "pbp",
+        description="'league': points under the picked league's scoring; no play SQL or role",
+    )
+    player_role: PlayerRole | None = None
+    play_type: PlayType | None = None
     base_sql: str = Field(
-        ..., min_length=1, description="Aggregate over play rows; columns are unqualified"
+        "", description="Aggregate over play rows, unqualified columns; empty for a league metric"
     )
     rate_only: bool = Field(..., description="True when the SQL is used as written, never derived")
     better: Literal["higher", "lower"] | None = Field(
@@ -70,6 +74,16 @@ class MetricDefinition(BaseModel):
         default_factory=list, max_length=MAX_ALIASES, description="Lowercase phrases people use"
     )
     reference_values: list[ReferenceValue] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _source_decides_which_fields_apply(self) -> MetricDefinition:
+        if self.source == "league":
+            extras = (self.base_sql, self.play_filter, self.player_game_column)
+            if any(extras) or self.player_role or self.play_type:
+                raise ValueError(f"{self.id!r} is a league metric: no play SQL, role or filter")
+        elif not (self.base_sql and self.player_role and self.play_type):
+            raise ValueError(f"{self.id!r} needs base_sql, player_role and play_type")
+        return self
 
     @field_validator("aliases")
     @classmethod

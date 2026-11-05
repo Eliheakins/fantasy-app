@@ -537,13 +537,20 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
     return ambiguous(`That names more than ${MAX_SELECTED_STATS} stats.`);
   }
 
-  const statRoles = unique(statIds.flatMap((id) => getStatById(id)?.playerRole ?? []));
+  // A league stat (fantasy points) belongs to no position, so it settles no role.
+  const statRoles = unique(
+    statIds.flatMap((id) => {
+      const stat = getStatById(id);
+      return stat && stat.source !== "league" ? [stat.playerRole] : [];
+    }),
+  );
   if (sortedMatches.length > 1) {
     if (statRoles.length > 1) {
       return ambiguous("It mixes players with different kinds of stat.");
     }
     // A second name that cannot have the stat is a mention, not a player to compare.
     const fits = (m: PlayerMatch) =>
+      statRoles.length === 0 ||
       candidatePositions(m).some((position) => (ROLES_BY_POSITION[position] ?? []).some((r) => statRoles.includes(r)));
     if (!sortedMatches.every(fits)) {
       return ambiguous("One of the names is not a player who could have that stat.");

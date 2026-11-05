@@ -19,4 +19,6 @@ export interface QueryResult {
   rows: Record<string, unknown>[];
   /** Column names in order. */
   columns: string[];
+  /** Things the reader should know about these rows, such as a filter that could not apply. */
+  notices?: string[];
 }

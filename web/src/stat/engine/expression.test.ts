@@ -141,7 +141,7 @@ describe("the app's own expressions", () => {
   const everyColumn = new Proxy({} as Columns, { get: () => [1], has: () => true });
 
   it("parses and compiles every metric and play filter in metrics.json", () => {
-    for (const stat of STAT_DEFINITIONS) {
+    for (const stat of STAT_DEFINITIONS.filter((s) => s.source === "pbp")) {
       expect(() => compileAggregateExpression(parseExpression(stat.base_sql), everyColumn), stat.id).not.toThrow();
       if (stat.playFilter) {
         expect(() => compileRowExpression(parseExpression(stat.playFilter!), everyColumn), stat.id).not.toThrow();

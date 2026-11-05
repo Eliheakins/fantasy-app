@@ -16,6 +16,8 @@ export interface AnswerInput {
   ranked?: boolean;
   /** Which column names the row: player_id, or team_id for team rows. */
   idColumn?: "player_id" | "team_id";
+  /** The selected league's name, shown on league stats; null leaves the label generic. */
+  leagueName?: string | null;
 }
 
 export interface Answer {
@@ -57,6 +59,7 @@ export function buildAnswer({
   nameByGsis,
   ranked = false,
   idColumn = "player_id",
+  leagueName = null,
 }: AnswerInput): Answer {
   const labels = filterLabels(filterIds, chipGroups);
   const lines = result.rows.map((row, rank) => {
@@ -67,7 +70,7 @@ export function buildAnswer({
     );
     const who = when.length > 0 ? `${name}, ${when.join(" ")}` : name;
     const metrics = statIds.map((id) => {
-      const header = formatMetricValueHeader(getStatById(id), granularity);
+      const header = formatMetricValueHeader(getStatById(id), granularity, leagueName);
       return `${header}: ${formatQueryValue(row[metricSelectAlias(id)])}`;
     });
     return `${ranked ? `${rank + 1}. ` : ""}${who} — ${metrics.join(" · ")}`;

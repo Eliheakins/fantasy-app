@@ -80,3 +80,27 @@ describe("parseMetricsFile", () => {
     expect(() => parseMetricsFile({})).toThrow(/metrics\.json/);
   });
 });
+
+describe("league metrics", () => {
+  const league = (overrides: Record<string, unknown> = {}) => ({
+    id: "league_pts",
+    label: "League points",
+    category: "passing",
+    source: "league",
+    rate_only: false,
+    aliases: ["league points"],
+    ...overrides,
+  });
+
+  it("need no play SQL or role, and refuse them", () => {
+    expect(parseMetricsFile(file(league())).metrics[0]).toMatchObject({ source: "league", base_sql: "" });
+    for (const bad of [{ base_sql: "SUM(x)" }, { play_filter: "sack = 0" }, { player_role: "passer" }]) {
+      expect(() => parseMetricsFile(file(league(bad)))).toThrow(/league metric/);
+    }
+  });
+
+  it("leave a play metric needing its SQL, role and play type", () => {
+    expect(() => parseMetricsFile(file(metric({ base_sql: "" })))).toThrow(/needs base_sql/);
+    expect(() => parseMetricsFile(file(metric({ source: "sleeper" })))).toThrow();
+  });
+});

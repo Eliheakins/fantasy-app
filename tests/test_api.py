@@ -694,9 +694,38 @@ def test_player_points_serves_one_players_weekly_points_for_the_league(
     ]
     write_rows(store_dir, "player_points", rows)
     out = body(client.get("/api/leagues/t/player-points?gsis_id=G_WR&season=2026"))
-    assert out["data"] == [{"week": 1, "points": 7.0}, {"week": 2, "points": 11.5}]
+    assert out["data"] == [
+        {"gsis_id": "G_WR", "week": 1, "points": 7.0},
+        {"gsis_id": "G_WR", "week": 2, "points": 11.5},
+    ]
     empty = body(client.get("/api/leagues/t/player-points?gsis_id=NOBODY&season=2026"))
     assert empty["data"] == []
+
+
+def test_player_points_without_a_player_serves_everyone_for_that_league_and_season(
+    client: TestClient, store_dir: Path
+) -> None:
+    rows = [
+        {"league_id": lid, "gsis_id": g, "season": s, "week": w, "points": p, "season_type": t}
+        | {"position": "WR"}
+        for lid, g, s, w, p, t in (
+            ("L1", "G_WR", 2026, 2, 11.5, "REG"),
+            ("L1", "G_WR", 2026, 1, 7.0, "REG"),
+            ("L1", "G_OTHER", 2026, 1, 50.0, "REG"),
+            ("L1", "G_OTHER", 2026, 19, 5.0, "POST"),
+            ("L1", "G_WR", 2025, 1, 99.0, "REG"),
+            ("L2", "G_WR", 2026, 1, 60.0, "REG"),
+        )
+    ]
+    write_rows(store_dir, "player_points", rows)
+    out = body(client.get("/api/leagues/t/player-points?season=2026"))
+    assert out["status"] == "ok", out
+    assert out["data"] == [
+        {"gsis_id": "G_OTHER", "week": 1, "points": 50.0},
+        {"gsis_id": "G_WR", "week": 1, "points": 7.0},
+        {"gsis_id": "G_WR", "week": 2, "points": 11.5},
+    ]
+    assert body(client.get("/api/leagues/t/player-points?season=2031"))["data"] == []
 
 
 def test_player_points_errors_follow_the_sibling_routes(client: TestClient) -> None:
@@ -704,3 +733,6 @@ def test_player_points_errors_follow_the_sibling_routes(client: TestClient) -> N
     assert out["status"] == "error" and out["data"] is None
     assert out["error"]["code"] == "invalid"
     assert client.get("/api/leagues/t/player-points?gsis_id=G_WR&season=1900").status_code == 422
+    assert client.get("/api/leagues/t/player-points").status_code == 422
+    all_players = body(client.get("/api/leagues/zzz/player-points?season=2026"))
+    assert all_players["error"]["code"] == "invalid"

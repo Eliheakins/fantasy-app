@@ -64,6 +64,22 @@ describe("the phrase lists", () => {
 });
 
 describe("parseRules resolves plain questions", () => {
+  it("reads fantasy points as the league stat, in any of its phrasings", () => {
+    expect(resolved("Bijan Robinson fantasy points per game in 2026")).toEqual({
+      stat_ids: ["league_pts"],
+      filter_ids: ["season-2026"],
+      granularity: "per_game",
+    });
+    expect(resolved("Bijan Robinson league points in 2023").stat_ids).toEqual(["league_pts"]);
+    expect(resolved("Bijan Robinson points in my league in 2023").stat_ids).toEqual(["league_pts"]);
+  });
+
+  it("does not let fantasy points narrow which player a name means", () => {
+    // Josh Allen the QB and Keenan Allen the WR are both Allens; a league stat has no position.
+    expect(resolved("Josh Allen fantasy points in 2023").stat_ids).toEqual(["league_pts"]);
+    expect(parse("Josh Allen and Bijan Robinson fantasy points in 2023").status).toBe("resolved");
+  });
+
   it("reads a stat and a season", () => {
     expect(resolved("Joe Burrow passing yards in 2022")).toEqual({
       stat_ids: ["pass_yards"],

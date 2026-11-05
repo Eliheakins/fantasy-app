@@ -127,4 +127,18 @@ describe("buildAnswer for teams", () => {
 
     expect(answer.lines).toEqual(["Kansas City Chiefs — Pass yards (total): 4383"]);
   });
+
+  it("names the league on a league stat's line, and only then", () => {
+    const col = metricSelectAlias("league_pts");
+    const input = {
+      result: { columns: ["player_id", col], rows: [{ player_id: "m", [col]: 21.8 }] },
+      statIds: ["league_pts"],
+      granularity: "per_game" as const,
+      filterIds: ["season-2025"],
+      chipGroups: CHIP_GROUPS,
+      nameByGsis: NAMES,
+    };
+    expect(buildAnswer({ ...input, leagueName: "Colgate" }).lines[0]).toContain("League points (Colgate) (per game): 21.8");
+    expect(buildAnswer(input).lines[0]).toContain("League points (per game): 21.8");
+  });
 });

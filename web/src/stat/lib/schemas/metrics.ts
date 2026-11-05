@@ -35,9 +35,11 @@ const metricSchema = z.object({
   id: z.string().regex(/^[a-z][a-z0-9_]*$/),
   label: z.string().min(1),
   category: z.string(),
-  player_role: playerRoleSchema,
-  play_type: playTypeSchema,
-  base_sql: z.string().min(1),
+  /** "league": points under the league picked in the app, so no play SQL, role or filter. */
+  source: z.enum(["pbp", "league"]).default("pbp"),
+  player_role: playerRoleSchema.nullish(),
+  play_type: playTypeSchema.nullish(),
+  base_sql: z.string().default(""),
   rate_only: z.boolean(),
   /** Which way is better, when one is ("best" and "worst" need it); unset for neutral stats like ADOT. */
   better: z.enum(["higher", "lower"]).nullish(),
@@ -50,11 +52,23 @@ const metricSchema = z.object({
   reference_values: z.array(referenceValueSchema).default([]),
 });
 
+/** Which fields a metric needs depends on its source; the backend schema says the same. */
+const metricRulesSchema = metricSchema.superRefine((m, ctx) => {
+  const problem = (message: string) => ctx.addIssue({ code: "custom", message });
+  if (m.source === "league") {
+    if (m.base_sql || m.play_filter || m.player_game_column || m.player_role || m.play_type) {
+      problem(`'${m.id}' is a league metric: no play SQL, role or filter`);
+    }
+  } else if (!m.base_sql || !m.player_role || !m.play_type) {
+    problem(`'${m.id}' needs base_sql, player_role and play_type`);
+  }
+});
+
 const metricsFileSchema = z
   .object({
     schema_version: z.literal(1),
     categories: z.array(z.object({ id: z.string().min(1), label: z.string().min(1) })),
-    metrics: z.array(metricSchema),
+    metrics: z.array(metricRulesSchema),
   })
   .superRefine((file, ctx) => {
     const problem = (message: string) => ctx.addIssue({ code: "custom", message });
@@ -95,6 +109,7 @@ const metricsFileSchema = z
   });
 
 export type MetricDefinitionData = z.infer<typeof metricSchema>;
+export type MetricSource = MetricDefinitionData["source"];
 export type MetricsFile = z.infer<typeof metricsFileSchema>;
 export type PlayerRole = z.infer<typeof playerRoleSchema>;
 export type PlayTypeScope = z.infer<typeof playTypeSchema>;

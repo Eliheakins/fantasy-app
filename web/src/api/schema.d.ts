@@ -1602,6 +1602,8 @@ export interface components {
         };
         /** PlayerPointsRow */
         PlayerPointsRow: {
+            /** Gsis Id */
+            gsis_id: string;
             /** Week */
             week: number;
             /** Points */
@@ -2906,8 +2908,8 @@ export interface operations {
     player_points_api_leagues__league__player_points_get: {
         parameters: {
             query: {
-                gsis_id: string;
                 season: number;
+                gsis_id?: string | null;
             };
             header?: never;
             path: {

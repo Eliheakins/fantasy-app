@@ -46,7 +46,8 @@ const NO_PLAYER_MESSAGE =
 function rolesOf(intent: QueryIntent): PlayerRole[] {
   const roles = intent.stat_ids.flatMap((id) => {
     const stat = getStatById(id);
-    return stat ? [stat.playerRole] : [];
+    // A league stat belongs to no position: it must not narrow who "Josh Allen" can be.
+    return stat && stat.source !== "league" ? [stat.playerRole] : [];
   });
   return [...new Set(roles)];
 }

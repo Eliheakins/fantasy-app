@@ -362,7 +362,7 @@ def player_weeks(
 
 @router.get("/leagues/{league}/player-points", response_model=Envelope[list[PlayerPointsRow]])
 def player_points(
-    league: str, gsis_id: str, season: Annotated[int, Query(ge=1999, le=2100)]
+    league: str, season: Annotated[int, Query(ge=1999, le=2100)], gsis_id: str | None = None
 ) -> Any:
     return guarded(lambda: rows(data_api.player_points(league, gsis_id, season)))
 

@@ -102,7 +102,7 @@ home/away, red zone, weather). Empty list if none apply.
 - granularity: "per_game" when the question says per game, "per_play" for per play, per attempt or \
 efficiency wording, otherwise "total".
 - Player names are handled elsewhere. Ignore them.
-- If no STATS entry can answer the question (salary, fantasy points, awards, opinions such as \
+- If no STATS entry can answer the question (salary, awards, opinions such as \
 who is better, team records), reply instead with \
 {{"unsupported": "<one short sentence saying why>"}}. \
 Never pick a loosely related stat to fill the gap.
