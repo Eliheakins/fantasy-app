@@ -37,6 +37,9 @@ ENGINE_SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "opp_median": _F,
         "opp_ceiling": _F,
         "script": _S,
+        "slot_calls": pl.List(
+            pl.Struct({"slot": _S, "starter": _S, "alternative": _S, "share": _F})
+        ),
     },
     "streamers": {
         "unit": _S,

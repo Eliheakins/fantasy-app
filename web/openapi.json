@@ -5938,6 +5938,13 @@
           "script": {
             "type": "string",
             "title": "Script"
+          },
+          "slot_calls": {
+            "items": {
+              "$ref": "#/components/schemas/SlotCall"
+            },
+            "type": "array",
+            "title": "Slot Calls"
           }
         },
         "additionalProperties": false,
@@ -5956,7 +5963,8 @@
           "opp_floor",
           "opp_median",
           "opp_ceiling",
-          "script"
+          "script",
+          "slot_calls"
         ],
         "title": "OptionRow"
       },
@@ -6937,6 +6945,50 @@
           "p"
         ],
         "title": "SeedRow"
+      },
+      "SlotCall": {
+        "properties": {
+          "slot": {
+            "type": "string",
+            "title": "Slot"
+          },
+          "starter": {
+            "type": "string",
+            "title": "Starter"
+          },
+          "alternative": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alternative"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "slot",
+          "starter",
+          "alternative",
+          "share"
+        ],
+        "title": "SlotCall",
+        "description": "Display only: how often this slot's starter outscores the best eligible bench player."
       },
       "StatusChangeRow": {
         "properties": {

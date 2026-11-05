@@ -283,6 +283,15 @@ class OwnersData(Row):
     unmatched: int
 
 
+class SlotCall(Row):
+    """Display only: how often this slot's starter outscores the best eligible bench player."""
+
+    slot: str
+    starter: str
+    alternative: str | None  # None when nobody eligible and unlocked is on the bench
+    share: float | None  # of paired simulations; None with no alternative
+
+
 class OptionRow(Row):
     option: str
     win_prob: float
@@ -298,6 +307,7 @@ class OptionRow(Row):
     opp_median: float
     opp_ceiling: float
     script: str
+    slot_calls: list[SlotCall]
 
 
 class ComparisonRow(Row):

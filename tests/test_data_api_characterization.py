@@ -60,7 +60,11 @@ def test_win_probability_options_are_pinned(
 ) -> None:
     _engine_store(tmp_path, monkeypatch)
     out = data_api.win_probability("t", n_sims=2000, now=NOW)
-    rows = [_round(r) for r in out.iter_rows(named=True)]
+    calls = out["slot_calls"].to_list()  # display only; every other column is pinned below
+    rows = [_round(r) for r in out.drop("slot_calls").iter_rows(named=True)]
+    no_alternative = {"slot": "QB", "starter": "G_QB", "alternative": None, "share": None}
+    wr = {"slot": "WR", "starter": "G_WR", "alternative": "G_DL", "share": 0.86}
+    assert [[_round(c) for c in option] for option in calls] == [[no_alternative, wr]] * 4
     same = {
         "win_prob": 0.867,
         "expected_points": 17.6,

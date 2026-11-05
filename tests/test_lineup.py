@@ -116,3 +116,11 @@ def test_swap_plan_promises_a_bench_player_to_one_starter_in_kickoff_order() -> 
     }
     lineup, plan = _plan(players, ["WR", "WR"], {"early", "late"}, kicks)
     assert lineup.players == {"early", "late"} and plan == {"early": "b"}
+
+
+def test_script_labels_keep_the_prefixes_the_lineup_page_parses() -> None:
+    from fantasy import _lineup
+
+    assert _lineup._script(0.30).startswith("Underdog")
+    assert _lineup._script(0.70).startswith("Favorite")
+    assert _lineup._script(0.50).startswith("Toss-up")

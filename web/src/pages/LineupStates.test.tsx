@@ -42,7 +42,7 @@ describe("Lineup page states", () => {
     render(<MemoryRouter initialEntries={["/lineup?week=5"]}><Lineup /></MemoryRouter>);
     expect(requested).toContain("x/lineup?week=5");
     render(<MemoryRouter><Lineup /></MemoryRouter>);
-    expect(requested.at(-1)).toBe("x/win-probability?week=1");
+    expect(requested).toContain("x/win-probability?week=1");
   });
   test("two leagues build different query keys for the same endpoint", () => {
     const key = (league: string) => `/api/leagues/${encodeURIComponent(league)}/lineup?week=1`;

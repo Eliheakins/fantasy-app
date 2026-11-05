@@ -1719,6 +1719,8 @@ export interface components {
             opp_ceiling: number;
             /** Script */
             script: string;
+            /** Slot Calls */
+            slot_calls: components["schemas"]["SlotCall"][];
         };
         /** OutlookRow */
         OutlookRow: {
@@ -2003,6 +2005,20 @@ export interface components {
             seed: number;
             /** P */
             p: number;
+        };
+        /**
+         * SlotCall
+         * @description Display only: how often this slot's starter outscores the best eligible bench player.
+         */
+        SlotCall: {
+            /** Slot */
+            slot: string;
+            /** Starter */
+            starter: string;
+            /** Alternative */
+            alternative: string | null;
+            /** Share */
+            share: number | null;
         };
         /** StatusChangeRow */
         StatusChangeRow: {

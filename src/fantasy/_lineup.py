@@ -35,7 +35,7 @@ from fantasy.sim import moves
 from fantasy.sim.availability import LONG_TERM, kickoffs
 from fantasy.sim.lineup import Player, lineup_slots, lineup_with_locks, swap_plan
 from fantasy.sim.odds import LeagueData
-from fantasy.sim.winprob import choose, pick_by_quantile, search, swap_candidates
+from fantasy.sim.winprob import choose, pick_by_quantile, search, slot_shares, swap_candidates
 
 LINEUP_SIMS = 20000
 UNDERDOG = 0.45  # below this chance to win with the best lineup, variance is an asset
@@ -263,13 +263,22 @@ def win_probability(
     options = {"max_points": base, "win_prob": verdict.chosen, "ceiling": ceiling, "floor": floor}
     if sleeper:
         options["sleeper_now"] = sleeper
+
+    slots_in = {name: _slots_of(ids_, mean_of, positions, slots) for name, ids_ in options.items()}
+
+    def calls(name: str, ids_: frozenset[str]) -> list[dict[str, str | float | None]]:
+        picks = list(zip(slots_in[name], sorted(ids_), strict=True))
+        bench = [i for i in pool_ids if i not in ids_]
+        # held-out half, like every other displayed number; display only, nothing is chosen from it
+        return slot_shares(points[half:], column, picks, bench, positions, values, locked)
+
     rows = [
         {
             "option": name,
             "win_prob": verdict.win_prob[ids_],
             "expected_points": sum(mean_of[i] for i in ids_) + kd_mean,
             "gsis_ids": sorted(ids_),
-            "slots": _slots_of(ids_, mean_of, positions, slots),
+            "slots": slots_in[name],
             "share_better": verdict.share_better if name == "win_prob" else 0.5,
             "tag": verdict.tag if name == "win_prob" else "",
             "floor": held[0.1][ids_],
@@ -279,6 +288,7 @@ def win_probability(
             "opp_median": opp_median,
             "opp_ceiling": opp_ceiling,
             "script": script,
+            "slot_calls": calls(name, ids_),
         }
         for name, ids_ in options.items()
     ]

@@ -10,7 +10,7 @@ from typing import NamedTuple
 
 import numpy as np
 
-from fantasy.sim.lineup import Player, auto_lineup
+from fantasy.sim.lineup import ELIGIBLE, Player, auto_lineup
 
 CLEAR_SHARE = 0.70
 LEAN_SHARE = 0.55
@@ -103,3 +103,35 @@ def pick_by_quantile(
     chosen = max(candidates, key=lambda c: (float(np.quantile(totals[c][:half], q)), sorted(c)))
     held = {c: float(np.quantile(totals[c][half:], q)) for c in candidates}
     return chosen, held
+
+
+def slot_shares(
+    points: np.ndarray,
+    column: dict[str, int],
+    picks: list[tuple[str, str]],
+    bench: list[str],
+    positions: dict[str, str],
+    values: dict[str, float],
+    locked: set[str],
+) -> list[dict[str, str | float | None]]:
+    """Display only: for each (slot, starter), the share of paired draws in which the starter
+    outscores the best bench player eligible for the slot (a tie counts half). The alternative
+    is the bench player with the highest expected points; locked players cannot move, so a locked
+    starter or a slot with no eligible unlocked alternative gets None. Feeds no choice."""
+    out: list[dict[str, str | float | None]] = []
+    for slot, starter in picks:
+        eligible = [
+            b
+            for b in bench
+            if positions.get(b) in ELIGIBLE.get(slot, ())
+            and values.get(b, 0.0) > 0
+            and b not in locked
+        ]
+        alt = max(eligible, key=lambda b: (values[b], b)) if eligible else None
+        share = None
+        if alt is not None and starter not in locked:
+            a, b = points[:, column[starter]], points[:, column[alt]]
+            share = float((a > b).mean() + 0.5 * (a == b).mean())
+        alternative = alt if share is not None else None
+        out.append({"slot": slot, "starter": starter, "alternative": alternative, "share": share})
+    return out
