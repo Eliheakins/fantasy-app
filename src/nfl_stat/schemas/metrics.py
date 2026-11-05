@@ -15,9 +15,10 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from nfl_stat.core.config import REPO_ROOT
 from nfl_stat.schemas.nlq import MAX_ALIASES, Alias
 
-METRICS_PATH = Path(__file__).resolve().parents[3] / "metrics" / "metrics.json"
+METRICS_PATH = REPO_ROOT / "metrics" / "metrics.json"
 
 PlayerRole = Literal["passer", "rusher", "receiver"]
 PlayType = Literal["pass", "run", "all"]

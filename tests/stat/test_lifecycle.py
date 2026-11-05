@@ -33,9 +33,9 @@ async def test_lifespan_starts_the_llm_client_and_closes_it(settings: SimpleName
     app = create_app(settings)
 
     async with lifecycle.lifespan(app):
-        assert app.state.app_state.llm_client is not None
+        assert app.state.stat_state.llm_client is not None
 
-    assert app.state.app_state.llm_client is None
+    assert app.state.stat_state.llm_client is None
 
 
 async def test_lifespan_loads_the_manifest_when_one_was_built(settings: SimpleNamespace):
@@ -44,8 +44,8 @@ async def test_lifespan_loads_the_manifest_when_one_was_built(settings: SimpleNa
     app = create_app(settings)
 
     async with lifecycle.lifespan(app):
-        assert app.state.app_state.manifest is not None
-        assert app.state.app_state.manifest.data_through == "2026 week 9"
+        assert app.state.stat_state.manifest is not None
+        assert app.state.stat_state.manifest.data_through == "2026 week 9"
 
 
 async def test_lifespan_starts_without_a_manifest_when_the_file_is_invalid(
@@ -55,8 +55,8 @@ async def test_lifespan_starts_without_a_manifest_when_the_file_is_invalid(
     app = create_app(settings)
 
     async with lifecycle.lifespan(app):
-        assert app.state.app_state.manifest is None
-        assert app.state.app_state.llm_client is not None
+        assert app.state.stat_state.manifest is None
+        assert app.state.stat_state.llm_client is not None
 
 
 async def test_lifespan_starts_when_the_manifest_cannot_be_read_at_all(
@@ -69,8 +69,8 @@ async def test_lifespan_starts_when_the_manifest_cannot_be_read_at_all(
     app = create_app(settings)
 
     async with lifecycle.lifespan(app):
-        assert app.state.app_state.manifest is None
-        assert app.state.app_state.llm_client is not None
+        assert app.state.stat_state.manifest is None
+        assert app.state.stat_state.llm_client is not None
 
 
 async def test_two_apps_do_not_share_state(settings: SimpleNamespace, tmp_path: Path):
@@ -78,5 +78,5 @@ async def test_two_apps_do_not_share_state(settings: SimpleNamespace, tmp_path: 
     first, second = create_app(settings), create_app(other)
 
     async with lifecycle.lifespan(first):
-        assert first.state.app_state.llm_client is not None
-        assert second.state.app_state.llm_client is None
+        assert first.state.stat_state.llm_client is not None
+        assert second.state.stat_state.llm_client is None

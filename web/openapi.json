@@ -1792,6 +1792,83 @@
           }
         }
       }
+    },
+    "/api/stat/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "operationId": "health_api_stat_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stat/nlq/intent": {
+      "post": {
+        "tags": [
+          "nlq"
+        ],
+        "summary": "Nlq Intent",
+        "operationId": "nlq_intent_api_stat_nlq_intent_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IntentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/QueryOutcome"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UnsupportedOutcome"
+                    }
+                  ],
+                  "title": "Response Nlq Intent Api Stat Nlq Intent Post",
+                  "discriminator": {
+                    "propertyName": "outcome",
+                    "mapping": {
+                      "query": "#/components/schemas/QueryOutcome",
+                      "unsupported": "#/components/schemas/UnsupportedOutcome"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1895,6 +1972,68 @@
           "label"
         ],
         "title": "AssetRow"
+      },
+      "CatalogFilter": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Label"
+          },
+          "group": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Group"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "group"
+        ],
+        "title": "CatalogFilter"
+      },
+      "CatalogStat": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Label"
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 100,
+            "title": "Category"
+          },
+          "aliases": {
+            "items": {
+              "type": "string",
+              "maxLength": 60
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Aliases",
+            "description": "Other phrases for this stat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "category"
+        ],
+        "title": "CatalogStat"
       },
       "ComparisonRow": {
         "properties": {
@@ -3938,6 +4077,45 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "data_ready": {
+            "type": "boolean",
+            "title": "Data Ready",
+            "description": "True once the manifest lists a season and the players file"
+          },
+          "data_through": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Through",
+            "description": "How current the data is, e.g. \"2026 week 9\""
+          },
+          "seasons": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Seasons",
+            "description": "Seasons with a shard"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "data_ready"
+        ],
+        "title": "HealthResponse"
+      },
       "IdeasInfo": {
         "properties": {
           "is_mine": {
@@ -4004,6 +4182,40 @@
           "deadline_passed"
         ],
         "title": "IdeasInfo"
+      },
+      "IntentRequest": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Question"
+          },
+          "stats": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogStat"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Stats"
+          },
+          "filters": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogFilter"
+            },
+            "type": "array",
+            "maxItems": 400,
+            "title": "Filters"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question",
+          "stats"
+        ],
+        "title": "IntentRequest",
+        "description": "The frontend owns the stat and filter catalog, so it sends the allowed ids with each ask."
       },
       "LastWeekRow": {
         "properties": {
@@ -5301,6 +5513,58 @@
         ],
         "title": "ProjectionMissRow"
       },
+      "QueryIntent": {
+        "properties": {
+          "stat_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Stat Ids"
+          },
+          "filter_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Filter Ids"
+          },
+          "granularity": {
+            "type": "string",
+            "enum": [
+              "total",
+              "per_game",
+              "per_play"
+            ],
+            "title": "Granularity",
+            "default": "total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stat_ids"
+        ],
+        "title": "QueryIntent"
+      },
+      "QueryOutcome": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "const": "query",
+            "title": "Outcome",
+            "default": "query"
+          },
+          "intent": {
+            "$ref": "#/components/schemas/QueryIntent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "intent"
+        ],
+        "title": "QueryOutcome"
+      },
       "RefreshData": {
         "properties": {
           "player_rows": {
@@ -6387,6 +6651,28 @@
           "names"
         ],
         "title": "UnmatchedData"
+      },
+      "UnsupportedOutcome": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "const": "unsupported",
+            "title": "Outcome",
+            "default": "unsupported"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "UnsupportedOutcome",
+        "description": "No stat or filter can answer the question; `reason` is shown to the user."
       },
       "ValidationError": {
         "properties": {

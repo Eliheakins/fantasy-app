@@ -6,15 +6,15 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
-_REPO_ROOT = _BACKEND_DIR.parent
+# Paths assume a source checkout (src/nfl_stat/core/config.py), not an installed wheel.
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
-# Local Vite dev server origins.
-CORS_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
+# nflverse shards only. Never league or nfl_ecr data: this folder is served over HTTP.
+DEFAULT_DATA_DIR = REPO_ROOT / "data" / "stat"
 
 
 class AppSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=_REPO_ROOT / ".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=REPO_ROOT / ".env", extra="ignore")
 
     # OpenAI-compatible local server, e.g. `uv run --group llm mlx_lm.server --model <LLM_MODEL>`.
     llm_base_url: str = Field(default="http://127.0.0.1:8080/v1", validation_alias="LLM_BASE_URL")
@@ -24,12 +24,8 @@ class AppSettings(BaseSettings):
     llm_timeout_seconds: float = Field(default=120.0, validation_alias="LLM_TIMEOUT_SECONDS")
 
     @property
-    def backend_dir(self) -> Path:
-        return _BACKEND_DIR
-
-    @property
     def data_dir(self) -> Path:
-        return _BACKEND_DIR / "data"
+        return DEFAULT_DATA_DIR
 
 
 @lru_cache

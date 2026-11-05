@@ -2,7 +2,7 @@
 """
 CLI for building the NFL play-by-play Parquet shards and the player index.
 
-Run: ``uv run python backend/scripts/build_data.py`` (adds backend dir to sys.path).
+Run: ``uv run python -m nfl_stat.pipeline.cli`` (``make stat-data``).
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from pathlib import Path
 
 from nflreadpy.utils_date import get_current_season
 
+from nfl_stat.core.config import DEFAULT_DATA_DIR
 from nfl_stat.pipeline.atomic import atomic_path
 from nfl_stat.pipeline.manifest import build_manifest, write_manifest
 from nfl_stat.pipeline.nfl_pipeline import (
@@ -30,12 +31,9 @@ from nfl_stat.pipeline.player_game import (
 )
 from nfl_stat.pipeline.players import write_players_file
 
-_backend_root = Path(__file__).resolve().parents[2]
-_default_data = _backend_root / "data"
-
 
 def data_output_dir() -> Path:
-    return _default_data.resolve()
+    return DEFAULT_DATA_DIR.resolve()
 
 
 def _maybe_gc() -> None:
@@ -113,7 +111,7 @@ def main(argv: list[str] | None = None) -> int:
         "--data-dir",
         type=Path,
         default=None,
-        help=f"Output directory (default: {_default_data})",
+        help=f"Output directory (default: {DEFAULT_DATA_DIR})",
     )
     which = parser.add_mutually_exclusive_group()
     which.add_argument(

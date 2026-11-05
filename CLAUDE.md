@@ -11,6 +11,7 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 ## Run it
 
 - `make refresh`: back up `data/archive/`, then pull Sleeper and nflverse and rebuild every table (needs the network)
+- `make stat-data` (`stat-data-refresh` for the current season only): build the stat app's nflverse shards into `data/stat` (network, minutes; not part of `make refresh` yet). `make ask-model`: local MLX model server for Ask on port 8080
 - `make serve`: build `web/` and serve the React UI plus the API at http://127.0.0.1:8000. `make dev`: API plus the Vite dev server (hot reload)
 - `make schedule-install` / `schedule-remove`: a macOS launchd job running `make refresh` Tuesday 06:00, Friday 18:00 and Sunday 08:00 (Mac awake; log in `data/refresh.log`). Installed on the main Mac on 2026-10-28; `make schedule-remove` undoes it.
 - `make odds`: archive one week of prop lines (needs `ODDS_API_KEY` in env or `.env`, gitignored; free tier is 500 credits a month, a snapshot costs about 80)
@@ -25,12 +26,16 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 
 ## Conventions
 
-- Parquet under `data/` (gitignored) is the source of truth. Stages and `data_api.py` read it with polars; DuckDB is not a dependency (add it back only if a query needs it).
+- Parquet under `data/` (gitignored) is the source of truth. Stages and `data_api.py` read it with polars; DuckDB is a dev dependency only, for `tests/stat/test_metric_reference_values.py`.
 - The API (`src/fantasy/api*.py`) reads through `fantasy.data_api`; `api_routes.py` also imports `_engine` and `_view`. `make check` also typechecks and tests `web/`.
 - No secrets in the repo. API keys come from environment variables.
 - Lean MVP: simplest method that works, tests only for math and config, no CI.
 - Sleeper's API is read-only. Stay under 1,000 calls a minute and fetch the players file at most once a day.
 - Annotate function signatures. Prefer frozen dataclasses.
+
+## Stat app (merged, #70)
+
+`src/nfl_stat/` (backend), `metrics/metrics.json` (stat definitions), `tests/stat/` (its tests; eval tests are deselected by default, `uv run pytest -m eval` needs `make ask-model`) and `stat-import/` (its frontend, moves into `web/` in later slices). `nfl_stat.main.attach(app, settings)` is called by `fantasy.api.create_app`: routes `GET /api/stat/health`, `POST /api/stat/nlq/intent`, and static `/api/stat/data/*` serving only `data/stat/` (manifest, players, Parquet shards; supports Range). The fantasy Host and X-Requested-With checks cover them; there is no CORS. `data/stat/` holds only nflverse data and never league or `nfl_ecr` data, because it is served over HTTP. Keep the static mount on `data/stat`, never on `data/`.
 
 ## How it fits together
 

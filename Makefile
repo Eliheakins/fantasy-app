@@ -1,4 +1,4 @@
-.PHONY: setup test lint fmt check refresh backup schedule-install schedule-remove serve dev web-build odds odds-slate
+.PHONY: setup test lint fmt check refresh backup schedule-install schedule-remove serve dev web-build odds odds-slate stat-data stat-data-refresh ask-model
 
 backup:
 	uv run python -m fantasy.stages.backup
@@ -23,6 +23,21 @@ refresh: backup
 	uv run python -m fantasy.stages.simulate
 	uv run python -m fantasy.stages.digest
 	uv run python -m fantasy.stages.market_values
+
+# nflverse play-by-play shards for the stat app, into data/stat (needs the network, takes minutes)
+stat-data:
+	uv run python -m nfl_stat.pipeline.cli
+
+# Rebuild only the current season; other seasons are kept
+stat-data-refresh:
+	uv run python -m nfl_stat.pipeline.cli --refresh
+
+# Local model for Ask (Apple Silicon; first run downloads about 2 GB). Ask works without it for
+# questions the rules can read.
+# Keep equal to the default of AppSettings.llm_model in src/nfl_stat/core/config.py
+LLM_MODEL ?= mlx-community/Qwen3-4B-Instruct-2507-4bit
+ask-model:
+	uv run --group llm mlx_lm.server --model $(LLM_MODEL) --port 8080
 
 web-build:
 	cd web && npm run build

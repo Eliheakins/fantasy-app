@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    settings = app.state.settings
-    app_state = app.state.app_state
+    settings = app.state.stat_settings
+    app_state = app.state.stat_state
 
     # A bad or unreadable manifest must not stop the API; /health then reports no freshness.
     refresh_manifest(app_state, settings.data_dir)
@@ -26,7 +26,8 @@ async def lifespan(app: FastAPI):
         timeout=settings.llm_timeout_seconds,
     )
 
-    yield
-
-    await app_state.llm_client.close()
-    app_state.llm_client = None
+    try:
+        yield
+    finally:
+        await app_state.llm_client.close()
+        app_state.llm_client = None

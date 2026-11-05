@@ -67,6 +67,8 @@ Configure your own leagues in [config.toml](config.toml) (Sleeper username, user
 | `make serve` | Build the web UI and serve it and the API at http://127.0.0.1:8000 |
 | `make dev` | API with reload plus the Vite dev server (hot reload for the UI) |
 | `make web-build` | Build the web UI only |
+| `make stat-data`, `make stat-data-refresh` | Build the nflverse play-by-play shards for the stat app into `data/stat` (all seasons; current season only). Needs the network and minutes |
+| `make ask-model` | Local MLX model server for Ask (Apple Silicon). Ask answers rule-readable questions without it |
 | `make odds`, `make odds-slate` | Archive one week of prop lines; archive the current slate |
 | `make schedule-install`, `make schedule-remove` | Set up or remove a macOS launchd job that runs `make refresh` Tuesday 06:00, Friday 18:00 and Sunday 08:00 (installed on the main Mac on 2026-10-28) |
 <!-- END AUTO-GENERATED -->
@@ -100,8 +102,11 @@ src/fantasy/
   sources/             Sleeper client
   stages/              pipeline stages, each run as python -m fantasy.stages.<name>
   sim/                 pure logic: lineups, sampler, season simulation, moves, injuries, effects
+src/nfl_stat/          the merged stat app backend: data build (`make stat-data`), Ask intent endpoint, shard serving
+metrics/metrics.json   stat definitions (SQL, aliases) read by the stat app
+stat-import/           the stat app frontend, until it moves into web/ (#70)
 web/                   React UI (Vite, TypeScript)
-tests/                 pytest suite
+tests/                 pytest suite (tests/stat/ is the stat app's)
 research/              one-off analysis scripts behind decisions.md
 overrides/id_map.csv   manual Sleeper to nflverse ID overrides
 docs/                  decisions log, backlog, one-pager, specs

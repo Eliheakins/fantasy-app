@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 from fastapi import HTTPException
 from openai import APIConnectionError, APIStatusError, APITimeoutError, AsyncOpenAI, OpenAIError
+from openai.types.chat import ChatCompletionMessageParam
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ async def chat_text(
     try:
         completion = await client.chat.completions.create(
             model=model,
-            messages=list(messages),
+            messages=cast("list[ChatCompletionMessageParam]", list(messages)),
             temperature=0,
             max_tokens=max_tokens,
         )

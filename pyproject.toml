@@ -11,10 +11,17 @@ dependencies = [
     "httpx>=0.28.1",
     "nflreadpy>=0.1.5",
     "numpy>=2.5.4",
+    "openai>=1.40.0",  # client for the local OpenAI-compatible MLX server (nfl_stat)
+    "pyarrow>=15.0.0",
+    "pydantic-settings>=2.6.0",
     "polars>=2.0.0",
     "scikit-learn>=1.9.1",
     "scipy>=1.18.1",
+    "uvicorn>=0.32.0",
 ]
+
+[tool.uv.build-backend]
+module-name = ["fantasy", "nfl_stat"]
 
 [build-system]
 requires = ["uv_build>=0.11.21,<0.12.0"]
@@ -22,19 +29,25 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "duckdb>=1.0.0",  # tests/stat/test_metric_reference_values.py runs metrics.json SQL on the shards
     "mypy>=2.4.0",
     "pytest>=9.1.1",
+    "pytest-asyncio>=0.24.0",
     "ruff>=0.17.2",
 ]
 
+# Apple Silicon only: `uv run --group llm mlx_lm.server --model <LLM_MODEL>` (make ask-model)
+llm = ["mlx-lm"]
+
 [tool.ruff]
 line-length = 100
-extend-exclude = ["research"]  # one-off analysis scripts, not maintained code
+extend-exclude = ["research", "stat-import"]  # one-off analysis scripts, not maintained code
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
+"src/nfl_stat/pipeline/*" = ["E501"]  # long prose in column manifests and docstrings
 "tests/test_digest.py" = ["F811"]  # imported fixtures are used as arguments
 "tests/test_api_digest.py" = ["F811"]
 
@@ -45,4 +58,8 @@ warn_unused_ignores = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = ["eval: runs against the live local model (deselected by default)"]
+addopts = "-m 'not eval'"
 filterwarnings = ["ignore:Sortedness of columns cannot be checked"]

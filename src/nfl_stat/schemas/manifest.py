@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, ValidationError
 
 MANIFEST_FILENAME = "manifest.json"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION: Literal[1] = 1
 
 # A plain Parquet file name: no directories, no URL, nothing that could leave the data folder.
 FILE_NAME_PATTERN = r"^[\w.-]+\.parquet$"

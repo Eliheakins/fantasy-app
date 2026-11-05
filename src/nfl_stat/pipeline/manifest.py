@@ -6,6 +6,7 @@ import re
 from datetime import UTC, datetime
 from importlib.metadata import version
 from pathlib import Path
+from typing import cast
 
 import polars as pl
 import pyarrow.parquet as pq
@@ -35,7 +36,7 @@ def _summarize_shard(path: Path, season: int) -> SeasonEntry:
         season=season,
         path=path.name,
         rows=df.height,
-        max_week=df["week"].max(),
+        max_week=cast(int | None, df["week"].max()),  # an int column
         # A real play always has at least one defender in the box. Shards built before missing
         # values were kept null hold 0 instead, so a column of zeros also means "no data".
         has_participation=bool((df["defenders_in_box"] > 0).any()),

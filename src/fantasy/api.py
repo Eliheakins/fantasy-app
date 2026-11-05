@@ -22,6 +22,10 @@ from fantasy.api_jobs import JobRunner
 from fantasy.api_routes import router
 from fantasy.config import ROOT
 from fantasy.live_refresh import LiveRefresher
+from nfl_stat.core.config import AppSettings as StatSettings
+from nfl_stat.core.config import get_settings as get_stat_settings
+from nfl_stat.core.lifecycle import lifespan as stat_lifespan
+from nfl_stat.main import attach as attach_stat
 
 WEB_DIST = ROOT / "web" / "dist"
 LOCAL_HOSTS = ("localhost", "127.0.0.1")
@@ -46,16 +50,17 @@ def forbidden(request: Request, hosts: list[str]) -> str | None:
     return None
 
 
-def create_app(web_dist: Path | None = None) -> FastAPI:
+def create_app(web_dist: Path | None = None, stat_settings: StatSettings | None = None) -> FastAPI:
     dist = WEB_DIST if web_dist is None else web_dist
     runner = JobRunner(max_workers=2)
     live = LiveRefresher(runner)
 
     @asynccontextmanager
-    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         live.start()
         try:
-            yield
+            async with stat_lifespan(app):
+                yield
         finally:
             live.stop()
             runner.shutdown()
@@ -74,6 +79,7 @@ def create_app(web_dist: Path | None = None) -> FastAPI:
         return fail("invalid", reason, 403) if reason else await call_next(request)
 
     app.include_router(router)
+    attach_stat(app, stat_settings or get_stat_settings())  # before the SPA mount
     if dist.is_dir():  # mounted last so /api wins; absent until `web/` is built
         app.mount("/", SpaFiles(directory=dist, html=True), name="web")
     return app
