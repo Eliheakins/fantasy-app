@@ -25,11 +25,9 @@ def backup_dir() -> Path:
     return Path(os.environ.get("FANTASY_BACKUP_DIR") or Path.home() / "fantasy-app-backups")
 
 
-def run(
-    data_dir: Path = store.DATA_DIR, target: Path | None = None, keep: int = KEEP
-) -> Path | None:
+def run(data_dir: Path | None = None, target: Path | None = None, keep: int = KEEP) -> Path | None:
     """The new copy's path, or None when there is no archive yet. Older copies past `keep` go."""
-    source = data_dir / "archive"
+    source = store.resolve(data_dir) / "archive"
     if not source.is_dir():
         log.info("no archive at %s; nothing to back up", source)
         return None

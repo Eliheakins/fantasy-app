@@ -46,9 +46,9 @@ def status_frame(raw: dict[str, dict[str, Any]], fetched_at: str) -> pl.DataFram
     return pl.DataFrame(rows, schema=store.SCHEMAS[TABLE])
 
 
-def run(data_dir: Path = store.DATA_DIR) -> int:
+def run(data_dir: Path | None = None) -> int:
     """Append today's snapshot unless one from the file's fetch day exists; returns rows added."""
-    cache = data_dir / "raw" / PLAYERS_CACHE.name
+    cache = store.resolve(data_dir) / "raw" / PLAYERS_CACHE.name
     try:
         fetched = datetime.fromtimestamp(cache.stat().st_mtime, UTC)
         new = status_frame(json.loads(cache.read_text()), fetched.isoformat(timespec="seconds"))

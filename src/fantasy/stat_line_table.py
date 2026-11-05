@@ -18,7 +18,7 @@ NAME = "stat_line"
 
 def sync(chance: pl.DataFrame | None, data_dir: Path | None = None) -> None:
     """Write the table (gsis_id, season, week, q), or delete it when `chance` is None."""
-    root = store.DATA_DIR if data_dir is None else data_dir
+    root = store.resolve(data_dir)
     if chance is None:
         store.table_path(NAME, "derived", root).unlink(missing_ok=True)
         return
@@ -29,7 +29,7 @@ def stored(data_dir: Path | None = None) -> pl.DataFrame | None:
     """The table when the learned projections are in use and carry q: it exists and is at least
     as new as `proj_learned`. A table older than `proj_learned` belongs to an earlier run: warned
     about and ignored."""
-    root = store.DATA_DIR if data_dir is None else data_dir
+    root = store.resolve(data_dir)
     path = store.table_path(NAME, "derived", root)
     if store.projection_name(root) != "proj_learned" or not path.exists():
         return None

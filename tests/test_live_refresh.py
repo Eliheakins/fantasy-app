@@ -2,12 +2,12 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-import polars as pl
 import pytest
 from fastapi.testclient import TestClient
+from store_fixture import write_rows
 from test_api import store_dir as store_dir  # noqa: F401 - fixture
 
-from fantasy import api, api_routes, data_api, live_refresh, store
+from fantasy import api, api_routes, data_api, live_refresh
 from fantasy.api_jobs import JobRunner
 from fantasy.live_refresh import LIVE_REFRESH_MINUTES, LiveRefresher
 from fantasy.sim.availability import GAME_MINUTES, LIVE_WINDOW_PAD_MINUTES, games_on
@@ -30,13 +30,15 @@ def test_games_on_boundaries() -> None:
 @pytest.fixture
 def calls(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     log: list[str] = []
-    monkeypatch.setattr(live_refresh, "current_week_kickoffs", lambda: (8, {"A": KICK}))
-    monkeypatch.setattr(sync_sleeper, "sync_week", lambda week: log.append(f"sync{week}") or 1)
+    monkeypatch.setattr(live_refresh, "current_week_kickoffs", lambda data_dir: (8, {"A": KICK}))
+    monkeypatch.setattr(
+        sync_sleeper, "sync_week", lambda week, data_dir: log.append(f"sync{week}") or 1
+    )
     monkeypatch.setattr(
         simulate, "run", lambda *a, **k: log.append(f"sim archive={k.get('archive')}")
     )
     monkeypatch.setattr(live_refresh, "_clear_league_cache", lambda: log.append("clear"))
-    monkeypatch.setattr(data_api, "record_live_tick", lambda now: log.append("record"))
+    monkeypatch.setattr(data_api, "record_live_tick", lambda now, data_dir: log.append("record"))
     return log
 
 
@@ -86,7 +88,7 @@ def test_error_is_recorded_lock_released_and_next_tick_runs(
 ) -> None:
     live = refresher()
 
-    def boom(week: int) -> int:
+    def boom(week: int, data_dir: object) -> int:
         raise OSError("sleeper down")
 
     monkeypatch.setattr(sync_sleeper, "sync_week", boom)
@@ -94,13 +96,13 @@ def test_error_is_recorded_lock_released_and_next_tick_runs(
     assert "OSError: sleeper down" in (live.status()["last_error"] or "")
     assert not live.step(KICK + timedelta(minutes=1))  # no tight retry
     assert not api_routes.REFRESH_LOCK.locked()
-    monkeypatch.setattr(sync_sleeper, "sync_week", lambda week: calls.append("sync") or 1)
+    monkeypatch.setattr(sync_sleeper, "sync_week", lambda week, data_dir: calls.append("sync") or 1)
     assert live.step(KICK + timedelta(minutes=LIVE_REFRESH_MINUTES))
     assert live.status()["last_error"] is None
 
 
 def test_schedule_read_failure_is_recorded(monkeypatch: pytest.MonkeyPatch) -> None:
-    def missing() -> Any:
+    def missing(data_dir: object) -> Any:
         raise FileNotFoundError("nfl_schedules")
 
     monkeypatch.setattr(live_refresh, "current_week_kickoffs", missing)
@@ -145,29 +147,26 @@ def test_status_route_reports_live_refresh(
     }
 
 
-def test_simulate_run_archives_only_when_asked(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_simulate_run_archives_only_when_asked(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     appended: list[int] = []
-    monkeypatch.setattr(simulate, "append_history", lambda latest: appended.append(1))
-    monkeypatch.setattr(store, "read_table", lambda *a, **k: pl.DataFrame({"league_id": []}))
-    monkeypatch.setattr(store, "write_table", lambda *a, **k: None)
-    monkeypatch.setattr(store, "write_tables", lambda *a, **k: None)  # else the real data dir
-    simulate.run(n_sims=1, archive=False)
+    monkeypatch.setattr(simulate, "append_history", lambda latest, data_dir: appended.append(1))
+    write_rows(tmp_path, "leagues")  # no leagues: nothing to simulate, the tables are still written
+    simulate.run(n_sims=1, archive=False, data_dir=tmp_path)
     assert appended == []
-    simulate.run(n_sims=1)
+    simulate.run(n_sims=1, data_dir=tmp_path)
     assert appended == [1]
 
 
 def test_a_failing_history_write_does_not_stop_the_tick_clearing_the_cache(
-    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def broken(*a: object, **k: object) -> None:
-        raise OSError("disk")
-
     log: list[str] = []
-    monkeypatch.setattr(live_refresh, "current_week_kickoffs", lambda: (8, {"A": KICK}))
-    monkeypatch.setattr(sync_sleeper, "sync_week", lambda week: 1)
+    monkeypatch.setattr(live_refresh, "current_week_kickoffs", lambda data_dir: (8, {"A": KICK}))
+    monkeypatch.setattr(sync_sleeper, "sync_week", lambda week, data_dir: 1)
     monkeypatch.setattr(simulate, "run", lambda *a, **k: None)
     monkeypatch.setattr(live_refresh, "_clear_league_cache", lambda: log.append("clear"))
-    monkeypatch.setattr(data_api, "leagues", broken)
-    assert refresher().step(KICK)
+    # no tables in tmp_path: recording the day history fails, and must not fail the tick
+    assert LiveRefresher(JobRunner(), enabled=True, data_dir=tmp_path).step(KICK)
     assert log == ["clear"]

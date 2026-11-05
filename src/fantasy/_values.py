@@ -13,7 +13,7 @@ from fantasy.stages.market_values import setting_for
 COLUMNS = ["gsis_id", "value", "overall_rank", "position_rank", "trend_30_day", "fetched_at"]
 
 
-def market_values(league_key: str, gsis_ids: list[str], data_dir: Path) -> pl.DataFrame:
+def market_values(league_key: str, gsis_ids: list[str], data_dir: Path | None) -> pl.DataFrame:
     """Values for the given players under the league's setting; empty when the table is missing."""
     empty = pl.DataFrame(
         schema={c: store.SCHEMAS["market_values"].get(c, pl.String) for c in COLUMNS}
@@ -27,14 +27,14 @@ def market_values(league_key: str, gsis_ids: list[str], data_dir: Path) -> pl.Da
     if values.is_empty():
         return empty
     return (
-        values.join(_id_map(), on="sleeper_id")
+        values.join(_id_map(data_dir), on="sleeper_id")
         .filter(pl.col("gsis_id").is_in(gsis_ids))
         .select(COLUMNS)
         .sort("overall_rank")
     )
 
 
-def past_trade_ratios(data_dir: Path) -> list[float]:
+def past_trade_ratios(data_dir: Path | None) -> list[float]:
     """Market value received over value given, for each side of every completed trade in the
     leagues, at today's values (the old values are not kept). Sides with an unvalued player or
     a zero total are left out. Draft picks are not in the table, so a side that traded picks
@@ -66,7 +66,7 @@ def past_trade_ratios(data_dir: Path) -> list[float]:
 
 
 def trade_market(
-    league_key: str, trades: list[tuple[list[str], list[str]]], data_dir: Path
+    league_key: str, trades: list[tuple[list[str], list[str]]], data_dir: Path | None
 ) -> list[dict[str, Any] | None]:
     """Per (give_ids, get_ids): summed market value of each side, the hint and the values' date.
     None for every trade when there are no values; a player without one counts as missing."""

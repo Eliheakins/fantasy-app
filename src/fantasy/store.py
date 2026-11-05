@@ -361,12 +361,17 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
 }
 
 
-def table_path(name: str, area: str = "derived", data_dir: Path = DATA_DIR) -> Path:
+def resolve(data_dir: Path | None) -> Path:
+    """`data_dir`, or the project data folder (read now, not bound at import)."""
+    return DATA_DIR if data_dir is None else data_dir
+
+
+def table_path(name: str, area: str = "derived", data_dir: Path | None = None) -> Path:
     if not _NAME.match(name):
         raise ValueError(f"bad table name {name!r}: use lowercase letters, digits, underscores")
     if area not in AREAS:
         raise ValueError(f"bad area {area!r}: expected one of {AREAS}")
-    return data_dir / area / f"{name}.parquet"
+    return resolve(data_dir) / area / f"{name}.parquet"
 
 
 def check_schema(name: str, df: pl.DataFrame) -> None:
@@ -398,7 +403,7 @@ def team_game_index(team_games: pl.DataFrame) -> pl.DataFrame:
 
 
 def write_tables(
-    tables: dict[str, pl.DataFrame], area: str = "derived", data_dir: Path = DATA_DIR
+    tables: dict[str, pl.DataFrame], area: str = "derived", data_dir: Path | None = None
 ) -> None:
     """Write several tables so that a failure leaves none of them replaced: every table is
     checked and written to a temp file first, and the files are moved into place at the end."""
@@ -412,13 +417,13 @@ def write_tables(
 
 
 def write_table(
-    name: str, df: pl.DataFrame, area: str = "derived", data_dir: Path = DATA_DIR
+    name: str, df: pl.DataFrame, area: str = "derived", data_dir: Path | None = None
 ) -> Path:
     write_tables({name: df}, area, data_dir)
     return table_path(name, area, data_dir)
 
 
-def with_archive(name: str, new: pl.DataFrame, data_dir: Path = DATA_DIR) -> pl.DataFrame:
+def with_archive(name: str, new: pl.DataFrame, data_dir: Path | None = None) -> pl.DataFrame:
     """The archive table with `new` appended, or `new` alone when no archive exists yet.
     Reads only; the caller writes."""
     try:
@@ -428,7 +433,7 @@ def with_archive(name: str, new: pl.DataFrame, data_dir: Path = DATA_DIR) -> pl.
     return pl.concat([old, new])
 
 
-def read_table(name: str, area: str = "derived", data_dir: Path = DATA_DIR) -> pl.DataFrame:
+def read_table(name: str, area: str = "derived", data_dir: Path | None = None) -> pl.DataFrame:
     path = table_path(name, area, data_dir)
     if not path.exists():
         raise FileNotFoundError(f"{path} does not exist; run the stage that writes {name!r}")
@@ -444,7 +449,7 @@ LEARNED_FIRST_CLEAN_SEASON = 2021
 
 def projection_name(data_dir: Path | None = None) -> str:
     """proj_learned when config.toml says so and the table exists, else proj_baseline."""
-    root = DATA_DIR if data_dir is None else data_dir
+    root = resolve(data_dir)
     if (
         load_config().projection_model == "learned"
         and table_path("proj_learned", "derived", root).exists()
@@ -457,7 +462,7 @@ def projection_table(data_dir: Path | None = None) -> pl.DataFrame:
     """The projections the simulation and its fits use. The learned table leaves out past games
     from the seasons before LEARNED_FIRST_CLEAN_SEASON, which its walk-forward could not score
     cleanly; future rows are kept."""
-    root = DATA_DIR if data_dir is None else data_dir
+    root = resolve(data_dir)
     name = projection_name(root)
     table = read_table(name, "derived", root)
     if name == "proj_learned":

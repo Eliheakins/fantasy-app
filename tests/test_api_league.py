@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from test_league_view import league, sim_tables  # noqa: F401  (league is a fixture)
 
-from fantasy import api, store
+from fantasy import api
 
 COLUMNS = {
     "power-rankings": {
@@ -30,11 +30,12 @@ COLUMNS = {
 
 
 @pytest.fixture
-def client(league: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:  # noqa: F811
+def client(league: Path) -> Iterator[TestClient]:  # noqa: F811
     sim_tables(league)
-    monkeypatch.setattr(store, "DATA_DIR", league)
     headers = {"X-Requested-With": "fantasy-app"}
-    with TestClient(api.create_app(), base_url="http://localhost", headers=headers) as c:
+    with TestClient(
+        api.create_app(data_dir=league), base_url="http://localhost", headers=headers
+    ) as c:
         yield c
 
 

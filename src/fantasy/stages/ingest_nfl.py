@@ -91,7 +91,7 @@ def latest_week(df: pl.DataFrame) -> tuple[int, int] | None:
 
 
 def check_replacement(
-    name: str, new: pl.DataFrame, required_id: str | None, data_dir: Path = store.DATA_DIR
+    name: str, new: pl.DataFrame, required_id: str | None, data_dir: Path | None = None
 ) -> None:
     """Raise if `new` looks worse than the file it would replace: no rows, an older latest
     season and week, or a column that is entirely null now but was not before."""

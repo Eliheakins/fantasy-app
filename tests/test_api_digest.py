@@ -12,15 +12,16 @@ from test_api import wait_ok
 from test_digest import idea_rows
 from test_league_view import league  # noqa: F401  (league is a fixture)
 
-from fantasy import api, data_api, store
+from fantasy import api, data_api
 
 
 @pytest.fixture
 def client(league: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:  # noqa: F811
-    monkeypatch.setattr(store, "DATA_DIR", league)
     monkeypatch.setenv("LIVE_REFRESH", "off")
     headers = {"X-Requested-With": "fantasy-app"}
-    with TestClient(api.create_app(), base_url="http://localhost", headers=headers) as c:
+    with TestClient(
+        api.create_app(data_dir=league), base_url="http://localhost", headers=headers
+    ) as c:
         yield c
 
 
@@ -85,7 +86,9 @@ def test_actions_can_reuse_the_stored_waivers(
     monkeypatch.setattr(data_api, "waivers", lambda *a, **k: pytest.fail("re-simulated"))
     monkeypatch.setenv("LIVE_REFRESH", "off")
     headers = {"X-Requested-With": "fantasy-app"}
-    with TestClient(api.create_app(), base_url="http://localhost", headers=headers) as c:
+    with TestClient(
+        api.create_app(data_dir=store_dir), base_url="http://localhost", headers=headers
+    ) as c:
         out = wait_ok(c, lambda: c.get("/api/leagues/t/actions?stored_adds=true"))
     assert out["status"] == "ok"
     assert any(r["kind"] == "Waiver" and "Added" in r["text"] for r in out["data"]), out["data"]

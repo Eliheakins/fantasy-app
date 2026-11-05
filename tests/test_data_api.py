@@ -108,7 +108,7 @@ def test_missing_tables_return_empty_frames_not_errors(tmp_path: Path) -> None:
     assert data_api.leagues(tmp_path).is_empty()
     assert data_api.roster("test", tmp_path).is_empty()
     assert data_api.unmatched(tmp_path).is_empty()
-    assert data_api.season_odds("test").columns[:2] == ["roster_id", "team_name"]
+    assert data_api.season_odds("test", data_dir=tmp_path).columns[:2] == ["roster_id", "team_name"]
 
 
 def test_missing_layers_names_the_projection_layers_whose_stage_has_not_run(tmp_path):

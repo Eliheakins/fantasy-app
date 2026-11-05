@@ -5,7 +5,7 @@ from typing import Any
 
 import polars as pl
 import pytest
-from store_fixture import use_store, write_rows
+from store_fixture import write_rows
 from test_simulate_load import LEAGUE, build_store
 
 from fantasy import data_api, store
@@ -179,10 +179,10 @@ def test_what_if_is_empty_for_a_completed_or_playoff_week_and_missing_tables(lea
 
 
 def test_team_week_rows_hold_expected_points_with_the_shift_for_regular_weeks_only(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
-    build_store(tmp_path, monkeypatch, [(100.0, 90.0)])
-    data = load_league_data(LEAGUE)
+    build_store(tmp_path, [(100.0, 90.0)])
+    data = load_league_data(LEAGUE, data_dir=tmp_path)
     inp = build_inputs(data, None, 200, 0)
     rows = sim.team_week_rows(data, inp)
     weeks = {r[2] for r in rows}
@@ -195,15 +195,16 @@ def test_team_week_rows_hold_expected_points_with_the_shift_for_regular_weeks_on
 def test_run_writes_the_new_tables_in_one_call_with_the_season_tables(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    build_store(tmp_path, monkeypatch, [(100.0, 90.0)])
+    build_store(tmp_path, [(100.0, 90.0)])
     written: list[dict[str, pl.DataFrame]] = []
     monkeypatch.setattr(store, "write_tables", lambda tables, *a, **k: written.append(tables))
     monkeypatch.setattr(sim, "append_history", lambda latest, *a, **k: latest)
     monkeypatch.setattr(
-        sim, "load_league_data", lambda league, strict=True: load_league_data(LEAGUE)
+        sim,
+        "load_league_data",
+        lambda league, strict=True, data_dir=None: load_league_data(LEAGUE, data_dir=tmp_path),
     )
-    use_store(monkeypatch, tmp_path)
-    latest = sim.run(n_sims=300)
+    latest = sim.run(n_sims=300, data_dir=tmp_path)
     assert len(written) == 1
     tables: dict[str, Any] = written[0]
     assert set(tables) == {

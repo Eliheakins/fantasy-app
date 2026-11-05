@@ -148,7 +148,7 @@ def snapshot(
 
 
 def run(
-    data_dir: Path = store.DATA_DIR,
+    data_dir: Path | None = None,
     sources: Sequence[str] | None = None,
     fetchers: dict[str, Fetcher] | None = None,
     pause: float = PAUSE_SECONDS,
@@ -202,7 +202,7 @@ def map_to_gsis(snaps: pl.DataFrame, people: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def people(data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def people(data_dir: Path | None = None) -> pl.DataFrame:
     """Names, positions and teams known for each gsis_id: nflverse weekly stats and injury
     reports (every team a player had) and Sleeper's players file (his team now)."""
     stats = store.read_table("nfl_player_stats", "raw", data_dir).select(

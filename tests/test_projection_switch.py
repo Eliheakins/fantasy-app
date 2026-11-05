@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from store_fixture import use_store, write_rows
+from store_fixture import write_rows
 
 from fantasy import store
 from fantasy.config import Config, load_config
@@ -31,30 +31,27 @@ def configured(monkeypatch: pytest.MonkeyPatch, model: str) -> None:
 def test_the_baseline_is_used_when_the_learned_table_is_missing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    use_store(monkeypatch, tmp_path)
     write_rows(tmp_path, "proj_baseline", [projection_row(2025, 1, False, 10.0)])
     configured(monkeypatch, "learned")
-    assert store.projection_name() == "proj_baseline"
+    assert store.projection_name(tmp_path) == "proj_baseline"
 
 
 def test_the_learned_table_is_used_when_configured_and_present(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    use_store(monkeypatch, tmp_path)
     write_rows(tmp_path, "proj_baseline", [projection_row(2025, 1, False, 10.0)])
     write_rows(tmp_path, "proj_learned", [projection_row(2025, 1, False, 12.0)])
     configured(monkeypatch, "learned")
-    assert store.projection_name() == "proj_learned"
-    assert store.projection_table()["projection"].to_list() == [12.0]
+    assert store.projection_name(tmp_path) == "proj_learned"
+    assert store.projection_table(tmp_path)["projection"].to_list() == [12.0]
     configured(monkeypatch, "baseline")
-    assert store.projection_name() == "proj_baseline"
-    assert store.projection_table()["projection"].to_list() == [10.0]
+    assert store.projection_name(tmp_path) == "proj_baseline"
+    assert store.projection_table(tmp_path)["projection"].to_list() == [10.0]
 
 
 def test_early_learned_history_is_left_out_because_those_models_saw_later_seasons(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    use_store(monkeypatch, tmp_path)
     rows = [
         projection_row(2019, 3, False, 1.0),
         projection_row(2020, 3, False, 2.0),
@@ -63,7 +60,7 @@ def test_early_learned_history_is_left_out_because_those_models_saw_later_season
     ]
     write_rows(tmp_path, "proj_learned", rows)
     configured(monkeypatch, "learned")
-    out = store.projection_table()
+    out = store.projection_table(tmp_path)
     assert sorted(out["projection"].to_list()) == [3.0, 4.0]
 
 
@@ -104,7 +101,7 @@ def test_a_switched_off_environment_layer_returns_the_projections_untouched(
     off = Config(**{**config.__dict__, "environment_layer": False})
     monkeypatch.setattr(simulate, "load_config", lambda: off)
     projections = pl.DataFrame({"gsis_id": ["A"], "week": [7], "projection": [10.0]})
-    out = simulate._apply_environment(projections, 7, None, {})
+    out = simulate._apply_environment(projections, 7, None, {}, data_dir=None)
     assert out.equals(projections)
 
 
@@ -115,13 +112,16 @@ def test_size_calibration_is_skipped_for_the_learned_projection_and_kept_for_the
 
     from fantasy.stages.distributions import calibrated
 
-    use_store(monkeypatch, tmp_path)
     write_rows(tmp_path, "proj_baseline", [projection_row(2025, 1, False, 10.0)])
     write_rows(tmp_path, "proj_learned", [projection_row(2025, 1, False, 10.0)])
     curve = {"league_id": "L", "position": "WR", "center": 10.0, "factor": 0.5, "n": 100}
     write_rows(tmp_path, "projection_calibration", [curve])
     frame = pl.DataFrame({"league_id": ["L"], "position": ["WR"], "projection": [10.0]})
     configured(monkeypatch, "learned")
-    assert calibrated(frame)["projection"].to_list() == [10.0]  # the learned model is calibrated
+    assert calibrated(frame, tmp_path)["projection"].to_list() == [
+        10.0
+    ]  # the learned model is calibrated
     configured(monkeypatch, "baseline")
-    assert calibrated(frame)["projection"].to_list() == [5.0]  # the baseline over-projects
+    assert calibrated(frame, tmp_path)["projection"].to_list() == [
+        5.0
+    ]  # the baseline over-projects

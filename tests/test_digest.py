@@ -10,7 +10,6 @@ from store_fixture import write_rows
 from test_league_view import LID, league  # noqa: F401  (league is a fixture)
 
 from fantasy import _digest, data_api, store
-from fantasy._engine import viewing_team
 from fantasy.stages import digest as stage
 
 AT = "2026-10-25T08:00:00+00:00"
@@ -78,8 +77,7 @@ def test_last_week_waits_for_the_last_nfl_game_of_the_current_week(league: Path)
 
 
 def test_data_api_last_week_follows_the_viewed_team(league: Path) -> None:
-    with viewing_team(3):
-        row = data_api.last_week("t", league).row(0, named=True)
+    row = data_api.last_week("t", league, team=3).row(0, named=True)
     assert row["team_name"] == "T3" and row["opponent"] == "T1"
     assert data_api.last_week("nope", league).columns == data_api.last_week("t", league).columns
 
@@ -218,9 +216,8 @@ def test_move_ideas_filters_by_kind_and_orders_by_rank(league: Path) -> None:
 def test_move_ideas_are_empty_for_another_team_and_without_the_table(league: Path) -> None:
     assert data_api.move_ideas("t", "waiver", league).is_empty()  # stage never ran
     write_rows(league, "move_ideas", idea_rows())
-    with viewing_team(3):
-        assert data_api.move_ideas("t", "waiver", league).is_empty()
-        assert not data_api.ideas_are_mine("t", league)
+    assert data_api.move_ideas("t", "waiver", league, team=3).is_empty()
+    assert not data_api.ideas_are_mine("t", league, team=3)
     assert data_api.ideas_are_mine("t", league)
 
 

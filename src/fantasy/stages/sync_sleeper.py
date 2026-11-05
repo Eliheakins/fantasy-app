@@ -264,7 +264,7 @@ def run(cfg: Config) -> dict[str, int]:
     return counts
 
 
-def sync_week(week: int, data_dir: Path = store.DATA_DIR) -> int:
+def sync_week(week: int, data_dir: Path | None = None) -> int:
     """Re-fetch one week's matchups for every league and replace those rows (two API calls).
 
     Used for live scores during games; the full sync stays `run`. Returns the player rows."""

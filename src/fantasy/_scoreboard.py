@@ -4,6 +4,7 @@ One joint draw covers the starters of all matchups, so a matchup's two totals co
 same draws. Teams play the lineup set in Sleeper (current week) or their best lineup.
 """
 
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -53,9 +54,13 @@ def _final_stats(points: float) -> Stats:
 
 
 def _past_week(
-    data: LeagueData, mine: int, week: int, matchup_of: dict[int, int | None]
+    data: LeagueData,
+    mine: int,
+    week: int,
+    matchup_of: dict[int, int | None],
+    data_dir: Path | None,
 ) -> list[dict[str, Any]]:
-    played = store.read_table("matchups", "raw").filter(
+    played = store.read_table("matchups", "raw", data_dir).filter(
         (pl.col("league_id") == data.league_id) & (pl.col("week") == week)
     )
     score = dict(zip(played["roster_id"], played["points"], strict=True))
@@ -70,13 +75,17 @@ def _past_week(
 
 
 def _totals(
-    data: LeagueData, week: int, lineups: dict[int, list[str]], n_sims: int
+    data: LeagueData,
+    week: int,
+    lineups: dict[int, list[str]],
+    n_sims: int,
+    data_dir: Path | None,
 ) -> dict[int, np.ndarray]:
     """Each team's points for the week (scored so far plus the draw for what is left)."""
     ids = sorted({i for lineup in lineups.values() for i in lineup})
     positions, values = moves.position_of(data), moves.week_values(data).get(week, {})
     points, column = (
-        _week_points(data, ids, positions, values, week, n_sims)
+        _week_points(data, ids, positions, values, week, n_sims, data_dir)
         if ids
         else (np.zeros((n_sims, 0)), {})
     )
@@ -117,14 +126,17 @@ def _projected_week(
     week: int,
     matchup_of: dict[int, int | None],
     n_sims: int,
+    data_dir: Path | None,
 ) -> list[dict[str, Any]]:
     pairs = data.pairings[week]
     positions, values = moves.position_of(data), moves.week_values(data).get(week, {})
     slots = lineup_slots(data.roster_positions)
     lineups = {
-        t: _opponent_lineup(data, t, week, positions, values, slots) for pair in pairs for t in pair
+        t: _opponent_lineup(data, t, week, positions, values, slots, data_dir)
+        for pair in pairs
+        for t in pair
     }
-    totals = _totals(data, week, lineups, n_sims)
+    totals = _totals(data, week, lineups, n_sims, data_dir)
     current = week == data.current_week
     rows = []
     for a, b in pairs:
@@ -143,7 +155,11 @@ def _projected_week(
 
 
 def scoreboard_of(
-    data: LeagueData, mine: int, week: int = 0, n_sims: int = SCOREBOARD_SIMS
+    data: LeagueData,
+    mine: int,
+    week: int = 0,
+    n_sims: int = SCOREBOARD_SIMS,
+    data_dir: Path | None = None,
 ) -> pl.DataFrame:
     """One row per matchup of `week` (0: the current week), my matchup first.
 
@@ -154,13 +170,13 @@ def scoreboard_of(
     placeholder = week > data.current_week and week >= data.playoff_start
     if not data.pairings.get(week) or placeholder:
         return pl.DataFrame(schema=ENGINE_SCHEMAS["scoreboard"])
-    table = store.read_table("matchups", "raw").filter(
+    table = store.read_table("matchups", "raw", data_dir).filter(
         (pl.col("league_id") == data.league_id) & (pl.col("week") == week)
     )
     matchup_of = dict(zip(table["roster_id"], table["matchup_id"], strict=True))
     if week < data.current_week:
-        rows = _past_week(data, mine, week, matchup_of)
+        rows = _past_week(data, mine, week, matchup_of, data_dir)
     else:
-        rows = _projected_week(data, mine, week, matchup_of, n_sims)
+        rows = _projected_week(data, mine, week, matchup_of, n_sims, data_dir)
     rows.sort(key=lambda r: (not (r["a_is_me"] or r["b_is_me"]), r["matchup_id"] or 0))
     return pl.DataFrame(rows, schema=ENGINE_SCHEMAS["scoreboard"])

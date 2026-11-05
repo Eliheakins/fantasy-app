@@ -1,7 +1,8 @@
 """Engine internals behind data_api: shared table reads, joint draws and injury notes.
 
-Nothing here calls `data_api.leagues`, so the patch seams tests use on `data_api` are not bypassed.
-Tables read here are required: a missing one raises FileNotFoundError.
+Every read takes the data directory it should read (`None`: the project data folder, looked up at
+call time), and the viewed team is an argument too: nothing here is ambient except the pinned data
+version a job runs under. Tables read here are required: a missing one raises FileNotFoundError.
 """
 
 from collections.abc import Iterator
@@ -30,7 +31,7 @@ LINEUP_SEED = 11
 KD_SEED_OFFSET = 1000  # K and DEF draws are independent of the player draws
 
 
-def _read(name: str, data_dir: Path, area: str = "raw") -> pl.DataFrame:
+def _read(name: str, data_dir: Path | None, area: str = "raw") -> pl.DataFrame:
     """An optional table, or an empty frame with its columns if no stage has written it yet.
 
     Core tables go through `store.read_table` directly so that a missing one raises."""
@@ -54,30 +55,30 @@ def _clock_bucket(kicks: dict[str, datetime], now: datetime) -> str:
     return f"@{int(now.timestamp() // (LIVE_BUCKET_MINUTES * 60))}"
 
 
-def _live_bucket() -> str:
+def _live_bucket(data_dir: Path | None) -> str:
     try:
-        leagues = store.read_table("leagues", "raw", store.DATA_DIR)
-        schedules = store.read_table("nfl_schedules", "raw", store.DATA_DIR)
+        leagues = store.read_table("leagues", "raw", data_dir)
+        schedules = store.read_table("nfl_schedules", "raw", data_dir)
         week = int(leagues["current_week"].max())  # type: ignore[arg-type]
     except FileNotFoundError:
         return ""
     return _clock_bucket(kickoffs(schedules, load_config().season, week), datetime.now(UTC))
 
 
-def data_version() -> str:
-    """Latest mtime (ns) and total size of the parquet files under data/raw and data/derived,
-    read through `store.DATA_DIR` now, plus a clock bucket while games are on. Changes whenever a
-    stage rewrites a table or the live clock moves on."""
-    stats = [
-        p.stat() for area in ("raw", "derived") for p in (store.DATA_DIR / area).glob("*.parquet")
-    ]
+def data_version(data_dir: Path | None = None) -> str:
+    """Latest mtime (ns) and total size of the parquet files under raw/ and derived/ of the data
+    directory, plus a clock bucket while games are on. Changes whenever a stage rewrites a table
+    or the live clock moves on."""
+    root = store.resolve(data_dir)
+    stats = [p.stat() for area in ("raw", "derived") for p in (root / area).glob("*.parquet")]
     if not stats:
         return "0-0"
-    return f"{max(s.st_mtime_ns for s in stats)}-{sum(s.st_size for s in stats)}{_live_bucket()}"
+    return (
+        f"{max(s.st_mtime_ns for s in stats)}-{sum(s.st_size for s in stats)}{_live_bucket(root)}"
+    )
 
 
 _PINNED_VERSION: ContextVar[str | None] = ContextVar("pinned_version", default=None)
-_VIEWED_TEAM: ContextVar[int | None] = ContextVar("viewed_team", default=None)
 _BUILD_LOCKS: dict[tuple[str, str], Lock] = {}  # one per (league, data dir): bounded by leagues
 _BUILD_LOCKS_GUARD = Lock()
 
@@ -92,35 +93,21 @@ def pinned_version(version: str) -> Iterator[None]:
         _PINNED_VERSION.reset(token)
 
 
-@contextmanager
-def viewing_team(roster_id: int | None) -> Iterator[None]:
-    """Treat this roster as "my team" for everything read in this context (None: the real me).
-
-    A ContextVar is not inherited by worker threads: set it again inside the job."""
-    token = _VIEWED_TEAM.set(roster_id)
-    try:
-        yield
-    finally:
-        _VIEWED_TEAM.reset(token)
-
-
-def viewed_team() -> int | None:
-    return _VIEWED_TEAM.get()
-
-
-def _league(league_key: str) -> tuple[LeagueData, int]:
-    """Simulation inputs for one league and "my" roster id (the viewed team if one is set),
-    built once per data version.
+def _league(
+    league_key: str, data_dir: Path | None, team: int | None = None
+) -> tuple[LeagueData, int]:
+    """Simulation inputs for one league and "my" roster id (`team` if given, else the Sleeper
+    is_me team), built once per data version and directory.
 
     Shared across threads: treat it as read-only (nothing in the engine mutates it)."""
-    version = _PINNED_VERSION.get() or data_version()
-    data, mine = _league_cached(league_key, version, str(store.DATA_DIR))
-    viewed = _VIEWED_TEAM.get()
-    if viewed is None:
+    root = store.resolve(data_dir)
+    version = _PINNED_VERSION.get() or data_version(root)
+    data, mine = _league_cached(league_key, version, str(root))
+    if team is None:
         return data, mine
-    if viewed not in data.roster_ids:
-        raise ValueError(f"unknown team {viewed} in league {league_key!r}")
-    return data, viewed
+    if team not in data.roster_ids:
+        raise ValueError(f"unknown team {team} in league {league_key!r}")
+    return data, team
 
 
 # used by the API refresh route and tests
@@ -138,59 +125,66 @@ def _league_cached(league_key: str, version: str, data_dir: str) -> tuple[League
 
 @lru_cache(maxsize=LEAGUE_CACHE_SIZE)
 def _build_league(league_key: str, version: str, data_dir: str) -> tuple[LeagueData, int]:
-    """Build the league; `version` and `data_dir` are only cache key parts."""
+    """Build the league from `data_dir`; `version` only keys the cache."""
     from fantasy.stages.simulate import load_league_data  # heavy imports, only when asked
 
-    row = store.read_table("leagues", "raw").filter(pl.col("league_key") == league_key)
+    root = Path(data_dir)
+    row = store.read_table("leagues", "raw", root).filter(pl.col("league_key") == league_key)
     if row.is_empty():
         raise ValueError(f"unknown league {league_key!r}")
     league = row.row(0, named=True)
-    teams = store.read_table("league_teams", "raw")
+    teams = store.read_table("league_teams", "raw", root)
     mine = teams.filter((pl.col("league_id") == league["league_id"]) & pl.col("is_me"))
     if mine.is_empty():
         raise ValueError(
             f"no team is marked is_me in league {league_key!r}; set user_id in config.toml "
             "and run `make refresh`"
         )
-    return load_league_data(league, strict=False), int(mine["roster_id"][0])
+    return load_league_data(league, strict=False, data_dir=root), int(mine["roster_id"][0])
 
 
-def _id_map(*extra: str) -> pl.DataFrame:
+def _id_map(data_dir: Path | None, *extra: str) -> pl.DataFrame:
     """Sleeper to nflverse ids, plus any other `id_map` columns asked for."""
-    return store.read_table("id_map", "derived").select("sleeper_id", "gsis_id", *extra)
+    return store.read_table("id_map", "derived", data_dir).select("sleeper_id", "gsis_id", *extra)
 
 
-def _gsis_players(player_column: str, *id_columns: str) -> pl.DataFrame:
+def _gsis_players(data_dir: Path | None, player_column: str, *id_columns: str) -> pl.DataFrame:
     """Players with an nflverse id: gsis_id, any extra `id_map` columns, and `player_column`."""
-    players = store.read_table("sleeper_players", "raw").select("sleeper_id", player_column)
+    players = store.read_table("sleeper_players", "raw", data_dir).select(
+        "sleeper_id", player_column
+    )
     return (
-        _id_map(*id_columns).join(players, on="sleeper_id").filter(pl.col("gsis_id").is_not_null())
+        _id_map(data_dir, *id_columns)
+        .join(players, on="sleeper_id")
+        .filter(pl.col("gsis_id").is_not_null())
     )
 
 
-def _names() -> dict[str, str]:
+def _names(data_dir: Path | None) -> dict[str, str]:
     """nflverse ID -> player name."""
-    joined = _gsis_players("full_name")
+    joined = _gsis_players(data_dir, "full_name")
     return dict(zip(joined["gsis_id"], joined["full_name"], strict=True))
 
 
-def _set_starters(league_id: str, week: int, roster_id: int) -> list[str]:
+def _set_starters(league_id: str, week: int, roster_id: int, data_dir: Path | None) -> list[str]:
     """nflverse ids of the players a team has set as starters in Sleeper for a week."""
     return (
-        store.read_table("matchup_players", "raw")
+        store.read_table("matchup_players", "raw", data_dir)
         .filter(
             (pl.col("league_id") == league_id)
             & (pl.col("week") == week)
             & (pl.col("roster_id") == roster_id)
             & pl.col("is_starter")
         )
-        .join(_id_map(), on="sleeper_id")["gsis_id"]
+        .join(_id_map(data_dir), on="sleeper_id")["gsis_id"]
         .to_list()
     )
 
 
-def _marginals(league_id: str) -> pl.DataFrame:
-    return store.read_table("marginals", "derived").filter(pl.col("league_id") == league_id)
+def _marginals(league_id: str, data_dir: Path | None) -> pl.DataFrame:
+    return store.read_table("marginals", "derived", data_dir).filter(
+        pl.col("league_id") == league_id
+    )
 
 
 def _pool(
@@ -255,15 +249,15 @@ def _injury_note(data: LeagueData, gsis_id: str) -> str | None:
 
 
 def _status_and_locks(
-    week: int, current_week: int, now: datetime | None = None
+    week: int, current_week: int, now: datetime | None = None, *, data_dir: Path | None
 ) -> tuple[dict[str, str], set[str]]:
     """Injury status by nflverse ID, and ids whose game has started (current week only)."""
-    joined = _gsis_players("injury_status", "nfl_team")
+    joined = _gsis_players(data_dir, "injury_status", "nfl_team")
     status = {g: s for g, s in zip(joined["gsis_id"], joined["injury_status"], strict=True) if s}
     if week != current_week:
         return status, set()
     started = locked_teams(
-        store.read_table("nfl_schedules", "raw"),
+        store.read_table("nfl_schedules", "raw", data_dir),
         load_config().season,
         week,
         now or datetime.now(UTC),
@@ -313,9 +307,10 @@ def _opponent_lineup(
     positions: dict[str, str],
     values: dict[str, float],
     slots: list[str],
+    data_dir: Path | None,
 ) -> list[str]:
     """Skill players the opponent starts: set in Sleeper if known, else their best lineup."""
-    known = [i for i in _set_starters(data.league_id, week, opp) if i in positions]
+    known = [i for i in _set_starters(data.league_id, week, opp, data_dir) if i in positions]
     if week == data.current_week and known:
         return known
     return sorted(auto_lineup(_pool(data, opp, positions, values), slots).players)
@@ -330,11 +325,12 @@ def _draw_points(
     tier_means: dict[str, float],
     week: int,
     n_sims: int,
+    data_dir: Path | None,
 ) -> np.ndarray:
     """Joint draws for `ids` this week: marginals and correlations measured in this league.
     `values` are expected points, `plays` each player's chance of playing, and `tier_means` his
     full-game points when he plays, which picks the floor-and-ceiling shape his size has."""
-    base = store.read_table(store.projection_name(), "derived").filter(
+    base = store.read_table(store.projection_name(data_dir), "derived", data_dir).filter(
         (pl.col("league_id") == data.league_id) & (pl.col("week") == week) & pl.col("is_future")
     )
     base = base.with_columns(
@@ -356,20 +352,20 @@ def _draw_points(
         tuple(plays.get(i, 1.0) for i in ids),
     )
 
-    pairs = store.read_table("correlation_pairs", "derived").filter(
+    pairs = store.read_table("correlation_pairs", "derived", data_dir).filter(
         pl.col("league_id") == data.league_id
     )
     rho: dict[str, dict[tuple[str, str], float]] = {"same_team": {}, "opposing": {}}
     for relation, a, b, r in pairs.select("relation", "role_a", "role_b", "rho").iter_rows():
         rho[relation][(a, b)] = rho[relation][(b, a)] = r
-    schedule = store.read_table("nfl_schedules", "raw").filter(
+    schedule = store.read_table("nfl_schedules", "raw", data_dir).filter(
         (pl.col("season") == load_config().season) & (pl.col("week") == week)
     )
     opponent_of = {
         **dict(zip(schedule["home_team"], schedule["away_team"], strict=True)),
         **dict(zip(schedule["away_team"], schedule["home_team"], strict=True)),
     }
-    marginals = _marginals(data.league_id)
+    marginals = _marginals(data.league_id, data_dir)
     ratios = {
         (position if tier < 0 else f"{position}:{tier}"): g.sort("tau")["ratio"].to_numpy()
         for (position, tier), g in marginals.group_by("position", "tier")
@@ -396,6 +392,7 @@ def _week_points(
     values: dict[str, float],
     week: int,
     n_sims: int,
+    data_dir: Path | None,
 ) -> tuple[np.ndarray, dict[str, int]]:
     """Joint points draws for `ids` in `week` (live points added in the current week), and each
     id's column in the draws."""
@@ -412,7 +409,7 @@ def _week_points(
         i: (tier_means[i] if share[k] < 1.0 else values.get(i, 0.0)) * share[k]
         for k, i in enumerate(ids)
     }
-    drawn = _draw_points(data, ids, positions, scaled, plays, tier_means, week, n_sims)
+    drawn = _draw_points(data, ids, positions, scaled, plays, tier_means, week, n_sims, data_dir)
     return drawn + actual, {i: j for j, i in enumerate(ids)}
 
 

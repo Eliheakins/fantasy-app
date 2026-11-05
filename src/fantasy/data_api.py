@@ -3,8 +3,11 @@
 Optional tables that no stage has written yet come back empty with the right columns. Core
 tables (the ones whose emptiness would fabricate defaults) raise FileNotFoundError instead.
 The engines live in private sibling modules (`_lineup`, `_market`, `_outlook`, `_engine`) and are
-re-exported here. Functions that call `leagues` stay in this module so that a test patching
-`data_api.leagues` reaches every caller.
+re-exported here.
+
+Every read takes `data_dir` (None: the project data folder, looked up at call time). Functions
+about "my team" also take `team`, a roster id that stands in for my team (None: the Sleeper
+is_me team). The API passes both from its request context.
 """
 
 import json
@@ -18,7 +21,7 @@ from typing import Any
 import polars as pl
 
 from fantasy import _digest, _league_view, _season_events, store
-from fantasy._engine import _league, _names, _opponent_of, _read, viewed_team
+from fantasy._engine import _league, _names, _opponent_of, _read
 from fantasy._engine import _tier as _tier  # re-exported: tests import it from here
 from fantasy._engine import _tier_edges as _tier_edges
 from fantasy._lineup import lineup, win_probability
@@ -128,7 +131,7 @@ def scoring_labels(scoring: dict[str, float], roster_positions: list[str]) -> li
     return labels
 
 
-def leagues(data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def leagues(data_dir: Path | None = None) -> pl.DataFrame:
     """One row per league with my team, record and scoring labels."""
     mine = _read("league_teams", data_dir).filter(pl.col("is_me"))
     joined = _read("leagues", data_dir).join(mine, on="league_id", how="left")
@@ -154,42 +157,43 @@ def leagues(data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
     )
 
 
-def watchlist(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def watchlist(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """My players with a falling snap share or market value, or an injury flag, and why."""
-    return _watchlist(league_key, data_dir)
+    return _watchlist(league_key, data_dir, team)
 
 
 def market_values(
-    league_key: str, gsis_ids: list[str], data_dir: Path = store.DATA_DIR
+    league_key: str, gsis_ids: list[str], data_dir: Path | None = None
 ) -> pl.DataFrame:
     """Market values (FantasyCalc) for players in a league's setting; empty without the table."""
     return _market_values(league_key, gsis_ids, data_dir)
 
 
 def trade_market(
-    league_key: str, trades: list[tuple[list[str], list[str]]], data_dir: Path = store.DATA_DIR
+    league_key: str, trades: list[tuple[list[str], list[str]]], data_dir: Path | None = None
 ) -> list[dict[str, Any] | None]:
     """Per (give_ids, get_ids): market value each side, a hint and the values' date; None for
     every trade when the values table is missing."""
     return _trade_market(league_key, trades, data_dir)
 
 
-def _my_league(league_key: str, data_dir: Path | None = None) -> dict[str, Any] | None:
-    """My row in `leagues` for a league key, or None if it is not there. Looks `leagues` up in
-    this module at call time, so a test that patches `data_api.leagues` reaches every caller."""
-    rows = (leagues() if data_dir is None else leagues(data_dir)).filter(
-        pl.col("league_key") == league_key
-    )
+def _my_league(
+    league_key: str, data_dir: Path | None, team: int | None = None
+) -> dict[str, Any] | None:
+    """My row in `leagues` for a league key (the `team` roster's if given), or None if the league
+    is not there."""
+    rows = leagues(data_dir).filter(pl.col("league_key") == league_key)
     if rows.is_empty():
         return None
     row = rows.row(0, named=True)
-    viewed = viewed_team()
-    return row if viewed is None else {**row, **_team_fields(row["league_id"], viewed, data_dir)}
+    return row if team is None else {**row, **_team_fields(row["league_id"], team, data_dir)}
 
 
 def _team_fields(league_id: str, roster_id: int, data_dir: Path | None) -> dict[str, Any]:
     """The `leagues` columns that describe a team, for the team being viewed."""
-    team = _read("league_teams", data_dir or store.DATA_DIR).filter(
+    team = _read("league_teams", data_dir).filter(
         (pl.col("league_id") == league_id) & (pl.col("roster_id") == roster_id)
     )
     if team.is_empty():
@@ -197,7 +201,7 @@ def _team_fields(league_id: str, roster_id: int, data_dir: Path | None) -> dict[
     return team.select(TEAM_COLUMNS).row(0, named=True)
 
 
-def teams(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def teams(league_key: str, data_dir: Path | None = None) -> pl.DataFrame:
     """Every team in a league, for the team selector: id, name, record, and which one is me."""
     league = leagues(data_dir).filter(pl.col("league_key") == league_key)
     if league.is_empty():
@@ -210,10 +214,10 @@ def teams(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
     )
 
 
-def roster(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def roster(league_key: str, data_dir: Path | None = None, team: int | None = None) -> pl.DataFrame:
     """My roster in a league: starters first, then by position."""
     schema = {c: store.SCHEMAS["sleeper_players"].get(c, pl.Boolean) for c in ROSTER_COLUMNS}
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         return pl.DataFrame(schema=schema)
     mine = _read("rosters", data_dir).filter(
@@ -230,7 +234,7 @@ def roster(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
     )
 
 
-def unmatched(data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def unmatched(data_dir: Path | None = None) -> pl.DataFrame:
     """Active non-DEF players with no nflverse ID (shown as "no history")."""
     id_map = _read("id_map", data_dir, area="derived").select("sleeper_id", "gsis_id")
     return (
@@ -245,9 +249,11 @@ def unmatched(data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
     )
 
 
-def season_odds(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def season_odds(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """Latest simulated playoff and title odds for every team, best title odds first."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         return pl.DataFrame(schema=ENGINE_SCHEMAS["season_odds"])
     odds = _read("sim_season", data_dir, area="derived").filter(
@@ -260,25 +266,31 @@ def season_odds(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFram
     )
 
 
-def win_needs(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def win_needs(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """The viewed team's playoff odds by wins in its next games; empty until simulate has run."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         return pl.DataFrame(schema=ENGINE_SCHEMAS["win_needs"])
     return _league_view.win_needs(me, data_dir)
 
 
-def season_events(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def season_events(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """Trades, injuries to starters and big weeks of the viewed team, placed on saved runs."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         return pl.DataFrame(schema=_season_events.COLUMNS)
     return _season_events.season_events(me, data_dir)
 
 
-def odds_history(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def odds_history(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """Every saved simulation run for a league: run_at, its week, team_name, p_playoffs, p_title."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     columns = ["run_at", "team_name", "roster_id", "p_playoffs", "p_title", "as_of_week"]
     if me is None:
         return pl.DataFrame(schema={c: store.SCHEMAS["sim_season_history"][c] for c in columns})
@@ -286,130 +298,154 @@ def odds_history(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFra
     return history.filter(pl.col("league_id") == me["league_id"]).select(columns)
 
 
-def power_rankings(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def power_rankings(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """Teams by expected score this week, with season odds and remaining schedule strength."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         return pl.DataFrame(schema=ENGINE_SCHEMAS["power_rankings"])
     return _league_view.power_rankings(me, data_dir)
 
 
-def team_grades(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def team_grades(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """Every team's value over replacement by position, ranked and graded (A to F)."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         return pl.DataFrame(schema=ENGINE_SCHEMAS["team_grades"])
-    data, _ = _league(league_key)
+    data, _ = _league(league_key, data_dir, team)
     valuer = moves.Valuer(data)
     strength = moves.position_strength(data, valuer)
     return _league_view.team_grades(me, strength, position_depth(data, valuer), data_dir)
 
 
-def luck(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def luck(league_key: str, data_dir: Path | None = None, team: int | None = None) -> pl.DataFrame:
     """Actual wins against the wins the all-play record predicts, luckiest first."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         return pl.DataFrame(schema=ENGINE_SCHEMAS["luck"])
     return _league_view.luck(me, data_dir)
 
 
-def manager_grades(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def manager_grades(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """Points started against the best lineup in hindsight, most efficient first."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         return pl.DataFrame(schema=ENGINE_SCHEMAS["manager_grades"])
     return _league_view.manager_grades(me, data_dir)
 
 
-def last_week(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def last_week(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """The viewed team's game last week: opponent, points, result, bench points left and luck
     that week. Empty in week 1."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         return pl.DataFrame(schema=ENGINE_SCHEMAS["last_week"])
     return _digest.last_week(me, data_dir)
 
 
 def player_vs_projection(
-    league_key: str, week: int = 0, data_dir: Path = store.DATA_DIR
+    league_key: str, week: int = 0, data_dir: Path | None = None, team: int | None = None
 ) -> pl.DataFrame:
     """Points against the last projection snapshot for the viewed team's skill starters in a week
     (0 is last week), biggest miss first; null projection where no snapshot exists."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         return pl.DataFrame(schema=ENGINE_SCHEMAS["player_vs_projection"])
     return _digest.player_vs_projection(me, week, data_dir)
 
 
-def odds_change(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def odds_change(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """Season odds in the latest run against the last run of an earlier as_of_week; the change
     columns are null when there is none."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         return pl.DataFrame(schema=ENGINE_SCHEMAS["odds_change"])
     history = _read("sim_season_history", data_dir, area="archive")
     return _digest.odds_change(history, me["league_id"], me["roster_id"])
 
 
-def move_ideas(league_key: str, kind: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def move_ideas(
+    league_key: str, kind: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """Waiver ("waiver") or trade ("trade") ideas stored by the digest stage, best first. Empty
     when another team is being viewed: the stage stores ideas for my team only."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         return pl.DataFrame(schema=store.SCHEMAS["move_ideas"])
     return _digest.move_ideas(me, kind, data_dir)
 
 
-def ideas_are_mine(league_key: str, data_dir: Path = store.DATA_DIR) -> bool:
+def ideas_are_mine(league_key: str, data_dir: Path | None = None, team: int | None = None) -> bool:
     """The viewed team is my own, so stored move ideas apply to it."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     return me is not None and _digest.is_my_team(me, data_dir)
 
 
-def stored_adds(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def stored_adds(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """Stored waiver ideas shaped like `waivers`, to pass to `actions(adds=...)`."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         return pl.DataFrame(schema=ENGINE_SCHEMAS["waivers"])
     return _digest.stored_adds(me, data_dir)
 
 
-def what_if(league_key: str, week: int = 0, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def what_if(
+    league_key: str, week: int = 0, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """My change in playoff and title odds for each outcome of each matchup in a week (0 is the
     current week). Empty for completed and playoff weeks."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         return pl.DataFrame(schema=ENGINE_SCHEMAS["what_if"])
     return _league_view.what_if(me, week, data_dir)
 
 
-def seed_distribution(league_key: str) -> pl.DataFrame:
+def seed_distribution(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """Chance my team finishes each regular-season seed (1 is best): columns seed, p."""
-    me = _my_league(league_key)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         return pl.DataFrame(schema={"seed": pl.Int64, "p": pl.Float64})
-    seeds = _read("sim_seeds", store.DATA_DIR, area="derived")
+    seeds = _read("sim_seeds", data_dir, area="derived")
     mine = seeds.filter(
         (pl.col("league_id") == me["league_id"]) & (pl.col("roster_id") == me["roster_id"])
     )
     return mine.select("seed", "p").sort("seed")
 
 
-def streamers(league_key: str, kind: str, top_n: int = 8) -> pl.DataFrame:
+def streamers(
+    league_key: str,
+    kind: str,
+    top_n: int = 8,
+    data_dir: Path | None = None,
+    team: int | None = None,
+) -> pl.DataFrame:
     """Best free K or DEF over the next weeks, plus mine for comparison. kind is "K" or "DEF"."""
     from fantasy.stages.crosswalk import TEAM_MAP
 
-    me = _my_league(league_key)
+    me = _my_league(league_key, data_dir, team)
     if me is None or kind not in ("K", "DEF"):
         return pl.DataFrame(schema=ENGINE_SCHEMAS["streamers"])
     lid, current, mine = me["league_id"], int(me["current_week"]), me["roster_id"]
     proj = (
-        _read("streaming_projection", store.DATA_DIR, area="derived")
+        _read("streaming_projection", data_dir, area="derived")
         .filter((pl.col("league_id") == lid) & (pl.col("kind") == kind))
         .filter(pl.col("week") < current + STREAM_WEEKS)
     )
-    rostered = _read("rosters", store.DATA_DIR).filter(pl.col("league_id") == lid)
-    players = _read("sleeper_players", store.DATA_DIR).select("sleeper_id", "full_name", "position")
+    rostered = _read("rosters", data_dir).filter(pl.col("league_id") == lid)
+    players = _read("sleeper_players", data_dir).select("sleeper_id", "full_name", "position")
     if kind == "DEF":
         owned = rostered.join(players, on="sleeper_id").filter(pl.col("position") == "DEF")
         owned = owned.with_columns(
@@ -419,10 +455,10 @@ def streamers(league_key: str, kind: str, top_n: int = 8) -> pl.DataFrame:
         )
         name = {u: f"{u} D/ST" for u in proj["unit"].unique()}
     else:
-        id_map = _read("id_map", store.DATA_DIR, area="derived").select("sleeper_id", "gsis_id")
+        id_map = _read("id_map", data_dir, area="derived").select("sleeper_id", "gsis_id")
         owned = rostered.join(id_map, on="sleeper_id").join(players, on="sleeper_id")
         owned = owned.filter(pl.col("position") == "K").rename({"gsis_id": "unit"})
-        name = _names()
+        name = _names(data_dir)
     mine_units = set(owned.filter(pl.col("roster_id") == mine)["unit"])
     taken_units = set(owned["unit"]) - mine_units
     totals = proj.group_by("unit", "team").agg(
@@ -455,6 +491,8 @@ def actions(
     n: int = 3,
     odds: pl.DataFrame | None = None,
     adds: pl.DataFrame | None = None,
+    data_dir: Path | None = None,
+    team: int | None = None,
 ) -> pl.DataFrame:
     """The most useful things to do now, most urgent first: kind and text.
 
@@ -462,8 +500,8 @@ def actions(
     `win_probability` result to reuse; `adds` a `waivers`-shaped frame (see `stored_adds`) that
     skips the waiver re-simulation.
     """
-    loaded = _league(league_key)
-    rows = lineup(league_key, loaded=loaded)
+    loaded = _league(league_key, data_dir, team)
+    rows = lineup(league_key, loaded=loaded, data_dir=data_dir, team=team)
     found: list[tuple[str, str]] = []
     if not rows.is_empty():
         for r in rows.filter(pl.col("starting_now") & ~pl.col("locked")).iter_rows(named=True):
@@ -482,7 +520,7 @@ def actions(
                 ("Lineup", f"Start {', '.join(start)} over {', '.join(sit)} (+{gap:.1f} points)")
             )
     if odds is None:
-        odds = win_probability(league_key, loaded=loaded)
+        odds = win_probability(league_key, loaded=loaded, data_dir=data_dir, team=team)
     if not odds.is_empty():
         by_option = {r["option"]: r for r in odds.iter_rows(named=True)}
         pick, best = by_option["win_prob"], by_option["max_points"]
@@ -498,7 +536,7 @@ def actions(
                 )
             )
     if adds is None:
-        adds = waivers(league_key, loaded=loaded)
+        adds = waivers(league_key, loaded=loaded, data_dir=data_dir, team=team)
     if not adds.is_empty():
         top = adds.sort("playoff_delta", descending=True).row(0, named=True)
         if top["playoff_delta"] >= WAIVER_PLAYOFF_GAIN:
@@ -519,19 +557,19 @@ FRESHNESS_SOURCES = (
 )
 
 
-def freshness(now: datetime | None = None) -> pl.DataFrame:
+def freshness(now: datetime | None = None, data_dir: Path | None = None) -> pl.DataFrame:
     """When each data source was last written: source, updated_at (UTC), age_hours."""
     now = now or datetime.now(UTC)
     rows = []
     for label, table, area in FRESHNESS_SOURCES:
-        path = store.table_path(table, area)
+        path = store.table_path(table, area, data_dir)
         if path.exists():
             updated = datetime.fromtimestamp(path.stat().st_mtime, UTC)
             rows.append((label, updated, (now - updated).total_seconds() / 3600))
     return pl.DataFrame(rows, schema=_FRESHNESS_SCHEMA, orient="row")
 
 
-def simulation_behind_inputs(data_dir: Path = store.DATA_DIR) -> str | None:
+def simulation_behind_inputs(data_dir: Path | None = None) -> str | None:
     """A note when the simulation table is older than the Sleeper or NFL inputs (a refresh that
     failed part way leaves mixed vintages), else None."""
     sim = store.table_path("sim_season", "derived", data_dir)
@@ -554,7 +592,7 @@ OPTIONAL_LAYERS = (
 )
 
 
-def missing_layers(data_dir: Path = store.DATA_DIR) -> list[str]:
+def missing_layers(data_dir: Path | None = None) -> list[str]:
     """Names of projection layers the simulation is running without because a stage did not run."""
     config = load_config()
     layers = [
@@ -582,12 +620,12 @@ def missing_layers(data_dir: Path = store.DATA_DIR) -> list[str]:
     return missing
 
 
-def refresh_live() -> int:
+def refresh_live(data_dir: Path | None = None) -> int:
     """Pull this week's matchups from Sleeper again so scores are current. Returns player rows."""
     from fantasy.stages.sync_sleeper import sync_week
 
-    week = int(leagues()["current_week"].to_numpy().max())
-    return sync_week(week)
+    week = int(leagues(data_dir)["current_week"].to_numpy().max())
+    return sync_week(week, data_dir)
 
 
 LIVE_HISTORY = "live_win_history"
@@ -600,18 +638,20 @@ def _open_starters(data: LeagueData, roster_id: int) -> int:
     return len(state.open_players) + math.ceil(state.open_k) + math.ceil(state.open_def)
 
 
-def live_win_row(league_key: str) -> dict[str, Any] | None:
+def live_win_row(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> dict[str, Any] | None:
     """My matchup now (the viewed team's with ?team=): chance to win, points so far, projected
     finals and starters left. Display only, read from the scoreboard and live_score. None when the
     week has no matchup for the team."""
-    data, mine = _league(league_key)
+    data, mine = _league(league_key, data_dir, team)
     opp = _opponent_of(data, mine, data.current_week)
-    board = scoreboard_of(data, mine)
+    board = scoreboard_of(data, mine, data_dir=data_dir)
     if opp is None or board.is_empty() or mine not in data.current or opp not in data.current:
         return None
     first = board.row(0, named=True)
     side = "a" if first["a_is_me"] else "b"
-    score = {r["side"]: r for r in live_score(league_key).iter_rows(named=True)}
+    score = {r["side"]: r for r in live_score(league_key, data_dir, team).iter_rows(named=True)}
     if "me" not in score or "them" not in score:
         return None
     return {
@@ -630,7 +670,7 @@ def live_win_row(league_key: str) -> dict[str, Any] | None:
     }
 
 
-def record_live_tick(now: datetime | None = None) -> None:
+def record_live_tick(now: datetime | None = None, data_dir: Path | None = None) -> None:
     """Append my matchup of each league to live_win_history in one write, once per run_at,
     current week only (a league's older rows go). Called by the live refresh and the Refresh
     scores button, never touches sim_season_history. Any failure is logged and swallowed:
@@ -638,27 +678,27 @@ def record_live_tick(now: datetime | None = None) -> None:
     try:
         run_at = (now or datetime.now(UTC)).isoformat(timespec="seconds")
         found = []
-        for league_key in leagues()["league_key"].to_list():
+        for league_key in leagues(data_dir)["league_key"].to_list():
             try:
-                row = live_win_row(league_key)
+                row = live_win_row(league_key, data_dir)
             except Exception:  # noqa: BLE001 - one league failing must not stop the other
                 log.exception("live history failed for %s", league_key)
                 continue
             if row is not None:
                 found.append({**row, "run_at": run_at})
         if found:
-            _append_live_rows(found)
+            _append_live_rows(found, data_dir)
     except Exception:  # noqa: BLE001
         log.exception("live history failed")
 
 
-def _append_live_rows(rows: list[dict[str, Any]]) -> None:
+def _append_live_rows(rows: list[dict[str, Any]], data_dir: Path | None) -> None:
     schema = store.SCHEMAS[LIVE_HISTORY]
     new = pl.DataFrame([{c: r[c] for c in schema} for r in rows], schema=schema).unique(
         subset=["league_id", "roster_id", "run_at"], keep="last", maintain_order=True
     )
     try:
-        old = store.read_table(LIVE_HISTORY, "derived", store.DATA_DIR)
+        old = store.read_table(LIVE_HISTORY, "derived", data_dir)
     except FileNotFoundError:
         old = new.clear()
     for league_id, week in {(r["league_id"], r["week"]) for r in rows}:
@@ -668,19 +708,21 @@ def _append_live_rows(rows: list[dict[str, Any]]) -> None:
         how="anti",
         on=["league_id", "roster_id", "run_at"],
     )
-    store.write_table(LIVE_HISTORY, pl.concat([old, new]), "derived", store.DATA_DIR)
+    store.write_table(LIVE_HISTORY, pl.concat([old, new]), "derived", data_dir)
 
 
-def game_day(league_key: str) -> dict[str, Any]:
+def game_day(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> dict[str, Any]:
     """The numbers now plus today's history for my team (the viewed team with ?team=).
     `as_of` is when `current` was computed: the chart adds it as the last point, so the line
     and the headline number agree (the win probability is seeded, so it only moves with the data
     and the game clock)."""
-    current = live_win_row(league_key)
+    current = live_win_row(league_key, data_dir, team)
     if current is None:
         return {"week": None, "as_of": None, "current": None, "history": []}
     try:
-        table = store.read_table(LIVE_HISTORY, "derived", store.DATA_DIR)
+        table = store.read_table(LIVE_HISTORY, "derived", data_dir)
     except FileNotFoundError:
         table = pl.DataFrame(schema=store.SCHEMAS[LIVE_HISTORY])
     mine = table.filter(
@@ -697,16 +739,22 @@ def game_day(league_key: str) -> dict[str, Any]:
     }
 
 
-def scoreboard(league_key: str, week: int = 0, n_sims: int = SCOREBOARD_SIMS) -> pl.DataFrame:
+def scoreboard(
+    league_key: str,
+    week: int = 0,
+    n_sims: int = SCOREBOARD_SIMS,
+    data_dir: Path | None = None,
+    team: int | None = None,
+) -> pl.DataFrame:
     """Every matchup of a week with projected totals, ranges and chances to win, my matchup
     first (see `_scoreboard`). `is_me` follows the viewed team."""
-    data, mine = _league(league_key)
-    return scoreboard_of(data, mine, week, n_sims)
+    data, mine = _league(league_key, data_dir, team)
+    return scoreboard_of(data, mine, week, n_sims, data_dir)
 
 
-def scorecard(league_key: str, data_dir: Path = store.DATA_DIR) -> Scorecard:
+def scorecard(league_key: str, data_dir: Path | None = None, team: int | None = None) -> Scorecard:
     """Our archived pre-kickoff projections scored against actual points (see `_scorecard`)."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         raise ValueError(f"unknown league {league_key!r}")
     return scorecard_of(me["league_id"], data_dir)
@@ -726,7 +774,7 @@ def _waiver_day(settings_json: str | None) -> tuple[int | None, bool]:
     return (day if isinstance(day, int) else None), False
 
 
-def week_calendar(data_dir: Path = store.DATA_DIR) -> dict[str, Any]:
+def week_calendar(data_dir: Path | None = None) -> dict[str, Any]:
     """The current NFL week, each team's kickoff (US Eastern) and each league's waiver clear day.
     The week is the highest current week over my leagues, as the live refresh reads it."""
     current = leagues(data_dir)
@@ -760,11 +808,11 @@ def _as_utc(iso: str) -> datetime:
 
 
 def status_changes(
-    league_key: str, since: datetime, data_dir: Path = store.DATA_DIR
+    league_key: str, since: datetime, data_dir: Path | None = None, team: int | None = None
 ) -> pl.DataFrame:
     """My players whose injury status differs between the last daily Sleeper snapshot at or before
     `since` and the latest one. Empty when no snapshot is that old or none is newer."""
-    me = _my_league(league_key, data_dir)
+    me = _my_league(league_key, data_dir, team)
     if me is None:
         raise ValueError(f"unknown league {league_key!r}")
     if since.tzinfo is None:

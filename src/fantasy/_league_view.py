@@ -23,7 +23,7 @@ def _empty(name: str) -> pl.DataFrame:
     return pl.DataFrame(schema=ENGINE_SCHEMAS[name])
 
 
-def _settings(me: dict[str, Any], data_dir: Path) -> dict[str, Any]:
+def _settings(me: dict[str, Any], data_dir: Path | None) -> dict[str, Any]:
     leagues = _read("leagues", data_dir).filter(pl.col("league_id") == me["league_id"])
     return leagues.row(0, named=True)
 
@@ -32,16 +32,16 @@ def _through(me: dict[str, Any], settings: dict[str, Any]) -> int:
     return min(int(me["current_week"]) - 1, int(settings["playoff_week_start"]) - 1)
 
 
-def _teams(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
+def _teams(me: dict[str, Any], data_dir: Path | None) -> pl.DataFrame:
     teams = _read("league_teams", data_dir).filter(pl.col("league_id") == me["league_id"])
     return teams.select("roster_id", "team_name", "is_me")
 
 
-def _matchups(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
+def _matchups(me: dict[str, Any], data_dir: Path | None) -> pl.DataFrame:
     return _read("matchups", data_dir).filter(pl.col("league_id") == me["league_id"])
 
 
-def power_rankings(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
+def power_rankings(me: dict[str, Any], data_dir: Path | None) -> pl.DataFrame:
     odds = _read("sim_season", data_dir, area="derived").filter(
         pl.col("league_id") == me["league_id"]
     )
@@ -88,7 +88,7 @@ def power_rankings(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
     return table.select(*ENGINE_SCHEMAS["power_rankings"]).sort("rank", nulls_last=True)
 
 
-def luck(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
+def luck(me: dict[str, Any], data_dir: Path | None) -> pl.DataFrame:
     through = _through(me, _settings(me, data_dir))
     record = all_play(_matchups(me, data_dir), through)
     if record.is_empty():
@@ -114,7 +114,7 @@ def _lineup_options(players: pl.DataFrame) -> dict[str, tuple[str, ...]]:
     return out
 
 
-def manager_grades(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
+def manager_grades(me: dict[str, Any], data_dir: Path | None) -> pl.DataFrame:
     settings = _settings(me, data_dir)
     played = completed(_matchups(me, data_dir), _through(me, settings))
     if played.is_empty():
@@ -154,7 +154,7 @@ def manager_grades(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
     return table.select(*ENGINE_SCHEMAS["manager_grades"]).sort("efficiency", descending=True)
 
 
-def what_if(me: dict[str, Any], week: int, data_dir: Path) -> pl.DataFrame:
+def what_if(me: dict[str, Any], week: int, data_dir: Path | None) -> pl.DataFrame:
     """My playoff and title odds if each side of each matchup in `week` wins (0 is this week).
     Nothing for a completed week or a playoff week."""
     settings = _settings(me, data_dir)
@@ -188,7 +188,7 @@ def what_if(me: dict[str, Any], week: int, data_dir: Path) -> pl.DataFrame:
     return ordered.select(*ENGINE_SCHEMAS["what_if"])
 
 
-def win_needs(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
+def win_needs(me: dict[str, Any], data_dir: Path | None) -> pl.DataFrame:
     """My playoff odds by number of wins in my next games, from the simulation's sim_win_need."""
     need = _read("sim_win_need", data_dir, area="derived").filter(
         (pl.col("league_id") == me["league_id"]) & (pl.col("roster_id") == me["roster_id"])
@@ -197,7 +197,7 @@ def win_needs(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
 
 
 def team_grades(
-    me: dict[str, Any], strength: pl.DataFrame, depth: pl.DataFrame, data_dir: Path
+    me: dict[str, Any], strength: pl.DataFrame, depth: pl.DataFrame, data_dir: Path | None
 ) -> pl.DataFrame:
     """Positional grades for every team; `is_me` follows the team being viewed."""
     teams = _teams(me, data_dir).with_columns(

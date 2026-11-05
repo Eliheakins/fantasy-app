@@ -5,7 +5,7 @@ from typing import Any
 import polars as pl
 import pytest
 from fastapi.testclient import TestClient
-from store_fixture import use_store, write_rows
+from store_fixture import write_rows
 from test_api import client, wait_ok  # noqa: F401  (fixture)
 from test_api import store_dir as store_dir  # noqa: F401  (fixture)
 
@@ -137,10 +137,7 @@ def seed_values(path: Path) -> None:
     store.write_table("market_values", frame, "raw", path)
 
 
-def test_market_values_maps_to_gsis_and_is_empty_without_the_table(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    use_store(monkeypatch, tmp_path)
+def test_market_values_maps_to_gsis_and_is_empty_without_the_table(tmp_path: Path) -> None:
     write_rows(tmp_path, "leagues", [league("t", {}, ["QB"])])
     write_rows(tmp_path, "id_map", [{"sleeper_id": "1", "gsis_id": "00-1"}])
     assert data_api.market_values("t", ["00-1"], tmp_path).is_empty()
@@ -153,14 +150,14 @@ def test_market_values_maps_to_gsis_and_is_empty_without_the_table(
 
 
 def test_route_returns_ok_with_empty_data_when_the_table_is_missing(store_dir: Path) -> None:  # noqa: F811
-    with TestClient(api.create_app(), base_url="http://localhost") as bare:
+    with TestClient(api.create_app(data_dir=store_dir), base_url="http://localhost") as bare:
         r = bare.get("/api/leagues/t/market-values", params={"ids": "00-1,00-2"})
     assert r.json()["status"] == "ok" and r.json()["data"] == []
 
 
 def test_route_serves_values(store_dir: Path) -> None:  # noqa: F811
     seed_values(store_dir)
-    with TestClient(api.create_app(), base_url="http://localhost") as bare:
+    with TestClient(api.create_app(data_dir=store_dir), base_url="http://localhost") as bare:
         data = bare.get("/api/leagues/t/market-values", params={"ids": "00-1"}).json()["data"]
     assert data[0]["gsis_id"] == "00-1" and data[0]["value"] == 7000.0
 
@@ -186,10 +183,7 @@ def test_market_hint_reports_missing_values_and_handles_zero_totals() -> None:
     assert market_hint(0, 0, 0) == "even"
 
 
-def test_trade_market_sums_each_side_and_counts_players_without_a_value(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    use_store(monkeypatch, tmp_path)
+def test_trade_market_sums_each_side_and_counts_players_without_a_value(tmp_path: Path) -> None:
     write_rows(tmp_path, "leagues", [league("t", {}, ["QB"])])
     write_rows(tmp_path, "id_map", [{"sleeper_id": "1", "gsis_id": "00-1"}])
     trades = [(["00-1"], ["00-1", "00-9"])]
@@ -212,10 +206,7 @@ def test_accepted_share_counts_past_sides_at_least_as_lopsided_and_needs_enough_
     assert accepted_share(0.8, past[:-1]) is None
 
 
-def test_past_trade_ratios_use_each_leagues_values_and_skip_unvalued_sides(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    use_store(monkeypatch, tmp_path)
+def test_past_trade_ratios_use_each_leagues_values_and_skip_unvalued_sides(tmp_path: Path) -> None:
     write_rows(tmp_path, "leagues", [league("t", {}, ["QB"])])
     seed_values(tmp_path)  # sleeper ids 1 (7000) and 2 (900)
     base = {"league_id": "t", "type": "trade", "status": "complete", "transaction_id": "x"}
@@ -237,9 +228,8 @@ def test_past_trade_ratios_use_each_leagues_values_and_skip_unvalued_sides(
 
 
 def test_trade_market_reports_the_share_from_the_partners_side_and_skips_unfinished_trades(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
-    use_store(monkeypatch, tmp_path)
     write_rows(tmp_path, "leagues", [league("t", {}, ["QB"])])
     seed_values(tmp_path)  # sleeper ids 1 (7000) and 2 (900)
     write_rows(
@@ -309,7 +299,7 @@ def test_find_route_rows_carry_the_market_summary(
     }  # fmt: skip
     found |= {k: [0.01] for k in ("my_playoff", "my_title", "their_playoff", "their_title")}
     found["se_title"] = [0.01]
-    monkeypatch.setattr(data_api, "find_trades", lambda league: pl.DataFrame(found))
+    monkeypatch.setattr(data_api, "find_trades", lambda league, data_dir, team: pl.DataFrame(found))
     out = wait_ok(client, lambda: client.post("/api/leagues/t/trades/find"))
     market = out["data"][0]["market"]
     assert market["give_value"] == 7000.0 and market["hint"].endswith("no value for 1 player")

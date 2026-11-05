@@ -64,7 +64,7 @@ def ideas(
 
 
 def run(
-    data_dir: Path = store.DATA_DIR,
+    data_dir: Path | None = None,
     waivers: Finder | None = None,
     trades: Finder | None = None,
     now: str | None = None,

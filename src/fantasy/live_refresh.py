@@ -7,6 +7,7 @@ import os
 import threading
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from fantasy import api_routes, data_api, store
@@ -26,9 +27,9 @@ def enabled_by_env() -> bool:
     return os.environ.get(ENV_VAR, "on").strip().lower() != "off"
 
 
-def current_week_kickoffs() -> tuple[int, dict[str, datetime]]:
-    week = int(data_api.leagues()["current_week"].to_numpy().max())
-    schedules = store.read_table("nfl_schedules", "raw")
+def current_week_kickoffs(data_dir: Path | None = None) -> tuple[int, dict[str, datetime]]:
+    week = int(data_api.leagues(data_dir)["current_week"].to_numpy().max())
+    schedules = store.read_table("nfl_schedules", "raw", data_dir)
     return week, kickoffs(schedules, load_config().season, week)
 
 
@@ -40,8 +41,11 @@ class LiveState:
 
 
 class LiveRefresher:
-    def __init__(self, runner: JobRunner, enabled: bool | None = None) -> None:
+    def __init__(
+        self, runner: JobRunner, enabled: bool | None = None, data_dir: Path | None = None
+    ) -> None:
         self.runner = runner
+        self.data_dir = data_dir
         self.enabled = enabled_by_env() if enabled is None else enabled
         self.state = LiveState()
         self._last_attempt: datetime | None = None
@@ -63,7 +67,7 @@ class LiveRefresher:
     def step(self, now: datetime) -> bool:
         """One wake: run a tick if due. Returns whether a tick ran. Never raises."""
         try:
-            week, kicks = current_week_kickoffs()
+            week, kicks = current_week_kickoffs(self.data_dir)
             active = games_on(kicks, now)
             closing = self._was_active and not active  # one last tick once the window closes
             self._was_active = self.state.active = active
@@ -82,9 +86,11 @@ class LiveRefresher:
             return False
         self._last_attempt = now  # failures wait a full interval: no tight retry loop
         try:
-            sync_sleeper.sync_week(week)
-            simulate.run(archive=False)
-            data_api.record_live_tick(now)  # display-only day history, never the archive
+            sync_sleeper.sync_week(week, self.data_dir)
+            simulate.run(archive=False, data_dir=self.data_dir)
+            data_api.record_live_tick(
+                now, self.data_dir
+            )  # display-only day history, never the archive
         finally:
             api_routes.REFRESH_LOCK.release()
         _clear_league_cache()

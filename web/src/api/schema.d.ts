@@ -3654,10 +3654,10 @@ export interface operations {
     actions_api_leagues__league__actions_get: {
         parameters: {
             query?: {
-                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
-                team?: number | null;
                 /** @description Use the digest's stored waiver ideas instead of re-simulating */
                 stored_adds?: boolean;
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
             };
             header?: never;
             path: {

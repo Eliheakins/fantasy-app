@@ -1,6 +1,7 @@
 """My lineup for a week and the lineup with the best chance to win it (see data_api)."""
 
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import polars as pl
@@ -83,11 +84,11 @@ def _is_out(data: LeagueData, gsis_id: str) -> bool:
     return status == "Out" or status in LONG_TERM
 
 
-def _kickoffs_by_player(week: int) -> dict[str, datetime]:
+def _kickoffs_by_player(week: int, data_dir: Path | None) -> dict[str, datetime]:
     """Kickoff of each player's game this week, by nflverse id. Players with no team, or whose
     team has no game this week, are left out."""
-    teams = _id_map("nfl_team").filter(pl.col("gsis_id").is_not_null())
-    kicks = kickoffs(store.read_table("nfl_schedules", "raw"), load_config().season, week)
+    teams = _id_map(data_dir, "nfl_team").filter(pl.col("gsis_id").is_not_null())
+    kicks = kickoffs(store.read_table("nfl_schedules", "raw", data_dir), load_config().season, week)
     return {
         g: kicks[t] for g, t in zip(teams["gsis_id"], teams["nfl_team"], strict=True) if t in kicks
     }
@@ -115,6 +116,8 @@ def lineup(
     week: int = 0,
     now: datetime | None = None,
     loaded: tuple[LeagueData, int] | None = None,
+    data_dir: Path | None = None,
+    team: int | None = None,
 ) -> pl.DataFrame:
     """My best lineup by projected points for a remaining week, plus the bench.
 
@@ -123,12 +126,12 @@ def lineup(
     full-game projection (not discounted by his chance of playing). `loaded` is a `_league` result
     to reuse.
     """
-    data, mine = loaded or _league(league_key)
+    data, mine = loaded or _league(league_key, data_dir, team)
     week = week or data.current_week
-    names, positions = _names(), moves.position_of(data)
+    names, positions = _names(data_dir), moves.position_of(data)
     values = _week_values(data, week, positions)
     pool = _pool(data, mine, positions, values)
-    marginals = _marginals(data.league_id)
+    marginals = _marginals(data.league_id, data_dir)
     ratio = {
         (r["position"], r["tier"], round(r["tau"], 2)): r["ratio"]
         for r in marginals.iter_rows(named=True)
@@ -136,9 +139,9 @@ def lineup(
     edges = _tier_edges(marginals)
     chance = _play_probs(data, week)
     current = week == data.current_week
-    starting = set(_set_starters(data.league_id, week, mine)) if current else set()
+    starting = set(_set_starters(data.league_id, week, mine, data_dir)) if current else set()
 
-    status, locked = _status_and_locks(week, data.current_week, now)
+    status, locked = _status_and_locks(week, data.current_week, now, data_dir=data_dir)
     # a player who is out is never slotted: an empty slot scores the same, and Sleeper shows blank
     available = [p for p in pool if not _is_out(data, p.id)]
     pinned = {p.id for p in available if p.id in locked}
@@ -146,7 +149,7 @@ def lineup(
     swap: dict[str, str] = {}
     if current and load_config().inactive_swap:  # advice only: the lineup above is unchanged
         flagged = {p.id for p in available if _flag_status(data, p.id) in SWAP_STATUSES}
-        swap = swap_plan(best, available, flagged, _kickoffs_by_player(week), pinned)
+        swap = swap_plan(best, available, flagged, _kickoffs_by_player(week, data_dir), pinned)
     slot_of = {pid: slot for slot, pid in best.slots}
     live = data.live if current else {}
     rows = [
@@ -187,6 +190,8 @@ def win_probability(
     n_sims: int = LINEUP_SIMS,
     now: datetime | None = None,
     loaded: tuple[LeagueData, int] | None = None,
+    data_dir: Path | None = None,
+    team: int | None = None,
 ) -> pl.DataFrame:
     """My max-points lineup, the lineup set in Sleeper, and the lineup with the best chance of
     beating this week's opponent, each with its win probability on held-out draws.
@@ -196,18 +201,18 @@ def win_probability(
     the share of his game still to play (a game is assumed to last 200 minutes from kickoff).
     Sleeper points are only as fresh as the last refresh.
     """
-    loaded = loaded or _league(league_key)
+    loaded = loaded or _league(league_key, data_dir, team)
     data, mine = loaded
     week = week or data.current_week
     opp = _opponent_of(data, mine, week)
-    mine_rows = lineup(league_key, week, now, loaded)
+    mine_rows = lineup(league_key, week, now, loaded, data_dir, team)
     if opp is None or mine_rows.is_empty():
         return pl.DataFrame(schema=ENGINE_SCHEMAS["win_probability"])
 
     positions = moves.position_of(data)
     values = _week_values(data, week, positions)
     slots = lineup_slots(data.roster_positions)
-    opp_ids = _opponent_lineup(data, opp, week, positions, values, slots)
+    opp_ids = _opponent_lineup(data, opp, week, positions, values, slots, data_dir)
 
     base = frozenset(mine_rows.filter(pl.col("recommended"))["gsis_id"])
     locked = set(mine_rows.filter(pl.col("locked"))["gsis_id"])
@@ -215,7 +220,7 @@ def win_probability(
     sleeper = frozenset(mine_rows.filter(pl.col("starting_now"))["gsis_id"])
 
     ids = sorted({*mine_rows["gsis_id"], *opp_ids})
-    points, column = _week_points(data, ids, positions, values, week, n_sims)
+    points, column = _week_points(data, ids, positions, values, week, n_sims, data_dir)
     current = week == data.current_week
 
     def total(lineup_ids: frozenset[str] | list[str], team: int, team_seed: int) -> np.ndarray:

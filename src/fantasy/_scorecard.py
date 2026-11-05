@@ -227,7 +227,7 @@ def _sleeper_points(
     )
 
 
-def scorecard_of(league_id: str, data_dir: Path = store.DATA_DIR) -> Scorecard:
+def scorecard_of(league_id: str, data_dir: Path | None = None) -> Scorecard:
     """Score a league's archived projections that are final. Empty before the first final game."""
     try:
         snaps = store.read_table("proj_snapshots", "archive", data_dir).filter(

@@ -15,8 +15,8 @@ from fantasy.sim.availability import EASTERN, GAME_MINUTES
 def _with(monkeypatch: pytest.MonkeyPatch, **changes: object) -> None:
     real = _engine._league
 
-    def patched(league_key: str):  # type: ignore[no-untyped-def]
-        data, mine = real(league_key)
+    def patched(league_key: str, *args, **kwargs):  # type: ignore[no-untyped-def]
+        data, mine = real(league_key, *args, **kwargs)
         return replace(data, **changes), mine
 
     monkeypatch.setattr(_lineup, "_league", patched)
@@ -25,12 +25,12 @@ def _with(monkeypatch: pytest.MonkeyPatch, **changes: object) -> None:
 def test_a_player_whose_game_is_over_stays_in_the_lineup_with_his_points(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
-    data, _ = _engine._league("t")
+    _engine_store(tmp_path)
+    data, _ = _engine._league("t", data_dir=tmp_path)
     # his projection is gone (no future game row) but his game finished with 17.5 points
     gone = data.projections.filter(pl.col("gsis_id") != "G_WR")
     _with(monkeypatch, projections=gone, live={"G_WR": (17.5, 0.0)})
-    out = data_api.lineup("t", now=NOW).filter(pl.col("gsis_id") == "G_WR")
+    out = data_api.lineup("t", now=NOW, data_dir=tmp_path).filter(pl.col("gsis_id") == "G_WR")
     row = out.row(0, named=True)
     assert (row["projection"], row["actual"], row["game"]) == (17.5, 17.5, "Final")
 
@@ -38,9 +38,13 @@ def test_a_player_whose_game_is_over_stays_in_the_lineup_with_his_points(
 def test_a_player_who_is_out_is_left_on_the_bench(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
+    _engine_store(tmp_path)
     _with(monkeypatch, injuries={"G_WR": ("Out", "", "")})
-    row = data_api.lineup("t", now=NOW).filter(pl.col("gsis_id") == "G_WR").row(0, named=True)
+    row = (
+        data_api.lineup("t", now=NOW, data_dir=tmp_path)
+        .filter(pl.col("gsis_id") == "G_WR")
+        .row(0, named=True)
+    )
     assert (row["slot"], row["recommended"]) == ("BN", False)
 
 
@@ -59,10 +63,10 @@ def test_the_cache_key_moves_with_the_clock_only_while_a_game_is_on() -> None:
 def test_a_player_mid_game_and_a_finished_one_keep_their_projection_inside_their_range(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
+    _engine_store(tmp_path)
     # the QB banked 25 with 40% of his game left; the WR finished with 17.5
     _with(monkeypatch, live={"G_QB": (25.0, 0.4), "G_WR": (17.5, 0.0)})
-    out = data_api.lineup("t", now=NOW)
+    out = data_api.lineup("t", now=NOW, data_dir=tmp_path)
     qb = out.filter(pl.col("gsis_id") == "G_QB").row(0, named=True)
     wr = out.filter(pl.col("gsis_id") == "G_WR").row(0, named=True)
     assert qb["p10"] <= qb["projection"] <= qb["p90"]

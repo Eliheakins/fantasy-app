@@ -39,7 +39,7 @@ def test_market_drop_ignores_a_player_without_a_value_or_a_trend() -> None:
 def test_the_watchlist_lists_a_flagged_starter_with_the_reason(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
+    _engine_store(tmp_path)
     _with(monkeypatch, injuries={"G_WR": ("Questionable", "Hamstring", None)})
 
     out = data_api.watchlist("t", tmp_path)

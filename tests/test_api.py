@@ -25,10 +25,8 @@ LEAGUE_ROWS = [
 
 
 @pytest.fixture
-def store_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    _engine_store(tmp_path, monkeypatch)
-    original = data_api.leagues
-    monkeypatch.setattr(data_api, "leagues", lambda *a, **k: original(tmp_path))
+def store_dir(tmp_path: Path) -> Path:
+    _engine_store(tmp_path)
     write_rows(
         tmp_path,
         "sim_season",
@@ -59,7 +57,9 @@ def store_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 @pytest.fixture
 def client(store_dir: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("LIVE_REFRESH", "off")  # no background thread in API tests
-    with TestClient(api.create_app(), base_url="http://localhost", headers=CSRF_HEADER) as c:
+    with TestClient(
+        api.create_app(data_dir=store_dir), base_url="http://localhost", headers=CSRF_HEADER
+    ) as c:
         yield c
 
 
@@ -116,19 +116,14 @@ def test_leagues_has_record_fallback_and_trade_deadline(client: TestClient) -> N
     assert rows[0]["team_name"] == "Mine"
 
 
-def test_data_version_reads_data_dir_at_call_time(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    assert _engine.data_version() != "0-0"  # the real data folder, or "0-0" on a fresh clone
-    empty = tmp_path / "empty"
-    monkeypatch.setattr(_engine.store, "DATA_DIR", empty)
-    assert _engine.data_version() == "0-0"
-    (empty / "raw").mkdir(parents=True)
-    (empty / "raw" / "a.parquet").write_bytes(b"12345")
-    first = _engine.data_version()
+def test_data_version_follows_the_files_of_the_given_data_dir(tmp_path: Path) -> None:
+    assert _engine.data_version(tmp_path) == "0-0"
+    (tmp_path / "raw").mkdir(parents=True)
+    (tmp_path / "raw" / "a.parquet").write_bytes(b"12345")
+    first = _engine.data_version(tmp_path)
     assert first.endswith("-5")
-    (empty / "raw" / "a.parquet").write_bytes(b"123456")
-    assert _engine.data_version() != first
+    (tmp_path / "raw" / "a.parquet").write_bytes(b"123456")
+    assert _engine.data_version(tmp_path) != first
 
 
 def count_builds(monkeypatch: pytest.MonkeyPatch) -> list[str]:
@@ -164,7 +159,7 @@ def test_refresh_calls_sleeper_then_clears_the_caches(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     calls = count_builds(monkeypatch)
-    monkeypatch.setattr(data_api, "refresh_live", lambda: 7)
+    monkeypatch.setattr(data_api, "refresh_live", lambda data_dir: 7)
     body(client.get("/api/leagues/t/strength"))
     out = body(client.post("/api/live/refresh"))
     assert out["data"] == {"player_rows": 7}
@@ -293,7 +288,7 @@ def test_an_unknown_api_path_is_a_404_envelope(client: TestClient) -> None:
 
 
 def test_unknown_host_header_is_rejected(store_dir: Path) -> None:
-    with TestClient(api.create_app(), base_url="http://evil.example") as c:
+    with TestClient(api.create_app(data_dir=store_dir), base_url="http://evil.example") as c:
         assert c.get("/api/status").status_code == 400
 
 
@@ -301,9 +296,9 @@ def test_hosts_from_the_environment_are_allowed(
     store_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("API_ALLOWED_HOSTS", "box.tail1234.ts.net, other.local")
-    with TestClient(api.create_app(), base_url="http://box.tail1234.ts.net") as c:
+    with TestClient(api.create_app(data_dir=store_dir), base_url="http://box.tail1234.ts.net") as c:
         assert c.get("/api/status").status_code == 200
-    with TestClient(api.create_app(), base_url="http://127.0.0.1") as c:
+    with TestClient(api.create_app(data_dir=store_dir), base_url="http://127.0.0.1") as c:
         assert c.get("/api/status").status_code == 200
 
 
@@ -545,7 +540,7 @@ def test_trade_find_is_a_job(client: TestClient, monkeypatch: pytest.MonkeyPatch
     }
     found |= {k: [0.01] for k in ("my_playoff", "my_title", "their_playoff", "their_title")}
     found["se_title"] = [0.01]
-    monkeypatch.setattr(data_api, "find_trades", lambda league: pl.DataFrame(found))
+    monkeypatch.setattr(data_api, "find_trades", lambda league, data_dir, team: pl.DataFrame(found))
     out = wait_ok(client, lambda: client.post("/api/leagues/t/trades/find"))
     assert out["status"] == "ok" and out["data"][0]["partner"] == "Theirs"
 
@@ -553,9 +548,9 @@ def test_trade_find_is_a_job(client: TestClient, monkeypatch: pytest.MonkeyPatch
 # --- OpenAPI snapshot -----------------------------------------------------------------
 
 
-def test_openapi_snapshot_matches_the_app() -> None:
+def test_openapi_snapshot_matches_the_app(tmp_path: Path) -> None:
     committed = json.loads((ROOT / "web" / "openapi.json").read_text())
-    live = json.loads(json.dumps(api.create_app().openapi()))
+    live = json.loads(json.dumps(api.create_app(data_dir=tmp_path).openapi()))
     assert committed == live, (
         "web/openapi.json is stale: regenerate with "
         "`uv run python -m fantasy.api --openapi > web/openapi.json`, "
@@ -568,7 +563,7 @@ def test_openapi_snapshot_matches_the_app() -> None:
 
 
 def test_post_without_the_csrf_header_is_a_403_error_envelope(store_dir: Path) -> None:
-    with TestClient(api.create_app(), base_url="http://localhost") as bare:
+    with TestClient(api.create_app(data_dir=store_dir), base_url="http://localhost") as bare:
         r = bare.post("/api/live/refresh")
         assert r.status_code == 403 and r.json()["status"] == "error"
         assert r.json()["error"]["code"] == "invalid"
@@ -638,7 +633,7 @@ def test_concurrent_cache_misses_build_the_league_once(
         return real(*args, **kwargs)
 
     monkeypatch.setattr(simulate, "load_league_data", slow)
-    threads = [threading.Thread(target=_engine._league, args=("t",)) for _ in range(4)]
+    threads = [threading.Thread(target=_engine._league, args=("t", store_dir)) for _ in range(4)]
     for t in threads:
         t.start()
     for t in threads:
@@ -651,12 +646,14 @@ def test_a_job_builds_its_league_under_the_version_in_its_key(
 ) -> None:
     seen: list[str] = []
     versions = iter(["v1", "v2"])
-    monkeypatch.setattr(api_routes, "data_version", lambda: next(versions))
+    monkeypatch.setattr(api_routes, "data_version", lambda data_dir: next(versions))
     monkeypatch.setattr(
         _engine, "_league_cached", lambda key, version, d: seen.append(version) or (None, 1)
     )
     monkeypatch.setattr(
-        data_api, "actions", lambda league: _engine._league(league) and pl.DataFrame()
+        data_api,
+        "actions",
+        lambda league, **kw: _engine._league(league, kw["data_dir"]) and pl.DataFrame(),
     )
     client.get("/api/leagues/t/actions")
     wait_until(lambda: all(j.future.done() for j in client.app.state.runner._jobs.values()))  # type: ignore[attr-defined]
@@ -666,7 +663,7 @@ def test_a_job_builds_its_league_under_the_version_in_its_key(
 def test_refresh_second_caller_gets_busy(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(data_api, "refresh_live", lambda: 1)
+    monkeypatch.setattr(data_api, "refresh_live", lambda data_dir: 1)
     assert api_routes.REFRESH_LOCK.acquire(blocking=False)
     try:
         assert body(client.post("/api/live/refresh"))["error"]["code"] == "busy"
@@ -684,7 +681,7 @@ def test_refresh_failure_message_is_fixed_and_hides_the_detail(
     # fail inside the real Sleeper client so the route sees the exception it really raises
     monkeypatch.setattr(sleeper.httpx, "get", refused)
     monkeypatch.setattr(sleeper.time, "sleep", lambda _: None)
-    monkeypatch.setattr(data_api, "refresh_live", lambda: sleeper.fetch("/state/nfl"))
+    monkeypatch.setattr(data_api, "refresh_live", lambda data_dir: sleeper.fetch("/state/nfl"))
     out = body(client.post("/api/live/refresh"))
     assert out["status"] == "error" and out["error"]["message"].startswith("Sleeper refresh failed")
     assert "secret" not in out["error"]["message"]

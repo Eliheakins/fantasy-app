@@ -15,8 +15,8 @@ LEVELS = range(1, 100)
 SKILL = (("G_QB", "QB"), ("G_WR", "WR"), ("G_RB", "RB"), ("G_OPP", "WR"))
 
 
-def _engine_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    build_store(tmp_path, monkeypatch, [(100.0, 90.0)])
+def _engine_store(tmp_path: Path) -> None:
+    build_store(tmp_path, [(100.0, 90.0)])
     write_rows(tmp_path, "trending")
     marginals = [
         {
@@ -55,11 +55,9 @@ def _round(row: dict) -> dict:
     return {k: round(v, 6) if isinstance(v, float) else v for k, v in row.items()}
 
 
-def test_win_probability_options_are_pinned(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
-    out = data_api.win_probability("t", n_sims=2000, now=NOW)
+def test_win_probability_options_are_pinned(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
+    out = data_api.win_probability("t", n_sims=2000, now=NOW, data_dir=tmp_path)
     calls = out["slot_calls"].to_list()  # display only; every other column is pinned below
     rows = [_round(r) for r in out.drop("slot_calls").iter_rows(named=True)]
     no_alternative = {"slot": "QB", "starter": "G_QB", "alternative": None, "share": None}
@@ -81,7 +79,7 @@ def test_win_probability_options_are_pinned(
     }
     tags = {"max_points": "", "win_prob": "same as max points", "ceiling": "", "floor": ""}
     assert rows == [{"option": o, "tag": t, **same} for o, t in tags.items()]
-    assert data_api.win_probability("t", 4, n_sims=2000, now=NOW).is_empty()
+    assert data_api.win_probability("t", 4, n_sims=2000, now=NOW, data_dir=tmp_path).is_empty()
 
 
 OUTLOOK_PINS = {
@@ -104,31 +102,25 @@ OUTLOOK_PINS = {
 
 
 @pytest.mark.parametrize("scope", OUTLOOK_PINS)
-def test_player_outlook_labels_and_reasons_are_pinned(
-    scope: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
-    out = data_api.player_outlook("t", scope)
+def test_player_outlook_labels_and_reasons_are_pinned(scope: str, tmp_path: Path) -> None:
+    _engine_store(tmp_path)
+    out = data_api.player_outlook("t", scope, data_dir=tmp_path)
     got = {r["gsis_id"]: (r["label"], r["why"]) for r in out.iter_rows(named=True)}
     assert got == OUTLOOK_PINS[scope]
     owners = set(out["owner"])
     assert owners == {"mine": {"You"}, "league": {"Theirs"}, "free": {"Free agent"}}[scope]
 
 
-def test_lineup_projection_and_spread_are_pinned(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
-    out = data_api.lineup("t", now=NOW)
+def test_lineup_projection_and_spread_are_pinned(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
+    out = data_api.lineup("t", now=NOW, data_dir=tmp_path)
     qb = _round(out.filter(pl.col("gsis_id") == "G_QB").row(0, named=True))
     assert (qb["slot"], qb["projection"], qb["p10"], qb["p90"]) == ("QB", 10.0, 6.0, 14.0)
     assert qb["game"] == "Not started"
 
 
-def test_functions_that_read_leagues_see_a_patched_leagues(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
+def test_functions_about_my_league_read_the_given_data_dir(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
     write_rows(
         tmp_path,
         "sim_season",
@@ -152,21 +144,11 @@ def test_functions_that_read_leagues_see_a_patched_leagues(
             }
         ],
     )
-    seen = pl.DataFrame(
-        {
-            "league_key": ["zz"],
-            "league_id": ["L1"],
-            "roster_id": [1],
-            "current_week": [3],
-            "num_teams": [6],
-        }
-    )
-    monkeypatch.setattr(data_api, "leagues", lambda *args, **kwargs: seen)
-    assert data_api.roster("zz", tmp_path).height == 7
-    assert data_api.season_odds("zz", tmp_path)["is_me"].to_list() == [True, False]
-    assert data_api.seed_distribution("zz")["seed"].to_list() == [1]
-    assert data_api.streamers("zz", "K")["unit"].to_list() == ["G_K"]
-    odds_history = data_api.odds_history("zz", tmp_path)
+    assert data_api.roster("t", tmp_path).height == 7
+    assert data_api.season_odds("t", tmp_path)["is_me"].to_list() == [True, False]
+    assert data_api.seed_distribution("t", data_dir=tmp_path)["seed"].to_list() == [1]
+    assert data_api.streamers("t", "K", data_dir=tmp_path)["unit"].to_list() == ["G_K"]
+    odds_history = data_api.odds_history("t", tmp_path)
     assert odds_history.columns[:2] == ["run_at", "team_name"]
 
 

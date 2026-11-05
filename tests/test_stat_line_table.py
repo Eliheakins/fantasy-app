@@ -60,6 +60,6 @@ def test_simulate_takes_this_seasons_games_from_the_current_week(
         }
     )
     monkeypatch.setattr(slt, "stored", lambda data_dir=None: table)
-    assert simulate._stat_line(7) == {("A", 8): 0.3}  # config season 2026
+    assert simulate._stat_line(7, None) == {("A", 8): 0.3}  # config season 2026
     monkeypatch.setattr(slt, "stored", lambda data_dir=None: None)
-    assert simulate._stat_line(7) is None
+    assert simulate._stat_line(7, None) is None

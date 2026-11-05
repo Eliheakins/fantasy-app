@@ -1,5 +1,7 @@
 """Season outlook for my team and the league's players: schedule, live score, player outlook."""
 
+from pathlib import Path
+
 import polars as pl
 
 from fantasy import store
@@ -25,7 +27,9 @@ LAYER_DEFAULTS = {
 }
 
 
-def schedule(league_key: str) -> pl.DataFrame:
+def schedule(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """My remaining regular-season games: opponent, both teams' expected points and my chance.
 
     The chance is a normal approximation from each lineup's mean and spread (injury-scaled
@@ -35,7 +39,7 @@ def schedule(league_key: str) -> pl.DataFrame:
 
     from fantasy.sim.odds import DRIFT_SD, lineup_moments
 
-    data, mine = _league(league_key)
+    data, mine = _league(league_key, data_dir, team)
     positions, by_week = moves.position_of(data), moves.week_values(data)
     slots = lineup_slots(data.roster_positions)
     counts = constant_slot_count(data.roster_positions)
@@ -66,14 +70,16 @@ def schedule(league_key: str) -> pl.DataFrame:
     return pl.DataFrame(rows, schema=schema, orient="row")
 
 
-def live_score(league_key: str) -> pl.DataFrame:
+def live_score(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """This week's score so far and projected final for me and my opponent.
 
     Columns: side ("me" or "them"), team_name, points (so far), projected_final. The projected
     final adds the unconditional projection of what is left in each set lineup. Empty before
     the week has any matchup data.
     """
-    data, mine = _league(league_key)
+    data, mine = _league(league_key, data_dir, team)
     opp = _opponent_of(data, mine, data.current_week)
     rows = []
     for side, rid in (("me", mine), ("them", opp)):
@@ -125,7 +131,9 @@ def _label(r: dict, change: float | None) -> str:
     return "Regressing" if change <= -OUTLOOK_THRESHOLD else "Steady"
 
 
-def player_outlook(league_key: str, scope: str = "mine") -> pl.DataFrame:
+def player_outlook(
+    league_key: str, scope: str = "mine", data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """Who is improving or regressing over the next four games, and why.
 
     scope is "mine" (my roster), "league" (rostered by others) or "free" (free agents).
@@ -139,11 +147,15 @@ def player_outlook(league_key: str, scope: str = "mine") -> pl.DataFrame:
     """
     from fantasy.stages.project import expected_frame
 
-    data, mine = _league(league_key)
+    data, mine = _league(league_key, data_dir, team)
     lid = data.league_id
-    points = store.read_table("player_points", "derived").filter(pl.col("league_id") == lid)
-    leagues_raw = store.read_table("leagues", "raw").filter(pl.col("league_id") == lid)
-    exp = expected_frame(store.read_table("nfl_ff_opportunity", "raw"), points, leagues_raw)
+    points = store.read_table("player_points", "derived", data_dir).filter(
+        pl.col("league_id") == lid
+    )
+    leagues_raw = store.read_table("leagues", "raw", data_dir).filter(pl.col("league_id") == lid)
+    exp = expected_frame(
+        store.read_table("nfl_ff_opportunity", "raw", data_dir), points, leagues_raw
+    )
     season = load_config().season
     recent = (
         exp.filter((pl.col("season") == season) & (pl.col("week") < data.current_week))
@@ -178,7 +190,7 @@ def player_outlook(league_key: str, scope: str = "mine") -> pl.DataFrame:
     )
     owner_of = dict(zip(data.rosters["gsis_id"], data.rosters["roster_id"], strict=True))
     owner_names = {**data.team_names, mine: "You"}
-    names = _names()
+    names = _names(data_dir)
     positions = moves.position_of(data)
     wanted = {
         "mine": lambda owner: owner == mine,
@@ -216,14 +228,16 @@ def player_outlook(league_key: str, scope: str = "mine") -> pl.DataFrame:
     )
 
 
-def player_owners(league_key: str) -> pl.DataFrame:
+def player_owners(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """Every rostered player in a league with the team that owns him; free agents have no row.
 
     is_mine marks the viewed team's players (my team, or the `?team=` one). Only players with an
     nflverse id appear; `rostered_unmatched` counts the QB, RB, WR and TE who have none. K and
     DEF are not in the stat data, so they are neither listed nor counted.
     """
-    data, mine = _league(league_key)
+    data, mine = _league(league_key, data_dir, team)
     r = data.rosters
     return (
         pl.DataFrame(
@@ -245,13 +259,17 @@ def player_owners(league_key: str) -> pl.DataFrame:
     )
 
 
-def rostered_unmatched(league_key: str) -> int:
+def rostered_unmatched(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> int:
     """Rostered skill players with no nflverse id: missing from `player_owners`, so a free-agent
     filter would count them as free agents."""
-    data, _ = _league(league_key)
-    id_map = store.read_table("id_map", "derived").select("sleeper_id", "gsis_id")
-    players = store.read_table("sleeper_players", "raw").select("sleeper_id", "position")
-    rostered = store.read_table("rosters", "raw").filter(pl.col("league_id") == data.league_id)
+    data, _ = _league(league_key, data_dir, team)
+    id_map = store.read_table("id_map", "derived", data_dir).select("sleeper_id", "gsis_id")
+    players = store.read_table("sleeper_players", "raw", data_dir).select("sleeper_id", "position")
+    rostered = store.read_table("rosters", "raw", data_dir).filter(
+        pl.col("league_id") == data.league_id
+    )
     return (
         rostered.join(id_map, on="sleeper_id", how="left")
         .join(players, on="sleeper_id", how="left")

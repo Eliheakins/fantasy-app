@@ -132,7 +132,9 @@ def live_clock(
 SLEEPER_ZEROED_STATUSES = frozenset({"Questionable", "Doubtful"})
 
 
-def _other_sources(league_id: str, id_map: pl.DataFrame, current: int) -> list[pl.DataFrame]:
+def _other_sources(
+    league_id: str, id_map: pl.DataFrame, current: int, data_dir: Path | None
+) -> list[pl.DataFrame]:
     """Each configured source's projections (`blend_sources`; gsis_id, week, other): Sleeper for
     the weeks it projects (the next four), FFToday and prop lines for the current week only. A
     missing table is skipped."""
@@ -140,7 +142,9 @@ def _other_sources(league_id: str, id_map: pl.DataFrame, current: int) -> list[p
     for source in load_config().blend_sources:
         table = {"sleeper": "proj_sleeper", "props": "proj_props"}.get(source, "proj_outside")
         try:
-            theirs = store.read_table(table).filter(pl.col("league_id") == league_id)
+            theirs = store.read_table(table, data_dir=data_dir).filter(
+                pl.col("league_id") == league_id
+            )
         except FileNotFoundError:
             continue
         if source == "sleeper":
@@ -158,28 +162,30 @@ OUTLOOK_POINT_KINDS = frozenset({"vac_target", "vac_carry"})
 ENVIRONMENT_POINT_KINDS = frozenset({"opp_cb_out", "team_pass_epa", "team_sack_rate"})
 
 
-def _scale_to_league(league_id: str, table: pl.DataFrame | None = None) -> dict[str, float]:
+def _scale_to_league(
+    league_id: str, table: pl.DataFrame | None = None, *, data_dir: Path | None
+) -> dict[str, float]:
     """Each position's mean projection here over the league the effects were measured in."""
-    reference = reference_league(store.read_table("leagues", "raw"))
-    projections = store.projection_table() if table is None else table
+    reference = reference_league(store.read_table("leagues", "raw", data_dir))
+    projections = store.projection_table(data_dir) if table is None else table
     history = projections.filter(~pl.col("is_future") & pl.col("has_history"))
     return position_scale(history, league_id, reference)
 
 
 def _apply_outlook(
-    projections: pl.DataFrame, current: int, scale: dict[str, float]
+    projections: pl.DataFrame, current: int, scale: dict[str, float], data_dir: Path | None
 ) -> pl.DataFrame:
     """Return ramps and teammate vacancy, when the effects have been measured."""
     try:
-        effects = effects_dict(store.read_table("outlook_effects"))
+        effects = effects_dict(store.read_table("outlook_effects", data_dir=data_dir))
     except FileNotFoundError:
         return projections
     effects = scale_points(effects, scale, OUTLOOK_POINT_KINDS)
     context = live_context(
-        store.read_table("nfl_player_stats", "raw"),
-        store.read_table("nfl_team_stats", "raw"),
-        store.read_table("team_games"),
-        store.read_table("nfl_injuries", "raw"),
+        store.read_table("nfl_player_stats", "raw", data_dir),
+        store.read_table("nfl_team_stats", "raw", data_dir),
+        store.read_table("team_games", data_dir=data_dir),
+        store.read_table("nfl_injuries", "raw", data_dir),
         load_config().season,
         current,
     )
@@ -187,23 +193,27 @@ def _apply_outlook(
 
 
 def _apply_environment(
-    projections: pl.DataFrame, current: int, model: InjuryModel | None, scale: dict[str, float]
+    projections: pl.DataFrame,
+    current: int,
+    model: InjuryModel | None,
+    scale: dict[str, float],
+    data_dir: Path | None,
 ) -> pl.DataFrame:
     """Offense efficiency and opposing-corner effects, when they have been measured and the
     config has the layer on."""
     if not load_config().environment_layer:
         return projections
     try:
-        effects = environment_effects(store.read_table("environment_effects"))
-        efficiency = store.read_table("nfl_team_efficiency", "raw")
+        effects = environment_effects(store.read_table("environment_effects", data_dir=data_dir))
+        efficiency = store.read_table("nfl_team_efficiency", "raw", data_dir)
     except FileNotFoundError:
         return projections
     effects = scale_points(effects, scale, ENVIRONMENT_POINT_KINDS)
     team_z, cb_absent, opponent = environment_live(
         efficiency,
-        store.read_table("nfl_snaps", "raw"),
-        store.read_table("nfl_injuries", "raw"),
-        store.read_table("team_games"),
+        store.read_table("nfl_snaps", "raw", data_dir),
+        store.read_table("nfl_injuries", "raw", data_dir),
+        store.read_table("team_games", data_dir=data_dir),
         model,
         load_config().season,
         current,
@@ -211,20 +221,20 @@ def _apply_environment(
     return apply_environment(projections, Situation(team_z, cb_absent, opponent), effects, current)
 
 
-def _stat_line(current: int) -> dict[tuple[str, int], float] | None:
+def _stat_line(current: int, data_dir: Path | None) -> dict[tuple[str, int], float] | None:
     """(gsis id, week) -> chance of a stat line for this season's games from `current`, when the
     learned projections carry it."""
-    table = stat_line_table.stored()
+    table = stat_line_table.stored(data_dir)
     if table is None:
         return None
     rows = table.filter((pl.col("season") == load_config().season) & (pl.col("week") >= current))
     return {(g, w): q for g, w, q in rows.select("gsis_id", "week", "q").iter_rows()}
 
 
-def _first_game_chance(current: int) -> dict[str, float]:
+def _first_game_chance(current: int, data_dir: Path | None) -> dict[str, float]:
     """gsis id -> classifier chance of playing this week's game, when the stage has run."""
     try:
-        table = store.read_table("availability")
+        table = store.read_table("availability", data_dir=data_dir)
     except FileNotFoundError:
         warnings.warn(
             "no availability table: first-game chances use the injury curves", stacklevel=2
@@ -242,11 +252,11 @@ def _first_game_chance(current: int) -> dict[str, float]:
     return dict(zip(now["gsis_id"], now["p_play"], strict=True))
 
 
-def _injury_flags(flagged: pl.DataFrame, current: int) -> dict[str, Flag]:
+def _injury_flags(flagged: pl.DataFrame, current: int, data_dir: Path | None) -> dict[str, Flag]:
     """gsis id -> (Sleeper status, body part, practice participation). Body part and practice
     come from the latest nflverse injury report this season; practice counts only once a game
     status has been issued, because the history is of final-day practice."""
-    reports = store.read_table("nfl_injuries", "raw").filter(
+    reports = store.read_table("nfl_injuries", "raw", data_dir).filter(
         pl.col("season") == load_config().season
     )
     latest = (
@@ -281,12 +291,17 @@ def _report(problem: str, names: list[str], limit: int, lid: str, strict: bool =
 
 
 def _load_rosters(
-    lid: str, id_map: pl.DataFrame, players: pl.DataFrame, strict: bool = True
+    lid: str,
+    id_map: pl.DataFrame,
+    players: pl.DataFrame,
+    strict: bool = True,
+    *,
+    data_dir: Path | None,
 ) -> pl.DataFrame:
     """Skill players on this league's rosters with their nflverse id. Players that cannot be
     mapped drop out of every odds calculation, so they are counted and listed."""
     joined = (
-        store.read_table("rosters", "raw")
+        store.read_table("rosters", "raw", data_dir)
         .filter(pl.col("league_id") == lid)
         .join(id_map, on="sleeper_id", how="left")
         .join(players, on="sleeper_id", how="left")
@@ -355,10 +370,15 @@ def _check_league_shape(league: dict[str, Any]) -> None:
 
 
 def _kicker_and_defense(
-    lid: str, current: int, season: int, players: pl.DataFrame, matchup_players: pl.DataFrame
+    lid: str,
+    current: int,
+    season: int,
+    players: pl.DataFrame,
+    matchup_players: pl.DataFrame,
+    data_dir: Path | None,
 ) -> dict[str, float]:
     """Mean and variance of a kicker's and a starting defense's week."""
-    kicker = store.read_table("player_points").filter(
+    kicker = store.read_table("player_points", data_dir=data_dir).filter(
         (pl.col("league_id") == lid)
         & (pl.col("position") == "K")
         & (pl.col("season") >= season - K_HISTORY_YEARS)
@@ -394,19 +414,19 @@ def _kicker_and_defense(
 
 
 def _kd_slot_projections(
-    lid: str, id_map: pl.DataFrame, current: int
+    lid: str, id_map: pl.DataFrame, current: int, data_dir: Path | None
 ) -> dict[tuple[str, int, int], float]:
     """Projected points of each team's best rostered K and DEF per week, from `streaming`. A week
     after `current` with no row for a team's units is a bye, worth 0 within the weeks `streaming`
     projects (the current week has no row once a team's game is scored, so it is left out); a team
     with no K or DEF keeps the league mean. Empty without the table."""
     try:
-        proj = store.read_table("streaming_projection", "derived").filter(
+        proj = store.read_table("streaming_projection", "derived", data_dir).filter(
             pl.col("league_id") == lid
         )
     except FileNotFoundError:
         return {}
-    rostered = store.read_table("rosters", "raw").filter(pl.col("league_id") == lid)
+    rostered = store.read_table("rosters", "raw", data_dir).filter(pl.col("league_id") == lid)
     owned = {
         "DEF": rostered.select(
             "roster_id",
@@ -439,7 +459,7 @@ def _kd_slot_projections(
 
 
 def _spread_inputs(
-    lid: str, marginals: pl.DataFrame
+    lid: str, marginals: pl.DataFrame, data_dir: Path | None
 ) -> tuple[dict[str, float], dict[tuple[str, str], float]]:
     """Position spreads and same-team role correlations; warns when the league's tables are thin
     (a missing role pair counts as uncorrelated, a missing size tier as the pooled spread)."""
@@ -449,7 +469,7 @@ def _spread_inputs(
         .unique(maintain_order=True)
         .iter_rows()
     )
-    same_team = store.read_table("correlation_pairs").filter(
+    same_team = store.read_table("correlation_pairs", data_dir=data_dir).filter(
         (pl.col("league_id") == lid) & (pl.col("relation") == "same_team")
     )
     rho: dict[tuple[str, str], float] = {}
@@ -472,6 +492,7 @@ def _layered_projections(
     id_map: pl.DataFrame,
     sleeper_players: pl.DataFrame,
     projection_table: pl.DataFrame,
+    data_dir: Path | None,
 ) -> tuple[pl.DataFrame, dict[str, Flag]]:
     """Future projections after calibration, the source blend and the injury, outlook and
     environment layers, and the injury flags they used."""
@@ -484,24 +505,24 @@ def _layered_projections(
         .join(id_map, on="sleeper_id")
         .filter(pl.col("gsis_id").is_not_null())
     )
-    flags = _injury_flags(flagged, current)
+    flags = _injury_flags(flagged, current, data_dir)
     try:
         ir_curve = IR_RETURN_CURVE if load_config().ir_return_curve else None
-        model = InjuryModel(store.read_table("injury_effects"), ir_curve)
+        model = InjuryModel(store.read_table("injury_effects", data_dir=data_dir), ir_curve)
     except FileNotFoundError:
         model = None
-    first_game = _first_game_chance(current) if model is not None else {}
+    first_game = _first_game_chance(current, data_dir) if model is not None else {}
     # our baseline is calibrated by size before it is blended with the other sources; an outside
     # 0 for a Questionable or Doubtful player is dropped like Sleeper's
     zeroed = frozenset(g for g, f in flags.items() if f[0] in SLEEPER_ZEROED_STATUSES)
     blended = stat_line_blend(
-        calibrated(future).select("gsis_id", "week", "position", "team", "projection"),
-        _other_sources(lid, id_map, current),
+        calibrated(future, data_dir).select("gsis_id", "week", "position", "team", "projection"),
+        _other_sources(lid, id_map, current, data_dir),
         flags,
         model,
         current,
         first_game,
-        _stat_line(current),
+        _stat_line(current, data_dir),
         zeroed,
     )
     # Sleeper zeroes Out and IR players, which the injury scaling also zeroes; any source's 0 for
@@ -510,24 +531,26 @@ def _layered_projections(
         projections = scale_projections(blended, {g: f[0] for g, f in flags.items()}, current)
     else:
         projections = injury_projections(blended, flags, model, current, first_game)
-    scale = _scale_to_league(lid, projection_table)
-    projections = _apply_outlook(projections, current, scale)
-    projections = _apply_environment(projections, current, model, scale)
+    scale = _scale_to_league(lid, projection_table, data_dir=data_dir)
+    projections = _apply_outlook(projections, current, scale, data_dir)
+    projections = _apply_environment(projections, current, model, scale, data_dir)
     return projections, flags
 
 
-def load_league_data(league: dict[str, Any], strict: bool = True) -> LeagueData:
+def load_league_data(
+    league: dict[str, Any], strict: bool = True, data_dir: Path | None = None
+) -> LeagueData:
     _check_league_shape(league)
     cfg = load_config()
     lid, current = league["league_id"], int(league["current_week"])
     playoff_start = int(league["playoff_week_start"])
-    teams = store.read_table("league_teams", "raw").filter(pl.col("league_id") == lid)
-    matchups = store.read_table("matchups", "raw").filter(pl.col("league_id") == lid)
-    id_map = store.read_table("id_map").select("sleeper_id", "gsis_id")
-    sleeper_players = store.read_table("sleeper_players", "raw")
+    teams = store.read_table("league_teams", "raw", data_dir).filter(pl.col("league_id") == lid)
+    matchups = store.read_table("matchups", "raw", data_dir).filter(pl.col("league_id") == lid)
+    id_map = store.read_table("id_map", data_dir=data_dir).select("sleeper_id", "gsis_id")
+    sleeper_players = store.read_table("sleeper_players", "raw", data_dir)
     players = sleeper_players.select("sleeper_id", "position")
-    matchup_players = store.read_table("matchup_players", "raw")
-    projection_table = store.projection_table()
+    matchup_players = store.read_table("matchup_players", "raw", data_dir)
+    projection_table = store.projection_table(data_dir)
 
     base = standings(matchups, current - 1)
     _check_standings(base, teams, lid)
@@ -535,9 +558,9 @@ def load_league_data(league: dict[str, Any], strict: bool = True) -> LeagueData:
     points0 = dict(zip(base["roster_id"], base["points_for"], strict=True))
     roster_ids = sorted(teams["roster_id"].to_list())
 
-    rosters = _load_rosters(lid, id_map, players, strict)
+    rosters = _load_rosters(lid, id_map, players, strict, data_dir=data_dir)
     projections, flags = _layered_projections(
-        lid, current, id_map, sleeper_players, projection_table
+        lid, current, id_map, sleeper_players, projection_table, data_dir
     )
     _check_projected(rosters, projections, lid, strict)
     active = (
@@ -547,9 +570,9 @@ def load_league_data(league: dict[str, Any], strict: bool = True) -> LeagueData:
         .filter(pl.col("gsis_id_right").is_not_null())
     )
     positions = dict(zip(active["gsis_id_right"], active["position"], strict=True))
-    marginals = store.read_table("marginals").filter(pl.col("league_id") == lid)
-    cv, rho = _spread_inputs(lid, marginals)
-    kd = _kicker_and_defense(lid, current, cfg.season, players, matchup_players)
+    marginals = store.read_table("marginals", data_dir=data_dir).filter(pl.col("league_id") == lid)
+    cv, rho = _spread_inputs(lid, marginals, data_dir)
+    kd = _kicker_and_defense(lid, current, cfg.season, players, matchup_players, data_dir)
     mp = (
         matchup_players.filter((pl.col("league_id") == lid) & (pl.col("week") == current))
         .join(players, on="sleeper_id")
@@ -558,7 +581,7 @@ def load_league_data(league: dict[str, Any], strict: bool = True) -> LeagueData:
     clock = live_clock(
         mp,
         sleeper_players.select("sleeper_id", "team"),
-        store.read_table("nfl_schedules", "raw"),
+        store.read_table("nfl_schedules", "raw", data_dir),
         cfg.season,
         current,
     )
@@ -600,11 +623,11 @@ def load_league_data(league: dict[str, Any], strict: bool = True) -> LeagueData:
         positions=positions,
         trade_deadline=int(league["trade_deadline"] or 99),
         league_id=lid,
-        kd_slot=_kd_slot_projections(lid, id_map, current),
+        kd_slot=_kd_slot_projections(lid, id_map, current, data_dir),
     )
 
 
-def append_history(latest: pl.DataFrame, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+def append_history(latest: pl.DataFrame, data_dir: Path | None = None) -> pl.DataFrame:
     """Append this run to the archive table, which is never overwritten, only extended."""
     stamped = latest.with_columns(
         pl.lit(datetime.now(UTC).isoformat(timespec="seconds")).alias("run_at")
@@ -627,13 +650,15 @@ def team_week_rows(data: LeagueData, inp: SeasonInputs) -> list[tuple[Any, ...]]
     ]
 
 
-def run(n_sims: int | None = None, archive: bool = True) -> pl.DataFrame:
+def run(
+    n_sims: int | None = None, archive: bool = True, data_dir: Path | None = None
+) -> pl.DataFrame:
     """Simulate every league. `archive=False` skips the append-only history (live ticks)."""
     cfg = load_config()
     n_sims = n_sims or cfg.n_sims
     rows, seed_rows, week_rows, conditional, win_need = [], [], [], [], []
-    for league in store.read_table("leagues", "raw").iter_rows(named=True):
-        data = load_league_data(league)
+    for league in store.read_table("leagues", "raw", data_dir).iter_rows(named=True):
+        data = load_league_data(league, data_dir=data_dir)
         inp = build_inputs(data, None, n_sims, 0)
         result = simulate_season(inp)
         week_rows += team_week_rows(data, inp)
@@ -682,10 +707,11 @@ def run(n_sims: int | None = None, archive: bool = True) -> pl.DataFrame:
             if win_need
             else pl.DataFrame(schema=store.SCHEMAS["sim_win_need"]),
             "sim_season": latest,
-        }
+        },
+        data_dir=data_dir,
     )
     if archive:
-        append_history(latest)
+        append_history(latest, data_dir)
     return latest
 
 

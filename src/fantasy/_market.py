@@ -1,5 +1,7 @@
 """Waivers, trades and roster strength: moves that change my team (see data_api)."""
 
+from pathlib import Path
+
 import polars as pl
 
 from fantasy import store
@@ -12,14 +14,18 @@ MIN_GAIN = 0.05  # expected points below this are not worth a roster move
 
 
 def waivers(
-    league_key: str, week: int = 0, loaded: tuple[LeagueData, int] | None = None
+    league_key: str,
+    week: int = 0,
+    loaded: tuple[LeagueData, int] | None = None,
+    data_dir: Path | None = None,
+    team: int | None = None,
 ) -> pl.DataFrame:
     """Best adds for my team by extra points over the rest of the season (a shortcut)."""
-    data, mine = loaded or _league(league_key)
-    names = _names()
+    data, mine = loaded or _league(league_key, data_dir, team)
+    names = _names(data_dir)
     adds = [w for w in moves.waiver_candidates(data, mine, top_n=15) if w.delta_mu > MIN_GAIN]
     odds = {r["gsis_id"]: r for r in moves.waiver_odds(data, mine, adds).iter_rows(named=True)}
-    trending = _trending_adds()
+    trending = _trending_adds(data_dir)
     rows = [
         {
             "gsis_id": w.gsis_id,
@@ -37,29 +43,41 @@ def waivers(
     return pl.DataFrame(rows, schema=ENGINE_SCHEMAS["waivers"])
 
 
-def _trending_adds() -> dict[str, int]:
+def _trending_adds(data_dir: Path | None) -> dict[str, int]:
     """How many Sleeper users added each player in the latest trending pull (nflverse ID)."""
-    table = _read("trending", store.DATA_DIR).filter(pl.col("kind") == "add")
+    table = _read("trending", data_dir).filter(pl.col("kind") == "add")
     if table.is_empty():
         return {}
     latest = table.filter(pl.col("fetched_at") == table["fetched_at"].max())
-    joined = latest.join(_id_map(), on="sleeper_id").filter(pl.col("gsis_id").is_not_null())
+    joined = latest.join(_id_map(data_dir), on="sleeper_id").filter(pl.col("gsis_id").is_not_null())
     return dict(zip(joined["gsis_id"], joined["count"], strict=True))
 
 
-def player_weeks(league_key: str, gsis_id: str, n: int = 4) -> pl.DataFrame:
+def player_weeks(
+    league_key: str,
+    gsis_id: str,
+    n: int = 4,
+    data_dir: Path | None = None,
+    team: int | None = None,
+) -> pl.DataFrame:
     """Projected points for one player in each of the next n weeks (injury-scaled)."""
-    data, _ = _league(league_key)
+    data, _ = _league(league_key, data_dir, team)
     rows = data.projections.filter(
         (pl.col("gsis_id") == gsis_id) & (pl.col("week") < data.current_week + n)
     )
     return rows.select("week", "projection").sort("week")
 
 
-def player_points(league_key: str, gsis_id: str | None, season: int) -> pl.DataFrame:
+def player_points(
+    league_key: str,
+    gsis_id: str | None,
+    season: int,
+    data_dir: Path | None = None,
+    team: int | None = None,
+) -> pl.DataFrame:
     """Regular-season points per week under this league's scoring: one player's, or everyone's."""
-    data, _ = _league(league_key)
-    path = store.table_path("player_points", "derived", store.DATA_DIR)
+    data, _ = _league(league_key, data_dir, team)
+    path = store.table_path("player_points", "derived", data_dir)
     if not path.exists():
         raise FileNotFoundError(f"{path} does not exist; run the stage that writes 'player_points'")
     keep = (
@@ -73,47 +91,64 @@ def player_points(league_key: str, gsis_id: str | None, season: int) -> pl.DataF
     return rows.select("gsis_id", "week", "points").sort("gsis_id", "week").collect()
 
 
-def trade_partners(league_key: str) -> pl.DataFrame:
-    data, mine = _league(league_key)
+def trade_partners(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
+    data, mine = _league(league_key, data_dir, team)
     rows = [(r, data.team_names[r]) for r in data.roster_ids if r != mine]
     return pl.DataFrame(rows, schema=["roster_id", "team_name"], orient="row")
 
 
-def trade_assets(league_key: str, roster_id: int | None = None) -> pl.DataFrame:
+def trade_assets(
+    league_key: str,
+    roster_id: int | None = None,
+    data_dir: Path | None = None,
+    team: int | None = None,
+) -> pl.DataFrame:
     """A roster's skill players with projected points over the rest of the season."""
-    data, mine = _league(league_key)
+    data, mine = _league(league_key, data_dir, team)
     ids = moves.team_ids(data, mine if roster_id is None else roster_id)
-    names, positions, values = _names(), moves.position_of(data), moves.ros_value(data, ids)
+    names, positions, values = _names(data_dir), moves.position_of(data), moves.ros_value(data, ids)
     rows = [(i, names.get(i, i), positions[i], values[i]) for i in ids]
     schema = ["gsis_id", "full_name", "position", "ros_points"]
     return pl.DataFrame(rows, schema=schema, orient="row").sort("ros_points", descending=True)
 
 
 def evaluate_trade(
-    league_key: str, partner_roster_id: int, give_ids: list[str], get_ids: list[str]
+    league_key: str,
+    partner_roster_id: int,
+    give_ids: list[str],
+    get_ids: list[str],
+    data_dir: Path | None = None,
+    team: int | None = None,
 ) -> pl.DataFrame:
     """Playoff and title odds before and after, for me and the partner. May raise ValueError."""
-    data, mine = _league(league_key)
+    data, mine = _league(league_key, data_dir, team)
     return moves.evaluate_trade(data, mine, partner_roster_id, list(give_ids), list(get_ids))
 
 
 def trade_roster_changes(
-    league_key: str, partner_roster_id: int, give_ids: list[str], get_ids: list[str]
+    league_key: str,
+    partner_roster_id: int,
+    give_ids: list[str],
+    get_ids: list[str],
+    data_dir: Path | None = None,
+    team: int | None = None,
 ) -> pl.DataFrame:
     """Players dropped or picked up automatically to keep each roster's size."""
-    data, mine = _league(league_key)
+    data, mine = _league(league_key, data_dir, team)
     after = moves.apply_trade(data, mine, partner_roster_id, list(give_ids), list(get_ids))
-    names, positions = _names(), moves.position_of(data)
+    names, positions = _names(data_dir), moves.position_of(data)
     rows = []
     sides = ((mine, give_ids, get_ids), (partner_roster_id, get_ids, give_ids))
     for roster_id, sent, received in sides:
-        team = data.team_names[roster_id]
+        team_name = data.team_names[roster_id]
         before_ids = set(moves.team_ids(data, roster_id))
         after_ids = set(moves.team_ids(data, roster_id, after))
         for gid in sorted((before_ids | set(received)) - after_ids - set(sent)):
-            rows.append((team, "dropped", names.get(gid, gid), positions[gid]))
+            rows.append((team_name, "dropped", names.get(gid, gid), positions[gid]))
         for gid in sorted(after_ids - before_ids - set(received)):
-            rows.append((team, "picked up", names.get(gid, gid), positions[gid]))
+            rows.append((team_name, "picked up", names.get(gid, gid), positions[gid]))
     schema = ["team_name", "action", "full_name", "position"]
     return pl.DataFrame(rows, schema=schema, orient="row")
 
@@ -121,7 +156,9 @@ def trade_roster_changes(
 FOUND_NUMBERS = ("my_playoff", "my_title", "their_playoff", "their_title", "se_title")
 
 
-def find_trades(league_key: str) -> pl.DataFrame:
+def find_trades(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """Trades (1 for 1, 1 for 2, 2 for 1, 2 for 2) that fill both teams' positions of need, best
     need fit first. May raise ValueError after the deadline.
 
@@ -131,9 +168,9 @@ def find_trades(league_key: str) -> pl.DataFrame:
     points), my_playoff, my_title, their_playoff, their_title (changes in probability) and
     se_title (paired Monte Carlo error of my_title).
     """
-    data, mine = _league(league_key)
+    data, mine = _league(league_key, data_dir, team)
     found = moves.find_trades(data, mine)
-    names, positions = _names(), moves.position_of(data)
+    names, positions = _names(data_dir), moves.position_of(data)
 
     def label(ids: list[str]) -> str:
         return " + ".join(f"{names.get(g, g)} ({positions[g]})" for g in ids)
@@ -170,12 +207,14 @@ def find_trades(league_key: str) -> pl.DataFrame:
     return pl.DataFrame(rows, schema=schema)
 
 
-def position_strength(league_key: str) -> pl.DataFrame:
+def position_strength(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """My value over replacement by position, with the league rank (1 is strongest).
 
     Columns: position, vor_per_week (points a week above the stand-in free agent at that
     position, from my best lineup), rank, teams."""
-    data, mine = _league(league_key)
+    data, mine = _league(league_key, data_dir, team)
     table = moves.position_strength(data)
     return (
         table.filter(pl.col("roster_id") == mine)

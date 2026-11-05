@@ -96,7 +96,7 @@ def fetch_week(season: int, week: int) -> list[dict[str, Any]]:
     return items
 
 
-def run(data_dir: Path = store.DATA_DIR) -> int:
+def run(data_dir: Path | None = None) -> int:
     season = load_config().season
     leagues = store.read_table("leagues", "raw", data_dir)
     current = int(leagues["current_week"].to_numpy().max())

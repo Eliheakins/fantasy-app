@@ -34,7 +34,9 @@ def _try_utc(text: str | None) -> datetime | None:
         return None
 
 
-def _scan(name: str, area: str, data_dir: Path, columns: list[str], where: pl.Expr) -> pl.DataFrame:
+def _scan(
+    name: str, area: str, data_dir: Path | None, columns: list[str], where: pl.Expr
+) -> pl.DataFrame:
     """Only the needed columns and rows of an optional table; empty if it is not there yet."""
     path = store.table_path(name, area, data_dir)
     if not path.exists():
@@ -46,7 +48,7 @@ def _iso(at: datetime) -> str:
     return at.astimezone(UTC).isoformat(timespec="seconds")
 
 
-def _names(ids: set[str], data_dir: Path) -> dict[str, str]:
+def _names(ids: set[str], data_dir: Path | None) -> dict[str, str]:
     players = _scan(
         "sleeper_players", "raw", data_dir, ["sleeper_id", "full_name"],
         pl.col("sleeper_id").is_in(ids),
@@ -57,7 +59,7 @@ def _names(ids: set[str], data_dir: Path) -> dict[str, str]:
 Trade = tuple[str, list[str], list[str]]  # when (ISO), sleeper ids added, sleeper ids sent
 
 
-def _trades(me: dict[str, Any], data_dir: Path) -> list[Trade]:
+def _trades(me: dict[str, Any], data_dir: Path | None) -> list[Trade]:
     rows = _scan(
         "transactions", "raw", data_dir,
         ["transaction_id", "created", "action", "sleeper_id"],
@@ -83,7 +85,7 @@ def _trade_label(trade: Trade, names: dict[str, str]) -> str:
     return f"Trade: got {who(trade[1])}; sent {who(trade[2])}"
 
 
-def _starters(me: dict[str, Any], data_dir: Path) -> set[str]:
+def _starters(me: dict[str, Any], data_dir: Path | None) -> set[str]:
     """My starters in the latest week with a lineup on record."""
     mine = _scan(
         "matchup_players", "raw", data_dir, ["week", "sleeper_id"],
@@ -97,7 +99,7 @@ def _starters(me: dict[str, Any], data_dir: Path) -> set[str]:
 
 
 def _injuries(
-    me: dict[str, Any], starters: set[str], names: dict[str, str], data_dir: Path
+    me: dict[str, Any], starters: set[str], names: dict[str, str], data_dir: Path | None
 ) -> list[tuple[str, str, str]]:
     if not starters:
         return []
@@ -121,7 +123,7 @@ def _injuries(
     return out
 
 
-def _big_weeks(me: dict[str, Any], data_dir: Path) -> list[tuple[str, int, str]]:
+def _big_weeks(me: dict[str, Any], data_dir: Path | None) -> list[tuple[str, int, str]]:
     """Weeks at least BIG_WEEK_SDS above the mean of my other completed weeks."""
     played = _scan(
         "matchups", "raw", data_dir, ["week", "points"],
@@ -148,7 +150,7 @@ def _big_weeks(me: dict[str, Any], data_dir: Path) -> list[tuple[str, int, str]]
     return out
 
 
-def season_events(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
+def season_events(me: dict[str, Any], data_dir: Path | None) -> pl.DataFrame:
     """Events for the chart, oldest first."""
     history = _scan(
         "sim_season_history", "archive", data_dir, ["run_at", "as_of_week"],

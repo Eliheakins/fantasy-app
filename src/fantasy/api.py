@@ -15,6 +15,7 @@ from starlette.exceptions import HTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.types import Scope
 
+from fantasy import store
 from fantasy.api_envelope import clean as clean
 from fantasy.api_envelope import fail, register_error_handlers
 from fantasy.api_envelope import rows as rows
@@ -50,10 +51,16 @@ def forbidden(request: Request, hosts: list[str]) -> str | None:
     return None
 
 
-def create_app(web_dist: Path | None = None, stat_settings: StatSettings | None = None) -> FastAPI:
+def create_app(
+    web_dist: Path | None = None,
+    stat_settings: StatSettings | None = None,
+    data_dir: Path | None = None,
+) -> FastAPI:
+    """The app; `data_dir` (default: the project data folder) is where every route reads."""
     dist = WEB_DIST if web_dist is None else web_dist
+    root = store.resolve(data_dir)
     runner = JobRunner(max_workers=2)
-    live = LiveRefresher(runner)
+    live = LiveRefresher(runner, data_dir=root)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -66,6 +73,7 @@ def create_app(web_dist: Path | None = None, stat_settings: StatSettings | None 
             runner.shutdown()
 
     app = FastAPI(title="Fantasy API", version="1", lifespan=lifespan)
+    app.state.data_dir = root
     app.state.runner = runner
     app.state.live = live
     hosts = allowed_hosts()

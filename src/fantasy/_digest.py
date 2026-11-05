@@ -30,7 +30,7 @@ def _season_value(table: pl.DataFrame, roster_id: int, column: str) -> float | N
 
 
 def _week_figure(
-    me: dict[str, Any], week: int, data_dir: Path, read: Any, column: str
+    me: dict[str, Any], week: int, data_dir: Path | None, read: Any, column: str
 ) -> float | None:
     """A League page season total, taken through `week` minus through the week before."""
     through = read({**me, "current_week": week + 1}, data_dir)
@@ -41,7 +41,7 @@ def _week_figure(
     return now - (before or 0.0)
 
 
-def _nfl_week_over(me: dict[str, Any], week: int, data_dir: Path) -> bool:
+def _nfl_week_over(me: dict[str, Any], week: int, data_dir: Path | None) -> bool:
     """Every NFL game of the week has a score. False without schedule rows for the season."""
     games = _read("nfl_schedules", data_dir).filter(
         (pl.col("season") == load_config().season) & (pl.col("week") == week)
@@ -49,14 +49,14 @@ def _nfl_week_over(me: dict[str, Any], week: int, data_dir: Path) -> bool:
     return not games.is_empty() and games["home_score"].null_count() == 0
 
 
-def last_scored_week(me: dict[str, Any], data_dir: Path) -> int:
+def last_scored_week(me: dict[str, Any], data_dir: Path | None) -> int:
     """The latest finished week: the week before the current one, or the current week itself once
     every NFL game in it is final (Sleeper keeps the old week until it rolls over midweek)."""
     current = int(me["current_week"])
     return current if _nfl_week_over(me, current, data_dir) else current - 1
 
 
-def last_week(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
+def last_week(me: dict[str, Any], data_dir: Path | None) -> pl.DataFrame:
     """My game in the last finished week; empty in week 1 or if it was not scored."""
     week = last_scored_week(me, data_dir)
     if week < 1:
@@ -98,7 +98,7 @@ def last_week(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
     return pl.DataFrame([row], schema=ENGINE_SCHEMAS["last_week"])
 
 
-def player_vs_projection(me: dict[str, Any], week: int, data_dir: Path) -> pl.DataFrame:
+def player_vs_projection(me: dict[str, Any], week: int, data_dir: Path | None) -> pl.DataFrame:
     """My starters at skill positions in a week (0: last finished week): points against the last
     `proj_snapshots` row for the player that week. The column follows `projection_model`; no
     Sleeper blend or injury layer, so not the number the app showed. Null where no snapshot."""
@@ -167,13 +167,13 @@ def odds_change(history: pl.DataFrame, league_id: str, mine: int) -> pl.DataFram
     return table.select(*ENGINE_SCHEMAS["odds_change"]).sort("p_title", descending=True)
 
 
-def is_my_team(me: dict[str, Any], data_dir: Path) -> bool:
+def is_my_team(me: dict[str, Any], data_dir: Path | None) -> bool:
     """The viewed team is my own (Sleeper's is_me), the only one the digest stage stores for."""
     teams = _league_view._teams(me, data_dir)
     return bool(teams.filter(pl.col("roster_id") == me["roster_id"])["is_me"].any())
 
 
-def move_ideas(me: dict[str, Any], kind: str, data_dir: Path) -> pl.DataFrame:
+def move_ideas(me: dict[str, Any], kind: str, data_dir: Path | None) -> pl.DataFrame:
     """Stored ideas of a kind ("waiver" or "trade"), best first. Empty for any team but mine."""
     if kind not in IDEA_KINDS:
         raise ValueError(f"kind must be one of {IDEA_KINDS}, not {kind!r}")
@@ -185,7 +185,7 @@ def move_ideas(me: dict[str, Any], kind: str, data_dir: Path) -> pl.DataFrame:
     return mine.sort("rank") if not mine.is_empty() else empty
 
 
-def stored_adds(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
+def stored_adds(me: dict[str, Any], data_dir: Path | None) -> pl.DataFrame:
     """Stored waiver ideas in the shape of `waivers`, for `actions(adds=...)`."""
     ideas = move_ideas(me, "waiver", data_dir)
     rows = [

@@ -13,12 +13,14 @@ from fantasy.sim.watch import market_drop, role_drop
 TOP_N = 8
 
 
-def watchlist(league_key: str, data_dir: Path) -> pl.DataFrame:
+def watchlist(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> pl.DataFrame:
     """My flagged players, most rest-of-season points first. Columns: gsis_id, full_name,
     position, ros_points and reasons (one sentence for each fact that put him on the list)."""
-    data, mine = _league(league_key)
+    data, mine = _league(league_key, data_dir, team)
     ids = moves.team_ids(data, mine)
-    ros, names, positions = moves.ros_value(data, ids), _names(), moves.position_of(data)
+    ros, names, positions = moves.ros_value(data, ids), _names(data_dir), moves.position_of(data)
     snaps = (
         _read("nfl_snaps", data_dir, "raw")
         .filter(

@@ -1982,6 +1982,18 @@
             }
           },
           {
+            "name": "stored_adds",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Use the digest's stored waiver ideas instead of re-simulating",
+              "default": false,
+              "title": "Stored Adds"
+            },
+            "description": "Use the digest's stored waiver ideas instead of re-simulating"
+          },
+          {
             "name": "team",
             "in": "query",
             "required": false,
@@ -1998,18 +2010,6 @@
               "title": "Team"
             },
             "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
-          },
-          {
-            "name": "stored_adds",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "description": "Use the digest's stored waiver ideas instead of re-simulating",
-              "default": false,
-              "title": "Stored Adds"
-            },
-            "description": "Use the digest's stored waiver ideas instead of re-simulating"
           }
         ],
         "responses": {

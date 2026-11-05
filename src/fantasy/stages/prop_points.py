@@ -342,7 +342,7 @@ def outside_points(
     )
 
 
-def current_people(data_dir: Path) -> pl.DataFrame:
+def current_people(data_dir: Path | None) -> pl.DataFrame:
     """gsis_id, name, position and team now, from Sleeper's players file."""
     ids = store.read_table("id_map", "derived", data_dir).select("sleeper_id", "gsis_id")
     return (
@@ -366,7 +366,7 @@ def window_start(schedule: pl.DataFrame) -> datetime | None:
 
 
 def _outside_snapshots(
-    data_dir: Path, season: int, week: int, since: datetime | None
+    data_dir: Path | None, season: int, week: int, since: datetime | None
 ) -> pl.DataFrame:
     """This week's archived outside rows fetched since `since`, mapped to gsis_id; logs each
     source's age by position and warns about missing positions."""
@@ -396,7 +396,7 @@ def _outside_snapshots(
     return mapped.select(*empty.columns)
 
 
-def _week_props(data_dir: Path, odds_dir: Path, schedule: pl.DataFrame) -> pl.DataFrame:
+def _week_props(data_dir: Path | None, odds_dir: Path, schedule: pl.DataFrame) -> pl.DataFrame:
     """This week's mapped prop lines: gsis_id, position, market, prop_mean, stamp."""
     lines = week_lines(read_snapshots(odds_dir), schedule)
     if lines.is_empty():
@@ -407,7 +407,7 @@ def _week_props(data_dir: Path, odds_dir: Path, schedule: pl.DataFrame) -> pl.Da
     return map_players(lines, current_people(data_dir))
 
 
-def run(data_dir: Path = store.DATA_DIR, odds_dir: Path = ODDS_DIR) -> tuple[int, int]:
+def run(data_dir: Path | None = None, odds_dir: Path = ODDS_DIR) -> tuple[int, int]:
     """Write proj_props and proj_outside for the current week; returns their row counts."""
     config = load_config()
     leagues = store.read_table("leagues", "raw", data_dir)

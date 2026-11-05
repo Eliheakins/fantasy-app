@@ -82,7 +82,7 @@ def to_frame(items: list[dict[str, Any]], fmt: str, fetched_at: str) -> pl.DataF
 
 
 def run(
-    data_dir: Path = store.DATA_DIR,
+    data_dir: Path | None = None,
     fetch: Callable[[Setting], list[dict[str, Any]]] = fetch_values,
     now: str | None = None,
 ) -> int:

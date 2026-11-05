@@ -11,18 +11,17 @@ from fastapi.testclient import TestClient
 from store_fixture import write_rows
 from test_league_view import league  # noqa: F401  (league is a fixture)
 
-from fantasy import api, data_api, store
+from fantasy import api, store
 from fantasy.config import load_config
 
 
 @pytest.fixture
 def client(league: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:  # noqa: F811
-    monkeypatch.setattr(store, "DATA_DIR", league)
-    original = data_api.leagues
-    monkeypatch.setattr(data_api, "leagues", lambda *a, **k: original(league))
     monkeypatch.setenv("LIVE_REFRESH", "off")
     headers = {"X-Requested-With": "fantasy-app"}
-    with TestClient(api.create_app(), base_url="http://localhost", headers=headers) as c:
+    with TestClient(
+        api.create_app(data_dir=league), base_url="http://localhost", headers=headers
+    ) as c:
         yield c
 
 

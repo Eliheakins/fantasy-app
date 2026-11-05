@@ -17,6 +17,7 @@ Run: uv run python -m fantasy.stages.distributions
 """
 
 import math
+from pathlib import Path
 
 import numpy as np
 import polars as pl
@@ -211,15 +212,15 @@ def run() -> dict[str, int]:
     }
 
 
-def calibrated(frame: pl.DataFrame) -> pl.DataFrame:
+def calibrated(frame: pl.DataFrame, data_dir: Path | None = None) -> pl.DataFrame:
     """`frame` (league_id, position, projection) with the projection calibrated by size, when the
     curves have been estimated; otherwise unchanged. The learned projection is left alone: held
     out, the curves made it slightly worse (RMSE up in 7 of 8 league-seasons, mean error shifted by
     0.1 to 0.3 points), because it is already trained to be unbiased."""
-    if store.projection_name() == "proj_learned":
+    if store.projection_name(data_dir) == "proj_learned":
         return frame
     try:
-        curves = store.read_table("projection_calibration")
+        curves = store.read_table("projection_calibration", data_dir=data_dir)
     except FileNotFoundError:
         return frame
     return apply_curves(frame, curves)

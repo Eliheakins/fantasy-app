@@ -114,7 +114,7 @@ def test_an_event_before_the_first_saved_run_has_no_run_to_sit_on(season: Path) 
     assert len(early) == 1 and early[0]["run_at"] is None
 
 
-def test_no_history_or_no_data_gives_no_events(season: Path, tmp_path: Path) -> None:
+def test_no_history_or_no_data_gives_no_events(season: Path) -> None:
     assert data_api.season_events("nope", season).is_empty()
     write_archive(season, "sim_season_history", [])
     assert all(e["run_at"] is None for e in events(season))
@@ -170,11 +170,12 @@ def test_win_needs_are_empty_before_the_simulation_has_written_them(season: Path
 
 
 @pytest.fixture
-def client(season: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+def client(season: Path) -> Iterator[TestClient]:
     write_need(season)
-    monkeypatch.setattr(store, "DATA_DIR", season)
     headers = {"X-Requested-With": "fantasy-app"}
-    with TestClient(api.create_app(), base_url="http://localhost", headers=headers) as c:
+    with TestClient(
+        api.create_app(data_dir=season), base_url="http://localhost", headers=headers
+    ) as c:
         yield c
 
 

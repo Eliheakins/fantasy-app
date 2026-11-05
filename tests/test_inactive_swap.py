@@ -20,11 +20,9 @@ def _swap_config(monkeypatch: pytest.MonkeyPatch, on: bool) -> None:
     monkeypatch.setattr(_lineup, "load_config", lambda: cfg)
 
 
-def test_kickoffs_by_player_leave_out_players_with_no_team_or_no_game(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
-    ids = store.read_table("id_map", "derived")
+def test_kickoffs_by_player_leave_out_players_with_no_team_or_no_game(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
+    ids = store.read_table("id_map", "derived", tmp_path)
     extra = pl.DataFrame(
         {"sleeper_id": ["nt", "bye"], "gsis_id": ["G_NOTEAM", "G_BYE"], "nfl_team": [None, "NYJ"]}
     )
@@ -34,7 +32,7 @@ def test_kickoffs_by_player_leave_out_players_with_no_team_or_no_game(
     game = {"game_type": "REG", "season": load_config().season, "week": 3}
     game |= {"gameday": "2026-09-20", "gametime": "13:00", "home_team": "KC", "away_team": "BUF"}
     write_rows(tmp_path, "nfl_schedules", [game])
-    kicks = _lineup._kickoffs_by_player(3)
+    kicks = _lineup._kickoffs_by_player(3, data_dir=tmp_path)
     assert kicks["G_QB"] == datetime(2026, 9, 20, 13, 0, tzinfo=EASTERN)
     assert "G_NOTEAM" not in kicks and "G_BYE" not in kicks
 
@@ -42,24 +40,30 @@ def test_kickoffs_by_player_leave_out_players_with_no_team_or_no_game(
 def test_lineup_names_the_swap_for_a_questionable_starter_only_when_switched_on(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
+    _engine_store(tmp_path)
     _with(monkeypatch, injuries={"G_WR": ("Questionable", "Hamstring", None)})
     sunday = datetime(2026, 9, 20, 13, 0, tzinfo=EASTERN)
     kicks = {"G_WR": sunday, "G_DL": sunday + timedelta(hours=3), "G_QB": sunday}
-    monkeypatch.setattr(_lineup, "_kickoffs_by_player", lambda week: kicks)
+    monkeypatch.setattr(_lineup, "_kickoffs_by_player", lambda week, data_dir=None: kicks)
     _swap_config(monkeypatch, True)
-    rows = {r["gsis_id"]: r for r in data_api.lineup("t", now=NOW).iter_rows(named=True)}
-    assert rows["G_WR"]["recommended"] and rows["G_WR"]["swap_in"] == _engine._names()["G_DL"]
+    rows = {
+        r["gsis_id"]: r
+        for r in data_api.lineup("t", now=NOW, data_dir=tmp_path).iter_rows(named=True)
+    }
+    assert (
+        rows["G_WR"]["recommended"]
+        and rows["G_WR"]["swap_in"] == _engine._names(data_dir=tmp_path)["G_DL"]
+    )
     assert rows["G_QB"]["swap_in"] is None
     _swap_config(monkeypatch, False)
-    assert data_api.lineup("t", now=NOW)["swap_in"].null_count() == len(rows)
+    assert data_api.lineup("t", now=NOW, data_dir=tmp_path)["swap_in"].null_count() == len(rows)
 
 
 def test_long_term_notes_say_out_at_least_four_games_unless_the_curve_gives_a_chance(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
-    data, _ = _engine._league("t")
+    _engine_store(tmp_path)
+    data, _ = _engine._league("t", data_dir=tmp_path)
     chances = pl.DataFrame(
         {
             "gsis_id": ["G_RB", "G_RB", "G_TE", "G_TE"],

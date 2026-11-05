@@ -2,7 +2,7 @@ from pathlib import Path
 
 import polars as pl
 import pytest
-from store_fixture import use_store, write_rows
+from store_fixture import write_rows
 
 from fantasy import data_api
 from fantasy.stages import simulate as sim
@@ -35,12 +35,10 @@ WEEKS = [3, 4]
 
 def build_store(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
     scores: list[tuple[float, float]],
     trade_deadline: int | None = None,
 ) -> None:
     """Two teams; `scores` is (team 1, team 2) points for weeks 1, 2, ... of completed play."""
-    use_store(monkeypatch, tmp_path)
     league = {
         "league_key": "t",
         "season": 2026,
@@ -125,29 +123,25 @@ def week_projection(projections: pl.DataFrame, gsis_id: str, week: int) -> float
     return float(rows["projection"].item())
 
 
-def test_roster_keeps_only_mapped_skill_players(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    build_store(tmp_path, monkeypatch, [(100.0, 90.0)])
-    data = load_league_data(LEAGUE)
+def test_roster_keeps_only_mapped_skill_players(tmp_path: Path) -> None:
+    build_store(tmp_path, [(100.0, 90.0)])
+    data = load_league_data(LEAGUE, data_dir=tmp_path)
     mine = data.rosters.filter(pl.col("roster_id") == 1)["gsis_id"].to_list()
     assert sorted(mine) == ["G_DL", "G_QB", "G_RB", "G_TE", "G_WR"]  # no K, no unmapped id
     assert data.rosters.filter(pl.col("roster_id") == 2)["gsis_id"].to_list() == ["G_OPP"]
 
 
-def test_wins0_counts_a_tie_as_half_a_win(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    build_store(tmp_path, monkeypatch, [(100.0, 100.0), (110.0, 90.0)])
-    data = load_league_data(LEAGUE)
+def test_wins0_counts_a_tie_as_half_a_win(tmp_path: Path) -> None:
+    build_store(tmp_path, [(100.0, 100.0), (110.0, 90.0)])
+    data = load_league_data(LEAGUE, data_dir=tmp_path)
     assert (data.wins0[1], data.wins0[2]) == (1.5, 0.5)
     assert (data.points0[1], data.points0[2]) == (210.0, 190.0)
 
 
-def test_injury_fallback_zeroes_out_and_ir_and_discounts_questionable(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    build_store(tmp_path, monkeypatch, [(100.0, 90.0)])
+def test_injury_fallback_zeroes_out_and_ir_and_discounts_questionable(tmp_path: Path) -> None:
+    build_store(tmp_path, [(100.0, 90.0)])
     assert "injury model" in data_api.missing_layers(tmp_path)
-    projections = load_league_data(LEAGUE).projections
+    projections = load_league_data(LEAGUE, data_dir=tmp_path).projections
     assert week_projection(projections, "G_QB", 3) == pytest.approx(10.0)
     assert week_projection(projections, "G_RB", 3) == 0.0
     assert week_projection(projections, "G_TE", 4) == 0.0  # IR sits four games from now
@@ -156,14 +150,12 @@ def test_injury_fallback_zeroes_out_and_ir_and_discounts_questionable(
     assert week_projection(projections, "G_DL", 3) == pytest.approx(0.2)
 
 
-def test_missing_effect_tables_do_not_stop_the_load(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    build_store(tmp_path, monkeypatch, [(100.0, 90.0)])
+def test_missing_effect_tables_do_not_stop_the_load(tmp_path: Path) -> None:
+    build_store(tmp_path, [(100.0, 90.0)])
     missing = data_api.missing_layers(tmp_path)
     assert {"injury model", "outlook"} <= set(missing)
     assert "matchup and offense effects" not in missing  # the shipped config has that layer off
-    data = load_league_data(LEAGUE)
+    data = load_league_data(LEAGUE, data_dir=tmp_path)
     assert data.trade_deadline == 99 and data.roster_ids == [1, 2, 3, 4, 5, 6]
     assert data.injuries["G_RB"][0] == "Out"
 
@@ -179,12 +171,10 @@ def test_tier_spreads_lists_each_positions_edges_in_ascending_order() -> None:
     assert out == {"WR": ((6.0, 1.0), (12.0, 0.8), (1e9, 0.4))}
 
 
-def test_league_data_fields_for_the_fixture_league(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_league_data_fields_for_the_fixture_league(tmp_path: Path) -> None:
     """Characterization: pins the assembled LeagueData so the loader can be split safely."""
-    build_store(tmp_path, monkeypatch, [(100.0, 90.0)])
-    data = load_league_data(LEAGUE)
+    build_store(tmp_path, [(100.0, 90.0)])
+    data = load_league_data(LEAGUE, data_dir=tmp_path)
     assert data.roster_ids == [1, 2, 3, 4, 5, 6]
     assert data.team_names[1] == "Mine" and data.team_names[6] == "Team 6"
     assert (data.current_week, data.playoff_start, data.trade_deadline) == (3, 15, 99)

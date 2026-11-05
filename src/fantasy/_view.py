@@ -148,7 +148,7 @@ def unmatched_names(unmatched: pl.DataFrame) -> list[str]:
     ]
 
 
-def trade_deadline(league_key: str, data_dir: Path) -> int | None:
+def trade_deadline(league_key: str, data_dir: Path | None) -> int | None:
     """Last week trades are allowed, or None if the league has no deadline set."""
     rows = store.read_table("leagues", "raw", data_dir).filter(pl.col("league_key") == league_key)
     if rows.is_empty() or rows["trade_deadline"][0] is None:

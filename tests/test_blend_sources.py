@@ -74,10 +74,10 @@ def test_the_current_week_blends_every_configured_source_and_later_weeks_only_sl
     week3: float,
     week4: float,
 ) -> None:
-    build_store(tmp_path, monkeypatch, [(100.0, 90.0)])
+    build_store(tmp_path, [(100.0, 90.0)])
     add_outside_tables(tmp_path)
     use_sources(monkeypatch, sources)
-    projections = sim.load_league_data(LEAGUE).projections
+    projections = sim.load_league_data(LEAGUE, data_dir=tmp_path).projections
     assert week_projection(projections, "G_QB", 3) == week3  # exact: ["sleeper"] is today's blend
     assert week_projection(projections, "G_QB", 4) == week4
 

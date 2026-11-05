@@ -1,6 +1,6 @@
 """Viewing another team: every read treats the chosen roster as "my team"."""
 
-import contextvars
+import inspect
 import threading
 from pathlib import Path
 
@@ -9,46 +9,44 @@ import pytest
 from fastapi.testclient import TestClient
 from test_api import client, store_dir, wait_ok  # noqa: F401  (fixtures)
 
-from fantasy import _engine, api_routes, data_api
-from fantasy._engine import viewed_team, viewing_team
-from fantasy.api_jobs import JobRunner
+from fantasy import _engine, data_api
 
 
-def test_default_view_is_unchanged_and_the_override_resets(store_dir: Path) -> None:  # noqa: F811
-    assert _engine._league("t")[1] == 1 and viewed_team() is None
-    with viewing_team(2):
-        assert _engine._league("t")[1] == 2 and viewed_team() == 2
-    assert viewed_team() is None and _engine._league("t")[1] == 1
+def test_default_view_is_unchanged_and_the_team_argument_overrides_it(
+    store_dir: Path,  # noqa: F811
+) -> None:
+    assert _engine._league("t", store_dir)[1] == 1
+    assert _engine._league("t", store_dir, team=2)[1] == 2
+    assert _engine._league("t", store_dir)[1] == 1
 
 
 def test_same_team_as_me_gives_identical_results(store_dir: Path) -> None:  # noqa: F811
     calls = (
-        lambda: data_api.lineup("t"),
-        lambda: data_api.waivers("t"),
-        lambda: data_api.roster("t", store_dir),
-        lambda: data_api.season_odds("t", store_dir),
-        lambda: data_api.schedule("t"),
-        lambda: data_api.position_strength("t"),
+        data_api.lineup,
+        data_api.waivers,
+        data_api.roster,
+        data_api.season_odds,
+        data_api.schedule,
+        data_api.position_strength,
     )
-    base = [c().to_dicts() for c in calls]
-    with viewing_team(1):
-        assert [c().to_dicts() for c in calls] == base
+    base = [c("t", data_dir=store_dir).to_dicts() for c in calls]
+    assert [c("t", data_dir=store_dir, team=1).to_dicts() for c in calls] == base
 
 
 def test_another_team_changes_roster_lineup_odds_flags_and_partners(
     store_dir: Path,  # noqa: F811
 ) -> None:
-    mine_ids = set(data_api.lineup("t")["gsis_id"])
-    with viewing_team(2):
-        theirs = data_api.lineup("t")
-        assert not mine_ids & set(theirs["gsis_id"])
-        assert set(data_api.roster("t", store_dir)["full_name"]) == {"opp", "theirk"}
-        odds = data_api.season_odds("t", store_dir)
-        assert odds.filter(pl.col("is_me"))["roster_id"].to_list() == [2]
-        partners = data_api.trade_partners("t")["roster_id"].to_list()
-        assert 1 in partners and 2 not in partners
-        assert data_api.seed_distribution("t").is_empty()  # the fixture has seeds for team 1 only
-    back = data_api.season_odds("t", store_dir)
+    d = store_dir
+    mine_ids = set(data_api.lineup("t", data_dir=d)["gsis_id"])
+    theirs = data_api.lineup("t", data_dir=d, team=2)
+    assert not mine_ids & set(theirs["gsis_id"])
+    assert set(data_api.roster("t", d, team=2)["full_name"]) == {"opp", "theirk"}
+    odds = data_api.season_odds("t", d, team=2)
+    assert odds.filter(pl.col("is_me"))["roster_id"].to_list() == [2]
+    partners = data_api.trade_partners("t", d, team=2)["roster_id"].to_list()
+    assert 1 in partners and 2 not in partners
+    assert data_api.seed_distribution("t", d, team=2).is_empty()  # seeds for team 1 only
+    back = data_api.season_odds("t", d)
     assert back.filter(pl.col("is_me"))["roster_id"].to_list() == [1]
 
 
@@ -56,16 +54,13 @@ def test_teams_lists_every_team_with_me_marked(store_dir: Path) -> None:  # noqa
     teams = data_api.teams("t", store_dir)
     assert teams["roster_id"].to_list() == [1, 2, 3, 4, 5, 6]
     assert teams.filter(pl.col("is_me"))["team_name"].to_list() == ["Mine"]
-    with viewing_team(2):  # the list does not depend on the viewed team
-        assert data_api.teams("t", store_dir).to_dicts() == teams.to_dicts()
 
 
 def test_unknown_team_is_a_value_error(store_dir: Path) -> None:  # noqa: F811
-    with viewing_team(99):
-        with pytest.raises(ValueError, match="unknown team 99"):
-            data_api.lineup("t")
-        with pytest.raises(ValueError, match="unknown team 99"):
-            data_api.roster("t", store_dir)
+    with pytest.raises(ValueError, match="unknown team 99"):
+        data_api.lineup("t", data_dir=store_dir, team=99)
+    with pytest.raises(ValueError, match="unknown team 99"):
+        data_api.roster("t", store_dir, team=99)
 
 
 # --- API ----------------------------------------------------------------------------
@@ -119,9 +114,9 @@ def test_job_keys_and_results_are_per_team(
     gate = threading.Event()
     seen: list[int] = []
 
-    def slow(league: str) -> pl.DataFrame:
+    def slow(league: str, *, data_dir: Path, team: int | None, **_: object) -> pl.DataFrame:
         gate.wait(5)
-        seen.append(_engine._league(league)[1])
+        seen.append(_engine._league(league, data_dir, team)[1])
         return pl.DataFrame({"kind": ["Lineup"], "text": [f"team {seen[-1]}"]})
 
     monkeypatch.setattr(data_api, "actions", slow)
@@ -137,28 +132,37 @@ def test_job_keys_and_results_are_per_team(
     assert sorted(seen) == [1, 2, 3]
 
 
-def test_override_is_set_in_the_worker_thread_and_reset_after(
+def test_jobs_run_for_the_viewed_roster_not_is_me(
+    client: TestClient,  # noqa: F811
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runner = JobRunner(max_workers=1)  # one reused worker thread
-    monkeypatch.setattr(api_routes, "known_league", lambda league: True)
-    monkeypatch.setattr(api_routes, "data_version", lambda: "v")
-    seen: list[int | None] = []
-    api_routes.run_job(runner, "x", ("t",), lambda: seen.append(viewed_team()) or 1, team=7)
-    for job in list(runner._jobs.values()):
-        job.future.result(5)
-    assert seen == [7] and viewed_team() is None
-    after: list[int | None] = []
-    runner.submit(("y", ("t",), "v"), lambda: after.append(viewed_team())).future.result(5)
-    assert after == [None]  # the worker does not keep the last team
-    runner.shutdown()
+    seen: dict[str, int] = {}
 
+    def spy(name: str) -> None:
+        real = getattr(data_api, name)
 
-def test_threads_do_not_inherit_the_override_but_copied_contexts_do() -> None:
-    seen: list[int | None] = []
-    with viewing_team(5):
-        t = threading.Thread(target=lambda: seen.append(viewed_team()))
-        t.start()
-        t.join()
-        copied = contextvars.copy_context().run(viewed_team)
-    assert seen == [None] and copied == 5 and viewed_team() is None
+        def wrapper(*args: object, **kwargs: object) -> object:
+            bound = inspect.signature(real).bind(*args, **kwargs)
+            bound.apply_defaults()
+            league, d, team = (bound.arguments[k] for k in ("league_key", "data_dir", "team"))
+            seen[name] = _engine._league(league, d, team)[1]
+            # the fixture league is too small for the real trade search
+            return pl.DataFrame() if name == "find_trades" else real(*args, **kwargs)
+
+        monkeypatch.setattr(data_api, name, wrapper)
+
+    for name in ("win_probability", "actions", "find_trades"):
+        spy(name)
+    urls = (
+        ("get", "/api/leagues/t/win-probability?week=3&team=2"),
+        ("get", "/api/leagues/t/actions?team=2"),
+        ("post", "/api/leagues/t/trades/find?team=2"),
+    )
+    for method, url in urls:
+        out = wait_ok(client, lambda m=method, u=url: getattr(client, m)(u))
+        assert out["status"] == "ok", out
+    assert seen == {"win_probability": 2, "actions": 2, "find_trades": 2}
+    win = wait_ok(client, lambda: client.get("/api/leagues/t/win-probability?week=3&team=2"))
+    mine = wait_ok(client, lambda: client.get("/api/leagues/t/win-probability?week=3"))
+    best = lambda out: {r["gsis_id"] for r in out["data"]["lineups"]["expected_points"]}  # noqa: E731
+    assert best(win) and not best(win) & best(mine)

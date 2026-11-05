@@ -5,6 +5,7 @@ through the lineup's own helpers so the two pages agree (live games included).
 """
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 import polars as pl
@@ -34,10 +35,14 @@ RANGE_LEVELS = (0.1, 0.5, 0.9)
 
 
 def _range(
-    data: LeagueData, player: Player, chance: dict[str, float], live: dict[str, tuple[float, float]]
+    data: LeagueData,
+    player: Player,
+    chance: dict[str, float],
+    live: dict[str, tuple[float, float]],
+    data_dir: Path | None,
 ) -> tuple[float | None, float | None, float | None, float]:
     """Week range (10th, median, 90th) and expected total as the Lineup page computes them."""
-    marginals = _marginals(data.league_id)
+    marginals = _marginals(data.league_id, data_dir)
     ratio = {
         (r["position"], r["tier"], round(r["tau"], 2)): r["ratio"]
         for r in marginals.iter_rows(named=True)
@@ -87,27 +92,32 @@ def _outlook_rows(
     league_key: str, version: str, data_dir: str, mine: int, scope: str
 ) -> dict[str, dict[str, Any]]:
     """player_outlook for one scope, by player; `version`, `data_dir` and `mine` key the cache."""
-    return {r["gsis_id"]: r for r in player_outlook(league_key, scope).iter_rows(named=True)}
+    rows = player_outlook(league_key, scope, Path(data_dir), mine)
+    return {r["gsis_id"]: r for r in rows.iter_rows(named=True)}
 
 
-def _outlook(league_key: str, data: LeagueData, mine: int, gsis_id: str) -> dict[str, Any] | None:
+def _outlook(
+    league_key: str, data: LeagueData, mine: int, gsis_id: str, data_dir: Path | None
+) -> dict[str, Any] | None:
     owners = dict(zip(data.rosters["gsis_id"], data.rosters["roster_id"], strict=True))
     owner = owners.get(gsis_id)
     scope = "free" if owner is None else "mine" if owner == mine else "league"
-    rows = _outlook_rows(league_key, data_version(), str(store.DATA_DIR), mine, scope)
+    root = store.resolve(data_dir)
+    rows = _outlook_rows(league_key, data_version(root), str(root), mine, scope)
     return rows.get(gsis_id)
 
 
-def _table_scan(name: str) -> pl.LazyFrame | None:
+def _table_scan(name: str, data_dir: Path | None) -> pl.LazyFrame | None:
     """A lazy scan of a raw table, or None when it has not been written (the section hides)."""
-    path = store.table_path(name, "raw", store.DATA_DIR)
+    path = store.table_path(name, "raw", data_dir)
     return pl.scan_parquet(path) if path.exists() else None
 
 
-def _role_weeks(gsis_id: str) -> list[dict[str, Any]]:
+def _role_weeks(gsis_id: str, data_dir: Path | None) -> list[dict[str, Any]]:
     """This season's regular-season snap share and target share by week, filtered at the scan."""
     season = load_config().season
-    snaps, stats = _table_scan("nfl_snaps"), _table_scan("nfl_player_stats")
+    snaps = _table_scan("nfl_snaps", data_dir)
+    stats = _table_scan("nfl_player_stats", data_dir)
     snap = (
         {}
         if snaps is None
@@ -142,10 +152,12 @@ def _role_weeks(gsis_id: str) -> list[dict[str, Any]]:
     ]
 
 
-def player_profile(league_key: str, gsis_id: str) -> dict[str, Any]:
+def player_profile(
+    league_key: str, gsis_id: str, data_dir: Path | None = None, team: int | None = None
+) -> dict[str, Any]:
     """Everything the player page needs beyond the stat data; None fields where it has no data."""
-    data, mine = _league(league_key)
-    names, positions = _names(), moves.position_of(data)
+    data, mine = _league(league_key, data_dir, team)
+    names, positions = _names(data_dir), moves.position_of(data)
     position = positions.get(gsis_id)
     by_week = {
         **moves.week_values(data),
@@ -157,12 +169,14 @@ def player_profile(league_key: str, gsis_id: str) -> dict[str, Any]:
         chance = _play_probs(data, week)
         live = data.live if week == data.current_week else {}
         value = by_week[week][gsis_id]
-        low, mid, high, projection = _range(data, Player(gsis_id, position, value), chance, live)
+        low, mid, high, projection = _range(
+            data, Player(gsis_id, position, value), chance, live, data_dir
+        )
         chance_to_play = chance.get(gsis_id)
     has_ros = (data.projections["gsis_id"] == gsis_id).any()
     ros = moves.ros_value(data, [gsis_id])[gsis_id] if has_ros else None
     name, points = _replacement(data, gsis_id, position, names) if position else (None, None)
-    outlook = _outlook(league_key, data, mine, gsis_id) if position is not None else None
+    outlook = _outlook(league_key, data, mine, gsis_id, data_dir) if position is not None else None
     return {
         "gsis_id": gsis_id,
         "full_name": names.get(gsis_id),
@@ -184,5 +198,5 @@ def player_profile(league_key: str, gsis_id: str) -> dict[str, Any]:
         "ros_over_replacement": None if ros is None or points is None else ros - points,
         "outlook_label": outlook["label"] if outlook else None,
         "why": outlook["why"] if outlook else None,
-        "role_weeks": _role_weeks(gsis_id),
+        "role_weeks": _role_weeks(gsis_id, data_dir),
     }

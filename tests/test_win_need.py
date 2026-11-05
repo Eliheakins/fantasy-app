@@ -7,7 +7,6 @@ from typing import Any
 import numpy as np
 import polars as pl
 import pytest
-from store_fixture import use_store
 from test_league_view import LEAGUE, LID
 from test_season import N_TEAMS, inputs
 from test_simulate_load import build_store
@@ -37,15 +36,16 @@ def digest(table: pl.DataFrame) -> tuple[int, dict[str, float]]:
 
 
 def run_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, pl.DataFrame]:
-    build_store(tmp_path, monkeypatch, [(100.0, 90.0)])
+    build_store(tmp_path, [(100.0, 90.0)])
     written: list[dict[str, pl.DataFrame]] = []
     monkeypatch.setattr(store, "write_tables", lambda tables, *a, **k: written.append(tables))
     monkeypatch.setattr(sim, "append_history", lambda latest, *a, **k: latest)
     monkeypatch.setattr(
-        sim, "load_league_data", lambda league, strict=True: load_league_data(LEAGUE)
+        sim,
+        "load_league_data",
+        lambda league, strict=True, data_dir=None: load_league_data(LEAGUE, data_dir=tmp_path),
     )
-    use_store(monkeypatch, tmp_path)
-    sim.run(n_sims=300)
+    sim.run(n_sims=300, data_dir=tmp_path)
     return written[0]
 
 

@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 import pytest
-from store_fixture import use_store, write_rows
+from store_fixture import write_rows
 from test_data_api_characterization import NOW, _engine_store
 from test_simulate_load import LEAGUE, build_store
 
@@ -37,17 +37,17 @@ def _with(monkeypatch: pytest.MonkeyPatch, **changes: object) -> None:
 
     real = _engine._league
 
-    def patched(league_key: str):  # type: ignore[no-untyped-def]
-        data, mine = real(league_key)
+    def patched(league_key: str, *args, **kwargs):  # type: ignore[no-untyped-def]
+        data, mine = real(league_key, *args, **kwargs)
         return replace(data, **changes), mine
 
     monkeypatch.setattr(_lineup, "_league", patched)
 
 
-def _loaded(live: dict[str, tuple[float, float]]):  # type: ignore[no-untyped-def]
+def _loaded(path: Path, live: dict[str, tuple[float, float]]):  # type: ignore[no-untyped-def]
     from dataclasses import replace
 
-    data, mine = _engine._league("t")
+    data, mine = _engine._league("t", path)
     return replace(data, live=live), mine
 
 
@@ -204,36 +204,32 @@ def test_with_every_player_locked_and_none_starting_nobody_is_slotted() -> None:
 
 
 def test_the_lineup_never_slots_a_locked_bench_player_and_keeps_a_locked_starter(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
+    _engine_store(tmp_path)
     _kickoff_schedule(tmp_path, KICKOFF)
     # Sleeper has the 0.2-point G_DL at WR; G_WR (7.6) sits on the bench. Everyone has kicked off.
     _set_starters(tmp_path, [(1, "qb"), (1, "dl")])
-    out = data_api.lineup("t", now=KICKOFF + timedelta(minutes=1))
+    out = data_api.lineup("t", now=KICKOFF + timedelta(minutes=1), data_dir=tmp_path)
     assert set(out.filter(pl.col("recommended"))["gsis_id"]) == {"G_QB", "G_DL"}
     assert _row(out, "G_DL")["slot"] == "WR"
     assert _row(out, "G_WR")["slot"] == "BN" and _row(out, "G_WR")["locked"]
 
 
-def test_before_kickoff_nobody_is_locked_and_the_better_wr_is_started(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
+def test_before_kickoff_nobody_is_locked_and_the_better_wr_is_started(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
     _kickoff_schedule(tmp_path, KICKOFF)
     _set_starters(tmp_path, [(1, "qb"), (1, "dl")])
-    out = data_api.lineup("t", now=KICKOFF - timedelta(seconds=1))
+    out = data_api.lineup("t", now=KICKOFF - timedelta(seconds=1), data_dir=tmp_path)
     assert not out["locked"].any()
     assert _row(out, "G_WR")["slot"] == "WR" and _row(out, "G_DL")["slot"] == "BN"
 
 
-def test_an_out_player_set_as_a_locked_starter_is_still_not_slotted(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
+def test_an_out_player_set_as_a_locked_starter_is_still_not_slotted(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
     _kickoff_schedule(tmp_path, KICKOFF)
     _set_starters(tmp_path, [(1, "qb"), (1, "rb")])  # G_RB is Out in the fixture
-    out = data_api.lineup("t", now=KICKOFF + timedelta(minutes=1))
+    out = data_api.lineup("t", now=KICKOFF + timedelta(minutes=1), data_dir=tmp_path)
     row = _row(out, "G_RB")
     assert (row["slot"], row["recommended"], row["p10"], row["p90"]) == ("BN", False, 0.0, 0.0)
 
@@ -241,8 +237,8 @@ def test_an_out_player_set_as_a_locked_starter_is_still_not_slotted(
 def test_a_long_term_injured_player_is_never_slotted_even_with_the_top_projection(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
-    data, _ = _engine._league("t")
+    _engine_store(tmp_path)
+    data, _ = _engine._league("t", data_dir=tmp_path)
     boosted = data.projections.with_columns(
         pl.when(pl.col("gsis_id") == "G_TE")
         .then(99.0)
@@ -252,7 +248,7 @@ def test_a_long_term_injured_player_is_never_slotted_even_with_the_top_projectio
     _with(
         monkeypatch, projections=boosted, injuries={"G_TE": ("IR", "", ""), "G_WR": ("Out", "", "")}
     )
-    out = data_api.lineup("t", now=NOW)
+    out = data_api.lineup("t", now=NOW, data_dir=tmp_path)
     assert not _row(out, "G_WR")["recommended"] and not _row(out, "G_TE")["recommended"]
 
 
@@ -262,20 +258,18 @@ def test_a_long_term_injured_player_is_never_slotted_even_with_the_top_projectio
 def test_lineup_for_a_later_week_ignores_live_points_and_game_state(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
-    plain = data_api.lineup("t", 4, now=NOW)
+    _engine_store(tmp_path)
+    plain = data_api.lineup("t", 4, now=NOW, data_dir=tmp_path)
     _with(monkeypatch, live={"G_QB": (25.0, 0.0), "G_WR": (6.0, 0.4)})
-    live = data_api.lineup("t", 4, now=NOW)
+    live = data_api.lineup("t", 4, now=NOW, data_dir=tmp_path)
     assert live.drop("full_name").equals(plain.drop("full_name"))
     qb = _row(live, "G_QB")
     assert (qb["projection"], qb["actual"], qb["game"]) == (10.0, 0.0, "Not started")
 
 
-def test_week_values_in_a_later_week_do_not_take_final_points(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
-    data, _ = _loaded({"G_QB": (25.0, 0.0)})
+def test_week_values_in_a_later_week_do_not_take_final_points(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
+    data, _ = _loaded(tmp_path, {"G_QB": (25.0, 0.0)})
     positions = moves.position_of(data)
     assert _engine._week_values(data, 4, positions)["G_QB"] == 10.0
     assert _engine._week_values(data, WEEK, positions)["G_QB"] == 25.0
@@ -284,18 +278,18 @@ def test_week_values_in_a_later_week_do_not_take_final_points(
 def test_a_player_not_yet_started_shows_no_points_even_if_sleeper_reports_some(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
+    _engine_store(tmp_path)
     _with(monkeypatch, live={"G_QB": (3.0, 1.0)})
-    qb = _row(data_api.lineup("t", now=NOW), "G_QB")
+    qb = _row(data_api.lineup("t", now=NOW, data_dir=tmp_path), "G_QB")
     assert (qb["actual"], qb["game"]) == (0.0, "Not started")
 
 
 def test_a_game_in_progress_is_labelled_with_its_share_left(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
+    _engine_store(tmp_path)
     _with(monkeypatch, live={"G_QB": (8.0, 0.25)})
-    qb = _row(data_api.lineup("t", now=NOW), "G_QB")
+    qb = _row(data_api.lineup("t", now=NOW, data_dir=tmp_path), "G_QB")
     assert (qb["actual"], qb["game"]) == (8.0, "Live, 25% left")
 
 
@@ -305,21 +299,19 @@ def test_a_game_in_progress_is_labelled_with_its_share_left(
 def test_kicker_and_defense_live_data_do_not_create_skill_rows(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
-    plain = data_api.lineup("t", now=NOW)
+    _engine_store(tmp_path)
+    plain = data_api.lineup("t", now=NOW, data_dir=tmp_path)
     kd_live = {"G_K": (9.0, 0.0), "G_FREEK": (4.0, 0.5), "KC": (12.0, 0.0), "G_THEIRK": (3.0, 0.0)}
     _with(monkeypatch, live=kd_live)
-    out = data_api.lineup("t", now=NOW)
+    out = data_api.lineup("t", now=NOW, data_dir=tmp_path)
     assert out.equals(plain)
     assert not {"G_K", "G_FREEK", "KC", "G_THEIRK"} & set(out["gsis_id"])
 
 
-def test_week_values_ignore_final_kickers_and_defenses(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
-    plain, _ = _loaded({})
-    data, _ = _loaded({"G_K": (9.0, 0.0), "KC": (12.0, 0.0)})
+def test_week_values_ignore_final_kickers_and_defenses(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
+    plain, _ = _loaded(tmp_path, {})
+    data, _ = _loaded(tmp_path, {"G_K": (9.0, 0.0), "KC": (12.0, 0.0)})
     positions = moves.position_of(data)
     assert _engine._week_values(data, WEEK, positions) == _engine._week_values(
         plain, WEEK, positions
@@ -329,48 +321,42 @@ def test_week_values_ignore_final_kickers_and_defenses(
 def test_win_probability_is_unchanged_by_kicker_only_live_data(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
-    plain = data_api.win_probability("t", n_sims=N_SIMS, now=NOW)
+    _engine_store(tmp_path)
+    plain = data_api.win_probability("t", n_sims=N_SIMS, now=NOW, data_dir=tmp_path)
     _with(monkeypatch, live={"G_K": (9.0, 0.0)})
-    assert data_api.win_probability("t", n_sims=N_SIMS, now=NOW).equals(plain)
+    assert data_api.win_probability("t", n_sims=N_SIMS, now=NOW, data_dir=tmp_path).equals(plain)
 
 
 # --- (1) win probability with finished and in-progress starters ------------------------------
 
 
-def _draws(live: dict[str, tuple[float, float]], ids: list[str], n: int = N_SIMS):  # type: ignore[no-untyped-def]
-    data, _ = _loaded(live)
+def _draws(path: Path, live: dict[str, tuple[float, float]], ids: list[str], n: int = N_SIMS):  # type: ignore[no-untyped-def]
+    data, _ = _loaded(path, live)
     positions = moves.position_of(data)
     values = _engine._week_values(data, WEEK, positions)
-    return _engine._week_points(data, ids, positions, values, WEEK, n)
+    return _engine._week_points(data, ids, positions, values, WEEK, n, path)
 
 
-def test_a_final_starter_contributes_exactly_his_points_with_no_variance(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
+def test_a_final_starter_contributes_exactly_his_points_with_no_variance(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
     ids = ["G_QB", "G_WR"]
-    points, column = _draws({"G_QB": (20.0, 0.0)}, ids)
+    points, column = _draws(tmp_path, {"G_QB": (20.0, 0.0)}, ids)
     assert np.array_equal(points[:, column["G_QB"]], np.full(N_SIMS, 20.0))
     assert points[:, column["G_WR"]].std() > 0  # the player still to play keeps his spread
 
 
-def test_a_final_starter_with_a_negative_score_counts_it_exactly(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
-    points, column = _draws({"G_QB": (-2.5, 0.0)}, ["G_QB"])
+def test_a_final_starter_with_a_negative_score_counts_it_exactly(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
+    points, column = _draws(tmp_path, {"G_QB": (-2.5, 0.0)}, ["G_QB"])
     assert np.array_equal(points[:, column["G_QB"]], np.full(N_SIMS, -2.5))
 
 
-def test_a_starter_in_progress_is_his_actual_points_plus_a_scaled_remainder(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
+def test_a_starter_in_progress_is_his_actual_points_plus_a_scaled_remainder(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
     ids = ["G_QB", "G_WR"]
     # G_QB projects 10 for the whole game: half of it is left, so about 5 more on top of 6
-    half, column = _draws({"G_QB": (6.0, 0.5)}, ids, n=20000)
-    full, _ = _draws({}, ids, n=20000)
+    half, column = _draws(tmp_path, {"G_QB": (6.0, 0.5)}, ids, n=20000)
+    full, _ = _draws(tmp_path, {}, ids, n=20000)
     remainder = half[:, column["G_QB"]] - 6.0
     whole = full[:, column["G_QB"]]
     assert remainder.std() > 0
@@ -378,22 +364,20 @@ def test_a_starter_in_progress_is_his_actual_points_plus_a_scaled_remainder(
     assert remainder.std() < whole.std()  # less of the game left, less uncertainty
 
 
-def test_a_started_game_does_not_apply_the_chance_of_playing_again(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
+def test_a_started_game_does_not_apply_the_chance_of_playing_again(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
     # G_WR is Questionable (76% to play). Once his game is under way he is playing: the expected
     # remainder is half of his full-game projection (10), not half of the discounted 7.6.
-    points, column = _draws({"G_WR": (2.0, 0.5)}, ["G_WR"], n=20000)
+    points, column = _draws(tmp_path, {"G_WR": (2.0, 0.5)}, ["G_WR"], n=20000)
     assert (points[:, column["G_WR"]] - 2.0).mean() == pytest.approx(5.0, rel=0.1)
 
 
 def test_win_probability_floor_is_at_least_a_final_starters_points(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
+    _engine_store(tmp_path)
     _with(monkeypatch, live={"G_QB": (HUGE, 0.0)})
-    out = data_api.win_probability("t", n_sims=N_SIMS, now=NOW)
+    out = data_api.win_probability("t", n_sims=N_SIMS, now=NOW, data_dir=tmp_path)
     assert (out["floor"] >= HUGE).all()
     assert (out["win_prob"] == 1.0).all()  # the opponent cannot reach it
 
@@ -401,9 +385,9 @@ def test_win_probability_floor_is_at_least_a_final_starters_points(
 def test_win_probability_with_a_final_starter_and_one_in_progress(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
+    _engine_store(tmp_path)
     _with(monkeypatch, live={"G_QB": (20.0, 0.0), "G_WR": (6.0, 0.5)})
-    out = data_api.win_probability("t", n_sims=N_SIMS, now=NOW)
+    out = data_api.win_probability("t", n_sims=N_SIMS, now=NOW, data_dir=tmp_path)
     max_points = out.filter(pl.col("option") == "max_points").row(0, named=True)
     # QB is final (20 flat) and the WR has 6 banked: nothing in the lineup can fall below 26
     assert max_points["gsis_ids"] == ["G_QB", "G_WR"]
@@ -415,9 +399,9 @@ def test_win_probability_with_a_final_starter_and_one_in_progress(
 def test_expected_points_of_a_lineup_with_a_player_in_progress_include_his_banked_points(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
+    _engine_store(tmp_path)
     _with(monkeypatch, live={"G_QB": (20.0, 0.0), "G_WR": (6.0, 0.5)})
-    out = data_api.win_probability("t", n_sims=N_SIMS, now=NOW)
+    out = data_api.win_probability("t", n_sims=N_SIMS, now=NOW, data_dir=tmp_path)
     expected = out.filter(pl.col("option") == "max_points")["expected_points"].item()
     assert expected == pytest.approx(20.0 + 6.0 + 0.5 * 10.0, abs=1.5)
 
@@ -425,101 +409,106 @@ def test_expected_points_of_a_lineup_with_a_player_in_progress_include_his_banke
 # --- (2) the opponent's finished starters -----------------------------------------------------
 
 
-def test_opponent_starters_set_in_sleeper_count_when_their_game_is_final(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
+def test_opponent_starters_set_in_sleeper_count_when_their_game_is_final(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
     _set_starters(tmp_path, [(2, "opp")])
-    data, _ = _loaded({"G_OPP": (30.0, 0.0)})
+    data, _ = _loaded(tmp_path, {"G_OPP": (30.0, 0.0)})
     positions = moves.position_of(data)
     values = _engine._week_values(data, WEEK, positions)
     slots = lineup_slots(data.roster_positions)
-    assert _engine._opponent_lineup(data, 2, WEEK, positions, values, slots) == ["G_OPP"]
-    points, column = _engine._week_points(data, ["G_OPP"], positions, values, WEEK, N_SIMS)
+    assert _engine._opponent_lineup(data, 2, WEEK, positions, values, slots, data_dir=tmp_path) == [
+        "G_OPP"
+    ]
+    points, column = _engine._week_points(
+        data, ["G_OPP"], positions, values, WEEK, N_SIMS, data_dir=tmp_path
+    )
     assert np.array_equal(points[:, column["G_OPP"]], np.full(N_SIMS, 30.0))
 
 
 def test_a_huge_final_opponent_score_makes_every_option_a_loss(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
+    _engine_store(tmp_path)
     _set_starters(tmp_path, [(2, "opp")])
     _with(monkeypatch, live={"G_OPP": (HUGE, 0.0)})
-    out = data_api.win_probability("t", n_sims=N_SIMS, now=NOW)
+    out = data_api.win_probability("t", n_sims=N_SIMS, now=NOW, data_dir=tmp_path)
     assert (out["win_prob"] == 0.0).all()
 
 
 def test_a_final_opponent_starter_whose_projection_is_gone_still_counts(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
+    _engine_store(tmp_path)
     _set_starters(tmp_path, [(2, "opp")])
-    data, _ = _loaded({"G_OPP": (HUGE, 0.0)})
+    data, _ = _loaded(tmp_path, {"G_OPP": (HUGE, 0.0)})
     gone = data.projections.filter(pl.col("gsis_id") != "G_OPP")
     _with(monkeypatch, projections=gone, live={"G_OPP": (HUGE, 0.0)})
-    out = data_api.win_probability("t", n_sims=N_SIMS, now=NOW)
+    out = data_api.win_probability("t", n_sims=N_SIMS, now=NOW, data_dir=tmp_path)
     assert (out["win_prob"] == 0.0).all()
 
 
 def test_with_no_starters_set_the_opponents_best_lineup_includes_his_final_player(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
-    _engine_store(tmp_path, monkeypatch)
-    data, _ = _loaded({"G_OPP": (HUGE, 0.0)})
+    _engine_store(tmp_path)
+    data, _ = _loaded(tmp_path, {"G_OPP": (HUGE, 0.0)})
     positions = moves.position_of(data)
     values = _engine._week_values(data, WEEK, positions)
     slots = lineup_slots(data.roster_positions)
-    assert _engine._opponent_lineup(data, 2, WEEK, positions, values, slots) == ["G_OPP"]
+    assert _engine._opponent_lineup(data, 2, WEEK, positions, values, slots, data_dir=tmp_path) == [
+        "G_OPP"
+    ]
     assert values["G_OPP"] == HUGE
 
 
-def test_opponent_starters_are_ignored_for_a_week_that_is_not_current(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
+def test_opponent_starters_are_ignored_for_a_week_that_is_not_current(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
     _set_starters(tmp_path, [(2, "opp")])  # week 3 starters
-    data, _ = _loaded({})
+    data, _ = _loaded(tmp_path, {})
     positions = moves.position_of(data)
     values = _engine._week_values(data, 4, positions)
     slots = lineup_slots(data.roster_positions)
     # nothing is set for week 4, so the best lineup is used
-    assert _engine._opponent_lineup(data, 2, 4, positions, values, slots) == ["G_OPP"]
+    assert _engine._opponent_lineup(data, 2, 4, positions, values, slots, data_dir=tmp_path) == [
+        "G_OPP"
+    ]
 
 
 # --- _status_and_locks ------------------------------------------------------------------------
 
 
-def test_status_and_locks_lock_players_whose_team_has_kicked_off(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
+def test_status_and_locks_lock_players_whose_team_has_kicked_off(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
     _kickoff_schedule(tmp_path, KICKOFF)
-    before = _engine._status_and_locks(WEEK, WEEK, KICKOFF - timedelta(seconds=1))[1]
-    at = _engine._status_and_locks(WEEK, WEEK, KICKOFF)[1]
+    before = _engine._status_and_locks(
+        WEEK, WEEK, KICKOFF - timedelta(seconds=1), data_dir=tmp_path
+    )[1]
+    at = _engine._status_and_locks(WEEK, WEEK, KICKOFF, data_dir=tmp_path)[1]
     assert before == set()
     assert {"G_QB", "G_WR", "G_OPP"} <= at
 
 
-def test_status_and_locks_lock_nobody_in_another_week(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _engine_store(tmp_path, monkeypatch)
+def test_status_and_locks_lock_nobody_in_another_week(tmp_path: Path) -> None:
+    _engine_store(tmp_path)
     _kickoff_schedule(tmp_path, KICKOFF)
-    assert _engine._status_and_locks(4, WEEK, KICKOFF + timedelta(days=1))[1] == set()
+    assert (
+        _engine._status_and_locks(4, WEEK, KICKOFF + timedelta(days=1), data_dir=tmp_path)[1]
+        == set()
+    )
 
 
 # --- _constant_points ------------------------------------------------------------------------
 
 
 def test_constant_points_are_the_kicker_and_defense_scores_so_far_plus_a_draw_for_the_rest(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
     from dataclasses import replace
 
     from fantasy.sim.odds import CurrentWeek
 
-    _engine_store(tmp_path, monkeypatch)
-    data, _ = _engine._league("t")
+    _engine_store(tmp_path)
+    data, _ = _engine._league("t", data_dir=tmp_path)
     data = replace(data, roster_positions=["QB", "K", "DEF"], k_mean=8.0, k_var=0.0)
     data = replace(data, def_mean=6.0, def_var=0.0)
     fresh = _engine._constant_points(data, 100, 1, 1, 4, None)
@@ -535,13 +524,11 @@ def test_constant_points_are_the_kicker_and_defense_scores_so_far_plus_a_draw_fo
     assert np.allclose(_engine._constant_points(data, 100, 1, 1, 4, done), 9.0 + 0.5 * 6.0)
 
 
-def test_constant_points_use_the_teams_projection_where_it_has_one(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_constant_points_use_the_teams_projection_where_it_has_one(tmp_path: Path) -> None:
     from dataclasses import replace
 
-    _engine_store(tmp_path, monkeypatch)
-    data, _ = _engine._league("t")
+    _engine_store(tmp_path)
+    data, _ = _engine._league("t", data_dir=tmp_path)
     data = replace(data, roster_positions=["QB", "K", "DEF"], k_mean=8.0, k_var=0.0)
     data = replace(data, def_mean=6.0, def_var=0.0, kd_slot={("K", 1, 4): 10.0, ("DEF", 1, 4): 0.0})
     assert np.allclose(_engine._constant_points(data, 10, 1, 1, 4), 10.0)  # both from the team
@@ -651,7 +638,7 @@ def test_current_state_does_not_open_a_slot_for_a_final_skill_player() -> None:
 def test_load_league_data_live_holds_points_and_share_for_every_player_on_the_slate(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    build_store(tmp_path, monkeypatch, [(100.0, 90.0)])
+    build_store(tmp_path, [(100.0, 90.0)])
     write_rows(
         tmp_path,
         "matchup_players",
@@ -673,7 +660,7 @@ def test_load_league_data_live_holds_points_and_share_for_every_player_on_the_sl
     monkeypatch.setattr(
         sim, "datetime", type("Done", (_Clock,), {"fixed": datetime(2026, 9, 21, tzinfo=UTC)})
     )
-    data = sim.load_league_data(LEAGUE)
+    data = sim.load_league_data(LEAGUE, data_dir=tmp_path)
     assert data.live["G_QB"] == (14.5, 0.0)
     assert data.live["G_OPP"] == (4.0, 0.0)
     assert data.current[1].locked_starters == {"G_QB"}
@@ -689,13 +676,15 @@ def test_the_lineup_route_returns_a_final_player_as_final(
 
     from fantasy import api
 
-    _engine_store(tmp_path, monkeypatch)
+    _engine_store(tmp_path)
     _engine._clear_league_cache()
-    data, _ = _engine._league("t")
+    data, _ = _engine._league("t", data_dir=tmp_path)
     gone = data.projections.filter(pl.col("gsis_id") != "G_WR")  # his game is over
     _with(monkeypatch, projections=gone, live={"G_WR": (17.5, 0.0), "G_QB": (8.0, 0.4)})
     headers = {"X-Requested-With": "fantasy-app"}
-    with TestClient(api.create_app(), base_url="http://localhost", headers=headers) as client:
+    with TestClient(
+        api.create_app(data_dir=tmp_path), base_url="http://localhost", headers=headers
+    ) as client:
         response = client.get("/api/leagues/t/lineup?week=3")
     assert response.status_code == 200, response.text
     rows = {r["gsis_id"]: r for r in response.json()["data"]}
@@ -714,9 +703,8 @@ def _stream(kind: str, unit: str, week: int, projection: float) -> dict:
 
 
 def test_kd_slot_projections_take_each_teams_best_rostered_unit_and_zero_for_a_bye(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
 ) -> None:
-    use_store(monkeypatch, tmp_path)
     rosters = [_roster(1, "k1"), _roster(1, "k2"), _roster(1, "JAC"), _roster(2, "LAR")]
     write_rows(tmp_path, "rosters", rosters)
     write_rows(
@@ -730,13 +718,13 @@ def test_kd_slot_projections_take_each_teams_best_rostered_unit_and_zero_for_a_b
     )  # fmt: skip
     ids = pl.DataFrame({"sleeper_id": ["k1", "k2"], "gsis_id": ["G1", "G2"]})
 
-    out = sim._kd_slot_projections("L1", ids, 3)
+    out = sim._kd_slot_projections("L1", ids, 3, tmp_path)
 
     assert out[("K", 1, 3)] == 9.0 and out[("K", 1, 4)] == 6.0  # best of two kickers
     assert out[("DEF", 1, 4)] == 4.0 and out[("DEF", 2, 3)] == 8.0  # Sleeper JAC is nflverse JAX
     assert out[("DEF", 2, 4)] == 0.0  # no row for a rostered defense in a projected week: bye
     assert ("K", 2, 3) not in out  # no kicker: the league mean applies
-    later = sim._kd_slot_projections("L1", ids, 4)
+    later = sim._kd_slot_projections("L1", ids, 4, tmp_path)
     assert (
         "DEF",
         2,
