@@ -4,7 +4,8 @@ import type { components } from "@/api/schema";
 import type { League, Status } from "@/api/types";
 import { leagueUrl, useHomeLeagues } from "@/features/home/hooks";
 import { useApi } from "@/hooks/useApi";
-import { formatNumber, formatPercent } from "@/viz";
+import { possessive } from "@/lib/text";
+import { Explain, formatNumber, formatPercent } from "@/viz";
 import { isDecided, neededLine, players } from "./gameDayText";
 import { WinChanceLine } from "./WinChanceLine";
 
@@ -35,6 +36,10 @@ function useGameDay(leagueKey: string, intervalMs: number) {
   return { state: resolveState(q.data, stale ? null : q.error), stale };
 }
 
+type Now = NonNullable<GameDayData["current"]>;
+const winWhy = (c: Now) =>
+  `Share of simulated finishes of this week's matchup in which your total beats ${possessive(c.opp_team)}, counting points already scored. Projected finals: ${c.my_team} ${formatNumber(c.my_projected)}, ${c.opp_team} ${formatNumber(c.opp_projected)}; ${players(c.my_left)} for you, ${players(c.opp_left)} for them.`;
+
 function LeagueGameDay({ league, intervalMs }: { league: League; intervalMs: number }) {
   const { state, stale } = useGameDay(league.league_key, intervalMs);
   const name = league.name?.trim() || league.league_key;
@@ -48,7 +53,7 @@ function LeagueGameDay({ league, intervalMs }: { league: League; intervalMs: num
       {stale && <p role="status" className="text-caption text-warning">The last refresh failed; these are the previous numbers.</p>}
       {!isDecided(c) && (
         <p className="mt-1 text-body">
-          <span className="text-heading font-semibold tabular-nums">{formatPercent(c.win_prob)}</span> chance to win
+          <Explain why={winWhy(c)}><span className="text-heading font-semibold tabular-nums">{formatPercent(c.win_prob)}</span></Explain> chance to win
         </p>
       )}
       <ul className="mt-1 space-y-0.5 text-body tabular-nums">

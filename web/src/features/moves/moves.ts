@@ -1,4 +1,5 @@
 import type { components } from "@/api/schema";
+import { type EffectWhy, tradeWhy, waiverWhy } from "@/features/thisweek/explain";
 import { MIN_PLAYOFF_GAIN, rankTodos, type Effect } from "@/features/thisweek/todos";
 
 type Waiver = components["schemas"]["WaiverRow"];
@@ -20,6 +21,7 @@ export type Move = {
   title: string;
   detail: string;
   effect: Effect;
+  why?: EffectWhy;
   /** The player an add picks up, for a link to his page; null for a trade. */
   player: { gsisId: string; name: string; position: string } | null;
   likelyGone: boolean;
@@ -39,6 +41,7 @@ export const waiverMoves = (rows: readonly Waiver[]): Move[] =>
     title: `Add ${w.full_name}, drop ${w.drop_name}`,
     detail: w.position,
     effect: { playoffPoints: toPoints(w.playoff_delta), points: w.delta_points },
+    why: waiverWhy(w.full_name, w.drop_name),
     player: { gsisId: w.gsis_id, name: w.full_name, position: w.position },
     likelyGone: isLikelyGone(w.trending_adds),
     trendingAdds: w.trending_adds,
@@ -54,6 +57,7 @@ export const tradeMoves = (rows: readonly Idea[]): Move[] =>
       title: `Trade ${r.give} for ${r.get}`,
       detail: r.partner ? `with ${r.partner}` : "",
       effect: { playoffPoints: toPoints(r.playoff_delta), points: r.delta_points },
+      why: tradeWhy(r.give, r.get),
       player: null,
       likelyGone: false,
       trendingAdds: null,

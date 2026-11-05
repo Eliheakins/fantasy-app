@@ -57,6 +57,7 @@ describe("game-day block", () => {
     renderBoard();
     expect(await screen.findByText("Alpha: Mine vs Theirs")).toBeInTheDocument();
     expect(await screen.findByText("62%", { selector: "span.text-heading" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /62%.*what drives this/ })).toBeInTheDocument();
     expect(screen.getByText(/Mine: 18\.0 so far.*3 players left/)).toBeInTheDocument();
     expect(screen.getByText(/Theirs: 20\.0 so far.*4 players left/)).toBeInTheDocument();
     expect(screen.getByText(/82\.0 points/)).toBeInTheDocument();
@@ -124,13 +125,13 @@ describe("points needed in words", () => {
     expect(neededLine({ ...base, ...done, my_points: 120, opp_points: 120, points_needed: 0 })).toBe("Final: tied at 120.0.");
   });
   it("says so when I am already past their projection, instead of a negative need", () => {
-    expect(neededLine(base)).toBe("You are already 5.0 past Theirs's projected final of 95.0.");
+    expect(neededLine(base)).toBe("You are already 5.0 past Theirs' projected final of 95.0.");
   });
   it("says the points cannot come when I have nobody left but they are still playing", () => {
     expect(neededLine({ ...base, my_left: 0, points_needed: 11.5 })).toMatch(/No players left.*11\.5 points that can't come/);
   });
   it("gives the need and the players left otherwise", () => {
-    expect(neededLine({ ...base, points_needed: 12 })).toBe("To reach Theirs's projected final you need 12.0 points from 2 players left.");
+    expect(neededLine({ ...base, points_needed: 12 })).toBe("To reach Theirs' projected final you need 12.0 points from 2 players left.");
   });
 });
 

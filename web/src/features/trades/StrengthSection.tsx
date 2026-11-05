@@ -1,3 +1,4 @@
+import { possessive } from "@/lib/text";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
 import { barFraction, ordinal } from "@/features/league/logic";
@@ -15,7 +16,7 @@ const orderOf = (position: string) => {
 export function StrengthSection() {
   const state = useLeagueApi<Strength[]>("strength");
   const { viewed } = useTeam();
-  const owner = viewed ? `${viewed.team_name}'s` : "your";
+  const owner = viewed?.team_name ? possessive(viewed.team_name) : "your";
   return (
     <Section
       title={`Where ${owner} roster is strong or thin`}

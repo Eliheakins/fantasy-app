@@ -29,7 +29,7 @@ function EventList({ events, mine }: { events: readonly SeasonEventRow[]; mine: 
         <ul aria-labelledby={EVENTS_ID} className="text-caption">
           {events.map((e) => (
             <li key={`${e.kind}-${e.when}-${e.label}`} className="py-0.5">
-              <span className="sr-only">{KIND_LABEL[e.kind]}: </span>
+              {!e.label.startsWith(KIND_LABEL[e.kind]) && <span className="sr-only">{KIND_LABEL[e.kind]}: </span>}
               {e.label} <span className="text-muted">({placement(e, mine)})</span>
             </li>
           ))}

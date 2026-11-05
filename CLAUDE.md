@@ -26,6 +26,7 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 
 ## Conventions
 
+- UI: a key number on a page (a change, a percentage that answers the page) is an `Explain` / `ExplainDelta` from `web/src/viz` whose text uses only values already in the response; confidence words are only clear / lean / toss-up via `Confidence`; possessives go through `possessive()` in `web/src/lib/text.ts`.
 - Parquet under `data/` (gitignored) is the source of truth. Stages and `data_api.py` read it with polars; DuckDB is a dev dependency only, for `tests/stat/test_metric_reference_values.py`.
 - The API (`src/fantasy/api*.py`) reads through `fantasy.data_api`; `api_routes.py` also imports `_engine` and `_view`. `make check` also typechecks and tests `web/`.
 - No secrets in the repo. API keys come from environment variables.

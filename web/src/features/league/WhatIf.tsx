@@ -1,3 +1,4 @@
+import { possessive } from "@/lib/text";
 import { useState } from "react";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { RadioGroup } from "@/components/RadioGroup";
@@ -75,7 +76,7 @@ function Picker({ matchups, owner }: { matchups: readonly Matchup[]; owner: stri
 export function WhatIf() {
   const { leagues, league } = useLeague();
   const { viewed } = useTeam();
-  const owner = viewed ? `${viewed.team_name}'s` : "your";
+  const owner = viewed?.team_name ? possessive(viewed.team_name) : "your";
   const current = leagues.kind === "ready" ? leagues.data.find((l) => l.league_key === league)?.current_week : null;
   const [ahead, setAhead] = useState(0);
   const week = current == null ? 0 : current + ahead;

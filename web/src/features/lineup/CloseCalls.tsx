@@ -1,6 +1,7 @@
-import { Confidence } from "@/viz";
+import { Confidence, Explain, formatPercent } from "@/viz";
+import { slotShareWhy } from "./explain";
 import { type SlotCall, REASON_OF, callText, scratchFallbacks, splitCalls, winnerShare } from "./calls";
-import type { LineupRow, ObjectiveKey } from "./logic";
+import { type LineupRow, type ObjectiveKey, slotLabel } from "./logic";
 
 const LIST_ITEM = "flex min-h-[44px] flex-wrap items-center gap-x-3 border-b border-line py-2 last:border-b-0";
 
@@ -22,7 +23,7 @@ export function CloseCalls({ calls, rows, objective }: { calls: readonly SlotCal
           {close.map((c) => (
             <li key={`${c.slot}|${c.starter}`} className={LIST_ITEM}>
               <span>{callText(c, names, reason)}</span>
-              {c.share !== null && <Confidence share={winnerShare(c)} />}
+              {c.share !== null && <Explain why={slotShareWhy(c.share)} about={`${slotLabel(c.slot)}, starter ahead in ${formatPercent(c.share)} of paired draws`}><Confidence share={winnerShare(c)} /></Explain>}
             </li>
           ))}
         </ul>

@@ -19,6 +19,10 @@ References read and applied: Stephen Few (one screen, no scrolling, data-ink, bu
 
 ---
 
+- **Confidence vocabulary (U8).** One word for "how often is this actually better", from the share of paired simulations: `clear` (70% or more), `lean` (55 to under 70%), `toss-up` (under 55%). It comes from `confidenceFromShare` and is drawn by `Confidence`; a toss-up never gets a green or red arrow, and a change inside the noise band keeps the "~" prefix. Server text uses the same three words ("Clear:", "Lean:", "Toss-up:"). Other words ("likely gone", "likely between" for a 10 to 90 range, the matchup script "Toss-up (50% to win)") describe something else and are not confidence labels.
+- **Explain popovers (U8).** Key numbers are `Explain` / `ExplainDelta` (`web/src/viz/Explain.tsx`, a Radix popover): a button whose label is the number plus "what drives this", opens on click, tap or Enter, Esc closes and focus returns. The text uses only values already in the response (paired draws, held-out half, run times, simulated season counts, both medians); it never adds a model number. Applied to the main numbers of each page, not to every table cell.
+- **Phones (U8).** Stale-data and missing-layer notices collapse into one line ("n data notices") with a disclosure below 768 px; desktop keeps the stacked rows.
+
 ## 1. Design principles and visual language
 
 ### Who and what

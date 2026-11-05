@@ -1,3 +1,4 @@
+import { possessive } from "@/lib/text";
 import type { ReactNode } from "react";
 import { Section } from "@/components/Section";
 import { useTeam } from "@/lib/teamContext";
@@ -33,7 +34,7 @@ export function LeagueView() {
   const grades = useLeagueApi<ManagerGradeRow[]>("manager-grades");
   const teamGrades = useLeagueApi<TeamGradeRow[]>("team-grades");
   const { viewed } = useTeam();
-  const owner = viewed ? `${viewed.team_name}'s` : "your";
+  const owner = viewed?.team_name ? possessive(viewed.team_name) : "your";
   return (
     <div>
       <Rows

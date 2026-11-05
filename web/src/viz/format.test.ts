@@ -63,3 +63,9 @@ describe("confidenceFromShare", () => {
     expect(confidenceFromShare(0.54)).toBe("toss-up");
   });
 });
+
+describe("one confidence vocabulary", () => {
+  it("maps paired-sim share to clear, lean, toss-up at 70% and 55%", () => {
+    expect(["0.7", "0.69", "0.55", "0.54"].map((s) => confidenceFromShare(Number(s)))).toEqual(["clear", "lean", "lean", "toss-up"]);
+  });
+});

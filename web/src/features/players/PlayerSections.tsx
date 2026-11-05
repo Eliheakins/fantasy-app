@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
 import { useLeagueOwners } from "@/features/explore/useLeagueOwners";
-import { Delta, formatNumber, formatPercent, RangeBar, sharedDomain, Sparkline } from "@/viz";
+import { Delta, Explain, ExplainDelta, formatNumber, formatPercent, RangeBar, sharedDomain, Sparkline } from "@/viz";
 import { marketChange, type PlayerProfile, resultSentence, roleKeysFor, roleSeries } from "./profile";
 import { useLeaguePath, useProfile } from "./useProfile";
 
@@ -10,6 +10,11 @@ type MarketRow = { gsis_id: string; value: number; overall_rank: number | null; 
 
 const RANGE_WIDTH = 240;
 const NOT_AVAILABLE = (what: string) => <p className="text-body text-muted">Not available: {what}.</p>;
+
+const nextGameWhy = (p: PlayerProfile) =>
+  `The middle of the simulated scores for his week ${p.week} game: half the simulated games land above it and half below. The range below is the 10th to 90th percentile, for a full game.`;
+const rosWhy = (p: PlayerProfile) =>
+  `His projected points for the rest of the season (${formatNumber(p.ros_points)}) minus those of ${p.replacement_name ?? "the best other free agent"} (${formatNumber(p.replacement_points)}), the replacement at ${p.position}.`;
 
 function NextGame({ p, name }: { p: PlayerProfile; name?: string }) {
   const domain = sharedDomain([{ p10: p.p10, p50: p.median, p90: p.p90 }]);
@@ -20,7 +25,7 @@ function NextGame({ p, name }: { p: PlayerProfile; name?: string }) {
   return (
     <div className="space-y-2 rounded-xl border border-panel-line bg-panel px-4 py-3">
       {result && <p className="text-body font-semibold tabular-nums">{result}</p>}
-      <p className="text-heading font-semibold tabular-nums">{formatNumber(p.median)} median points, week {p.week}</p>
+      <p className="text-heading font-semibold tabular-nums"><Explain why={nextGameWhy(p)}>{formatNumber(p.median)}</Explain> median points, week {p.week}</p>
       <RangeBar domain={domain} width={RANGE_WIDTH} p10={p.p10} p50={p.median} p90={p.p90} name={name ? `${name}, next game` : "Next game"} />
       <p className="text-caption text-muted">
         10th to 90th percentile {formatNumber(p.p10)} to {formatNumber(p.p90)}, for a full game.
@@ -34,7 +39,7 @@ function RestOfSeason({ p }: { p: PlayerProfile }) {
   if (p.ros_over_replacement == null || p.ros_points == null) return NOT_AVAILABLE("no projections for the rest of the season");
   return (
     <div className="space-y-1">
-      <p className="text-heading font-semibold tabular-nums"><Delta points={p.ros_over_replacement} /> points over replacement</p>
+      <p className="text-heading font-semibold tabular-nums"><ExplainDelta points={p.ros_over_replacement} why={rosWhy(p)}>{" "}points over replacement</ExplainDelta></p>
       <p className="text-caption text-muted">
         {formatNumber(p.ros_points)} projected points against {formatNumber(p.replacement_points)} for {p.replacement_name}, the best other free agent at {p.position} who is not out.
         {p.is_out && " He is out, so this is what he is worth if he returns."}

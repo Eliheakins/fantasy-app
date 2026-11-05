@@ -8,7 +8,7 @@ import { SeasonOdds } from "./SeasonOdds";
 import { WhatYouNeed } from "./WhatYouNeed";
 
 let responder: (path: string) => ApiState<unknown>;
-vi.mock("@/lib/league", () => ({ useLeagueApi: (path: string) => responder(path) }));
+vi.mock("@/lib/league", () => ({ useLeagueApi: (path: string) => responder(path), useLeague: () => ({ league: "a" }) }));
 
 const ready = (data: unknown): ApiState<unknown> => ({ kind: "ready", data });
 const odds = [
@@ -39,7 +39,8 @@ describe("Season header", () => {
     expect(screen.getByRole("heading", { level: 1, name: "68% to make the playoffs" })).toBeInTheDocument();
     expect(screen.getByText(/\+5\.0/)).toBeInTheDocument();
     expect(screen.getByText(/pp since the last week/)).toBeInTheDocument();
-    expect(screen.getByText(/A bye is 18% and the title 10%/)).toBeInTheDocument();
+    expect(screen.getByText(/A bye is/).textContent).toMatch(/A bye is 18%, what drives this and the title 10%, what drives this\./);
+    expect(screen.getByRole("button", { name: /\+5\.0.*what drives this/ })).toBeInTheDocument();
   });
   it("keeps a stable h1 until the odds load", () => {
     responder = () => ({ kind: "loading" });
@@ -53,7 +54,7 @@ describe("What you need", () => {
     responder = by({ "win-needs": need });
     view(<WhatYouNeed />);
     expect(screen.getByText("Win 3 of your next 4 and you are at 90% to make the playoffs.")).toBeInTheDocument();
-    expect(screen.getByText("70%")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /70%.*what drives this/ })).toBeInTheDocument();
     expect(screen.getByText(/Win 4 of 4/)).toBeInTheDocument();
     expect(screen.getByText(/never happened/)).toBeInTheDocument();
   });
@@ -81,6 +82,7 @@ describe("Who to root for", () => {
     const items = within(screen.getByRole("list")).getAllByRole("listitem");
     expect(items[0]).toHaveTextContent("Root for Team 6 over Team 5");
     expect(items[1]).toHaveTextContent("Root for Team 3 over Team 4");
+    expect(within(items[0]!).getByRole("button", { name: /12.*what drives this/ })).toBeInTheDocument();
   });
 });
 
@@ -111,7 +113,7 @@ describe("Season odds chart", () => {
     });
     view(<SeasonOdds />);
     expect(screen.getByRole("heading", { name: "Playoff odds over the season" })).toBeInTheDocument();
-    expect(screen.getByText(/Trade: got Ray Runner/)).toBeInTheDocument();
+    expect(screen.getByText(/Trade: got Ray Runner/).textContent).not.toMatch(/Trade: Trade/);
     expect(screen.getByText(/before the first saved run, so not drawn/)).toBeInTheDocument();
     expect(screen.getByText(/your odds 70% at the/)).toBeInTheDocument();
   });

@@ -48,7 +48,7 @@ describe("LineupView answer and evidence", () => {
     render(<LineupView base={cookRows} odds={withCalls} week={3} />);
     expect(screen.getByRole("heading", { level: 1, name: "Start James Cook at Flex" })).toBeTruthy();
     expect(screen.getByText("Flex: James Cook over Ray Bernard, better in 64% of simulations")).toBeTruthy();
-    expect(screen.getByText("lean")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /lean.*what drives this/ })).toBeTruthy();
     expect(screen.getByText("2 slots are clear")).toBeTruthy();
     expect(screen.getByText(/Rb One over/).closest("details")).not.toHaveAttribute("open");
   });

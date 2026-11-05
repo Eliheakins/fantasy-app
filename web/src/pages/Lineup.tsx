@@ -7,10 +7,11 @@ import { useTeam } from "@/lib/teamContext";
 import { usePageEyebrow, useWeek } from "@/lib/week";
 import { Section } from "@/components/Section";
 import type { ScoreboardRow } from "@/features/scoreboard/logic";
-import { Delta, NOISE_PERCENT, formatNumber, formatPercent } from "@/viz";
+import { Explain, ExplainDelta, NOISE_PERCENT, formatNumber, formatPercent } from "@/viz";
 import { CloseCalls } from "@/features/lineup/CloseCalls";
 import { TeamRanges } from "@/features/lineup/TeamRanges";
 import { OPTION_OF, recommendedObjective, slotCalls, startAnswer, weekOverText } from "@/features/lineup/calls";
+import { SLEEPER_POINTS_WHY, SLEEPER_WIN_WHY, winChanceWhy } from "@/features/lineup/explain";
 import { Comparison } from "@/features/lineup/Comparison";
 import { PlayerTable } from "@/features/lineup/PlayerTables";
 import {
@@ -40,13 +41,13 @@ function Metric({ label, children }: { label: string; children: React.ReactNode 
 }
 
 /** `shown` is the team total with K and DEF, like the range bars; without the simulation it is the skill slots only. */
-function Answer({ shown, skillOnly, win, sleeperWin }: { shown: number; skillOnly: boolean; win: number | null; sleeperWin: number | null }) {
+function Answer({ shown, skillOnly, win, sleeperWin, option }: { shown: number; skillOnly: boolean; win: number | null; sleeperWin: number | null; option: WinProbability["options"][number] | undefined }) {
   const change = win !== null && sleeperWin !== null ? (win - sleeperWin) * 100 : null;
   return (
     <>
       This lineup projects <strong className="font-semibold">{formatNumber(shown)} points</strong>{skillOnly && " from the skill slots"}
-      {win !== null && <> and has a <strong className="font-semibold">{formatPercent(win)}</strong> chance to win</>}
-      {change !== null && <> (<Delta points={change} noise={NOISE_PERCENT} /> points against what is set in Sleeper now)</>}.
+      {win !== null && <> and has a <Explain why={winChanceWhy(option)}><strong className="font-semibold">{formatPercent(win)}</strong></Explain> chance to win</>}
+      {change !== null && <> (<ExplainDelta points={change} noise={NOISE_PERCENT} why={SLEEPER_WIN_WHY} /> points against what is set in Sleeper now)</>}.
     </>
   );
 }
@@ -85,7 +86,7 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
         eyebrow={eyebrow}
         answer={over
           ? "Every game is final, so there is nothing left to set."
-          : <Answer shown={shownOption?.expected_points ?? h.shown} skillOnly={!shownOption} win={h.win} sleeperWin={sleeperOption?.win_prob ?? null} />}
+          : <Answer shown={shownOption?.expected_points ?? h.shown} skillOnly={!shownOption} win={h.win} sleeperWin={sleeperOption?.win_prob ?? null} option={shownOption} />}
       />
       <CloseCalls calls={slotCalls(odds, objective)} rows={rows} objective={objective} />
       {shownOption && (
@@ -100,10 +101,10 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
             {formatNumber(h.now)} pts{" "}
             {h.gap !== null && (gapIsNoise(h.gap)
               ? <span className="text-caption font-normal text-muted">same as shown</span>
-              : <Delta points={h.gap} className="text-body" />)}
+              : <ExplainDelta points={h.gap} className="text-body" why={SLEEPER_POINTS_WHY} />)}
           </Metric>
         )}
-        {hasOdds && h.win !== null && <Metric label="Chance to win">{formatPercent(h.win)}</Metric>}
+        {hasOdds && h.win !== null && <Metric label="Chance to win"><Explain why={winChanceWhy(shownOption)}>{formatPercent(h.win)}</Explain></Metric>}
       </div>
       {hasOdds && (
         <details className="mt-6">

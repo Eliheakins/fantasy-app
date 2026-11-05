@@ -45,6 +45,7 @@ describe("PlayerSections", () => {
     expect(headings()).toEqual(["Next game", "Rest of season", "Role", "Why the model expects change", "Injury and chance to play", "Market value", "Owner"]);
     expect(screen.getByText(/12\.0/)).toBeInTheDocument();
     expect(screen.getByText(/\+17\.5/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /\+17\.5.*what drives this/ })).toBeInTheDocument();
     expect(screen.getByText(/Free Guy/)).toBeInTheDocument();
     expect(screen.getByText(/teammates who carry targets are out/)).toBeInTheDocument();
     expect(screen.getByText(/Questionable \(hamstring\)/)).toBeInTheDocument();

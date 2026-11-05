@@ -78,6 +78,7 @@ describe("to-dos for both leagues", () => {
     expect(items[0]).toHaveTextContent("by Wed 4");
     expect(items[1]).toHaveTextContent("Start A over B");
     expect(items[1]).toHaveTextContent("Beta");
+    expect(within(items[0]!).getByRole("button", { name: /\+2\.3.*what drives this/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Add Coleman, drop Bernard" })).toHaveAttribute("href", "/moves?league=a");
     expect(screen.getByRole("link", { name: "Start A over B" })).toHaveAttribute("href", "/lineup?league=b");
     expect(screen.getByTestId("answer")).toHaveTextContent("First: Add Coleman, drop Bernard (Alpha, by Wed 4)");
@@ -106,6 +107,7 @@ describe("Since you last looked", () => {
     expect(await screen.findByText(/James Cook III: healthy to Out/)).toBeInTheDocument();
     expect(screen.getByText(/New on your waiver list: Coleman/)).toBeInTheDocument();
     expect(screen.getByText(/Season odds:/)).toHaveTextContent("+8.0");
+    expect(screen.getByRole("button", { name: /\+8\.0.*what drives this/ })).toBeInTheDocument();
     expect(urls.some((u) => u.includes("status-changes?since=2026-11-01T10%3A00%3A00.000Z"))).toBe(true);
     await waitFor(() => expect(visitAt("a").at).toBe("2026-11-04T15:00:00.000Z"));
   });

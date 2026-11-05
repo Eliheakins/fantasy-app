@@ -1,3 +1,4 @@
+import { possessive } from "@/lib/text";
 import { Link, useLocation } from "react-router-dom";
 
 import { ApiBoundary } from "@/components/ApiBoundary";
@@ -68,7 +69,7 @@ function Verdict({ missing, locked, found }: { missing: string[]; locked: string
   if (locked.length > 0) {
     return (
       <Callout variant="info">
-        {locked.map((n) => `${n}'s game has started`).join(" and ")}, so this week's choice is locked.
+        {locked.map((n) => `${possessive(n)} game has started`).join(" and ")}, so this week's choice is locked.
       </Callout>
     );
   }

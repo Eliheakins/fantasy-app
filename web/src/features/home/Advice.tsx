@@ -1,3 +1,4 @@
+import { possessive } from "@/lib/text";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { useApi } from "@/hooks/useApi";
 import { Confidence, DataTableFallback, Delta, RangeBar, formatNumber, formatPercent, sharedDomain } from "@/viz";
@@ -54,7 +55,7 @@ function ActionList({ actions, odds, mine, teamName }: {
 }) {
   const shown = actions.filter((a) => worthActing(a, actionShare(a, odds)));
   if (shown.length === 0) {
-    return <p className="text-muted">Nothing stands out: {mine ? "your" : `${teamName}'s`} lineup is set and no add moves the odds.</p>;
+    return <p className="text-muted">Nothing stands out: {mine ? "your" : possessive(teamName)} lineup is set and no add moves the odds.</p>;
   }
   return (
     <ol className="space-y-3">

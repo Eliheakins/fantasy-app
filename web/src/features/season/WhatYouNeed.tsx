@@ -1,6 +1,6 @@
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { useLeagueApi } from "@/lib/league";
-import { formatPercent } from "@/viz";
+import { Explain, formatPercent } from "@/viz";
 import { needSentence, needTable } from "./logic";
 import type { WinNeedRow } from "./types";
 
@@ -8,6 +8,9 @@ const BAR_WIDTH = 112;
 const BAR_HEIGHT = 8;
 const NO_TABLE = "Not computed yet: run make refresh to see this.";
 const THIN = "Too few simulated seasons behind these numbers to say.";
+
+const needWhy = (wins: number, games: number, row: WinNeedRow) =>
+  `Among the ${row.n_runs.toLocaleString("en-US")} simulated seasons where you win ${wins} of your next ${games} (${formatPercent(row.p_condition)} of all seasons), the share in which you make the playoffs.`;
 
 function Line({ wins, games, row }: ReturnType<typeof needTable>[number]) {
   const label = `Win ${wins} of ${games}`;
@@ -23,7 +26,7 @@ function Line({ wins, games, row }: ReturnType<typeof needTable>[number]) {
               <rect width={BAR_WIDTH} height={BAR_HEIGHT} rx={2} className="fill-panel-line" />
               <rect width={row.p_playoffs * BAR_WIDTH} height={BAR_HEIGHT} rx={2} className="fill-focus" />
             </svg>
-            <span className="w-12 text-right font-semibold tabular-nums">{formatPercent(row.p_playoffs)}</span>
+            <span className="w-12 text-right font-semibold tabular-nums"><Explain row why={needWhy(wins, games, row)}>{formatPercent(row.p_playoffs)}</Explain></span>
           </span>
           <span className="text-caption text-muted">{formatPercent(row.p_condition)} of seasons</span>
         </>

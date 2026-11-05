@@ -11,6 +11,13 @@ const side = (who: "me" | "them", name: string) => ({
 });
 const RESULT: TradeEvaluation = { odds: [side("me", "Mine"), side("them", "Rivals")], roster_changes: [], warning: null, trade_deadline: null, market: null };
 
+describe("TradeOutcome explain", () => {
+  it("each side change explains itself", () => {
+    render(<TradeOutcome result={RESULT} give={["A"]} get={["B"]} />);
+    expect(screen.getAllByRole("button", { name: /\+5\.0.*what drives this/ })).toHaveLength(2);
+  });
+});
+
 describe("TradeOutcome pitch", () => {
   beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }));
   afterEach(() => vi.useRealTimers());

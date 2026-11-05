@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import type { ApiState } from "@/api/envelope";
@@ -48,6 +48,7 @@ describe("Moves page", () => {
     expect(items).toHaveLength(3);
     expect(items[0]).toHaveTextContent("Trade A for B");
     expect(items[1]).toHaveTextContent("Add Coleman, drop Bernard");
+    expect(within(items[1]!).getAllByRole("button", { name: /what drives this/ }).length).toBeGreaterThan(0);
   });
 
   it("shows the drop with its points net of the drop, and 'Likely gone' for busy adds", () => {

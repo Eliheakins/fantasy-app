@@ -6,6 +6,9 @@ import { MOVE_NOISE_PERCENT, type MoveView, filterMoves, moveHeadline, worthMove
 import { useMoves } from "@/features/moves/useMoves";
 import { EffectText } from "@/features/thisweek/TodoList";
 import { WaiversContent } from "@/features/waivers/WaiversView";
+import { useLeague } from "@/lib/league";
+import { useTeam } from "@/lib/teamContext";
+import { useHeld } from "@/lib/useHeld";
 import { usePageEyebrow } from "@/lib/week";
 import Trades, { TradeDetails } from "@/pages/Trades";
 
@@ -47,10 +50,14 @@ export default function Moves() {
   const listPending = (showAdds && addsPending) || (showTrades && tradesPending);
   const failed = [addsError !== null && "free agents", tradesFailed && "trade ideas"].filter(Boolean);
   const title = pending ? "Looking for your best move…" : failed.length === 2 ? "Moves did not load" : moveHeadline(top, failed.length > 0);
-  const answer = top && worthMove(top) && !pending ? <EffectText todo={top} playoffNoise={MOVE_NOISE_PERCENT} /> : undefined;
+  const answer = top && worthMove(top) && !pending ? <EffectText todo={top} playoffNoise={MOVE_NOISE_PERCENT} inline /> : undefined;
+  // a background refetch must not unmount the number the reader has open
+  const { league } = useLeague();
+  const { team } = useTeam();
+  const header = useHeld({ title, answer }, pending, `${league}|${team}`);
   return (
     <div className="flex flex-col">
-      <PageHeader title={title} eyebrow={eyebrow} answer={answer} />
+      <PageHeader title={header.title} eyebrow={eyebrow} answer={header.answer} />
       <section aria-labelledby="moves-heading" className="mb-8 rounded-xl bg-panel p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 id="moves-heading" className="text-heading font-semibold">Moves, best first</h2>

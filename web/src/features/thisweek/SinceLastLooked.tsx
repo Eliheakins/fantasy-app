@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import type { League } from "@/api/types";
 import type { DigestData } from "@/features/digest/types";
-import { Delta, NOISE_PERCENT } from "@/viz";
+import { ExplainDelta, NOISE_PERCENT } from "@/viz";
 import { useHomeLeagues } from "@/features/home/hooks";
 import type { components } from "@/api/schema";
 import type { ApiState } from "@/api/envelope";
 import { useLeagueQuery } from "./hooks";
-import { type OddsRun, type Visit, newAdds, oddsSince, readVisit, writeVisit } from "./visit";
+import { type OddsRun, type Visit, asMs, newAdds, oddsSince, readVisit, writeVisit } from "./visit";
 
 type StatusChange = components["schemas"]["StatusChangeRow"];
 const MIN_GAP_MS = 30 * 60_000; // a quick reload keeps showing the same changes
 const settled = (s: ApiState<unknown>) => s.kind !== "loading" && s.kind !== "running";
 const when = (iso: string) => new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", timeZoneName: "short", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const oddsWhy = (what: string, fromRun: string, toRun: string) =>
+  `Change in your ${what} between the saved simulation run of ${when(new Date(asMs(fromRun)).toISOString())} (the last one at or before your last visit) and the latest run, ${when(new Date(asMs(toRun)).toISOString())}. Percentage points.`;
 const status = (s: string | null) => s ?? "healthy";
 
 function Changes({ visit, league, history, changes, digest }: {
@@ -24,9 +26,9 @@ function Changes({ visit, league, history, changes, digest }: {
     <ul className="list-disc space-y-1 pl-5 text-body">
       {odds && (
         <li>
-          Season odds: {odds.playoffs !== null && <><Delta points={odds.playoffs} noise={NOISE_PERCENT} /> playoffs</>}
+          Season odds: {odds.playoffs !== null && <><ExplainDelta points={odds.playoffs} noise={NOISE_PERCENT} why={oddsWhy("chance to make the playoffs", odds.fromRun, odds.toRun)}>{" "}playoffs</ExplainDelta></>}
           {odds.playoffs !== null && odds.title !== null && ", "}
-          {odds.title !== null && <><Delta points={odds.title} noise={NOISE_PERCENT} /> title</>} (% points)
+          {odds.title !== null && <><ExplainDelta points={odds.title} noise={NOISE_PERCENT} why={oddsWhy("title chance", odds.fromRun, odds.toRun)}>{" "}title</ExplainDelta></>} (% points)
         </li>
       )}
       {changes?.map((c) => (

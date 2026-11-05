@@ -1,3 +1,4 @@
+import { useHeld } from "@/lib/useHeld";
 import { EffectText, deadlineText } from "./TodoList";
 import { useTodos } from "./useTodos";
 
@@ -5,13 +6,16 @@ import { useTodos } from "./useTodos";
 export function Answer() {
   const { pending, todos, leaguesError } = useTodos();
   const top = todos[0];
-  if (leaguesError !== null) return <>The leagues did not load, so there is no answer yet.</>;
-  if (pending) return <>Reading both leagues…</>;
-  if (!top) return <>Nothing needs doing in either league right now.</>;
-  return (
-    <>
-      First: {top.title} <span className="text-muted">({top.leagueName}{deadlineText(top) ? `, ${deadlineText(top)}` : ""})</span>{" "}
-      <EffectText todo={top} />
-    </>
-  );
+  const sentence =
+    leaguesError !== null ? <>The leagues did not load, so there is no answer yet.</>
+    : pending ? <>Reading both leagues…</>
+    : !top ? <>Nothing needs doing in either league right now.</>
+    : (
+      <>
+        First: {top.title} <span className="text-muted">({top.leagueName}{deadlineText(top) ? `, ${deadlineText(top)}` : ""})</span>{" "}
+        <EffectText todo={top} inline />
+      </>
+    );
+  // a refetch must not unmount the number the reader has open
+  return <>{useHeld(sentence, pending && leaguesError === null && todos.length > 0, "week")}</>;
 }

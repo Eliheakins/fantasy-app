@@ -1,3 +1,4 @@
+import { possessive } from "@/lib/text";
 import { formatNumber } from "@/viz";
 
 type Numbers = {
@@ -24,12 +25,12 @@ export function neededLine(c: Numbers): string {
     return `Final: tied at ${n(c.my_points)}.`;
   }
   if (c.points_needed <= 0) {
-    return `You are already ${n(-c.points_needed)} past ${c.opp_team}'s projected final of ${n(c.opp_projected)}.`;
+    return `You are already ${n(-c.points_needed)} past ${possessive(c.opp_team)} projected final of ${n(c.opp_projected)}.`;
   }
   if (c.my_left === 0) {
-    return `No players left; to reach ${c.opp_team}'s projected final you would need ${n(c.points_needed)} points that can't come.`;
+    return `No players left; to reach ${possessive(c.opp_team)} projected final you would need ${n(c.points_needed)} points that can't come.`;
   }
-  return `To reach ${c.opp_team}'s projected final you need ${n(c.points_needed)} points from ${players(c.my_left)}.`;
+  return `To reach ${possessive(c.opp_team)} projected final you need ${n(c.points_needed)} points from ${players(c.my_left)}.`;
 }
 
 export { players };

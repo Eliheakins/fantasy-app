@@ -31,7 +31,7 @@ export function writeVisit(leagueKey: string, visit: Visit): void {
   }
 }
 
-const asMs = (runAt: string): number => Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(runAt) ? runAt : `${runAt}Z`);
+export const asMs = (runAt: string): number => Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(runAt) ? runAt : `${runAt}Z`);
 
 const diff = (now: number | null, then: number | null): number | null =>
   now === null || then === null ? null : (now - then) * PERCENT;
@@ -46,7 +46,7 @@ export function oddsSince(history: readonly OddsRun[], rosterId: number, sinceIs
   const latest = mine[mine.length - 1];
   const before = mine.filter((r) => asMs(r.run_at) <= since).pop();
   if (latest === undefined || before === undefined || asMs(latest.run_at) <= since) return null;
-  return { playoffs: diff(latest.p_playoffs, before.p_playoffs), title: diff(latest.p_title, before.p_title) };
+  return { playoffs: diff(latest.p_playoffs, before.p_playoffs), title: diff(latest.p_title, before.p_title), fromRun: before.run_at, toRun: latest.run_at };
 }
 
 /** Adds in the current list that the last visit's list did not have; nothing when that list was not stored. */

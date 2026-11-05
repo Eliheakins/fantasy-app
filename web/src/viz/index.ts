@@ -2,6 +2,7 @@ export { Confidence } from "./Confidence";
 export { DataTableFallback } from "./DataTableFallback";
 export { Delta } from "./Delta";
 export { Dumbbell } from "./Dumbbell";
+export { Explain, ExplainDelta } from "./Explain";
 export { RangeBar } from "./RangeBar";
 export { Sparkline } from "./Sparkline";
 export { WinBar } from "./WinBar";

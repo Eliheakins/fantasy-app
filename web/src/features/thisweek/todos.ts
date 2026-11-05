@@ -1,6 +1,7 @@
 import type { components } from "@/api/schema";
 import { actionGain, actionSentence, worthActing } from "@/features/home/logic";
 import type { ActionRow } from "@/features/home/logic";
+import { type EffectWhy, lineupWhy, waiverWhy } from "./explain";
 
 type MoveIdea = components["schemas"]["MoveIdeaRow"];
 
@@ -16,6 +17,7 @@ export type Todo = {
   detail: string;
   href: string;
   effect: Effect;
+  why?: EffectWhy;
   /** New York calendar day the to-do stops being possible; null when not known. */
   deadlineDay: string | null;
 };
@@ -78,6 +80,7 @@ export function leagueTodos(
       detail: a.kind,
       href: hrefFor("lineup", league.league_key),
       effect: { playoffPoints: null, points: actionGain(a) },
+      why: lineupWhy(a.share_better),
       deadlineDay: deadlines.lineup,
     }));
   const top = waivers.reduce<MoveIdea | undefined>(
@@ -94,6 +97,7 @@ export function leagueTodos(
           detail: "Best free agent for your odds",
           href: hrefFor("moves", league.league_key),
           effect: { playoffPoints: top.playoff_delta * PERCENT, points: top.delta_points },
+          why: waiverWhy(top.get, top.give),
           deadlineDay: deadlines.waiver,
         }]
       : [];

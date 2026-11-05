@@ -1,3 +1,4 @@
+import { possessive } from "@/lib/text";
 import { useEffect, useRef, useState } from "react";
 import type { ApiState } from "@/api/envelope";
 import { ApiBoundary } from "@/components/ApiBoundary";
@@ -59,7 +60,7 @@ export function WaiversView({ adds, strength, def, kickers, weeks, selected, onS
           }
         </ApiBoundary>
       </Section>
-      <Section title={`Where ${who.name ? `${who.name}'s` : "your"} roster is strong or thin`} caption={STRENGTH_CAPTION} howCalculated={STRENGTH_METHOD}>
+      <Section title={`Where ${who.name ? possessive(who.name) : "your"} roster is strong or thin`} caption={STRENGTH_CAPTION} howCalculated={STRENGTH_METHOD}>
         <ApiBoundary state={strength}>{(rows) => <StrengthList rows={rows} />}</ApiBoundary>
       </Section>
       <Section title="Streaming: defense and kicker" caption={STREAM_CAPTION} howCalculated={STREAM_METHOD}>
