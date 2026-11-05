@@ -86,6 +86,7 @@ def test_odds_history_returns_saved_runs_for_the_league(tmp_path: Path) -> None:
     store.write_table("sim_season_history", history, area="archive", data_dir=tmp_path)
     out = data_api.odds_history("test", tmp_path)
     assert out.height == 1 and out["p_title"].item() == 0.05
+    assert out["as_of_week"].item() == 7  # the Season chart plots one point per week
     assert data_api.odds_history("test", tmp_path / "empty").is_empty()
 
 

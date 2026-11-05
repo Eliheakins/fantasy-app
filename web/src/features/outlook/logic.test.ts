@@ -1,12 +1,12 @@
-import { canShowHistory, dodgeLabels, rankOdds, distinctRuns, historyTeams, pivotHistory } from "./logic";
+import { canShowHistory, dodgeLabels, rankOdds, historyTeams, weeklyHistory, seedFill } from "./logic";
 import type { OddsHistoryRow, SeasonOddsRow } from "./types";
 
 const odds: SeasonOddsRow[] = [
   { roster_id: 1, team_name: "Me", p_playoffs: 0.7, p_bye: 0.2, p_title: 0.1, exp_wins: 8, is_me: true },
   { roster_id: 2, team_name: "Them", p_playoffs: 0.4, p_bye: 0.1, p_title: 0.05, exp_wins: 7, is_me: false },
 ];
-const h = (run_at: string, roster_id: number, p: number): OddsHistoryRow => ({
-  run_at, roster_id, team_name: roster_id === 1 ? "Me" : "Them", p_playoffs: p, p_title: p / 2,
+const h = (run_at: string, roster_id: number, p: number, as_of_week: number | null = run_at === "a" ? 7 : 8): OddsHistoryRow => ({
+  run_at, roster_id, team_name: roster_id === 1 ? "Me" : "Them", p_playoffs: p, p_title: p / 2, as_of_week,
 });
 
 it("ranks by playoff odds without mutating", () => {
@@ -16,24 +16,25 @@ it("ranks by playoff odds without mutating", () => {
 });
 
 describe("odds history logic", () => {
-  it("needs two distinct runs", () => {
+  it("needs two distinct weeks", () => {
     const one = [h("a", 1, 0.5), h("a", 2, 0.4)];
-    expect(distinctRuns(one)).toBe(1);
     expect(canShowHistory(odds, one)).toBe(false);
+    expect(canShowHistory(odds, [...one, h("a2", 1, 0.6, 7)])).toBe(false);
     expect(canShowHistory(odds, [...one, h("b", 1, 0.6)])).toBe(true);
+  });
+  it("keeps the last snapshot of each week, by week, and skips runs without a week", () => {
+    const rows = [h("2026-10-21", 1, 0.5, 7), h("2026-10-24", 1, 0.55, 7), h("2026-10-24", 2, 0.3, 7), h("2026-10-28", 1, 0.7, 8), h("2026-10-01", 1, 0.9, null)];
+    expect(weeklyHistory(rows)).toEqual([
+      { week: 7, run_at: "2026-10-24", "1": 0.55, "2": 0.3 },
+      { week: 8, run_at: "2026-10-28", "1": 0.7 },
+    ]);
+  });
+  it("colours playoff seeds Forest, the rest light grey", () => {
+    expect([1, 2, 6, 7, 10].map((s) => seedFill(s))).toEqual(["var(--lf-forest)", "var(--lf-forest)", "var(--lf-forest)", "var(--lf-chart-other)", "var(--lf-chart-other)"]);
   });
   it("needs my team", () => {
     const rivals = odds.map((o) => ({ ...o, is_me: false }));
     expect(canShowHistory(rivals, [h("a", 1, 1), h("b", 1, 1)])).toBe(false);
-  });
-  it("pivots by run, oldest first, without mutating input", () => {
-    const rows = [h("b", 1, 0.6), h("a", 1, 0.5), h("a", 2, 0.4)];
-    const copy = [...rows];
-    expect(pivotHistory(rows)).toEqual([
-      { run_at: "a", "1": 0.5, "2": 0.4 },
-      { run_at: "b", "1": 0.6 },
-    ]);
-    expect(rows).toEqual(copy);
   });
   it("names teams and flags mine", () => {
     expect(historyTeams(odds, [h("a", 1, 1), h("a", 2, 1)])).toEqual([

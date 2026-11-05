@@ -1,46 +1,46 @@
 import type { OddsHistoryRow, SeasonOddsRow } from "./types";
 
-/** Same message Streamlit shows until the simulation has run twice. */
 export const HISTORY_WAIT_MESSAGE =
-  "The odds-over-time chart appears after the simulation has run at least twice.";
+  "The odds-over-time chart appears once the simulation has run in two different weeks.";
 
-export type HistoryPoint = { run_at: string; [rosterId: string]: number | string | null };
-
-export function distinctRuns(history: readonly OddsHistoryRow[]): number {
-  return new Set(history.map((r) => r.run_at)).size;
-}
-
-/** Streamlit's rule: my team exists and at least two saved runs. */
+/** My team exists and saved runs cover at least two weeks (the chart has one point per week). */
 export function canShowHistory(odds: readonly SeasonOddsRow[], history: readonly OddsHistoryRow[]): boolean {
-  return odds.some((o) => o.is_me) && distinctRuns(history) >= 2;
+  return odds.some((o) => o.is_me) && weeklyHistory(history).length >= 2;
 }
 
-/** One point per run, one key per roster id holding p_playoffs, oldest run first. */
-export function pivotHistory(history: readonly OddsHistoryRow[]): HistoryPoint[] {
-  const byRun = new Map<string, HistoryPoint>();
+export type WeekPoint = { week: number; run_at: string; [rosterId: string]: number | string | null };
+
+/**
+ * One point per week from the last saved run in that week, one key per roster id holding p_playoffs.
+ * shortcut: runs without `as_of_week` (none in today's archive) are skipped; date them if old archives need it.
+ */
+export function weeklyHistory(history: readonly OddsHistoryRow[]): WeekPoint[] {
+  const lastRun = new Map<number, string>();
   for (const r of history) {
-    const point = byRun.get(r.run_at) ?? { run_at: r.run_at };
-    byRun.set(r.run_at, { ...point, [String(r.roster_id)]: r.p_playoffs });
+    if (r.as_of_week == null) continue;
+    const seen = lastRun.get(r.as_of_week);
+    if (seen === undefined || r.run_at > seen) lastRun.set(r.as_of_week, r.run_at);
   }
-  return [...byRun.values()].sort((a, b) => a.run_at.localeCompare(b.run_at));
+  const points = new Map<number, WeekPoint>();
+  for (const r of history) {
+    if (r.as_of_week == null || lastRun.get(r.as_of_week) !== r.run_at) continue;
+    const point = points.get(r.as_of_week) ?? { week: r.as_of_week, run_at: r.run_at };
+    points.set(r.as_of_week, { ...point, [String(r.roster_id)]: r.p_playoffs });
+  }
+  return [...points.values()].sort((a, b) => a.week - b.week);
 }
 
-/** "Oct 23, 3 PM" for a saved run's timestamp. */
-export function formatRunDate(iso: string, timeZone?: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d
-    .toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", timeZone })
-    .replace(/\s/g, " ");
+/** Week of each saved run, for placing an event on the weekly chart. */
+export function runWeeks(history: readonly OddsHistoryRow[]): Map<string, number> {
+  return new Map(history.flatMap((r) => (r.as_of_week == null ? [] : [[r.run_at, r.as_of_week] as const])));
 }
 
-/** Axis ticks: the first run for each distinct label, thinned to at most `max`, so labels never repeat. */
-export function runTicks(runs: readonly string[], label: (iso: string) => string, max = 5): string[] {
-  const firsts = runs.filter((r, i) => i === 0 || label(r) !== label(runs[i - 1] as string));
-  if (firsts.length <= max) return firsts;
-  const stride = Math.ceil(firsts.length / max);
-  return firsts.filter((_, i) => i % stride === 0);
-}
+/** Seeds 1 to 6 make the playoffs; 1 and 2 also get a bye. */
+export const PLAYOFF_SEEDS = 6;
+export const BYE_SEEDS = 2;
+
+/** Playoff seeds in Forest, the misses light grey. */
+export const seedFill = (seed: number): string => (seed <= PLAYOFF_SEEDS ? "var(--lf-forest)" : "var(--lf-chart-other)");
 
 /** Teams in the history with their names, mine first flagged. */
 export function historyTeams(

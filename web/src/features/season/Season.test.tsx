@@ -15,9 +15,10 @@ const odds = [
   { roster_id: 1, team_name: "Lisan", p_playoffs: 0.68, p_bye: 0.18, p_title: 0.1, exp_wins: 7, is_me: true },
   { roster_id: 2, team_name: "Rival", p_playoffs: 0.4, p_bye: 0.1, p_title: 0.05, exp_wins: 7, is_me: false },
 ];
+const weekOf = (run_at: string) => (run_at < "2026-10-27" ? 7 : 8);
 const run = (run_at: string, mine: number) => [
-  { run_at, roster_id: 1, team_name: "Lisan", p_playoffs: mine, p_title: 0.1 },
-  { run_at, roster_id: 2, team_name: "Rival", p_playoffs: 0.4, p_title: 0.1 },
+  { run_at, roster_id: 1, team_name: "Lisan", p_playoffs: mine, p_title: 0.1, as_of_week: weekOf(run_at) },
+  { run_at, roster_id: 2, team_name: "Rival", p_playoffs: 0.4, p_title: 0.1, as_of_week: weekOf(run_at) },
 ];
 const need = [0, 1, 2, 3].map((wins) => ({ n_games: 4, wins, n_runs: 5000, p_condition: 0.25, p_playoffs: 0.3 + 0.2 * wins }));
 const o = (winner: number, loser: number, d: number) => ({
@@ -115,7 +116,7 @@ describe("Season odds chart", () => {
     expect(screen.getByRole("heading", { name: "Playoff odds over the season" })).toBeInTheDocument();
     expect(screen.getByText(/Trade: got Ray Runner/).textContent).not.toMatch(/Trade: Trade/);
     expect(screen.getByText(/before the first saved run, so not drawn/)).toBeInTheDocument();
-    expect(screen.getByText(/your odds 70% at the/)).toBeInTheDocument();
+    expect(screen.getByText(/week 8, your odds 70%/)).toBeInTheDocument();
   });
   it("labels the events list and points the chart at it", () => {
     responder = by({
@@ -125,7 +126,8 @@ describe("Season odds chart", () => {
     });
     view(<SeasonOdds />);
     const heading = screen.getByRole("heading", { name: "Marked events" });
-    expect(screen.getByRole("img", { name: /Season playoff odds/ })).toHaveAttribute("aria-describedby", heading.id);
+    expect(screen.getByRole("img", { name: /Playoff odds by week/ })).toHaveAttribute("aria-describedby", heading.id);
+    expect(screen.getByRole("table", { name: /Playoff odds by week/ })).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Marked events" })).toBeInTheDocument();
   });
   it("says the marks are unavailable on an events error, not that there is nothing to mark", () => {

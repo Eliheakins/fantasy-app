@@ -47,15 +47,16 @@ export function rootFor(rows: readonly WhatIfRow[]): RootFor[] {
     .slice(0, ROOT_FOR_LIMIT);
 }
 
-/** Events by the saved run they sit on; those with no run (before the first one) are counted apart. */
-export function eventMarks(events: readonly SeasonEventRow[]): { byRun: Map<string, SeasonEventRow[]>; unplaced: SeasonEventRow[] } {
-  const byRun = new Map<string, SeasonEventRow[]>();
-  const unplaced: SeasonEventRow[] = [];
+const KIND_LABEL = { trade: "Trade", injury: "Injury", big_week: "Big week" } as const;
+
+/** Events on the weekly odds chart, keyed by the week of the run they fall in; events with no run are left out. */
+export function weekMarks(events: readonly SeasonEventRow[], weeks: ReadonlyMap<string, number>): Map<number, { short: string; full: string }[]> {
+  const out = new Map<number, { short: string; full: string }[]>();
   for (const e of events) {
-    if (e.run_at === null) unplaced.push(e);
-    else byRun.set(e.run_at, [...(byRun.get(e.run_at) ?? []), e]);
+    const week = e.run_at === null ? undefined : weeks.get(e.run_at);
+    if (week !== undefined) out.set(week, [...(out.get(week) ?? []), { short: KIND_LABEL[e.kind], full: e.label }]);
   }
-  return { byRun, unplaced };
+  return out;
 }
 
 /** My playoff odds at each saved run, keyed by run_at, so an event can say what the odds were there. */

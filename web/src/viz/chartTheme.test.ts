@@ -31,9 +31,9 @@ describe("chart theme", () => {
     expect(contrast(muted, token(look, "--lf-panel"))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("series, bars and axes use neutral tokens only: green and red are for changes, amber for warnings", () => {
-    const neutral = [TICK_COLOR, GRID_COLOR, BAR_FILL, OTHER_LINE, MY_LINE];
-    for (const colour of neutral) expect(colour).not.toMatch(/better|worse|warning|forest|focus/);
+  it("axes, bars and other series are neutral; only my series is Forest; green and red stay for changes, amber for warnings", () => {
+    for (const colour of [TICK_COLOR, GRID_COLOR, BAR_FILL, OTHER_LINE]) expect(colour).not.toMatch(/better|worse|warning|forest|focus/);
+    expect(MY_LINE).toBe("var(--lf-forest)");
   });
 
   it("axis caption carries its text in the muted tick colour", () => {

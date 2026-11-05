@@ -1783,6 +1783,8 @@ export interface components {
             p_playoffs: number | null;
             /** P Title */
             p_title: number | null;
+            /** As Of Week */
+            as_of_week: number | null;
         };
         /** OptionRow */
         OptionRow: {

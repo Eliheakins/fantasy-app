@@ -8,7 +8,7 @@ function columns(who: Who): Column<SeasonOddsRow>[] {
   const marker = who.name ? "(viewed)" : "(you)";
   return [
     { label: "Team", role: "primary", render: (r) => (r.is_me ? `${r.team_name} ${marker}` : r.team_name) },
-    { label: "Make playoffs", render: (r) => <WinBar fraction={r.p_playoffs} /> },
+    { label: "Make playoffs", render: (r) => <WinBar fraction={r.p_playoffs} tone={r.is_me ? "mine" : "other"} /> },
     { label: "Win title", numeric: true, render: (r) => formatPercent(r.p_title) },
     { label: "First-round bye", numeric: true, role: "detail", render: (r) => formatPercent(r.p_bye) },
     { label: "Expected wins", numeric: true, role: "detail", render: (r) => formatNumber(r.exp_wins) },

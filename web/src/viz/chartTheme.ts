@@ -1,5 +1,5 @@
-/** Shared look for the Recharts charts, from the dashboard rules: tokens only, ranges and
- * non-semantic bars grey, my series the one strong mark, a caption on the value axis. */
+/** Shared look for the Recharts charts, from the dashboard rules: tokens only, ranges grey,
+ * my series the one Forest mark and every other series light grey, a caption on the value axis. */
 
 const CHART_FONT_SIZE = 12;
 /** --lf-muted: at least 4.5:1 on the page and the panel tint (docs/spec/dashboard.md, look F). */
@@ -7,8 +7,9 @@ export const TICK_COLOR = "var(--lf-muted)";
 export const GRID_COLOR = "var(--lf-line)";
 /** Bars that carry no good/bad meaning. */
 export const BAR_FILL = "var(--lf-faint)";
-export const OTHER_LINE = "var(--lf-faint)";
-export const MY_LINE = "var(--lf-ink)";
+/** Every series that is not mine: light grey, recessive. Labels never use it (text stays muted or ink). */
+export const OTHER_LINE = "var(--lf-chart-other)";
+export const MY_LINE = "var(--lf-forest)";
 
 const TICK = { fill: TICK_COLOR, fontSize: CHART_FONT_SIZE };
 

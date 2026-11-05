@@ -347,7 +347,9 @@ ROWS = {
         "roster_id", "team_name", "p_playoffs", "p_bye", "p_title", "exp_wins", "is_me",
     },
     "/api/leagues/t/seeds": {"seed", "p"},
-    "/api/leagues/t/odds-history": {"run_at", "team_name", "roster_id", "p_playoffs", "p_title"},
+    "/api/leagues/t/odds-history": {
+        "run_at", "as_of_week", "team_name", "roster_id", "p_playoffs", "p_title",
+    },
     "/api/leagues/t/streamers?kind=K": {
         "unit", "name", "team", "is_mine", "this_week", "next_three",
     },

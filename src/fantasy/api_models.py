@@ -109,6 +109,7 @@ class OddsHistoryRow(Row):
     roster_id: int
     p_playoffs: float | None
     p_title: float | None
+    as_of_week: int | None
 
 
 class PowerRankingRow(Row):

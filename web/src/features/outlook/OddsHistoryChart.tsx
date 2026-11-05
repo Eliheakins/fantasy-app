@@ -1,94 +1,144 @@
-import { CartesianGrid, Line, LineChart, ReferenceDot, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, ReferenceDot, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { DataTableFallback, formatPercent } from "@/viz";
 import { useMinWidth } from "@/hooks/useMediaQuery";
-import { AXIS, GRID, MY_LINE, OTHER_LINE, axisCaption } from "@/viz/chartTheme";
-import { dodgeLabels, formatRunDate, type HistoryPoint, historyTeams, pivotHistory, runTicks } from "./logic";
+import { AXIS, GRID, MY_LINE, OTHER_LINE, TICK_COLOR, axisCaption } from "@/viz/chartTheme";
+import { dodgeLabels, historyTeams, type WeekPoint, weeklyHistory } from "./logic";
 import type { OddsHistoryRow, SeasonOddsRow } from "./types";
 
-const END_LABEL_CHARS = 12;
-const PLOT_PX = 250; // about the plot height of the h-72 chart; only used to spread labels
-const LABEL_GAP_PX = 14;
+const END_LABEL_CHARS = 14;
 const PHONE_LABEL_CHARS = 9;
+const PLOT_PX = 250; // about the plot height of the h-72 chart; only used to spread labels
+const LABEL_GAP_PX = 16;
+const Y_TICKS = [0, 0.25, 0.5, 0.75, 1];
 
-type LabelProps = { x?: number; y?: number; index?: number; text: string; last: number; bold: boolean; shift: number; maxChars: number };
+type Team = { id: string; name: string; isMe: boolean };
+/** Events per week for the dots on my line: a short dot label ("Trade") and the full text for the tooltip. */
+export type WeekMarks = ReadonlyMap<number, readonly { short: string; full: string }[]>;
 
-/** Recharts calls this per point; only the last one gets the team name. */
-function EndLabel({ x, y, index, text, last, bold, shift, maxChars }: LabelProps) {
+const weekLabel = (w: number | string) => `Wk ${w}`;
+const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+const valueAt = (p: WeekPoint | undefined, id: string) => (typeof p?.[id] === "number" ? (p[id] as number) : null);
+
+type LabelProps = { x?: number; y?: number; index?: number; text: string; last: number; mine: boolean; shift: number };
+
+/** Recharts calls this per point; only the last one gets the name and value. */
+function EndLabel({ x, y, index, text, last, mine, shift }: LabelProps) {
   if (index !== last || x == null || y == null) return null;
-  const shown = text.length > maxChars ? `${text.slice(0, maxChars - 1)}…` : text;
   return (
-    <text x={x + 6} y={y + shift} dy={4} fontSize={12} fontWeight={bold ? 700 : 400} fill="var(--lf-ink)">
-      {shown}
+    <text x={x + 8} y={y + shift} dy={4} fontSize={12} fontWeight={mine ? 700 : 400} fill={mine ? "var(--lf-ink)" : TICK_COLOR}>
+      {text}
     </text>
   );
 }
 
-/** Pixel offset per team so end labels of bunched lines do not overlap. */
-function labelShifts(latest: HistoryPoint | undefined, teams: readonly { id: string }[]) {
+/** Mine always; on desktop also the current leader when that is someone else. */
+function labeledTeams(latest: WeekPoint | undefined, teams: readonly Team[], withLeader: boolean): Team[] {
+  const mine = teams.filter((t) => t.isMe);
+  if (!withLeader) return mine;
+  const leader = [...teams].sort((a, b) => (valueAt(latest, b.id) ?? -1) - (valueAt(latest, a.id) ?? -1))[0];
+  return leader && !leader.isMe ? [...mine, leader] : mine;
+}
+
+function labelShifts(latest: WeekPoint | undefined, teams: readonly Team[]): Map<string, number> {
   const ends = teams.flatMap((t) => {
-    const v = latest?.[t.id];
-    return typeof v === "number" ? [{ id: t.id, y: (1 - v) * PLOT_PX }] : [];
+    const v = valueAt(latest, t.id);
+    return v === null ? [] : [{ id: t.id, y: (1 - v) * PLOT_PX }];
   });
   const placed = dodgeLabels(ends.map((e) => e.y), LABEL_GAP_PX, 0, PLOT_PX);
   return new Map(ends.map((e, i) => [e.id, (placed[i] ?? e.y) - e.y]));
 }
 
-/** Ids that get a name at the line end: my team, plus the highest and lowest on desktop. */
-function labeledIds(latest: HistoryPoint | undefined, teams: readonly { id: string; isMe: boolean }[], extremes: boolean): Set<string> {
-  const ids = new Set(teams.filter((t) => t.isMe).map((t) => t.id));
-  if (!extremes) return ids;
-  const known = teams.flatMap((t) => (typeof latest?.[t.id] === "number" ? [{ id: t.id, v: latest[t.id] as number }] : []));
-  const sorted = [...known].sort((a, b) => b.v - a.v);
-  for (const t of [sorted[0], sorted[sorted.length - 1]]) if (t) ids.add(t.id);
-  return ids;
+function WeekTooltip({ active, label, data, teams, marks }: { active?: boolean; label?: number | string; data: readonly WeekPoint[]; teams: readonly Team[]; marks?: WeekMarks }) {
+  const point = data.find((p) => p.week === Number(label));
+  if (!active || !point) return null;
+  const ranked = [...teams].sort((a, b) => (valueAt(point, b.id) ?? -1) - (valueAt(point, a.id) ?? -1));
+  return (
+    <div className="rounded-lg border border-line bg-white p-3 text-caption shadow-md">
+      <p className="font-semibold text-ink">Week {point.week}</p>
+      {marks?.get(point.week)?.map((m) => <p key={m.full} className="text-label">{m.full}</p>)}
+      <ul className="mt-1 space-y-0.5">
+        {ranked.map((t) => (
+          <li key={t.id} className="flex items-center gap-2">
+            <span aria-hidden className="inline-block h-0.5 w-3" style={{ background: t.isMe ? MY_LINE : OTHER_LINE }} />
+            <span className={`w-10 text-right tabular-nums ${t.isMe ? "font-semibold text-ink" : "text-ink"}`}>{formatPercent(valueAt(point, t.id))}</span>
+            <span className={t.isMe ? "font-semibold text-ink" : "text-muted"}>{t.name}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
-/** Playoff odds per saved run: mine bold, rivals grey, names at the line ends. */
-export function OddsHistoryChart({ odds, history, marks, describedBy }: { odds: readonly SeasonOddsRow[]; history: readonly OddsHistoryRow[]; marks?: ReadonlySet<string>; describedBy?: string }) {
-  const data = pivotHistory(history);
+/** Playoff odds by week (the last saved run of each week): mine Forest and labelled, every other team thin light grey. */
+export function OddsHistoryChart({ odds, history, marks, describedBy }: { odds: readonly SeasonOddsRow[]; history: readonly OddsHistoryRow[]; marks?: WeekMarks; describedBy?: string }) {
+  const data = weeklyHistory(history);
   const teams = historyTeams(odds, history);
   const ordered = [...teams.filter((t) => !t.isMe), ...teams.filter((t) => t.isMe)]; // mine drawn last, on top
   const last = data.length - 1;
-  const mineId = teams.find((t) => t.isMe)?.id;
+  const latest = data[last];
+  const mine = teams.find((t) => t.isMe);
   const wide = useMinWidth("lg");
-  const named = labeledIds(data[last], teams, wide);
-  const shifts = labelShifts(data[last], teams.filter((t) => named.has(t.id)));
-  const ticks = runTicks(data.map((p) => p.run_at), formatRunDate);
+  const named = labeledTeams(latest, teams, wide);
+  const shifts = labelShifts(latest, named);
+  const maxChars = wide ? END_LABEL_CHARS : PHONE_LABEL_CHARS;
+  const endText = (t: Team) => `${clip(t.name, maxChars)} ${formatPercent(valueAt(latest, t.id))}`;
   return (
     <div>
-      <div className="h-72 w-full" role="img" aria-describedby={describedBy} aria-label="Season playoff odds for every team over saved runs, line chart; the bold line is the team being viewed">
+      <div className="h-72 w-full" role="img" aria-describedby={describedBy} aria-label="Playoff odds by week for every team, line chart; the Forest line is the team being viewed">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: wide ? 96 : 64, bottom: 0, left: 8 }}>
+          <LineChart data={data} margin={{ top: 16, right: wide ? 150 : 96, bottom: 0, left: 8 }}>
             <CartesianGrid {...GRID} />
-            <XAxis dataKey="run_at" ticks={ticks} tickFormatter={(v: string) => formatRunDate(v)} {...AXIS} />
-            <YAxis domain={[0, 1]} tickFormatter={(v: number) => formatPercent(v)} {...AXIS} width={56} label={axisCaption("Chance to make playoffs")} />
+            <XAxis dataKey="week" tickFormatter={weekLabel} {...AXIS} padding={{ left: 12, right: 12 }} />
+            <YAxis domain={[0, 1]} ticks={Y_TICKS} tickFormatter={(v: number) => formatPercent(v)} {...AXIS} axisLine={false} width={56} label={axisCaption("Chance to make playoffs")} />
+            <ReferenceLine y={0.5} stroke={TICK_COLOR} strokeDasharray="4 4" />
+            <Tooltip
+              cursor={{ stroke: TICK_COLOR, strokeWidth: 1 }}
+              content={(p) => <WeekTooltip active={p.active} label={p.label as number | undefined} data={data} teams={teams} marks={marks} />}
+              isAnimationActive={false}
+            />
             {ordered.map((t) => (
               <Line
                 key={t.id}
                 dataKey={t.id}
                 name={t.name}
-                type="monotone"
+                type="linear"
                 stroke={t.isMe ? MY_LINE : OTHER_LINE}
-                strokeWidth={t.isMe ? 3 : 1}
+                strokeWidth={t.isMe ? 3 : 1.25}
+                strokeLinecap="round"
                 dot={false}
+                activeDot={t.isMe ? { r: 5, fill: MY_LINE, stroke: "var(--lf-page)", strokeWidth: 2 } : false}
                 isAnimationActive={false}
                 connectNulls
-                label={named.has(t.id) ? <EndLabel text={t.name} last={last} bold={t.isMe} shift={shifts.get(t.id) ?? 0} maxChars={wide ? END_LABEL_CHARS : PHONE_LABEL_CHARS} /> : undefined}
+                label={named.some((n) => n.id === t.id) ? <EndLabel text={endText(t)} last={last} mine={t.isMe} shift={shifts.get(t.id) ?? 0} /> : undefined}
               />
             ))}
-            {mineId !== undefined && data.flatMap((p) => {
-              const y = p[mineId];
-              return marks?.has(p.run_at) && typeof y === "number"
-                ? [<ReferenceDot key={`mark-${p.run_at}`} x={p.run_at} y={y} r={5} fill="var(--lf-panel)" stroke={MY_LINE} strokeWidth={2} ifOverflow="visible" />]
-                : [];
+            {mine && data.flatMap((p) => {
+              const y = valueAt(p, mine.id);
+              const notes = marks?.get(p.week);
+              if (!notes?.length || y === null) return [];
+              const text = notes.length === 1 ? (notes[0]?.short ?? "") : `${notes.length} events`;
+              return [
+                <ReferenceDot
+                  key={`mark-${p.week}`}
+                  x={p.week}
+                  y={y}
+                  r={5}
+                  fill="var(--lf-page)"
+                  stroke={MY_LINE}
+                  strokeWidth={2}
+                  ifOverflow="visible"
+                  label={{ value: clip(text, 18), position: "top", offset: 10, fill: TICK_COLOR, fontSize: 11 }}
+                />,
+              ];
             })}
           </LineChart>
         </ResponsiveContainer>
       </div>
       <DataTableFallback
-        summary="Show playoff odds per run as a table"
-        columns={["Run", ...teams.map((t) => (t.isMe ? `${t.name} (you)` : t.name))]}
-        rows={data.map((p) => [formatRunDate(p.run_at), ...teams.map((t) => formatPercent(p[t.id] as number | null))])}
+        summary="Show playoff odds by week as a table"
+        caption="Playoff odds by week, every team"
+        columns={["Week", ...teams.map((t) => (t.isMe ? `${t.name} (you)` : t.name))]}
+        rows={data.map((p) => [weekLabel(p.week), ...teams.map((t) => formatPercent(valueAt(p, t.id)))])}
       />
     </div>
   );

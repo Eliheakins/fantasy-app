@@ -38,6 +38,7 @@
   --lf-faint: #64706a;
   --lf-forest: #123d2c;
   --lf-focus: #1f5a43;
+  --lf-chart-other: #b9c4be;
   --lf-better: #157a3d;
   --lf-worse: #b4261a;
   --lf-warning: #6b4200;
@@ -67,6 +68,7 @@
   --color-faint: var(--lf-faint);
   --color-forest: var(--lf-forest);
   --color-focus: var(--lf-focus);
+  --color-chart-other: var(--lf-chart-other);
   --color-better: var(--lf-better);
   --color-worse: var(--lf-worse);
   --color-warning: var(--lf-warning);

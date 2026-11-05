@@ -40,19 +40,33 @@ function respond(over: Partial<Record<string, ApiState<unknown>>> = {}) {
 }
 
 describe("League page", () => {
-  it("ready: ranks teams, marks mine in text, shows signed luck and efficiency", () => {
+  it("ready: ranks teams, marks mine in text, shows signed luck and efficiency", async () => {
     respond();
     render(<League />);
     expect(screen.getByRole("list", { name: /Power rankings/ })).toBeInTheDocument();
     expect(screen.getAllByText("Lisan (you)").length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole("tab", { name: "Luck and all-play" }));
     expect(screen.getByText("+0.44 ▲")).toBeInTheDocument();
     expect(screen.getByText("-1.78 ▼")).toBeInTheDocument();
     expect(screen.getByText("4-2")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Lineup efficiency" }));
     expect(screen.getByText("86%")).toBeInTheDocument();
+  });
+  it("puts the league tables under one League details section with tabs, power rankings first", async () => {
+    respond();
+    render(<League />);
+    expect(screen.getByRole("heading", { level: 2, name: "League details" })).toBeInTheDocument();
+    const tabs = screen.getAllByRole("tab").map((t) => t.textContent);
+    expect(tabs).toEqual(["Power rankings", "Schedule strength", "Positional strength", "Luck and all-play", "Lineup efficiency", "What if"]);
+    expect(screen.getByRole("tab", { name: "Power rankings" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("table", { name: "Positional strength by team" })).toBeNull();
+    await userEvent.click(screen.getByRole("tab", { name: "Positional strength" }));
+    expect(screen.getByRole("table", { name: "Positional strength by team" })).toBeInTheDocument();
   });
   it("shows the positional strength grid with its measure and weighting", async () => {
     respond();
     render(<League />);
+    await userEvent.click(screen.getByRole("tab", { name: "Positional strength" }));
     expect(screen.getByRole("table", { name: "Positional strength by team" })).toBeInTheDocument();
     const section = screen.getByRole("region", { name: "Positional strength" });
     await userEvent.click(within(section).getByRole("button", { name: "How this is calculated" }));
@@ -61,14 +75,16 @@ describe("League page", () => {
   it("what-if shows deltas for a well-sampled outcome and hides a thin one with a note", async () => {
     respond();
     render(<League />);
+    await userEvent.click(screen.getByRole("tab", { name: "What if" }));
     expect(screen.getByText("+11.9 ▲")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("radio", { name: "Rival wins" }));
     expect(screen.queryByText("+11.9 ▲")).toBeNull();
     expect(screen.getByText(/only 400 of the simulated seasons/)).toBeInTheDocument();
   });
-  it("what-if with no matchups says so", () => {
+  it("what-if with no matchups says so", async () => {
     respond({ "what-if?week=7": ready([]) });
     render(<League />);
+    await userEvent.click(screen.getByRole("tab", { name: "What if" }));
     expect(screen.getByText(/No matchups to test/)).toBeInTheDocument();
   });
   it("loading, running, no_data and error", () => {
@@ -85,16 +101,19 @@ describe("League page", () => {
       unmount();
     }
   });
-  it("empty power rankings say so and leave the other sections", () => {
+  it("empty power rankings say so and leave the other sections", async () => {
     respond({ "power-rankings": ready([]) });
     render(<League />);
-    expect(screen.getAllByText("Nothing to show yet.").length).toBe(2);
-    expect(screen.getByText("Luck and all-play")).toBeInTheDocument();
+    expect(screen.getByText("Nothing to show yet.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Schedule strength" }));
+    expect(screen.getByText("Nothing to show yet.")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Luck and all-play" })).toBeInTheDocument();
   });
-  it("a failing section reports its own error and leaves the rest", () => {
+  it("a failing section reports its own error and leaves the rest", async () => {
     respond({ luck: { kind: "error", error: { message: "luck broke", code: null } } });
     render(<League />);
-    expect(screen.getByText(/luck broke/)).toBeInTheDocument();
     expect(screen.getByRole("list", { name: /Power rankings/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Luck and all-play" }));
+    expect(screen.getByText(/luck broke/)).toBeInTheDocument();
   });
 });

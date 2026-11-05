@@ -5,7 +5,6 @@ import userEvent from "@testing-library/user-event";
 import type { ApiState } from "@/api/envelope";
 import { OutlookView as Outlook } from "./OutlookView";
 import { PlayersView as Players } from "@/features/players/PlayersView";
-import { HISTORY_WAIT_MESSAGE } from "./logic";
 
 /** Player names link to Explore, which needs a router. */
 const render = (ui: ReactElement): RenderResult => rtlRender(<MemoryRouter>{ui}</MemoryRouter>);
@@ -41,27 +40,15 @@ function outlookWith(history: unknown) {
 }
 
 describe("Outlook page", () => {
-  it("ready: marks my team in text, shows seeds and schedule, waits for a second run", () => {
+  it("ready: marks my team in text, shows seeds and schedule, and leaves the odds chart to Season", () => {
     outlookWith(run("2026-10-01T00:00"));
+    paths.length = 0;
     render(<Outlook />);
     expect(screen.getByText("Lisan (you)")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Where you finish" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Your remaining schedule" })).toBeInTheDocument();
-    expect(screen.getByText(HISTORY_WAIT_MESSAGE)).toBeInTheDocument();
-  });
-  it("ready: shows the history chart with its table from two runs", () => {
-    outlookWith([...run("2026-10-01T00:00"), ...run("2026-10-08T00:00")]);
-    render(<Outlook />);
-    expect(screen.getByRole("heading", { name: "Season odds, all teams" })).toBeInTheDocument();
-    expect(screen.queryByText(HISTORY_WAIT_MESSAGE)).toBeNull();
-  });
-  it("history={false} leaves the all-teams chart to the page that draws it", () => {
-    outlookWith([...run("2026-10-01T00:00"), ...run("2026-10-08T00:00")]);
-    paths.length = 0;
-    render(<Outlook history={false} />);
+    expect(screen.getByRole("table", { name: "Chance of each seed" })).toBeInTheDocument();
     expect(paths).not.toContain("odds-history");
-    expect(screen.queryByRole("heading", { name: "Season odds, all teams" })).toBeNull();
-    expect(screen.queryByText(HISTORY_WAIT_MESSAGE)).toBeNull();
   });
   it("loading, running, no_data and error", () => {
     const cases: [ApiState<unknown>, RegExp][] = [

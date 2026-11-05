@@ -5,15 +5,15 @@ import { cn } from "@/lib/utils";
 export const Tabs = TabsPrimitive.Root;
 
 export function TabsList({ className, ...props }: ComponentProps<typeof TabsPrimitive.List>) {
-  return <TabsPrimitive.List className={cn("flex gap-1 border-b border-line", className)} {...props} />;
+  return <TabsPrimitive.List className={cn("flex gap-6 border-b border-line", className)} {...props} />;
 }
 
 export function TabsTrigger({ className, ...props }: ComponentProps<typeof TabsPrimitive.Trigger>) {
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        "min-h-11 border-b-2 border-transparent px-3 text-body font-medium text-muted transition-colors md:min-h-9",
-        "hover:text-ink data-[state=active]:border-focus data-[state=active]:text-ink",
+        "-mb-px min-h-12 border-b-[3px] border-transparent pt-[3px] text-[15px] leading-6 whitespace-nowrap text-muted transition-colors",
+        "hover:text-ink data-[state=active]:border-forest data-[state=active]:font-semibold data-[state=active]:text-ink",
         className,
       )}
       {...props}

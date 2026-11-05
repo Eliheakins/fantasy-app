@@ -17,7 +17,7 @@ export default function Season() {
         <RootForSection />
       </div>
       <SeasonOdds />
-      <OutlookView history={false} />
+      <OutlookView />
       <LeagueView />
     </div>
   );

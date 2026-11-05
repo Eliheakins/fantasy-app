@@ -11,7 +11,7 @@ const detail = (c: TeamGradeRow) =>
   `starters ${formatNumber(c.vor_per_week)} pts/wk, depth ${formatNumber(c.depth_per_week)} pts/wk`;
 
 /** Grade and rank in text, the starter bar for length, the starters/depth split behind a tap. */
-function Cell({ cell, max }: { cell: TeamGradeRow | undefined; max: number }) {
+function Cell({ cell, max, mine }: { cell: TeamGradeRow | undefined; max: number; mine: boolean }) {
   if (!cell) return <span className="text-muted">–</span>;
   return (
     <span className="block min-w-[5.5rem]" title={detail(cell)}>
@@ -21,7 +21,7 @@ function Cell({ cell, max }: { cell: TeamGradeRow | undefined; max: number }) {
         </summary>
         <span className="block text-caption text-muted">{detail(cell)}</span>
       </details>
-      <HBar fraction={barFraction(cell.vor_per_week, max)} label={detail(cell)} />
+      <HBar fraction={barFraction(cell.vor_per_week, max)} label={detail(cell)} tone={mine ? "mine" : "other"} />
     </span>
   );
 }
@@ -44,7 +44,7 @@ export function PositionalStrength({ rows }: { rows: readonly TeamGradeRow[] }) 
         </>
       ),
     },
-    ...POSITIONS.map((p) => ({ label: HEADINGS[p], render: (t: GradeTeam) => <Cell cell={t.cells[p]} max={max(p)} /> })),
+    ...POSITIONS.map((p) => ({ label: HEADINGS[p], render: (t: GradeTeam) => <Cell cell={t.cells[p]} max={max(p)} mine={t.is_me} /> })),
   ];
   return (
     <ResponsiveTable caption="Positional strength by team" columns={columns} rows={teams} rowKey={(t) => String(t.roster_id)} isStrong={(t) => t.is_me} />

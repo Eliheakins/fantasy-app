@@ -3,12 +3,10 @@ import type { ApiState } from "@/api/envelope";
 import { ApiBoundary, NoData } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
 import { useLeagueApi } from "@/lib/league";
-import { OddsHistoryChart } from "./OddsHistoryChart";
 import { OddsTable } from "./OddsTable";
 import { ScheduleTable } from "./ScheduleTable";
 import { SeedChart } from "./SeedChart";
-import { HISTORY_WAIT_MESSAGE, canShowHistory } from "./logic";
-import type { OddsHistoryRow, ScheduleRow, SeasonOddsRow, SeedRow } from "./types";
+import type { ScheduleRow, SeasonOddsRow, SeedRow } from "./types";
 import { capitalize, useWho } from "./who";
 
 /** Optional blocks show only when they have rows, as Streamlit does; an error says so. */
@@ -25,24 +23,8 @@ const ODDS_METHOD =
 const SCHEDULE_METHOD =
   "Expected points are each team's best lineup this week, with each team's own kicker and defense projection. The win chance is a quick normal approximation, not the full simulation.";
 
-/** Fetches odds-history only when it is drawn, so a page that draws its own chart does not load it twice. */
-function AllTeamsHistory({ odds, who }: { odds: SeasonOddsRow[]; who: ReturnType<typeof useWho> }) {
-  const history = useLeagueApi<OddsHistoryRow[]>("odds-history");
-  if (history.kind === "ready" && canShowHistory(odds, history.data)) {
-    return (
-      <Section
-        title="Season odds, all teams"
-        caption={`Chance to make the playoffs after each saved run. ${who.name ?? "Your team"} is the bold line.`}
-      >
-        <OddsHistoryChart odds={odds} history={history.data} />
-      </Section>
-    );
-  }
-  return <p className="measure mt-8 text-caption text-muted">{HISTORY_WAIT_MESSAGE}</p>;
-}
-
-/** `history` false leaves the all-teams odds chart out, for a page that draws it itself (Season). */
-export function OutlookView({ history: withHistory = true }: { history?: boolean }) {
+/** Season's outlook tables: season odds, where you finish, remaining schedule. The odds chart is Season's own (`SeasonOdds`). */
+export function OutlookView() {
   const who = useWho();
   const odds = useLeagueApi<SeasonOddsRow[]>("season-odds");
   const seeds = useLeagueApi<SeedRow[]>("seeds");
@@ -74,7 +56,6 @@ export function OutlookView({ history: withHistory = true }: { history?: boolean
                 </Section>
               )}
             </Optional>
-            {withHistory && <AllTeamsHistory odds={oddsRows} who={who} />}
           </>
         )
       }

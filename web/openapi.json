@@ -6213,6 +6213,17 @@
               }
             ],
             "title": "P Title"
+          },
+          "as_of_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of Week"
           }
         },
         "additionalProperties": false,
@@ -6222,7 +6233,8 @@
           "team_name",
           "roster_id",
           "p_playoffs",
-          "p_title"
+          "p_title",
+          "as_of_week"
         ],
         "title": "OddsHistoryRow"
       },

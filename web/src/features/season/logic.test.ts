@@ -1,5 +1,5 @@
 import type { WhatIfRow } from "@/features/league/types";
-import { eventMarks, myOddsByRun, needSentence, needTable, rootFor } from "./logic";
+import { weekMarks, myOddsByRun, needSentence, needTable, rootFor } from "./logic";
 import type { SeasonEventRow, WinNeedRow } from "./types";
 
 const need = (wins: number, p: number, runs = 5000, games = 4): WinNeedRow => ({
@@ -68,21 +68,21 @@ describe("rootFor", () => {
   });
 });
 
-describe("eventMarks", () => {
-  const ev = (kind: SeasonEventRow["kind"], run_at: string | null): SeasonEventRow => ({ kind, when: "2026-10-25T00:00:00+00:00", run_at, label: kind });
-  it("puts events on a run, grouped, and counts those with no run to sit on", () => {
-    const { byRun, unplaced } = eventMarks([ev("trade", "r1"), ev("injury", "r1"), ev("big_week", "r2"), ev("trade", null)]);
-    expect(byRun.get("r1")?.map((e) => e.kind)).toEqual(["trade", "injury"]);
-    expect(byRun.get("r2")).toHaveLength(1);
-    expect(unplaced).toHaveLength(1);
+describe("weekMarks", () => {
+  const ev = (kind: SeasonEventRow["kind"], run_at: string | null): SeasonEventRow => ({ kind, when: "2026-10-25T00:00:00+00:00", run_at, label: `${kind} label` });
+  it("groups events by the week of their run and leaves out those with no run", () => {
+    const marks = weekMarks([ev("trade", "r1"), ev("injury", "r1"), ev("big_week", "r2"), ev("trade", null)], new Map([["r1", 7], ["r2", 8]]));
+    expect(marks.get(7)).toEqual([{ short: "Trade", full: "trade label" }, { short: "Injury", full: "injury label" }]);
+    expect(marks.get(8)).toEqual([{ short: "Big week", full: "big_week label" }]);
+    expect([...marks.keys()]).toEqual([7, 8]);
   });
 });
 
 describe("myOddsByRun", () => {
   it("keeps only my rows by run", () => {
     const h = [
-      { run_at: "r1", roster_id: 1, team_name: "A", p_playoffs: 0.5, p_title: 0 },
-      { run_at: "r1", roster_id: 2, team_name: "B", p_playoffs: 0.9, p_title: 0 },
+      { run_at: "r1", roster_id: 1, team_name: "A", p_playoffs: 0.5, p_title: 0, as_of_week: 7 },
+      { run_at: "r1", roster_id: 2, team_name: "B", p_playoffs: 0.9, p_title: 0, as_of_week: 7 },
     ];
     expect([...myOddsByRun(h, 1)]).toEqual([["r1", 0.5]]);
     expect(myOddsByRun(h, undefined).size).toBe(0);

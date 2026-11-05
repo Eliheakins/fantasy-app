@@ -277,9 +277,9 @@ def season_events(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFr
 
 
 def odds_history(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
-    """Every saved simulation run for a league: run_at, team_name, p_playoffs, p_title."""
+    """Every saved simulation run for a league: run_at, its week, team_name, p_playoffs, p_title."""
     me = _my_league(league_key, data_dir)
-    columns = ["run_at", "team_name", "roster_id", "p_playoffs", "p_title"]
+    columns = ["run_at", "team_name", "roster_id", "p_playoffs", "p_title", "as_of_week"]
     if me is None:
         return pl.DataFrame(schema={c: store.SCHEMAS["sim_season_history"][c] for c in columns})
     history = _read("sim_season_history", data_dir, area="archive")
