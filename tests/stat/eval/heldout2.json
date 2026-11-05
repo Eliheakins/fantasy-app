@@ -1,0 +1,17 @@
+[
+  {"q": "Puka Nacua receptions in 2024", "stats": ["rec_receptions"], "filters": ["season-2024"], "granularity": "total"},
+  {"q": "How many rushing touchdowns did Jahmyr Gibbs score in 2023?", "stats": ["rush_tds"], "filters": ["season-2023"], "granularity": "total"},
+  {"q": "Baker Mayfield passer rating in 2024", "stats": ["ngs_p_rating"], "filters": ["season-2024"], "granularity": null},
+  {"q": "Ja'Marr Chase receptions and receiving yards in 2024", "stats": ["rec_receptions", "rec_yards"], "filters": ["season-2024"], "granularity": "total"},
+  {"q": "Jalen Hurts rushing yards and rushing touchdowns in 2022", "stats": ["rush_yards", "rush_tds"], "filters": ["season-2022"], "granularity": "total"},
+  {"q": "Josh Allen passing touchdowns per game in 2024", "stats": ["pass_tds"], "filters": ["season-2024"], "granularity": "per_game"},
+  {"q": "Kyren Williams EPA per play in 2023", "stats": ["eff_epa"], "filters": ["season-2023"], "granularity": "per_play"},
+  {"q": "Josh Allen rushing yards in freezing games in 2022", "stats": ["rush_yards"], "filters": ["season-2022", "temp-lte32"], "granularity": "total"},
+  {"q": "Lamar Jackson completion percentage in windy conditions", "stats": ["cmp_pct"], "filters": ["wind-gte15"], "granularity": null},
+  {"q": "Amon-Ra St. Brown receiving yards in the fourth quarter when trailing", "stats": ["rec_yards"], "filters": ["qtr-4", "score-trailing"], "granularity": "total"},
+  {"q": "Bijan Robinson rushing yards last season", "stats": ["rush_yards"], "filters": ["season-2025"], "granularity": "total", "note": "relative season; current season 2026"},
+  {"q": "Lamar Jackson passing touchdowns this season", "stats": ["pass_tds"], "filters": ["season-2026"], "granularity": "total", "note": "relative season; current season 2026"},
+  {"q": "Christian McCaffrey yards from scrimmage in 2023", "unsupported": true, "trap": "no combined rushing-plus-receiving stat"},
+  {"q": "Derrick Henry rushing yards against the Steelers last season", "unsupported": true, "trap": "opponent filters do not exist"},
+  {"q": "Lamar Jackson passing yards in overtime in 2023", "unsupported": true, "trap": "no overtime filter"}
+]
