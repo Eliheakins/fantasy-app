@@ -92,30 +92,89 @@ const RESULT = {
   market: { give_value: 5000, get_value: 5000, hint: "even", fetched_at: "2026-10-25T08:00:00+00:00" },
 };
 
-async function evaluate(reply: Reply) {
-  mockFetch((url) => (url.includes("trade-assets") ? { status: "ok", data: [asset("t1", "Theirs")] } : reply));
-  wrap(<Evaluator league="L" partners={PARTNERS} mine={[asset("m1", "Mine")]} />);
+async function evaluate(reply: Reply, debounceMs = 0) {
+  const fn = mockFetch((url) => (url.includes("trade-assets") ? { status: "ok", data: [asset("t1", "Theirs")] } : reply));
+  wrap(<Evaluator league="L" partners={PARTNERS} mine={[asset("m1", "Mine")]} debounceMs={debounceMs} />);
   await userEvent.click(screen.getByRole("checkbox", { name: /Mine/ }));
   await userEvent.click(await screen.findByRole("checkbox", { name: /Theirs/ }));
-  await userEvent.click(screen.getByRole("button", { name: "Evaluate" }));
+  return fn;
 }
 
-describe("evaluator", () => {
-  it("keeps Evaluate disabled until both sides have a player", () => {
+const evaluateCalls = (fn: ReturnType<typeof mockFetch>) => fn.mock.calls.filter(([u]) => String(u).includes("trades/evaluate"));
+
+describe("trade builder", () => {
+  it("has no Evaluate button and asks for a player on each side until both have one", () => {
     mockFetch(() => ({ status: "ok", data: [] }));
-    wrap(<Evaluator league="L" partners={PARTNERS} mine={[asset("m1", "Mine")]} />);
-    const button = screen.getByRole("button", { name: "Evaluate" });
-    expect(button).toBeDisabled();
-    expect(button).toHaveAccessibleDescription("Pick at least one player on each side.");
+    wrap(<Evaluator league="L" partners={PARTNERS} mine={[asset("m1", "Mine")]} debounceMs={0} />);
+    expect(screen.queryByRole("button", { name: "Evaluate" })).toBeNull();
+    expect(screen.getByText("Pick at least one player on each side.")).toBeInTheDocument();
   });
-  it("shows both sides, the roster-moves warning with the partner's drop, and a text equivalent", async () => {
-    await evaluate({ status: "ok", data: RESULT });
+  it("evaluates on its own once both sides have a player, and shows both sides, the warning and the market", async () => {
+    const fn = await evaluate({ status: "ok", data: RESULT });
     expect(await screen.findByText("Automatic roster moves to keep sizes equal:")).toBeInTheDocument();
+    expect(evaluateCalls(fn)).toHaveLength(1);
     expect(screen.getByText("Zed")).toBeInTheDocument();
     expect(screen.getAllByRole("img", { name: /Make playoffs: 50.0% before, 55.0% after/ })).toHaveLength(2);
-    expect(screen.getAllByText("55.0%")).toHaveLength(4);
     expect(screen.getByText("Trade deadline: week 11.")).toBeInTheDocument();
     expect(screen.getByText(/Market value \(2026-10-25\): gives 5,000, gets 5,000, even/)).toBeInTheDocument();
+  });
+  it("sends one request for a burst of changes, not one per click", async () => {
+    mockFetch((url) => (url.includes("trade-assets") ? { status: "ok", data: [asset("t1", "Theirs"), asset("t2", "Other")] } : { status: "ok", data: RESULT }));
+    const fn = vi.mocked(fetch);
+    wrap(<Evaluator league="L" partners={PARTNERS} mine={[asset("m1", "Mine")]} debounceMs={300} />);
+    await userEvent.click(screen.getByRole("checkbox", { name: /Mine/ }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: /Theirs/ }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /Other/ }));
+    await screen.findByText("Trade deadline: week 11.");
+    expect(evaluateCalls(fn)).toHaveLength(1);
+  });
+  it("dims the previous result and marks it busy while the picks are still settling", async () => {
+    mockFetch((url) => (url.includes("trade-assets") ? { status: "ok", data: [asset("t1", "Theirs"), asset("t2", "Other")] } : { status: "ok", data: RESULT }));
+    wrap(<Evaluator league="L" partners={PARTNERS} mine={[asset("m1", "Mine")]} debounceMs={300} />);
+    await userEvent.click(screen.getByRole("checkbox", { name: /Mine/ }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: /Theirs/ }));
+    await screen.findByText("Trade deadline: week 11.");
+    const live = screen.getByTestId("trade-result");
+    expect(live).toHaveAttribute("aria-live", "polite");
+    expect(live).toHaveAttribute("aria-busy", "false");
+    await userEvent.click(screen.getByRole("checkbox", { name: /Other/ }));
+    expect(live).toHaveAttribute("aria-busy", "true");
+    await waitFor(() => expect(live).toHaveAttribute("aria-busy", "false"));
+  });
+  it("keeps the newer result when an older response arrives late", async () => {
+    let releaseFirst: () => void = () => {};
+    const gate = new Promise<void>((r) => (releaseFirst = r));
+    const stale = { ...RESULT, trade_deadline: 3 };
+    const fresh = { ...RESULT, trade_deadline: 12 };
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("trade-assets")) return new Response(JSON.stringify(envelope({ status: "ok", data: [asset("t1", "Theirs"), asset("t2", "Other")] })));
+      const second = String(init?.body).includes("t2");
+      if (!second) await gate;
+      return new Response(JSON.stringify(envelope({ status: "ok", data: second ? fresh : stale })));
+    }));
+    wrap(<Evaluator league="L" partners={PARTNERS} mine={[asset("m1", "Mine")]} debounceMs={0} />);
+    await userEvent.click(screen.getByRole("checkbox", { name: /Mine/ }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: /Theirs/ }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /Other/ }));
+    expect(await screen.findByText("Trade deadline: week 12.")).toBeInTheDocument();
+    releaseFirst();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.getByText("Trade deadline: week 12.")).toBeInTheDocument();
+    expect(screen.queryByText("Trade deadline: week 3.")).toBeNull();
+  });
+  it("shows the partner's change beside mine and the pitch with a copy button when both gain", async () => {
+    await evaluate({ status: "ok", data: RESULT });
+    expect(await screen.findByRole("region", { name: "Both sides" })).toHaveTextContent("Mine");
+    expect(screen.getByRole("region", { name: "Both sides" })).toHaveTextContent("Rivals");
+    expect((screen.getByLabelText("Message to copy") as HTMLTextAreaElement).value).toContain("my Mine for your Theirs");
+    expect(screen.getByRole("button", { name: "Copy message" })).toBeInTheDocument();
+  });
+  it("offers no pitch when the partner does not gain", async () => {
+    const worse = { ...RESULT, odds: [RESULT.odds[0], { ...RESULT.odds[1], playoff_after: 0.4 }] };
+    await evaluate({ status: "ok", data: worse });
+    await screen.findByRole("region", { name: "Both sides" });
+    expect(screen.queryByLabelText("Message to copy")).toBeNull();
+    expect(screen.getByText(/does not raise both teams/)).toBeInTheDocument();
   });
   it("shows the server's message as an amber notice", async () => {
     await evaluate({ status: "error", error: { code: "invalid", message: "The trade deadline has passed." } });

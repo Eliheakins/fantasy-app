@@ -1,15 +1,16 @@
 import { Link } from "react-router-dom";
 import { Delta, NOISE_PERCENT } from "@/viz";
-import type { Todo } from "./todos";
+import type { Effect, Todo } from "./todos";
 import { dayLabel } from "./weekLogic";
 
-export function EffectText({ todo }: { todo: Todo }) {
+/** `playoffNoise` is the playoff-odds change (points) below which it reads "~"; Moves passes its own bar. */
+export function EffectText({ todo, playoffNoise = NOISE_PERCENT }: { todo: { effect: Effect }; playoffNoise?: number }) {
   const { playoffPoints, points } = todo.effect;
   if (playoffPoints === null && points === null) return null;
   return (
     <span className="flex flex-wrap items-baseline gap-x-3">
       {playoffPoints !== null && (
-        <span className="whitespace-nowrap"><Delta points={playoffPoints} noise={NOISE_PERCENT} /> <span className="text-caption text-muted">playoff pts</span></span>
+        <span className="whitespace-nowrap"><Delta points={playoffPoints} noise={playoffNoise} /> <span className="text-caption text-muted">playoff pts</span></span>
       )}
       {points !== null && (
         <span className="whitespace-nowrap"><Delta points={points} /> <span className="text-caption text-muted">points</span></span>
