@@ -37,7 +37,8 @@ describe("layers", () => {
     expect([...offenders("lib", /^(features|pages)\//), ...offenders("components", /^(features|pages)\//)]).toEqual([]);
   });
   test("stat engine, lib and config stay free of the UI and the fantasy API", () => {
-    expect(offenders("stat", /^(features|components|pages|api)\//, /^stat\/react\//)).toEqual([]);
+    // api/schema is allowed: generated types only, used by nlqIntent.ts to pin zod to the backend at compile time.
+    expect(offenders("stat", /^(features|components|pages)\/|^api\/(?!schema$)/, /^stat\/react\//)).toEqual([]);
   });
   test("moves/trade does not import the rest of moves, so the two do not form a cycle", () => {
     expect(offenders("features/moves/trade", /^features\/moves\/(?!trade\/)[^/]+$/)).toEqual([]);
