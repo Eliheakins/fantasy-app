@@ -57,7 +57,9 @@ describe("Outlook page", () => {
   });
   it("history={false} leaves the all-teams chart to the page that draws it", () => {
     outlookWith([...run("2026-10-01T00:00"), ...run("2026-10-08T00:00")]);
+    paths.length = 0;
     render(<Outlook history={false} />);
+    expect(paths).not.toContain("odds-history");
     expect(screen.queryByRole("heading", { name: "Season odds, all teams" })).toBeNull();
     expect(screen.queryByText(HISTORY_WAIT_MESSAGE)).toBeNull();
   });

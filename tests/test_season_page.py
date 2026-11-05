@@ -129,6 +129,22 @@ def test_a_big_week_before_the_first_saved_run_is_not_marked(season: Path) -> No
     assert "big_week" not in {e["kind"] for e in events(season)}
 
 
+def test_a_malformed_timestamp_is_skipped_not_fatal(season: Path) -> None:
+    snap = {"team": "X", "position": "QB", "sleeper_id": "qb1"}
+    write_archive(
+        season,
+        "sleeper_player_status",
+        [{**snap, "fetched_at": "garbage"}, {**snap, "fetched_at": "2026-10-26T12:00:00+00:00"},
+         {**snap, "fetched_at": "2026-10-29T12:00:00+00:00", "injury_status": "Out"}],
+    )  # fmt: skip
+    assert [e["kind"] for e in events(season)].count("injury") == 1
+
+
+def test_a_big_week_is_judged_against_the_other_weeks(season: Path) -> None:
+    labels = [e["label"] for e in events(season) if e["kind"] == "big_week"]
+    assert len(labels) == 1 and "50.0 above" in labels[0]  # 150 against the others' mean of 100
+
+
 def write_need(path: Path) -> None:
     rows = [(1, 4, k, 100 * (k + 1), 0.1 * (k + 1), 0.2 * (k + 1)) for k in range(5)] + [
         (2, 4, 0, 50, 1.0, 0.9)

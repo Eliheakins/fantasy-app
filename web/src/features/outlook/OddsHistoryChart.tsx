@@ -44,7 +44,7 @@ function labeledIds(latest: HistoryPoint | undefined, teams: readonly { id: stri
 }
 
 /** Playoff odds per saved run: mine bold, rivals grey, names at the line ends. */
-export function OddsHistoryChart({ odds, history, marks }: { odds: readonly SeasonOddsRow[]; history: readonly OddsHistoryRow[]; marks?: ReadonlyMap<string, readonly unknown[]> }) {
+export function OddsHistoryChart({ odds, history, marks, describedBy }: { odds: readonly SeasonOddsRow[]; history: readonly OddsHistoryRow[]; marks?: ReadonlySet<string>; describedBy?: string }) {
   const data = pivotHistory(history);
   const teams = historyTeams(odds, history);
   const ordered = [...teams.filter((t) => !t.isMe), ...teams.filter((t) => t.isMe)]; // mine drawn last, on top
@@ -56,7 +56,7 @@ export function OddsHistoryChart({ odds, history, marks }: { odds: readonly Seas
   const ticks = runTicks(data.map((p) => p.run_at), formatRunDate);
   return (
     <div>
-      <div className="h-72 w-full" role="img" aria-label="Season playoff odds for every team over saved runs, line chart; the bold line is the team being viewed">
+      <div className="h-72 w-full" role="img" aria-describedby={describedBy} aria-label="Season playoff odds for every team over saved runs, line chart; the bold line is the team being viewed">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: wide ? 96 : 64, bottom: 0, left: 8 }}>
             <CartesianGrid {...GRID} />

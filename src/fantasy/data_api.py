@@ -86,6 +86,7 @@ __all__ = [
     "scorecard",
     "scoreboard",
     "scoring_labels",
+    "season_events",
     "season_odds",
     "seed_distribution",
     "simulation_behind_inputs",
@@ -99,7 +100,6 @@ __all__ = [
     "waivers",
     "what_if",
     "win_needs",
-    "season_events",
     "win_probability",
 ]
 

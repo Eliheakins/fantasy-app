@@ -301,6 +301,7 @@ def manager_grades(league: str, team: Team = None) -> Any:
 
 @router.get("/leagues/{league}/win-needs", response_model=Envelope[list[WinNeedRow]])
 def win_needs(league: str, team: Team = None) -> Any:
+    """Playoff odds by wins in the next four games (empty until simulate has run)."""
     return guarded(as_team(team, lambda: rows(data_api.win_needs(league, store.DATA_DIR))))
 
 

@@ -4,9 +4,10 @@ import { formatPercent } from "@/viz";
 import { needSentence, needTable } from "./logic";
 import type { WinNeedRow } from "./types";
 
-const BAR_WIDTH = 160;
+const BAR_WIDTH = 112;
 const BAR_HEIGHT = 8;
 const NO_TABLE = "Not computed yet: run make refresh to see this.";
+const THIN = "Too few simulated seasons behind these numbers to say.";
 
 function Line({ wins, games, row }: ReturnType<typeof needTable>[number]) {
   const label = `Win ${wins} of ${games}`;
@@ -17,11 +18,13 @@ function Line({ wins, games, row }: ReturnType<typeof needTable>[number]) {
         <span className="text-caption text-muted">never happened in the simulated seasons</span>
       ) : (
         <>
-          <svg role="img" aria-label={`${label}: ${formatPercent(row.p_playoffs)} to make the playoffs`} width={BAR_WIDTH} height={BAR_HEIGHT} className="shrink-0">
-            <rect width={BAR_WIDTH} height={BAR_HEIGHT} rx={2} className="fill-panel-line" />
-            <rect width={row.p_playoffs * BAR_WIDTH} height={BAR_HEIGHT} rx={2} className="fill-focus" />
-          </svg>
-          <span className="w-12 text-right font-semibold tabular-nums">{formatPercent(row.p_playoffs)}</span>
+          <span className="inline-flex items-center gap-2 whitespace-nowrap">
+            <svg aria-hidden="true" width={BAR_WIDTH} height={BAR_HEIGHT} className="shrink-0">
+              <rect width={BAR_WIDTH} height={BAR_HEIGHT} rx={2} className="fill-panel-line" />
+              <rect width={row.p_playoffs * BAR_WIDTH} height={BAR_HEIGHT} rx={2} className="fill-focus" />
+            </svg>
+            <span className="w-12 text-right font-semibold tabular-nums">{formatPercent(row.p_playoffs)}</span>
+          </span>
           <span className="text-caption text-muted">{formatPercent(row.p_condition)} of seasons</span>
         </>
       )}
@@ -38,7 +41,8 @@ export function WhatYouNeed() {
       <ApiBoundary state={state}>
         {(rows) => {
           const sentence = needSentence(rows);
-          if (sentence === null) return <p className="mt-1 text-body text-muted">{NO_TABLE}</p>;
+          if (rows.length === 0) return <p className="mt-1 text-body text-muted">{NO_TABLE}</p>;
+          if (sentence === null) return <p className="mt-1 text-body text-muted">{THIN}</p>;
           return (
             <>
               <p className="measure mt-1 text-body">{sentence}</p>

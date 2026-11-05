@@ -1,4 +1,5 @@
 import { type Matchup, groupMatchups, isThin } from "@/features/league/logic";
+import type { OddsHistoryRow } from "@/features/outlook/types";
 import type { WhatIfRow } from "@/features/league/types";
 import { formatPercent } from "@/viz";
 import type { SeasonEventRow, WinNeedRow } from "./types";
@@ -16,8 +17,9 @@ export function needTable(rows: readonly WinNeedRow[]): NeedLine[] {
   return Array.from({ length: games + 1 }, (_, wins) => ({ wins, games, row: rows.find((r) => r.wins === wins) ?? null }));
 }
 
+/** Win counts seen in too few simulated seasons are left out of the sentence, as in What if. */
 export function needSentence(rows: readonly WinNeedRow[]): string | null {
-  const known = [...rows].sort((a, b) => a.wins - b.wins);
+  const known = rows.filter((r) => !isThin(r)).sort((a, b) => a.wins - b.wins);
   const last = known[known.length - 1];
   if (!last) return null;
   const good = known.find((r) => r.p_playoffs >= GOOD_ODDS);
@@ -25,15 +27,15 @@ export function needSentence(rows: readonly WinNeedRow[]): string | null {
   return `Even winning ${last.wins} of your next ${last.n_games} leaves you at ${formatPercent(last.p_playoffs)} to make the playoffs.`;
 }
 
-export type RootFor = { key: string; root: string; against: string; gain: number; swing: number };
+export type RootFor = { key: string; root: string; against: string; gain: number; swing: number; runs: number };
 
 function rootForMatchup(m: Matchup): RootFor | null {
   const usable = m.outcomes.filter((o) => !isThin(o));
-  const best = usable.reduce<WhatIfRow | null>((a, o) => (a === null || o.d_playoffs > a.d_playoffs ? o : a), null);
-  if (best === null) return null;
-  const worst = usable.reduce((a, o) => (o.d_playoffs < a.d_playoffs ? o : a), best);
-  const swing = usable.length > 1 ? best.d_playoffs - worst.d_playoffs : Math.abs(best.d_playoffs);
-  return { key: m.key, root: best.winner, against: best.loser, gain: best.d_playoffs, swing };
+  const [first, second] = usable;
+  if (first === undefined || second === undefined) return null; // one usable outcome is not a swing
+  const [best, worst] = first.d_playoffs >= second.d_playoffs ? [first, second] : [second, first];
+  const runs = Math.min(first.n_runs, second.n_runs);
+  return { key: m.key, root: best.winner, against: best.loser, gain: best.d_playoffs, swing: best.d_playoffs - worst.d_playoffs, runs };
 }
 
 /** Other teams' games this week, biggest swing in my playoff odds first; rare outcomes are left out. */
@@ -54,4 +56,11 @@ export function eventMarks(events: readonly SeasonEventRow[]): { byRun: Map<stri
     else byRun.set(e.run_at, [...(byRun.get(e.run_at) ?? []), e]);
   }
   return { byRun, unplaced };
+}
+
+/** My playoff odds at each saved run, keyed by run_at, so an event can say what the odds were there. */
+export function myOddsByRun(history: readonly OddsHistoryRow[], myRosterId: number | undefined): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const r of history) if (r.roster_id === myRosterId && r.p_playoffs !== null) out.set(r.run_at, r.p_playoffs);
+  return out;
 }

@@ -1,5 +1,5 @@
 import type { WhatIfRow } from "@/features/league/types";
-import { eventMarks, needSentence, needTable, rootFor } from "./logic";
+import { eventMarks, myOddsByRun, needSentence, needTable, rootFor } from "./logic";
 import type { SeasonEventRow, WinNeedRow } from "./types";
 
 const need = (wins: number, p: number, runs = 5000, games = 4): WinNeedRow => ({
@@ -30,6 +30,11 @@ describe("needSentence", () => {
     );
   });
   it("is null with no rows", () => expect(needSentence([])).toBeNull());
+  it("ignores win counts seen in fewer than 1,000 runs, keeping exactly 1,000", () => {
+    expect(needSentence([need(1, 0.3), need(2, 0.99, 999)])).toContain("Even winning 1 of your next 4 leaves you at 30%");
+    expect(needSentence([need(1, 0.3), need(2, 0.99, 1000)])).toContain("Win 2 of your next 4");
+    expect(needSentence([need(2, 0.99, 999)])).toBeNull();
+  });
 });
 
 const outcome = (winner: number, loser: number, d: number, runs = 8000, me = false): WhatIfRow => ({
@@ -47,11 +52,15 @@ describe("rootFor", () => {
   it("ranks other matchups by the swing between outcomes and names the side to back", () => {
     const out = rootFor(rows);
     expect(out.map((r) => r.root)).toEqual(["T5", "T2"]);
-    expect(out[0]).toMatchObject({ against: "T4", gain: 0.06, swing: 0.14 });
+    expect(out[0]).toMatchObject({ against: "T4", gain: 0.06, swing: 0.14, runs: 8000 });
   });
   it("skips my own game and matchups whose outcomes are too rare to trust", () => {
     const out = rootFor(rows);
     expect(out.some((r) => ["T1", "T9", "T6", "T7"].includes(r.root))).toBe(false);
+  });
+  it("needs both outcomes to be usable, and 1,000 runs is usable while 999 is not", () => {
+    expect(rootFor([outcome(2, 3, 0.2), outcome(3, 2, -0.2, 999)])).toEqual([]);
+    expect(rootFor([outcome(2, 3, 0.2, 1000), outcome(3, 2, -0.2, 1000)])).toHaveLength(1);
   });
   it("keeps at most five", () => {
     const many = Array.from({ length: 8 }, (_, i) => [outcome(20 + 2 * i, 21 + 2 * i, 0.01 * (i + 1)), outcome(21 + 2 * i, 20 + 2 * i, -0.01 * (i + 1))]).flat();
@@ -66,5 +75,16 @@ describe("eventMarks", () => {
     expect(byRun.get("r1")?.map((e) => e.kind)).toEqual(["trade", "injury"]);
     expect(byRun.get("r2")).toHaveLength(1);
     expect(unplaced).toHaveLength(1);
+  });
+});
+
+describe("myOddsByRun", () => {
+  it("keeps only my rows by run", () => {
+    const h = [
+      { run_at: "r1", roster_id: 1, team_name: "A", p_playoffs: 0.5, p_title: 0 },
+      { run_at: "r1", roster_id: 2, team_name: "B", p_playoffs: 0.9, p_title: 0 },
+    ];
+    expect([...myOddsByRun(h, 1)]).toEqual([["r1", 0.5]]);
+    expect(myOddsByRun(h, undefined).size).toBe(0);
   });
 });

@@ -23,7 +23,7 @@ vi.mock("@/pages/Scoreboard", () => ({ default: () => <p>scores</p> }));
 describe("composed pages", () => {
   it.each([
     ["What should I do this week?", ThisWeek],
-    ["Am I making the playoffs?", Season],
+    ["Season", Season],
     ["Players", Players],
   ])("%s has exactly one h1", (title, Page) => {
     render(<MemoryRouter><Page /></MemoryRouter>);

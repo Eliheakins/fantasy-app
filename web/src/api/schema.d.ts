@@ -298,7 +298,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Win Needs */
+        /**
+         * Win Needs
+         * @description Playoff odds by wins in the next four games (empty until simulate has run).
+         */
         get: operations["win_needs_api_leagues__league__win_needs_get"];
         put?: never;
         post?: never;

@@ -107,3 +107,24 @@ def test_fewer_than_four_games_left_gives_rows_up_to_that_many() -> None:
     need = win_need_odds(late, simulate_season(late))
     assert set(need["n_games"]) == {2}
     assert need["wins"].max() == 2
+
+
+def test_no_games_left_gives_no_rows() -> None:
+    inp = replace(inputs(np.full(N_TEAMS, 100.0), 20.0, n_sims=500), pairs={})
+    assert win_need_odds(inp, simulate_season(inp)).is_empty()
+
+
+def test_a_tie_is_not_a_win() -> None:
+    inp = inputs(np.full(N_TEAMS, 100.0), 0.0, n_sims=200)  # no noise: every game is a tie
+    need = win_need_odds(inp, simulate_season(inp)).filter(pl.col("roster_id") == 1)
+    assert need["wins"].to_list() == [0] and need["n_runs"].to_list() == [200]
+
+
+def test_passing_the_draws_in_changes_nothing() -> None:
+    from fantasy.sim.season import team_scores
+
+    inp = inputs(np.linspace(90, 110, N_TEAMS), 20.0, n_sims=1000, shift_sd=5.0)
+    res = simulate_season(inp)
+    draws = team_scores(inp)
+    assert win_need_odds(inp, res, scores=draws).equals(win_need_odds(inp, res))
+    assert conditional_odds(inp, res, draws).equals(conditional_odds(inp, res))

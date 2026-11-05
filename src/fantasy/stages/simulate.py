@@ -37,6 +37,7 @@ from fantasy.sim.season import (
     SeasonInputs,
     conditional_odds,
     simulate_season,
+    team_scores,
     win_need_odds,
 )
 from fantasy.stages.crosswalk import TEAM_MAP
@@ -636,12 +637,13 @@ def run(n_sims: int | None = None, archive: bool = True) -> pl.DataFrame:
         inp = build_inputs(data, None, n_sims, 0)
         result = simulate_season(inp)
         week_rows += team_week_rows(data, inp)
-        cond = conditional_odds(inp, result).with_columns(
+        scores = team_scores(inp)  # one draw for both display tables below
+        cond = conditional_odds(inp, result, scores).with_columns(
             pl.lit(league["league_id"]).alias("league_id"),
             pl.lit(data.current_week).cast(pl.Int64).alias("as_of_week"),
         )
         conditional.append(cond.select(*store.SCHEMAS["sim_conditional"]))
-        need = win_need_odds(inp, result).with_columns(
+        need = win_need_odds(inp, result, scores=scores).with_columns(
             pl.lit(league["league_id"]).alias("league_id"),
             pl.lit(data.current_week).cast(pl.Int64).alias("as_of_week"),
         )

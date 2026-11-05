@@ -763,6 +763,7 @@
     "/api/leagues/{league}/win-needs": {
       "get": {
         "summary": "Win Needs",
+        "description": "Playoff odds by wins in the next four games (empty until simulate has run).",
         "operationId": "win_needs_api_leagues__league__win_needs_get",
         "parameters": [
           {

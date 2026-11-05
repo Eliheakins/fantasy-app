@@ -3,9 +3,9 @@ import type { DigestData } from "@/features/digest/types";
 import type { SeasonOddsRow } from "@/features/outlook/types";
 import { useWho } from "@/features/outlook/who";
 import { useLeagueApi } from "@/lib/league";
-import { Delta, formatPercent } from "@/viz";
+import { Delta, NOISE_PERCENT, formatPercent } from "@/viz";
 
-const TITLE_WAITING = "Am I making the playoffs?";
+const TITLE_WAITING = "Season";
 
 /** h1 = the playoff odds; the sentence adds the week's change, the bye and the title chance. */
 export function SeasonHeader({ eyebrow }: { eyebrow: string }) {
@@ -22,7 +22,7 @@ export function SeasonHeader({ eyebrow }: { eyebrow: string }) {
       eyebrow={eyebrow}
       answer={
         <>
-          {change != null && <><Delta points={change * 100} /> <span className="text-muted">since the last week's run.</span>{" "}</>}
+          {change != null && <><Delta points={change * 100} noise={NOISE_PERCENT} /> <span className="text-muted">pp since the last week's run.</span>{" "}</>}
           A bye is {formatPercent(mine.p_bye)} and the title {formatPercent(mine.p_title)}.
         </>
       }
