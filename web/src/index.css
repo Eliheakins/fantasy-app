@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 
 /* Look F tokens (light only; docs/spec/dashboard.md "Look F" and the contrast table). Semantic colour only for
-   change (better/worse) and warnings; green is frame (band, panel tint, selection, focus); ranges grey. */
+   change (better/worse) and warnings; green is frame (header name, active tab, panel tint, selection, focus); ranges grey. */
 :root {
   --font-body: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: Newsreader, Georgia, "Times New Roman", serif;
@@ -34,9 +34,6 @@
   --lf-faint: #64706a;
   --lf-forest: #123d2c;
   --lf-focus: #1f5a43;
-  --lf-chrome-label: #9cc7b2;
-  --lf-chrome-text: #e6f0ea;
-  --lf-chrome-ask: #cfe5d9;
   --lf-better: #157a3d;
   --lf-worse: #b4261a;
   --lf-warning: #6b4200;
@@ -64,9 +61,6 @@
   --color-faint: var(--lf-faint);
   --color-forest: var(--lf-forest);
   --color-focus: var(--lf-focus);
-  --color-chrome-label: var(--lf-chrome-label);
-  --color-chrome-text: var(--lf-chrome-text);
-  --color-chrome-ask: var(--lf-chrome-ask);
   --color-better: var(--lf-better);
   --color-worse: var(--lf-worse);
   --color-warning: var(--lf-warning);
@@ -181,13 +175,9 @@ nav[aria-label="Main tabs"] a[aria-current="page"] {
     padding-bottom: 0;
   }
 }
-/* On the Forest band the focus ring is white: #1F5A43 would vanish against #123D2C. */
 /* Programmatic focus on a tabindex=-1 target (the page h1, main) moves screen readers without drawing a box. */
 [tabindex="-1"]:focus-visible {
   outline: none;
-}
-.on-chrome *:focus-visible {
-  outline-color: #ffffff;
 }
 
 /* Disabled controls read as unavailable, not washed out: flat, muted text at 4.5:1 or better on the panel. */

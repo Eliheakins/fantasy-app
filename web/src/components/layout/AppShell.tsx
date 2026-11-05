@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Footer } from "./Footer";
 import { navSearch } from "./navLinks";
@@ -10,10 +11,23 @@ import { useTeam } from "@/lib/teamContext";
 import { NAV_ITEMS } from "@/nav";
 import { cn } from "@/lib/utils";
 
+/** True once the page has scrolled, so the sticky header can lift off the content with a shadow. */
+function useScrolled(): boolean {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 0);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return scrolled;
+}
+
 function Frame() {
   const { search, pathname } = useLocation(); // nav links keep only ?league=, ?team= and ?week=
   const { viewed } = useTeam();
   useRouteAnnounce(viewed ? (viewed.team_name ?? `Team ${viewed.roster_id}`) : null);
+  const scrolled = useScrolled();
   return (
     <div className="flex min-h-screen flex-col">
       <a
@@ -22,27 +36,32 @@ function Frame() {
       >
         Skip to content
       </a>
-      <TopBar />
-      <nav aria-label="Main" className="hidden border-b border-line md:block">
-        <ul className="mx-auto flex w-full max-w-[1200px] gap-6 px-4">
-          {NAV_ITEMS.map(({ path, label }) => (
-            <li key={path}>
-              <NavLink
-                to={{ pathname: path, search: navSearch(path, search, pathname) }}
-                end={path === "/"}
-                className={({ isActive }) =>
-                  cn(
-                    "flex min-h-[44px] items-center border-b-2 text-body",
-                    isActive ? "border-forest font-semibold text-ink" : "border-transparent text-muted hover:text-ink",
-                  )
-                }
-              >
-                {label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <div
+        data-scrolled={scrolled || undefined}
+        className="border-b border-line bg-page transition-shadow md:sticky md:top-0 md:z-30 data-[scrolled]:md:shadow-[0_2px_12px_rgba(19,32,26,0.08)]"
+      >
+        <TopBar />
+        <nav aria-label="Main" className="hidden md:block">
+          <ul className="mx-auto flex w-full max-w-[1200px] gap-8 px-[var(--page-pad)]">
+            {NAV_ITEMS.map(({ path, label }) => (
+              <li key={path}>
+                <NavLink
+                  to={{ pathname: path, search: navSearch(path, search, pathname) }}
+                  end={path === "/"}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex min-h-12 items-center border-b-[3px] pt-[3px] text-[15px] leading-6",
+                      isActive ? "border-forest font-semibold text-ink" : "border-transparent text-muted hover:text-ink",
+                    )
+                  }
+                >
+                  {label}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
       <div className="tab-bar-offset flex min-w-0 flex-1 flex-col md:pb-0">
         <StatusBanner />
         <TeamBanner />
@@ -73,7 +92,7 @@ function Frame() {
   );
 }
 
-/** Forest band and tab row from 768 px up; the band collapses and the tabs move to a bottom bar below. */
+/** Light header and tab row, sticky from 768 px up; below that the tabs move to a bottom bar. */
 export function AppShell() {
   return (
     <TeamProvider>

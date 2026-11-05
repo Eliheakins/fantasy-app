@@ -18,7 +18,7 @@ export function WeekStrip({ calendar, now }: { calendar: WeekCalendar; now: Date
             <div className="font-semibold">
               {d.label} {d.dayOfMonth}
               {d.isPast && <span className="sr-only"> (past)</span>}
-              {d.isToday && <span className="ml-1 rounded bg-forest px-1 text-chrome-text">Now</span>}
+              {d.isToday && <span className="ml-1 rounded bg-forest px-1 text-white">Now</span>}
             </div>
             {d.events.map((e) => <div key={e.text}>{e.text}</div>)}
           </li>

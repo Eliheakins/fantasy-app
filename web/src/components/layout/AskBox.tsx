@@ -28,12 +28,12 @@ export function AskBox() {
       <Link
         to={{ pathname: "/ask", search: navSearch("/ask", search, pathname) }}
         aria-label="Ask"
-        className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-white/30 text-white md:hidden"
+        className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-panel-line bg-white text-forest md:hidden"
       >
         <MessageCircleQuestion aria-hidden size={20} />
       </Link>
       <form role="search" onSubmit={submit} className="hidden items-center gap-2 md:flex">
-        <span aria-hidden className="font-display text-body italic text-chrome-ask">Ask</span>
+        <span aria-hidden className="font-display text-heading italic text-forest">Ask</span>
         <input
           type="text"
           aria-label="Ask a question"
@@ -41,7 +41,7 @@ export function AskBox() {
           value={text}
           maxLength={MAX_QUESTION_LENGTH}
           onChange={(e) => setText(e.target.value)}
-          className="min-h-[44px] w-64 min-w-0 rounded-full border border-white/20 bg-white/10 px-4 text-body text-white placeholder:text-chrome-text/70"
+          className="min-h-[44px] w-64 min-w-0 rounded-full border border-panel-line bg-white px-4 text-body text-ink placeholder:text-faint"
         />
       </form>
     </>

@@ -915,3 +915,7 @@ Two research agents surveyed the decision code (assumptions with file and line) 
 - **Vocabulary.** The audit found the app already uses clear / lean / toss-up for confidence (client and server). The remaining words are different ideas and stay: "likely gone" (Sleeper adds), "likely between" (10 to 90 range), the matchup script. Documented in the spec.
 - **Phones.** `StatusBanner` collapses to one disclosure line below 768 px. Explain buttons are 44 px tall. Not verified in a real browser at 390 px (no Playwright here): reasoned from the classes.
 - **Fold-ins.** The marked-events list no longer adds a screen-reader "Trade:" when the label already starts with it. `possessive()` (`web/src/lib/text.ts`) replaces "'s" in game-day text and the start/sit locked note: "Theirs'" not "Theirs's".
+
+## 2026-11-05: UI refinement pass (header, scores, Lineup, Season charts, Players nav)
+
+- **Light header (G2).** The Forest band read as part of the browser's tab strip. The header is now the page background with a bottom rule, sticky from 768 px up with a shadow once scrolled; team name in Forest serif, selects and Ask as white bordered pills, tabs 15px and 48px tall with a 3px Forest underline. The phone header scrolls away (the tabs are the bottom bar) and the "Viewing as" strip is sticky on phones only, since the desktop header already names the viewed team. The `chrome-*` tokens are gone. Data notices are one amber line with Details at every width.

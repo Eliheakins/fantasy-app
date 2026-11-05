@@ -25,10 +25,11 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("StatusBanner", () => {
-  it("on a phone, collapses the notices into one line with a disclosure", async () => {
-    mockMedia(false);
+  it.each([[false, "phone"], [true, "desktop"]])("collapses the notices into one amber line with a details disclosure (%s)", async (wide) => {
+    mockMedia(wide);
     renderBanner();
-    const toggle = await screen.findByRole("button", { name: /2 data notices/i });
+    const toggle = await screen.findByRole("button", { name: /details/i });
+    expect(screen.getByText(/2 data notices/i)).toBeInTheDocument();
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByText(/Stale data/)).toBeNull();
     await userEvent.setup().click(toggle);
@@ -37,11 +38,10 @@ describe("StatusBanner", () => {
     expect(screen.getByText(/Running without/)).toBeInTheDocument();
   });
 
-  it("on desktop, keeps every notice visible", async () => {
-    mockMedia(true);
+  it("shows nothing when the data is fresh", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ status: "ok", data: { ...STATUS, freshness: [], missing_layers: [] }, error: null, started_at: null })));
     renderBanner();
-    expect(await screen.findByText(/Stale data/)).toBeInTheDocument();
-    expect(screen.getByText(/Running without/)).toBeInTheDocument();
+    await new Promise((r) => setTimeout(r, 0));
     expect(screen.queryByRole("button")).toBeNull();
   });
 });
