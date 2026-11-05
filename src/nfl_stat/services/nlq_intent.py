@@ -130,7 +130,13 @@ def extract_json_object(text: str) -> dict[str, Any]:
 
 
 def parse_intent(text: str, *, stat_ids: set[str], filter_ids: set[str]) -> QueryIntent:
-    obj = extract_json_object(text)
+    return validate_intent(extract_json_object(text), stat_ids=stat_ids, filter_ids=filter_ids)
+
+
+def validate_intent(
+    obj: dict[str, Any], *, stat_ids: set[str], filter_ids: set[str]
+) -> QueryIntent:
+    """Every id must be in the client's catalog, whichever model chose it."""
     try:
         intent = QueryIntent.model_validate(obj)
     except ValidationError as e:

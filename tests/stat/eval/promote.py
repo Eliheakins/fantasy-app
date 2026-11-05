@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from nfl_stat.schemas.nlq import Granularity
 
 EVAL_DIR = Path(__file__).parent
-SETS = ("cases", "heldout", "corrections")
+SETS = ("cases", "heldout", "heldout2", "corrections")
 
 
 class PromoteError(ValueError):

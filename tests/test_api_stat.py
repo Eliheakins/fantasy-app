@@ -75,6 +75,10 @@ def client(
         llm_model="test-model",
         llm_base_url="http://fake-llm/v1",
         llm_timeout_seconds=1.0,
+        intent_provider="local",
+        jev_api_key=None,
+        jev_model="jev-latest",
+        jev_timeout_seconds=1.0,
     )
     app = api.create_app(web_dist, stat_settings=settings)
     reply = json.dumps({"unsupported": "no such stat"})

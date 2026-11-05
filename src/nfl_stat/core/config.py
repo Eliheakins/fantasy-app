@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Paths assume a source checkout (src/nfl_stat/core/config.py), not an installed wheel.
@@ -22,6 +23,15 @@ class AppSettings(BaseSettings):
         default="mlx-community/Qwen3-4B-Instruct-2507-4bit", validation_alias="LLM_MODEL"
     )
     llm_timeout_seconds: float = Field(default=120.0, validation_alias="LLM_TIMEOUT_SECONDS")
+
+    # Ask's model step: Jev (TypeSafe's hosted model) or the local server above. auto means Jev
+    # when JEV_API_KEY is set. A Jev failure falls back to the local server.
+    intent_provider: Literal["auto", "jev", "local"] = Field(
+        default="auto", validation_alias="INTENT_PROVIDER"
+    )
+    jev_api_key: SecretStr | None = Field(default=None, validation_alias="JEV_API_KEY")
+    jev_model: str = Field(default="jev-latest", validation_alias="JEV_MODEL")
+    jev_timeout_seconds: float = Field(default=10.0, validation_alias="JEV_TIMEOUT_SECONDS")
 
     @property
     def data_dir(self) -> Path:

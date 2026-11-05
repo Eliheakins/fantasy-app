@@ -1,9 +1,11 @@
 """
-Measures how often the local model turns a question into the expected stats/filters/granularity.
+Measures how often the intent model turns a question into the expected stats/filters/granularity.
 
-Needs the model server running, so it is deselected by default:
-    uv run --group llm mlx_lm.server --model mlx-community/Qwen3-4B-Instruct-2507-4bit --port 8080
-    uv run pytest -m eval -s
+Needs a model, so it is deselected by default. The provider follows INTENT_PROVIDER like the app
+(auto: Jev when JEV_API_KEY is set in the environment or `.env`), but with no fallback, so a Jev
+failure counts as a miss instead of silently scoring the local model:
+    set -a; source .env; set +a; uv run pytest -m eval -s          # Jev
+    make ask-model; INTENT_PROVIDER=local uv run pytest -m eval -s  # local Qwen
 
 `catalog.json` comes from `npm run export:catalog` (frontend/), so the ids are the real ones.
 """
@@ -21,15 +23,17 @@ import pytest
 from openai import AsyncOpenAI
 
 from nfl_stat.core.config import get_settings
-from nfl_stat.schemas.nlq import IntentRequest, QueryOutcome
+from nfl_stat.schemas.nlq import IntentOutcome, IntentRequest, QueryOutcome
+from nfl_stat.services.jev_intent import JevError, translate_with_jev
 from nfl_stat.services.nlq_intent import IntentError, translate_question
 
 EVAL_DIR = Path(__file__).parent
 RESULTS_FILE = EVAL_DIR / "results.jsonl"
 MIN_PASS_RATE = 0.8
 MIN_REFUSAL_RATE = 0.75  # a model that never refuses must fail even though refusals are few
-# `corrections` holds questions a user had to fix in the app (added with promote.py).
-SETS = ("cases", "heldout", "corrections")
+# `corrections` holds questions a user had to fix in the app (added with promote.py). `heldout2`
+# was committed before any model saw it (#71).
+SETS = ("cases", "heldout", "heldout2", "corrections")
 
 pytestmark = pytest.mark.eval
 
@@ -93,6 +97,16 @@ async def test_intent_pass_rate_meets_threshold():
     client = AsyncOpenAI(
         base_url=settings.llm_base_url, api_key="local", timeout=settings.llm_timeout_seconds
     )
+    key = settings.jev_api_key.get_secret_value() if settings.jev_api_key else ""
+    use_jev = settings.intent_provider != "local" and bool(key)
+    model = f"jev:{settings.jev_model}" if use_jev else settings.llm_model
+
+    async def ask(req: IntentRequest) -> IntentOutcome:
+        if use_jev:
+            return await translate_with_jev(
+                req, api_key=key, model=settings.jev_model, timeout=settings.jev_timeout_seconds
+            )
+        return await translate_question(client=client, model=settings.llm_model, req=req)
 
     failures: list[str] = []
     seconds: list[float] = []
@@ -100,8 +114,8 @@ async def test_intent_pass_rate_meets_threshold():
         req = IntentRequest(question=case["q"], **catalog)
         started = time.perf_counter()
         try:
-            outcome = await translate_question(client=client, model=settings.llm_model, req=req)
-        except IntentError as e:
+            outcome = await ask(req)
+        except (IntentError, JevError) as e:
             seconds.append(time.perf_counter() - started)
             failures.append(f"{case['q']!r}: invalid after retry ({e})")
             continue
@@ -124,10 +138,10 @@ async def test_intent_pass_rate_meets_threshold():
     }
     totals = {name: sum(1 for c in cases if c["set"] == name) for name in by_set}
     split = {name: f"{by_set[name]}/{totals[name]}" for name in by_set}
-    _record_run(settings.llm_model, passed, len(cases), split, seconds, failures)
+    _record_run(model, passed, len(cases), split, seconds, failures)
     speed = _latency(seconds)
     print(
-        f"\nintent eval: {passed}/{len(cases)} passed ({rate:.0%}); "
+        f"\nintent eval ({model}): {passed}/{len(cases)} passed ({rate:.0%}); "
         + ", ".join(f"{name} {score}" for name, score in split.items())
         + f"; {speed['mean_s']}s mean, {speed['p95_s']}s p95\n{report}"
     )

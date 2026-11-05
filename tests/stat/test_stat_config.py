@@ -31,3 +31,30 @@ def test_environment_variables_override_the_model_settings(monkeypatch: pytest.M
     assert settings.llm_base_url == "http://127.0.0.1:1234/v1"
     assert settings.llm_model == "other-model"
     assert settings.llm_timeout_seconds == 5.0
+
+
+def test_intent_provider_defaults_to_auto_with_no_jev_key(monkeypatch: pytest.MonkeyPatch):
+    for var in ("INTENT_PROVIDER", "JEV_API_KEY", "JEV_MODEL"):
+        monkeypatch.delenv(var, raising=False)
+
+    settings = AppSettings(_env_file=None)
+
+    assert settings.intent_provider == "auto"
+    assert settings.jev_api_key is None
+    assert settings.jev_model == "jev-latest"
+
+
+def test_the_jev_key_is_read_but_never_shown_and_a_bad_provider_fails_fast(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("JEV_API_KEY", "sk-secret-value")
+    monkeypatch.setenv("INTENT_PROVIDER", "jev")
+
+    settings = AppSettings(_env_file=None)
+
+    assert settings.jev_api_key is not None
+    assert settings.jev_api_key.get_secret_value() == "sk-secret-value"
+    assert "sk-secret-value" not in repr(settings)
+    monkeypatch.setenv("INTENT_PROVIDER", "cloud")
+    with pytest.raises(ValueError):
+        AppSettings(_env_file=None)

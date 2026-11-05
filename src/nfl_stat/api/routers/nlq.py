@@ -9,7 +9,8 @@ from openai import AsyncOpenAI
 from nfl_stat.api.deps import get_llm_client, get_settings_dep
 from nfl_stat.core.config import AppSettings
 from nfl_stat.schemas.nlq import IntentOutcome, IntentRequest
-from nfl_stat.services.nlq_intent import IntentError, translate_question
+from nfl_stat.services.intent_provider import answer_intent
+from nfl_stat.services.nlq_intent import IntentError
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ async def nlq_intent(
     settings: Annotated[AppSettings, Depends(get_settings_dep)],
 ) -> IntentOutcome:
     try:
-        return await translate_question(client=client, model=settings.llm_model, req=req)
+        return await answer_intent(req, settings=settings, llm_client=client)
     except IntentError as e:
         logger.warning("NLQ intent rejected after retry: %s | question=%r", e, req.question)
         raise HTTPException(

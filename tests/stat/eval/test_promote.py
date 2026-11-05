@@ -79,7 +79,7 @@ def test_rejects_an_export_that_is_not_a_list():
 
 def _eval_dir(tmp_path: Path) -> Path:
     (tmp_path / "catalog.json").write_text(json.dumps(CATALOG))
-    for name in ("cases", "heldout", "corrections"):
+    for name in ("cases", "heldout", "heldout2", "corrections"):
         (tmp_path / f"{name}.json").write_text("[]")
     return tmp_path
 
