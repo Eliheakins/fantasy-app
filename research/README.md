@@ -104,7 +104,7 @@ not deterministic (see the 2026-10-25 entry).
 | `regret.py` | Do candidates pick better lineups (start/sit regret, error near the flex cutoff)? | Learned beats baseline by 0.55 to 0.71 points a team-week; component average and reconciliation win against learned but not against a two-seed average | Report only (proposed as a second gate) | 10-26 |
 | `news_residual_check.py` | Do day-over-day Sleeper status changes predict the blend's residual? | Harness; archive started 2026-10-26 | Waiting for weeks | 10-26 |
 | `pbp_parity_check.py` | Do `nfl_team_pace` and the team-efficiency table come out identical when play-by-play is read through the shared cache `data/raw/pbp/` instead of nflreadpy? | Identical: 9 seasons, 4,496 rows each, all columns and dtypes | Shipped (S4a) | 11-04 |
-| `jev_intent_check.py` | Does Jev (TypeSafe, hosted) read Ask questions into intents better than local Qwen3-4B (issue #71)? | Same 80 cases and pass rule: Qwen 68/80 (held-out 26/34, 0.51 s); Jev design 1 63/80 (held-out 31/34); design 2 75/80 (held-out 33/34, 0.22 s, ~4,900 tokens a question); option order reversed: 1 outcome of 80 changed | Adopt behind a setting (#71) | 11-04 |
+| `jev_intent_check.py` | Does Jev (TypeSafe, hosted) read Ask questions into intents better than local Qwen3-4B (issue #71)? | Same 80 cases and pass rule: Qwen 68/80 (held-out 26/34, 0.51 s); Jev design 1 63/80 (held-out 31/34); design 2 75/80 (held-out 33/34, 0.22 s, ~4,900 tokens a question); option order reversed: 1 outcome of 80 changed | Shipped as `services/jev_intent.py` behind `INTENT_PROVIDER` (11-05): 93 to 94 of 95, heldout2 15/15 against Qwen 10/15 | 11-04 |
 
 ## Spread, correlations and team totals
 
