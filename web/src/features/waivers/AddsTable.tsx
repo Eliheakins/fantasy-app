@@ -6,7 +6,7 @@ import { classifyChange, type WaiverRow } from "./logic";
 function Change({ change, error }: { change: number | null; error?: number | null }) {
   const c = classifyChange(change, error);
   if (c.kind === "missing") return <span>–</span>;
-  if (c.kind === "noise") return <span className="text-mark-muted tabular-nums">{c.noiseText}</span>;
+  if (c.kind === "noise") return <span className="text-muted tabular-nums">{c.noiseText}</span>;
   return <Delta points={c.points} />;
 }
 

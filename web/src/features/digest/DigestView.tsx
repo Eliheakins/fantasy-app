@@ -19,7 +19,7 @@ function NextAction() {
         if (next === null) return <p className="text-body text-muted">Nothing to change in the lineup right now.</p>;
         const gain = actionGain(next);
         return (
-          <div className="card-flat">
+          <div className="border-t border-line pt-3">
             <div className="text-caption font-semibold text-muted">{next.kind}</div>
             <div className="flex flex-wrap items-baseline gap-x-2">
               <span>{actionSentence(next.text)}</span>

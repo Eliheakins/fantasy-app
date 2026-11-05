@@ -2,13 +2,13 @@
  * non-semantic bars grey, my series the one strong mark, a caption on the value axis. */
 
 const CHART_FONT_SIZE = 12;
-/** --text-muted: at least 4.5:1 on page and surface in both themes (see web/CONTRAST.md). */
-export const TICK_COLOR = "var(--text-muted)";
-export const GRID_COLOR = "var(--border)";
+/** --lf-muted: at least 4.5:1 on the page and the panel tint (docs/spec/dashboard.md, look F). */
+export const TICK_COLOR = "var(--lf-muted)";
+export const GRID_COLOR = "var(--lf-line)";
 /** Bars that carry no good/bad meaning. */
-export const BAR_FILL = "var(--range)";
-export const OTHER_LINE = "var(--range)";
-export const MY_LINE = "var(--tick)";
+export const BAR_FILL = "var(--lf-faint)";
+export const OTHER_LINE = "var(--lf-faint)";
+export const MY_LINE = "var(--lf-ink)";
 
 const TICK = { fill: TICK_COLOR, fontSize: CHART_FONT_SIZE };
 

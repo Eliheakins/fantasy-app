@@ -13,8 +13,8 @@ export function WinBar({ fraction, width = 96 }: WinBarProps) {
     <span className="inline-flex items-center gap-2 align-middle">
       <svg role="img" aria-label={label} width={width} height={BAR_HEIGHT} className="shrink-0">
         <title>{label}</title>
-        <rect width={width} height={BAR_HEIGHT} rx={2} className="fill-border" />
-        <rect width={clamped * width} height={BAR_HEIGHT} rx={2} className="fill-range" />
+        <rect width={width} height={BAR_HEIGHT} rx={2} className="fill-line" />
+        <rect width={clamped * width} height={BAR_HEIGHT} rx={2} className="fill-faint" />
       </svg>
       <span className="tabular-nums">{formatPercent(fraction)}</span>
     </span>

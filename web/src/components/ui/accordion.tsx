@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 export const Accordion = AccordionPrimitive.Root;
 
 export function AccordionItem({ className, ...props }: ComponentProps<typeof AccordionPrimitive.Item>) {
-  return <AccordionPrimitive.Item className={cn("border-b border-border", className)} {...props} />;
+  return <AccordionPrimitive.Item className={cn("border-b border-line", className)} {...props} />;
 }
 
 export function AccordionTrigger({ className, children, ...props }: ComponentProps<typeof AccordionPrimitive.Trigger>) {
@@ -13,7 +13,7 @@ export function AccordionTrigger({ className, children, ...props }: ComponentPro
     <AccordionPrimitive.Header className="flex">
       <AccordionPrimitive.Trigger
         className={cn(
-          "flex min-h-11 flex-1 items-center justify-between py-3 text-left text-body font-medium text-text transition hover:text-accent",
+          "flex min-h-11 flex-1 items-center justify-between py-3 text-left text-body font-medium text-ink transition hover:text-focus",
           "[&[data-state=open]>svg]:rotate-180",
           className,
         )}

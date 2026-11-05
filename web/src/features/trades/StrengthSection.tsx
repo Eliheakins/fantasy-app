@@ -37,7 +37,7 @@ export function StrengthSection() {
               </thead>
               <tbody>
                 {sorted.map((r) => (
-                  <tr key={r.position} className="border-t border-border">
+                  <tr key={r.position} className="border-t border-line">
                     <th scope="row" className="py-1 text-left font-normal">{r.position}</th>
                     <td className="py-1">
                       <span className="flex items-center gap-2">

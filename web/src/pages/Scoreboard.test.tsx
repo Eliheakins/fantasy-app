@@ -20,7 +20,7 @@ describe("ScoreboardView", () => {
     expect(screen.getByText(/Week 7: live/)).toBeTruthy();
     expect(within(mine).getAllByText("proj")).toHaveLength(2);
     expect(within(mine).getByText("Your matchup")).toBeTruthy();
-    expect(mine.className).toContain("border-accent");
+    expect(mine.className).toContain("border-ink");
     expect(within(mine).getByRole("img", { name: "Chance to win: Lisan 60%, Bowers 40%" })).toBeTruthy();
     expect(within(mine).getAllByRole("img", { name: /^Median 110.0, range 90.0 to 130.0$/ })).toHaveLength(2);
     expect(screen.getByText(/Points as of Sun 1:00 PM/)).toBeTruthy();

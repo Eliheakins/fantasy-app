@@ -44,7 +44,7 @@ export function QueryBuilderSidebarScroll({
 
   return (
     <>
-      <section className="space-y-3 border-b border-border pb-5">
+      <section className="space-y-3 border-b border-line pb-5">
         <h2 className="text-body font-semibold uppercase tracking-wide text-muted">The Who</h2>
         <ToggleGroup
           type="single"
@@ -77,7 +77,7 @@ export function QueryBuilderSidebarScroll({
               />
               {suggestions.length > 0 && debounced.trim().length >= 2 && (
                 <ul
-                  className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-border bg-surface py-1 shadow-sm"
+                  className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-line bg-panel py-1 shadow-sm"
                   role="listbox"
                 >
                   {suggestions.map((p) => (
@@ -86,13 +86,13 @@ export function QueryBuilderSidebarScroll({
                         type="button"
                         disabled={isPinned(p.gsis_id) || pinnedPlayers.length >= MAX_PINNED_PLAYERS}
                         className={cn(
-                          "flex min-h-[44px] w-full flex-col items-start justify-center px-3 py-2 text-left text-body hover:bg-nav-active-bg",
+                          "flex min-h-[44px] w-full flex-col items-start justify-center px-3 py-2 text-left text-body hover:bg-panel",
                           (isPinned(p.gsis_id) || pinnedPlayers.length >= MAX_PINNED_PLAYERS) &&
                             "cursor-not-allowed opacity-50 hover:bg-transparent",
                         )}
                         onClick={() => void onSelectPlayer(p)}
                       >
-                        <span className="font-medium text-text">{p.full_name ?? p.gsis_id}</span>
+                        <span className="font-medium text-ink">{p.full_name ?? p.gsis_id}</span>
                         <span className="text-caption text-muted">
                           {p.team ?? "—"} · {p.position ?? "—"}
                           {isPinned(p.gsis_id) ? " · pinned" : ""}
@@ -135,7 +135,7 @@ export function QueryBuilderSidebarExecuteFooter({
   return (
     <div
       className={cn(
-        "shrink-0 border-t border-border bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
+        "shrink-0 border-t border-line bg-panel p-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
         className,
       )}
     >

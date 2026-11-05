@@ -4,22 +4,20 @@ import type { QueryResult } from "@/stat/types/workbench";
 
 export interface QueryResultTableProps {
   result: QueryResult;
-  zebra?: boolean;
   className?: string;
   minWidthClass?: string;
 }
 
 export function QueryResultTable({
   result,
-  zebra = false,
   className,
   minWidthClass = "min-w-[280px]",
 }: QueryResultTableProps) {
   return (
-    <div className={cn("overflow-x-auto rounded-md border border-border", className)}>
+    <div className={cn("overflow-x-auto", className)}>
       <table className={cn("w-full border-collapse text-left text-body", minWidthClass)}>
         <thead>
-          <tr className="border-b border-border bg-surface">
+          <tr className="border-b-[1.5px] border-ink">
             {result.columns.map((col) => (
               <th key={col} className="px-3 py-2 font-medium text-muted">
                 {col}
@@ -31,10 +29,10 @@ export function QueryResultTable({
           {result.rows.map((row, i) => (
             <tr
               key={i}
-              className={cn("border-b border-border/80 last:border-0", zebra && i % 2 === 1 && "bg-surface")}
+              className={"border-b border-line last:border-0"}
             >
               {result.columns.map((col) => (
-                <td key={col} className="px-3 py-2 tabular-nums text-text">
+                <td key={col} className="px-3 py-2 tabular-nums text-ink">
                   {formatQueryValue(row[col])}
                 </td>
               ))}

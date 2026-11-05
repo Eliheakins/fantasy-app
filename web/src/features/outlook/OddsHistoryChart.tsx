@@ -17,7 +17,7 @@ function EndLabel({ x, y, index, text, last, bold, shift, maxChars }: LabelProps
   if (index !== last || x == null || y == null) return null;
   const shown = text.length > maxChars ? `${text.slice(0, maxChars - 1)}…` : text;
   return (
-    <text x={x + 6} y={y + shift} dy={4} fontSize={12} fontWeight={bold ? 700 : 400} fill="var(--text)">
+    <text x={x + 6} y={y + shift} dy={4} fontSize={12} fontWeight={bold ? 700 : 400} fill="var(--lf-ink)">
       {shown}
     </text>
   );

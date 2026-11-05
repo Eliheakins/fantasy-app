@@ -18,7 +18,7 @@ export function MultiSelect({ legend, options, selected, onChange, max = MAX_TRA
   const shown = options.filter((o) => o.label.toLowerCase().includes(filter.trim().toLowerCase()));
   const full = selected.length >= max;
   return (
-    <fieldset className="min-w-0 card-flat">
+    <fieldset className="min-w-0">
       <legend className="px-1 text-body font-semibold">{legend}</legend>
       <label htmlFor={filterId} className="sr-only">
         Filter {legend}
@@ -29,7 +29,7 @@ export function MultiSelect({ legend, options, selected, onChange, max = MAX_TRA
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
         placeholder="Filter players"
-        className="mb-1 h-[44px] w-full rounded border border-border bg-page px-2"
+        className="mb-1 h-[44px] w-full rounded border border-line bg-page px-2"
       />
       <p className="py-1 text-caption text-muted" aria-live="polite">
         {selected.length} selected (up to {max}){full ? ", the limit is reached" : ""}

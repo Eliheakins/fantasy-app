@@ -29,7 +29,7 @@ export function LastWeek({ row, currentWeek }: { row: LastWeekRow | null; curren
     );
   }
   return (
-    <div className="card-flat">
+    <div className="border-t border-line pt-3">
       <p className="text-body font-semibold">Week {row.week}: {resultSentence(row)}</p>
       <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3">
         <Figure label="Bench points left (best lineup minus started)">
@@ -47,9 +47,9 @@ function DiffBar({ diff, max }: { diff: number | null; max: number }) {
   const span = barSpan(diff, max, BAR_HALF);
   return (
     <svg aria-hidden width={BAR_HALF * 2} height={BAR_HEIGHT} className="max-w-full shrink-0">
-      <rect width={BAR_HALF * 2} height={BAR_HEIGHT} rx={2} className="fill-border" opacity={0.4} />
-      {span && <rect x={span.x} width={span.width} height={BAR_HEIGHT} rx={2} className="fill-range" />}
-      <line x1={BAR_HALF} x2={BAR_HALF} y1={0} y2={BAR_HEIGHT} className="stroke-text" strokeWidth={1.5} />
+      <rect width={BAR_HALF * 2} height={BAR_HEIGHT} rx={2} className="fill-line" opacity={0.4} />
+      {span && <rect x={span.x} width={span.width} height={BAR_HEIGHT} rx={2} className="fill-faint" />}
+      <line x1={BAR_HALF} x2={BAR_HALF} y1={0} y2={BAR_HEIGHT} className="stroke-ink" strokeWidth={1.5} />
     </svg>
   );
 }

@@ -1,6 +1,6 @@
 import { useTeam } from "@/lib/teamContext";
 
-const STRIP = "flex min-h-[44px] flex-wrap items-center gap-x-3 border-b border-l-4 border-border border-l-accent bg-surface px-4 text-body";
+const STRIP = "flex min-h-[44px] flex-wrap items-center gap-x-3 border-b border-l-4 border-line border-l-focus bg-panel px-4 text-body";
 const ACTION = "min-h-[44px] underline";
 
 /** Sticky strip, so a scrolled screenshot is never misread as the owner's view: it names the viewed team,

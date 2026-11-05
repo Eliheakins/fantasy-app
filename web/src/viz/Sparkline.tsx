@@ -12,7 +12,7 @@ export function Sparkline({ values: raw, width = 80, height = 20 }: SparklinePro
     : "No recent games";
   if (values.length < 2) {
     return (
-      <span role="img" aria-label={label} className="text-mark-muted">
+      <span role="img" aria-label={label} className="text-muted">
         –
       </span>
     );

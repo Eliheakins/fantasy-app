@@ -12,11 +12,11 @@ export function Button({ className, variant = "default", size = "default", ...pr
     <button
       type="button"
       className={cn(
-        "inline-flex items-center justify-center rounded-md font-medium transition-colors",
+        "inline-flex items-center justify-center rounded-full font-medium transition-colors",
         "disabled:pointer-events-none",
-        variant === "default" && "bg-accent text-accent-fg hover:brightness-110",
-        variant === "outline" && "border border-border bg-surface text-text hover:bg-nav-active-bg",
-        variant === "ghost" && "text-muted hover:bg-nav-active-bg hover:text-text",
+        variant === "default" && "bg-focus text-white hover:bg-forest",
+        variant === "outline" && "border border-panel-line bg-panel text-ink hover:border-focus",
+        variant === "ghost" && "text-muted hover:bg-panel hover:text-ink",
         size === "sm" ? "min-h-11 px-3 py-1 text-caption md:min-h-8" : "min-h-11 px-4 py-2 text-body md:min-h-9",
         className,
       )}

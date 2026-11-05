@@ -47,7 +47,7 @@ export function WaiversView({ adds, strength, def, kickers, weeks, selected, onS
                 <AddsTable rows={rows} selected={selected} onSelect={onSelect} />
                 <div ref={chartRef} className="mt-4 xl:sticky xl:top-16 xl:mt-0">
                   {selected === null ? (
-                    <p className="card-flat hidden text-caption text-muted xl:block">{CHART_HINT}</p>
+                    <p className="hidden text-caption text-muted xl:block">{CHART_HINT}</p>
                   ) : (
                     <ApiBoundary state={weeks}>
                       {(w) => <PlayerWeeksChart name={rows.find((r) => r.gsis_id === selected)?.full_name ?? ""} weeks={w} />}

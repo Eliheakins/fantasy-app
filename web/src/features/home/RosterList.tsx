@@ -8,7 +8,7 @@ function Group({ title, rows }: { title: string; rows: readonly RosterRow[] }) {
   return (
     <div className="mt-2 first:mt-0">
       <h4 className="text-caption font-semibold text-muted">{title}</h4>
-      <ul aria-label={title} className="divide-y divide-border border-y border-border">
+      <ul aria-label={title} className="divide-y divide-line border-y border-line">
         {rows.map((r) => (
           <li key={r.sleeper_id} className={ROW}>
             <span className="break-words">{r.full_name ?? "Unknown"}</span>
@@ -16,7 +16,7 @@ function Group({ title, rows }: { title: string; rows: readonly RosterRow[] }) {
               {r.position ?? "–"} · {r.team ?? "FA"}
             </span>
             <span className="text-caption">
-              {r.injury_status && <span className="rounded border border-border px-1">{r.injury_status}</span>}
+              {r.injury_status && <span className="rounded border border-line px-1">{r.injury_status}</span>}
             </span>
           </li>
         ))}

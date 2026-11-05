@@ -33,7 +33,7 @@ export function AskBox() {
         <MessageCircleQuestion aria-hidden size={20} />
       </Link>
       <form role="search" onSubmit={submit} className="hidden items-center gap-2 md:flex">
-        <span aria-hidden className="font-display text-body italic text-[#CFE5D9]">Ask</span>
+        <span aria-hidden className="font-display text-body italic text-chrome-ask">Ask</span>
         <input
           type="text"
           aria-label="Ask a question"
@@ -41,7 +41,7 @@ export function AskBox() {
           value={text}
           maxLength={MAX_QUESTION_LENGTH}
           onChange={(e) => setText(e.target.value)}
-          className="min-h-[44px] w-64 min-w-0 rounded-full border border-white/20 bg-white/10 px-4 text-body text-white placeholder:text-[#E6F0EA]/70"
+          className="min-h-[44px] w-64 min-w-0 rounded-full border border-white/20 bg-white/10 px-4 text-body text-white placeholder:text-chrome-text/70"
         />
       </form>
     </>

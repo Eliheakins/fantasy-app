@@ -28,12 +28,12 @@ export function TradeAnswer(props: Props) {
   params.set("view", "trades");
   const tradesLink = `/moves?${params.toString()}`;
   return (
-    <section aria-label="Trade" className="space-y-3 border-t border-border pt-3">
+    <section aria-label="Trade" className="space-y-3 border-t border-line pt-3">
       <ApiBoundary state={owners}>
         {(o) => <Plan {...props} owners={o.rows} tradesLink={tradesLink} />}
       </ApiBoundary>
       <p className="text-caption text-muted">
-        <Link to={tradesLink} className="font-medium text-text underline-offset-2 hover:underline">
+        <Link to={tradesLink} className="font-medium text-ink underline-offset-2 hover:underline">
           Open the Trades page
         </Link>{" "}
         to change the players or look for other trades.
@@ -71,7 +71,7 @@ function Result({ result }: { result: TradeEvaluation }) {
   const me = result.odds.find((s) => s.side === "me");
   return (
     <div className="space-y-3">
-      {me && <p className="text-body font-semibold text-text">{tradeSummary(me)}</p>}
+      {me && <p className="text-body font-semibold text-ink">{tradeSummary(me)}</p>}
       <TradeResult result={result} />
     </div>
   );

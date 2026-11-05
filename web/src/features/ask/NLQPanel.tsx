@@ -81,7 +81,7 @@ export function NLQPanel() {
 
   return (
     <div className="space-y-4">
-      <section className="card space-y-4" aria-label="Ask a question">
+      <section className="space-y-4" aria-label="Ask a question">
           <p className="text-caption text-muted">
             Names are matched in your browser. Built-in rules read what they can; a local model reads the rest. The
             numbers are computed in your browser from play-by-play data.
@@ -112,9 +112,9 @@ export function NLQPanel() {
           <PlayerChoices choices={ask.choices} onChoose={(p) => void ask.onChoose(p)} />
 
           {answer ? (
-            <section aria-label="Answer" className="space-y-1 border-t border-border pt-3">
+            <section aria-label="Answer" className="space-y-1 border-t border-line pt-3">
               <p className="text-caption font-medium uppercase tracking-wide text-muted">{answer.context}</p>
-              <ul className="space-y-1 text-body text-text">
+              <ul className="space-y-1 text-body text-ink">
                 {answer.parts.map((p, i) => (
                   <li key={answer.lines[i]}>
                     {p.before}
@@ -166,7 +166,7 @@ export function NLQPanel() {
             Want to adjust it?{" "}
             <Link
               to={{ pathname: "/players/find", search: serializeQuery(state).toString() }}
-              className="font-medium text-text underline-offset-2 hover:underline"
+              className="font-medium text-ink underline-offset-2 hover:underline"
             >
               Open this query in Explore
             </Link>

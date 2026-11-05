@@ -17,10 +17,10 @@ export function CollapsibleCode({
 }: CollapsibleCodeProps) {
   return (
     <details className={cn("text-caption text-muted", className)}>
-      <summary className="cursor-pointer hover:text-text">{title}</summary>
+      <summary className="cursor-pointer hover:text-ink">{title}</summary>
       <pre
         className={cn(
-          "mt-2 overflow-auto whitespace-pre-wrap rounded border border-border bg-surface p-2 font-mono text-[11px] text-muted",
+          "mt-2 overflow-auto whitespace-pre-wrap rounded border border-line bg-panel p-2 font-mono text-[11px] text-muted",
           maxHeightClass,
           preClassName,
         )}

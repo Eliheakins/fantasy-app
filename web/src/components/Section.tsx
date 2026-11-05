@@ -13,7 +13,7 @@ type Props = {
 export function Section({ title, caption, howCalculated, children }: Props) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className="mt-8 first:mt-0">
+    <section aria-labelledby={id} className="mt-8 border-t border-line pt-6 first:mt-0 first:border-t-0 first:pt-0">
       <h2 id={id} className="text-heading font-semibold">{title}</h2>
       {caption && <p className="measure mt-1 text-caption text-muted">{caption}</p>}
       {howCalculated && (

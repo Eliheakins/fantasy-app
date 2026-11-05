@@ -13,8 +13,8 @@ const GRANULARITY_LABELS: Record<GranularityMode, string> = {
 };
 
 const chipClass =
-  "inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-0.5 text-caption text-text " +
-  "transition hover:border-accent disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border";
+  "inline-flex items-center gap-1 rounded-full border border-line bg-panel px-2.5 py-0.5 text-caption text-ink " +
+  "transition hover:border-focus disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-line";
 
 /**
  * How the question was read, one click from fixed: remove a stat or filter that is wrong, or switch

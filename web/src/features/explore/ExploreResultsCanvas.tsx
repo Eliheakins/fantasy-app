@@ -134,7 +134,7 @@ export function ExploreResultsCanvas({
   }, [selectedStatIds, activeGranularity, minPlays, state.order, state.limit, state.split, leagueName]);
 
   return (
-    <section aria-labelledby="explore-results-heading" className="card min-h-[160px] space-y-3 overflow-hidden">
+    <section aria-labelledby="explore-results-heading" className="min-h-[160px] space-y-3 overflow-hidden">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 id="explore-results-heading" className="text-heading font-semibold">
@@ -186,14 +186,14 @@ export function ExploreResultsCanvas({
 
         {result && result.rows.length > 0 ? (
           canvasView === "scatter" && twoStatsMode ? (
-            <div className="flex justify-center overflow-x-auto rounded-md border border-border bg-surface py-4">
+            <div className="flex justify-center overflow-x-auto rounded-md border border-line bg-panel py-4">
               <StatScatterChart points={scatterPoints} xLabel={scatterXLabel} yLabel={scatterYLabel} />
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-md border border-border">
+            <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left text-body">
                 <thead>
-                  <tr className="border-b border-border bg-surface">
+                  <tr className="border-b-[1.5px] border-ink">
                     <th className="px-3 py-2 font-medium text-muted">{forTeams ? "Team" : "Player"}</th>
                     {result.columns
                       .filter((col) => col !== idColumn)
@@ -209,8 +209,8 @@ export function ExploreResultsCanvas({
                     const pid = String(row[idColumn] ?? "");
                     const label = nameByGsis.get(pid) ?? pid;
                     return (
-                      <tr key={`${pid}-${i}`} className="border-b border-border/80 last:border-0">
-                        <td className="px-3 py-2 font-medium text-text">
+                      <tr key={`${pid}-${i}`} className="border-b border-line last:border-0">
+                        <td className="px-3 py-2 font-medium text-ink">
                           {forTeams ? label : <PlayerLink gsisId={pid || null} name={label} position={positionByGsis.get(pid) ?? ""} />}
                           {/* The owner on every row is intended (issue #70); free agents have none. */}
                           {!forTeams && owners?.get(pid) ? (
@@ -223,7 +223,7 @@ export function ExploreResultsCanvas({
                         {result.columns
                           .filter((col) => col !== idColumn)
                           .map((col) => (
-                            <td key={col} className="px-3 py-2 text-right tabular-nums text-text">
+                            <td key={col} className="px-3 py-2 text-right tabular-nums text-ink">
                               {formatQueryValue(row[col])}
                             </td>
                           ))}

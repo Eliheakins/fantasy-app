@@ -25,16 +25,16 @@ export function Dumbbell({ before, after, domain, measure, width = 140, percent 
   const unit = percent ? "%" : "";
   const shown = (v: number) => `${formatNumber(v)}${unit}`;
   if (!Number.isFinite(before) || !Number.isFinite(after)) {
-    return <span className="text-mark-muted">{`${measure}: ${shown(before)} before, ${shown(after)} after`}</span>;
+    return <span className="text-muted">{`${measure}: ${shown(before)} before, ${shown(after)} after`}</span>;
   }
   const label = `${measure}: ${shown(before)} before, ${shown(after)} after`;
   return (
     <span className="inline-flex items-center gap-2 align-middle">
       <svg role="img" aria-label={label} width={width} height={HEIGHT} className="shrink-0">
         <title>{label}</title>
-        <line x1={x(before)} x2={x(after)} y1={HEIGHT / 2} y2={HEIGHT / 2} className="stroke-range" strokeWidth={2} />
-        <circle cx={x(before)} cy={HEIGHT / 2} r={RADIUS} className="fill-page stroke-tick" strokeWidth={1.5} />
-        <circle cx={x(after)} cy={HEIGHT / 2} r={RADIUS} className="fill-tick" />
+        <line x1={x(before)} x2={x(after)} y1={HEIGHT / 2} y2={HEIGHT / 2} className="stroke-faint" strokeWidth={2} />
+        <circle cx={x(before)} cy={HEIGHT / 2} r={RADIUS} className="fill-page stroke-ink" strokeWidth={1.5} />
+        <circle cx={x(after)} cy={HEIGHT / 2} r={RADIUS} className="fill-ink" />
       </svg>
       <Delta points={after - before} noise={noise ?? (percent ? NOISE_PERCENT : NOISE_WINS)} />
     </span>

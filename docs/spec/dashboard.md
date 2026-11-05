@@ -10,7 +10,7 @@ The React UI follows this; sections 1 and 2 below are the original design and st
 - **Not tabs:** `/ask` (top-bar Ask field; History is a tab inside it), `/model` (footer "Model scorecard"), `/players/find` (the Explore query builder). Old paths redirect keeping the whole query: `/waivers`, `/trades` to `/moves?view=`, `/outlook`, `/scoreboard`, `/league` to `/season`, `/digest` to `/`, `/scorecard` to `/model`, `/explore` to `/players/find`.
 - **Query params.** Nav links carry only `league`, `team` and `week`. `?week=` is global (default: the league's current week; the week select in the band writes it). Pages read it through `useWeek()`.
 - **Top bar G1.** Forest band `#123D2C`: team name in Newsreader with "Updated ..." under it, league, team and week selects, the Ask field. Second row: the five tabs on the page background, active tab ink at weight 600 with a 2px `#123D2C` underline. Content is max 1200 px wide and centred. On phones the band keeps the team name and compact selects and the Ask field becomes an icon link to `/ask`.
-- **Look F (light only).** Page `#FBFBF8`, panel `#EDF3EE`, lines `#D6E3DA` (panel) and `#E4E8E3` (page), ink `#13201A`, muted `#56635C`, focus `#1F5A43`, better `#157A3D`, worse `#B4261A`, within noise `#56635C` with "~", warning `#6B4200` on `#FFF4DB`. Newsreader for headings and the team name, Inter with tabular figures for the rest, both bundled with `@fontsource` (the app works offline). Tokens are in `web/src/index.css` (`--lf-*`); the old graphite names point at them until slice U2 restyles the components.
+- **Look F (light only).** Page `#FBFBF8`, panel `#EDF3EE`, lines `#D6E3DA` (panel) and `#E4E8E3` (page), ink `#13201A`, muted `#56635C`, focus `#1F5A43`, better `#157A3D`, worse `#B4261A`, within noise `#56635C` with "~", warning `#6B4200` on `#FFF4DB`. Newsreader for headings and the team name, Inter with tabular figures for the rest, both bundled with `@fontsource` (the app works offline). Tokens are in `web/src/index.css` (`--lf-*`, mirrored as Tailwind colours, see "Look F tokens" below); the graphite set is gone.
 - **Page anatomy.** `PageHeader` takes an eyebrow (muted caps: page, week, context), the h1, and an optional answer sentence. Composed pages have one h1; the inner sections are h2. `Confidence` (clear at 70% or more of paired simulations, lean 55 to 70%, toss-up below) and `Delta` (sign, arrow, colour, "~" inside the noise band) live in `web/src/viz`.
 
 Scope: the local dashboard for Colgate (1.0 PPR, superflex) and YinzBurgh (0.5 PPR). Decisions in `decisions.md` and epics in `one-pager.md` are taken as given. Bar: well thought out, rough execution. This spec is a design, not a build plan with dates.
@@ -34,19 +34,25 @@ One user, opens it a few times a week (Tuesday and Wednesday for waivers and tra
 7. **Stale data is a first-class state.** Every view shows "data as of" and a banner when the sync or the simulation is older than the last kickoff or transaction.
 8. **The app recommends, it cannot set.** Sleeper's API is read-only, so every action row carries a plain-text instruction ("Start Pacheco, bench Mixon") and a link to the Sleeper league page. No fake "apply" buttons.
 
-### Color semantics
-| Use | Light | Dark | Rule |
+### Look F tokens (U2, light only)
+| Token (`--lf-*`, Tailwind name) | Value | Use | Contrast |
 |---|---|---|---|
-| Positive delta | `#1a7f37` | `#3fb950` | Text and thin chip only, never a filled panel |
-| Negative delta | `#cf222e` | `#f85149` | Same |
-| Toss-up / within noise | grey `#6e7781` | `#8b949e` | Delta shown in grey with a "~" prefix |
-| Warning (injury, stale) | amber `#9a6700` | `#d29922` | The only non-delta color. Used for badges and the stale banner, not for fills. A deliberate, small exception to rule 5, because injury status is a decision input. |
-| Range bar fill | `#9aa5b1` | `#6e7781` | Neutral. The median tick is near-black or near-white. |
-| Everything else | neutral greys | neutral greys | Accent is grey-blue `#3b4a5a`, used for selection only |
+| `page` | `#FBFBF8` | Page background | base |
+| `panel` | `#EDF3EE` | Tinted panel (one key result per page), pill fields, selected row or option | base |
+| `panel-line` | `#D6E3DA` | Lines and borders inside the panel, field borders | decorative |
+| `line` | `#E4E8E3` | Rules on the page: section dividers, table rows | decorative |
+| `ink` | `#13201A` | Text, table head rule (1.5px), my series in charts | 16.2:1 on page |
+| `label` | `#2E3A33` | Labels inside the panel | 10.5:1 on panel |
+| `muted` | `#56635C` | Secondary text, table headers, axes, within-noise deltas ("~") | 6.1:1 page, 5.6:1 panel |
+| `faint` | `#64706A` | Captions, range bars and other-team lines (neutral chart marks) | 4.98:1 page, 4.59:1 panel |
+| `forest` | `#123D2C` | Top band, active tab underline | white 12.1:1, `chrome-label` `#9CC7B2` 6.5:1 |
+| `focus` | `#1F5A43` | Focus ring, active pill, selection | 7.8:1 page, white on it 8.1:1 |
+| `better` / `worse` | `#157A3D` / `#B4261A` | Deltas only, always with sign and arrow | 5.2:1 / 6.3:1 on page |
+| `warning`, `warning-bg`, `warning-edge` | `#6B4200`, `#FFF4DB`, `#F3DFAE` | The only non-change colour: warnings, stale banner | 8.0:1 |
+
+Rules. Green is frame (band, panel tint, selection, focus), never content: labels, series and bars are neutral. The tinted panel holds at most one key result per page (This week: the season-odds block of each league; Lineup: the comparison verdict; Season: your odds). No cards inside cards: sections are divided by spacing and 1px `line` rules. Tables (`ResponsiveTable` and `DataTableFallback`): header `muted` 12px over a 1.5px `ink` rule, rows 1px `line`, numbers right-aligned with tabular figures; below `lg` the same rows stack as divided rows with a "More" fold. Chart series, bars and axes use `ink`, `muted`, `faint` and `line` only (`viz/chartTheme.ts`). Fields (button, select, toggle, input) are `panel` pills with a `panel-line` border; the active pill is `focus` with white text; all targets are 44px on phones.
 
 Colorblind check: green and red always travel with a sign and an arrow (`+4.1 pts`, `-2.0 pts`). Sign carries the meaning, color is redundant.
-
-Streamlit gotcha found in the prototype: `ProgressColumn` and default buttons use `primaryColor` (red by default), which violates the color rule. Set `primaryColor` to the grey-blue in `.streamlit/config.toml`.
 
 ### Typography and density
 - One sans family (Streamlit default Source Sans is fine). Tabular figures for every number column, right-aligned. Set via a small CSS injection: `font-variant-numeric: tabular-nums`.
@@ -54,8 +60,8 @@ Streamlit gotcha found in the prototype: `ProgressColumn` and default buttons us
 - Density: tables are compact rows (about 32 px). 8 px spacing unit. No cards inside cards. Use `st.container(border=True)` once per panel, not nested.
 - Percent formatting: win probability as whole percent (`62%`), deltas as signed points with one decimal (`+4.1`). Never show more precision than the simulation supports (50k runs, so about plus or minus 0.2 points of Monte Carlo noise at 50%).
 
-### Light and dark
-Follow the system theme (Streamlit does this by default). Do not build an in-app toggle: Streamlit cannot switch theme at runtime without hacks (see section 6). All custom colors (SVG range bars, CSS) are defined as the token pairs above, and SVGs use `currentColor` style choices where possible. Since the prototype range bar is a data-URI image, it cannot read CSS variables, so it needs two renders. Rule: generate the bar with a mid-grey fill and a median tick that stays legible on both backgrounds (`#9aa5b1` fill with `#222` tick is fine on light, weak on dark). Fix: the tick is a 3 px light-outlined dark mark. Verify once in dark mode in story D1.
+### Light only
+No dark theme and no toggle. Colours come from the Look F tokens above; SVG parts use token utilities (`fill-faint`, `stroke-ink`) or `var(--lf-*)`.
 
 ### Range bars and sparklines
 - **Range bar (the signature element).** A horizontal bar from p10 to p90 on a shared axis per table, with a tick at the median. Axis shared across rows so lengths compare. Axis is per table, not global. Prototype result: an SVG as a base64 data URI in `st.column_config.ImageColumn` renders correctly inside `st.dataframe` (checked by screenshot). `st.column_config` has no native range column, so the data layer returns the three numbers (`p10`, `p50`, `p90`) and a UI helper turns them into the image string. The helper is about 10 lines.

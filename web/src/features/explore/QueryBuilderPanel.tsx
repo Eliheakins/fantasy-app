@@ -54,7 +54,7 @@ export function QueryBuilderPanel() {
       <div className="lg:grid lg:grid-cols-[360px_1fr] lg:items-start lg:gap-6">
         <aside
           aria-label="Query builder"
-          className="card-flat hidden flex-col lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100dvh-2rem)]"
+          className="hidden lg:border-r lg:border-line lg:pr-4 flex-col lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100dvh-2rem)]"
         >
           <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto pb-4">
             <QueryBuilderSidebarScroll {...sidebarScrollProps} />

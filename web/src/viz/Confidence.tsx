@@ -2,9 +2,9 @@ import { cn } from "@/lib/utils";
 import { type ConfidenceLevel, confidenceFromShare } from "./format";
 
 const LEVEL_CLASS: Record<ConfidenceLevel, string> = {
-  clear: "font-semibold text-text",
-  lean: "text-text",
-  "toss-up": "italic text-mark-muted",
+  clear: "font-semibold text-ink",
+  lean: "text-ink",
+  "toss-up": "italic text-muted",
 };
 
 type ConfidenceProps = ({ level: ConfidenceLevel } | { share: number }) & { className?: string };

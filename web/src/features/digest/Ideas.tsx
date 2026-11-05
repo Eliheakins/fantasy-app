@@ -8,7 +8,7 @@ import type { IdeasInfo, MoveIdeaRow } from "./types";
 function Change({ change, error }: { change: number | null; error?: number | null }) {
   const c = classifyChange(change, error);
   if (c.kind === "missing") return <span>–</span>;
-  if (c.kind === "noise") return <span className="text-mark-muted tabular-nums">{c.noiseText}</span>;
+  if (c.kind === "noise") return <span className="text-muted tabular-nums">{c.noiseText}</span>;
   return <Delta points={c.points} />;
 }
 
@@ -57,7 +57,7 @@ export function Ideas({ kind, rows, info }: Props) {
   const noun = kind === "waiver" ? "waiver adds" : "trade ideas";
   return (
     <>
-      {notice && <p role="status" className="measure mb-2 border-l-4 border-warning bg-surface px-3 py-2 text-body">{notice}</p>}
+      {notice && <p role="status" className="measure mb-2 border-l-4 border-warning-edge bg-panel px-3 py-2 text-body">{notice}</p>}
       {!blocked && rows.length === 0 && <p className="text-body text-muted">No {noun} cleared the bar at the last refresh.</p>}
       {!blocked && rows.length > 0 && (
         <ResponsiveTable

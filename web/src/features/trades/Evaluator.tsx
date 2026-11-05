@@ -47,7 +47,7 @@ export function Evaluator({ league, scope = league, partners, mine }: EvaluatorP
           id={selectId}
           value={partner ?? ""}
           onChange={(e) => setDraft({ partner: Number(e.target.value), give: draft.give, get: [] })}
-          className="h-[44px] w-full max-w-sm rounded border border-border bg-surface px-2"
+          className="h-[44px] w-full max-w-sm rounded-full border border-panel-line bg-panel px-4"
         >
           {partners.map((p) => (
             <option key={p.roster_id} value={p.roster_id}>{p.team_name}</option>
@@ -73,7 +73,7 @@ export function Evaluator({ league, scope = league, partners, mine }: EvaluatorP
         aria-describedby={canEvaluate(draft) ? undefined : hintId}
         disabled={!canEvaluate(draft) || state?.kind === "loading" || state?.kind === "running"}
         onClick={() => setSubmitted(draft)}
-        className="min-h-[44px] rounded bg-accent px-4 text-accent-fg"
+        className="min-h-[44px] rounded bg-focus px-4 text-white"
       >
         Evaluate
       </button>

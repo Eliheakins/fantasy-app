@@ -76,7 +76,7 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
     return (
       <div
         className={cn(
-          "flex h-[380px] items-center justify-center rounded-md border border-border bg-surface text-body text-muted",
+          "flex h-[380px] items-center justify-center rounded-md border border-line bg-panel text-body text-muted",
           className,
         )}
       >
@@ -102,7 +102,7 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
         role="img"
         aria-label={`Scatter of ${yLabel} versus ${xLabel}`}
       >
-        <rect x={M.left} y={M.top} width={plotW} height={plotH} fill="var(--surface)" rx={4} />
+        <rect x={M.left} y={M.top} width={plotW} height={plotH} fill="var(--lf-panel)" rx={4} />
         {ticksX.map((t, i) => (
           <g key={`gx-${i}`}>
             <line x1={scaleX(t)} y1={M.top} x2={scaleX(t)} y2={M.top + plotH} stroke={GRID_COLOR} strokeDasharray="3 4" />
@@ -134,14 +134,14 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
         ))}
         <line x1={M.left} y1={M.top + plotH} x2={M.left + plotW} y2={M.top + plotH} stroke={GRID_COLOR} />
         <line x1={M.left} y1={M.top} x2={M.left} y2={M.top + plotH} stroke={GRID_COLOR} />
-        <text x={M.left + plotW / 2} y={H - 4} textAnchor="middle" fill="var(--text)" fontSize={12} fontWeight={500}>
+        <text x={M.left + plotW / 2} y={H - 4} textAnchor="middle" fill="var(--lf-ink)" fontSize={12} fontWeight={500}>
           {xLabel}
         </text>
         <text
           x={14}
           y={M.top + plotH / 2}
           textAnchor="middle"
-          fill="var(--text)" fontSize={12} fontWeight={500}
+          fill="var(--lf-ink)" fontSize={12} fontWeight={500}
           transform={`rotate(-90 14 ${M.top + plotH / 2})`}
         >
           {yLabel}
@@ -169,8 +169,8 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
         })}
       </svg>
       {hover !== null && points[hover] ? (
-        <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-md border border-border bg-surface px-3 py-1.5 text-center text-caption shadow-sm">
-          <div className="font-medium text-text">{points[hover]!.label}</div>
+        <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-md border border-line bg-panel px-3 py-1.5 text-center text-caption shadow-sm">
+          <div className="font-medium text-ink">{points[hover]!.label}</div>
           <div className="mt-0.5 tabular-nums text-muted">
             {xLabel}: {points[hover]!.x.toFixed(3)} · {yLabel}: {points[hover]!.y.toFixed(3)}
           </div>

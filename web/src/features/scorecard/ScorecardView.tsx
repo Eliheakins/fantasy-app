@@ -89,7 +89,7 @@ function WeekBars({ lines }: { lines: Line[] }) {
 
 function EmptyScorecard({ data }: { data: ScorecardData }) {
   return (
-    <div className="card">
+    <div>
       <p className="text-body">{EMPTY_TEXT}</p>
       <p className="mt-2 text-caption text-muted">
         Archived now: {weeksText(data.weeks_archived)}. Scored: none yet.
@@ -132,7 +132,7 @@ export function ScorecardView({ data }: { data: ScorecardData }) {
         player-games scored ({weeksText(data.weeks_scored)}). {leftOutText(data.excluded)}
       </p>
       {anySmall && (
-        <p role="note" className="mt-2 rounded-md border border-border px-3 py-2 text-caption text-warning">
+        <p role="note" className="mt-2 rounded-lg border border-warning-edge bg-warning-bg px-3 py-2 text-caption text-warning">
           Warning: some rows have fewer than {SMALL_N} player-games. Treat gaps between models there as noise.
         </p>
       )}

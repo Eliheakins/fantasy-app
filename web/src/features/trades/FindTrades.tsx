@@ -119,7 +119,7 @@ export function FindTradesSection({ league, scope = league }: { league: string; 
         disabled={running}
         aria-busy={running}
         onClick={() => (requested ? refetch() : setRequested(true))}
-        className="min-h-[44px] rounded bg-accent px-4 text-accent-fg"
+        className="min-h-[44px] rounded bg-focus px-4 text-white"
       >
         {running ? "Searching…" : state?.kind === "ready" ? "Find trades again" : "Find trades"}
       </button>

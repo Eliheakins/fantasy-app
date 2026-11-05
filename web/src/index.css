@@ -1,12 +1,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Design tokens (docs/spec/dashboard.md rules survive every theme: semantic colour only for change
-   and warnings, ranges grey, contrast measured in CONTRAST.md).
-   Look F (light): page #FBFBF8, ink #13201A, Forest band #123D2C. The graphite names (--page, --surface, --text,
-   --accent ...) keep their names for now and point at look F values in :root; slice U2 restyles every component
-   and deletes the graphite set. .theme-light / .theme-dark exist only so /dev/viz can show both side by side. */
-
+/* Look F tokens (light only; docs/spec/dashboard.md "Look F" and the contrast table). Semantic colour only for
+   change (better/worse) and warnings; green is frame (band, panel tint, selection, focus); ranges grey. */
 :root {
   --font-body: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: Newsreader, Georgia, "Times New Roman", serif;
@@ -26,147 +22,63 @@
   --th-size: var(--fs-caption);
 }
 
-/* Look F tokens (docs/spec/dashboard.md "Look F"). */
 :root {
   color-scheme: light;
   --lf-page: #fbfbf8;
   --lf-panel: #edf3ee;
   --lf-panel-line: #d6e3da;
-  --lf-page-line: #e4e8e3;
+  --lf-line: #e4e8e3;
   --lf-ink: #13201a;
   --lf-label: #2e3a33;
   --lf-muted: #56635c;
-  --lf-faint: #6b776f;
+  --lf-faint: #64706a;
   --lf-forest: #123d2c;
-  --lf-accent: #1f5a43;
+  --lf-focus: #1f5a43;
   --lf-chrome-label: #9cc7b2;
   --lf-chrome-text: #e6f0ea;
+  --lf-chrome-ask: #cfe5d9;
   --lf-better: #157a3d;
   --lf-worse: #b4261a;
-  --lf-noise: #56635c;
   --lf-warning: #6b4200;
   --lf-warning-bg: #fff4db;
   --lf-warning-edge: #f3dfae;
-}
-
-/* Graphite names, now carrying look F values; the set below is the old dark theme, kept for /dev/viz only. */
-:root {
-  --page: var(--lf-page);
-  --surface: var(--lf-panel);
-  --border: var(--lf-panel-line);
-  --text: var(--lf-ink);
-  --text-muted: var(--lf-muted);
-  --mark-muted: var(--lf-noise);
-  --accent: var(--lf-accent);
-  --accent-fg: #ffffff;
-  --positive: var(--lf-better);
-  --negative: var(--lf-worse);
-  --warning: var(--lf-warning);
-  --warning-bg: var(--lf-warning-bg);
-  --range: #8a958e;
-  --tick: var(--lf-ink);
-  --focus: var(--lf-accent);
-  --nav-active-bg: var(--lf-panel);
-  --radius: 12px;
-  --radius-md: 10px;
-  --radius-sm: 6px;
-  --border-width: 1px;
-  --card-border: var(--lf-panel-line);
-  --shadow-card: none;
-  --card-pad: 20px;
   --page-pad: 24px;
   --row-y: 8px;
-  --nav-edge: 0 0 0 transparent;
 }
 
-/* Graphite (dark), only inside .theme-dark in the /dev/viz gallery. */
-.theme-dark {
-  color-scheme: dark;
-  --page: #131417;
-  --surface: #1c1e23;
-  --border: #2c2f36;
-  --text: #ececef;
-  --text-muted: #9ca0ab;
-  --mark-muted: #9ca0ab;
-  --accent: #8ab4f8;
-  --accent-fg: #0e1218;
-  --positive: #4cc38a;
-  --negative: #f47067;
-  --warning: #e0a83c;
-  --warning-bg: #2b2312;
-  --range: #656d7b;
-  --tick: #f4f4f6;
-  --focus: #8ab4f8;
-  --nav-active-bg: #23262c;
-  --radius: 12px;
-  --radius-md: 10px;
-  --radius-sm: 6px;
-  --border-width: 1px;
-  --card-border: #23262c;
-  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.05) inset, 0 6px 18px rgb(0 0 0 / 0.38);
-  --card-pad: 20px;
-  --page-pad: 24px;
-  --row-y: 8px;
-  --rail-w: 12.5rem;
-  --nav-edge: 0 0 0 transparent;
-}
-
-/* Small screens: tighten its page and card padding so tables stay readable. */
+/* Small screens: tighten the page padding so tables stay readable. */
 @media (max-width: 767px) {
   :root {
     --page-pad: 12px;
-    --card-pad: 14px;
   }
 }
 
-/* Light set, used only by the /dev/viz side-by-side gallery. */
-.theme-light {
-  color-scheme: light;
-  --page: #ffffff;
-  --surface: #f6f8fa;
-  --border: #d0d7de;
-  --text: #1f2328;
-  --text-muted: #59636e;
-  --mark-muted: #636c76;
-  --accent: #3b4a5a;
-  --accent-fg: #ffffff;
-  --positive: #1a7f37;
-  --negative: #cf222e;
-  --warning: #9a6700;
-  --warning-bg: #fff8c5;
-  --range: #848f9b;
-  --tick: #1f2328;
-  --focus: #3b4a5a;
-}
-
 @theme inline {
-  --color-page: var(--page);
-  --color-surface: var(--surface);
-  --color-border: var(--border);
-  --color-text: var(--text);
-  --color-muted: var(--text-muted);
-  --color-mark-muted: var(--mark-muted);
-  --color-accent: var(--accent);
-  --color-accent-fg: var(--accent-fg);
-  --color-positive: var(--positive);
-  --color-negative: var(--negative);
-  --color-warning: var(--warning);
-  --color-warning-bg: var(--warning-bg);
-  --color-range: var(--range);
-  --color-nav-active-bg: var(--nav-active-bg);
-  --color-tick: var(--tick);
+  --color-page: var(--lf-page);
+  --color-panel: var(--lf-panel);
+  --color-panel-line: var(--lf-panel-line);
+  --color-line: var(--lf-line);
+  --color-ink: var(--lf-ink);
+  --color-label: var(--lf-label);
+  --color-muted: var(--lf-muted);
+  --color-faint: var(--lf-faint);
+  --color-forest: var(--lf-forest);
+  --color-focus: var(--lf-focus);
+  --color-chrome-label: var(--lf-chrome-label);
+  --color-chrome-text: var(--lf-chrome-text);
+  --color-chrome-ask: var(--lf-chrome-ask);
+  --color-better: var(--lf-better);
+  --color-worse: var(--lf-worse);
+  --color-warning: var(--lf-warning);
+  --color-warning-bg: var(--lf-warning-bg);
+  --color-warning-edge: var(--lf-warning-edge);
   /* aliases the shadcn components expect, pointed at our tokens (destructive is amber, never red) */
-  --color-background: var(--page);
-  --color-foreground: var(--text);
-  --color-popover: var(--surface);
-  --color-popover-foreground: var(--text);
-  --color-muted-foreground: var(--text-muted);
-  --color-accent-foreground: var(--accent-fg);
-  --color-input: var(--border);
-  --color-ring: var(--focus);
-  --color-destructive: var(--warning);
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
+  --color-background: var(--lf-page);
+  --color-foreground: var(--lf-ink);
+  --color-muted-foreground: var(--lf-muted);
+  --color-input: var(--lf-panel-line);
+  --color-ring: var(--lf-focus);
+  --color-destructive: var(--lf-warning);
   --text-display: var(--fs-display);
   --text-display--line-height: var(--lh-display);
   --text-title: var(--fs-title);
@@ -181,8 +93,8 @@
 }
 
 html {
-  background: var(--page);
-  color: var(--text);
+  background: var(--lf-page);
+  color: var(--lf-ink);
   font-family: var(--font-body);
   font-size: var(--fs-body);
   line-height: var(--lh-body);
@@ -192,24 +104,12 @@ html {
 
 body {
   margin: 0;
-  background: var(--page);
+  background: var(--lf-page);
 }
 
 *:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--lf-focus);
   outline-offset: 2px;
-}
-
-.theme-light,
-.theme-dark {
-  background: var(--page);
-  color: var(--text);
-}
-
-/* ---- Shape language, driven by tokens so components keep their utility classes. ----
-   Unlayered rules win over Tailwind's utility layer, which is the point. */
-.rounded {
-  border-radius: var(--radius);
 }
 
 main {
@@ -222,21 +122,6 @@ h1,
   letter-spacing: -0.01em;
 }
 
-/* Cards: explicit classes. .card for self-contained summaries, .card-flat for compact blocks. */
-.card,
-.card-flat {
-  border: var(--border-width) solid var(--card-border);
-  border-radius: var(--radius);
-  background-color: var(--surface);
-  box-shadow: var(--shadow-card);
-}
-.card {
-  padding: var(--card-pad);
-}
-.card-flat {
-  padding: calc(var(--card-pad) * 0.65);
-}
-
 .measure {
   max-width: var(--measure);
 }
@@ -244,8 +129,8 @@ h1,
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.92em;
-  background: var(--surface);
-  border-radius: var(--radius-sm);
+  background: var(--lf-panel);
+  border-radius: 6px;
   padding: 0 0.3em;
 }
 
@@ -258,18 +143,15 @@ code {
   }
 }
 
-/* Table rhythm */
+/* Table rhythm; the head rule and row rules live in ResponsiveTable. */
 th {
   text-transform: var(--th-transform);
   letter-spacing: var(--th-tracking);
   font-size: var(--th-size);
-  color: var(--text-muted);
+  color: var(--lf-muted);
 }
 :is(td, th) {
   padding-block: var(--row-y);
-}
-tbody tr {
-  border-color: color-mix(in srgb, var(--border) 70%, transparent);
 }
 
 /* Tabs */
@@ -277,7 +159,7 @@ nav a {
   transition: background-color 120ms, color 120ms;
 }
 nav[aria-label="Main tabs"] {
-  border-top-color: var(--card-border);
+  border-top-color: var(--lf-line);
   padding-bottom: env(safe-area-inset-bottom);
 }
 /* Phone tab bar: five tabs, a small label; the active tab gets a bar on top. */
@@ -308,13 +190,13 @@ nav[aria-label="Main tabs"] a[aria-current="page"] {
   outline-color: #ffffff;
 }
 
-/* Disabled controls read as unavailable, not washed out: flat, muted text at 4.5:1 or better on the surface. */
+/* Disabled controls read as unavailable, not washed out: flat, muted text at 4.5:1 or better on the panel. */
 button:disabled,
 button[aria-disabled="true"],
 select:disabled {
   opacity: 1;
-  background: var(--surface);
-  color: var(--text-muted);
-  box-shadow: inset 0 0 0 1px var(--border);
+  background: var(--lf-panel);
+  color: var(--lf-muted);
+  box-shadow: inset 0 0 0 1px var(--lf-panel-line);
   cursor: not-allowed;
 }

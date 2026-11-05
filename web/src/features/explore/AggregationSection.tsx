@@ -22,7 +22,7 @@ export function AggregationSection() {
   const summary = `${activeGranularity.replace(/_/g, " ")} · min ${minPlays} plays${ranking}${split}`;
 
   return (
-    <section className="border-b border-border pb-5">
+    <section className="border-b border-line pb-5">
       <Accordion type="single" defaultValue="aggregation" collapsible>
         <AccordionItem value="aggregation" className="border-0">
           <AccordionTrigger className="py-2 hover:no-underline">
@@ -32,7 +32,7 @@ export function AggregationSection() {
             </div>
           </AccordionTrigger>
           <AccordionContent>
-            <div className="space-y-5 border-t border-border pt-4">
+            <div className="space-y-5 border-t border-line pt-4">
               <GranularitySelector embedded />
               <MinPlaysSlider embedded />
               <RankingControl />

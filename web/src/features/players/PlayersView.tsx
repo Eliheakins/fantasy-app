@@ -17,7 +17,7 @@ const METHOD =
 const WHY_MIN_WIDTH = "block min-w-[14rem]";
 
 const radioClass = (on: boolean) =>
-  cn("rounded border border-border px-4 text-body", on ? "bg-accent font-semibold text-accent-fg" : "bg-surface text-text");
+  cn("rounded-full border border-panel-line px-4 text-body", on ? "border-focus bg-focus font-semibold text-white" : "bg-panel text-ink");
 
 function columns(showOwner: boolean): Column<OutlookRow>[] {
   return [
@@ -74,7 +74,7 @@ function PlayerTable({ rows, scope }: { rows: readonly OutlookRow[]; scope: Scop
         <div className="mt-3 flex items-center gap-3">
           <button
             type="button"
-            className="min-h-[44px] rounded border border-border bg-surface px-4 text-body"
+            className="min-h-[44px] rounded-full border border-panel-line bg-panel px-4 text-body"
             onClick={() => setShown((n) => n + PAGE_SIZE)}
           >
             Show more

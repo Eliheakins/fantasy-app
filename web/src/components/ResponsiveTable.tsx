@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { type Breakpoint, useMinWidth } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
 
-/** primary: the row's identity (row header, card title). secondary: key numbers, shown on the card.
- * detail: folded under "More" on the card. Unflagged columns are secondary; with no primary flag, column 1 is primary. */
+/** primary: the row's identity (row header, row title). secondary: key numbers, shown on the row.
+ * detail: folded under "More" on the row. Unflagged columns are secondary; with no primary flag, column 1 is primary. */
 export type ColumnRole = "primary" | "secondary" | "detail";
 
 export type Column<T> = { label: string; render: (row: T) => ReactNode; numeric?: boolean; role?: ColumnRole };
@@ -33,7 +33,7 @@ function TableForm<T>({ caption, columns, rows, rowKey, isStrong }: FormProps<T>
       <table className="w-full text-body">
         <caption className="sr-only">{caption}</caption>
         <thead>
-          <tr className="border-b border-border text-left text-caption text-muted">
+          <tr className="border-b-[1.5px] border-ink text-left text-caption text-muted">
             {columns.map((c) => (
               <th key={c.label} scope="col" className={cn("px-2 py-1 font-normal", c.numeric && columns.indexOf(c) !== head && "text-right")}>
                 {c.label}
@@ -43,11 +43,11 @@ function TableForm<T>({ caption, columns, rows, rowKey, isStrong }: FormProps<T>
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={rowKey(row, i)} className={cn("border-b border-border", isStrong?.(row) && "border-l-4 border-l-accent font-semibold")}>
+            <tr key={rowKey(row, i)} className={cn("border-b border-line", isStrong?.(row) && "border-l-4 border-l-focus font-semibold")}>
               {columns.map((c, ci) => {
                 const cls = cn("px-2 py-1 align-top", c.numeric && ci !== head && "text-right tabular-nums");
                 return ci === head ? (
-                  <th key={c.label} scope="row" className={cn(cls, "text-left [font-weight:inherit] text-text")}>
+                  <th key={c.label} scope="row" className={cn(cls, "text-left [font-weight:inherit] text-ink")}>
                     {c.render(row)}
                   </th>
                 ) : (
@@ -77,9 +77,9 @@ function CardForm<T>({ caption, columns, rows, rowKey, isStrong }: FormProps<T>)
   const key = rest.filter((c) => c.role !== "detail");
   const more = rest.filter((c) => c.role === "detail");
   return (
-    <ul aria-label={caption} className="space-y-2">
+    <ul aria-label={caption} className="border-t-[1.5px] border-ink">
       {rows.map((row, i) => (
-        <li key={rowKey(row, i)} className={cn("card-flat", isStrong?.(row) && "border-l-4 border-l-accent")}>
+        <li key={rowKey(row, i)} className={cn("border-b border-line py-3", isStrong?.(row) && "border-l-4 border-l-focus pl-3")}>
           <div className={cn("text-body", isStrong?.(row) ? "font-semibold" : "font-medium")}>{head?.render(row)}</div>
           {key.length > 0 && (
             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">
@@ -100,7 +100,7 @@ function CardForm<T>({ caption, columns, rows, rowKey, isStrong }: FormProps<T>)
   );
 }
 
-/** A table from the breakpoint up; one card per row below it. */
+/** A table from the breakpoint up; one divided row per item below it. */
 export function ResponsiveTable<T>({ breakpoint = "lg", ...props }: Props<T>) {
   const wide = useMinWidth(breakpoint);
   return wide ? <TableForm {...props} /> : <CardForm {...props} />;

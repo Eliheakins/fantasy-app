@@ -23,12 +23,12 @@ export function StartSitAnswer({ a, b, names }: Props) {
   const { pathname, search } = useLocation();
   const lineupLink = `/lineup${navSearch("/lineup", search, pathname)}`;
   return (
-    <section aria-label="Start or sit" className="space-y-3 border-t border-border pt-3">
+    <section aria-label="Start or sit" className="space-y-3 border-t border-line pt-3">
       <ApiBoundary state={lineup}>
         {(rows) => <Body rows={rows} a={a} b={b} names={names} />}
       </ApiBoundary>
       <p className="text-caption text-muted">
-        <Link to={lineupLink} className="font-medium text-text underline-offset-2 hover:underline">
+        <Link to={lineupLink} className="font-medium text-ink underline-offset-2 hover:underline">
           Open the Lineup page
         </Link>{" "}
         for the full lineup and win probability.
@@ -71,14 +71,14 @@ function Verdict({ missing, locked, found }: { missing: string[]; locked: string
   const [x, y] = found as [Found, Found];
   const starters = found.filter((p) => p.row.recommended);
   if (starters.length === 2) {
-    return <p className="text-body font-semibold text-text">Your lineup starts both</p>;
+    return <p className="text-body font-semibold text-ink">Your lineup starts both</p>;
   }
   if (starters.length === 0) {
     const [more, less] = x.row.projection >= y.row.projection ? [x, y] : [y, x];
     return (
       <div className="space-y-1">
-        <p className="text-body font-semibold text-text">Your lineup benches both</p>
-        <p className="text-body text-text">
+        <p className="text-body font-semibold text-ink">Your lineup benches both</p>
+        <p className="text-body text-ink">
           {more.name} projects more ({formatNumber(more.row.projection)} vs {formatNumber(less.row.projection)} projected pts).
         </p>
       </div>
@@ -87,8 +87,8 @@ function Verdict({ missing, locked, found }: { missing: string[]; locked: string
   const [win, lose] = x.row.recommended ? [x, y] : [y, x];
   return (
     <div className="space-y-1">
-      <p className="text-body font-semibold text-text">{`Start ${win.name} over ${lose.name}`}</p>
-      <p className="text-body text-text">
+      <p className="text-body font-semibold text-ink">{`Start ${win.name} over ${lose.name}`}</p>
+      <p className="text-body text-ink">
         <Delta points={win.row.projection - lose.row.projection} /> projected pts against starting {lose.name}
       </p>
     </div>
@@ -102,8 +102,8 @@ function Ranges({ found }: { found: Found[] }) {
     <ul className="space-y-1">
       {found.map((p) => (
         <li key={p.row.gsis_id} className="flex flex-wrap items-center gap-3 text-body">
-          <span className="w-40 text-text"><PlayerLink gsisId={p.row.gsis_id} name={p.name} position={p.row.position} /></span>
-          <span className="w-12 tabular-nums text-text">{formatNumber(p.row.projection)}</span>
+          <span className="w-40 text-ink"><PlayerLink gsisId={p.row.gsis_id} name={p.name} position={p.row.position} /></span>
+          <span className="w-12 tabular-nums text-ink">{formatNumber(p.row.projection)}</span>
           <RangeBar domain={domain} width={RANGE_WIDTH} p10={p.row.p10} p50={p.row.projection} p90={p.row.p90} />
         </li>
       ))}

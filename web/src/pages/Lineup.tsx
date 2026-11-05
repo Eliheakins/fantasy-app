@@ -57,7 +57,7 @@ export function LineupView({ base, odds, week }: { base: LineupRow[]; odds: WinP
           value={objective}
           onChange={setObjective}
           className="mt-3 flex flex-wrap gap-2"
-          optionClassName={(on) => `rounded-md border px-3 text-body ${on ? "border-ring bg-border font-medium" : "border-border"}`}
+          optionClassName={(on) => `rounded-full border px-3 text-body ${on ? "border-focus bg-focus font-medium text-white" : "border-panel-line bg-panel"}`}
         />
       )}
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -73,7 +73,7 @@ export function LineupView({ base, odds, week }: { base: LineupRow[]; odds: WinP
         {hasOdds && h.win !== null && <Metric label="Chance to win">{formatPercent(h.win)}</Metric>}
       </div>
       {hasOdds && odds.swap?.differs && odds.swap.text && (
-        <p role="note" className="mt-4 card-flat text-body">{odds.swap.text}</p>
+        <p role="note" className="mt-4 rounded-xl bg-panel p-4 text-body text-label">{odds.swap.text}</p>
       )}
       {hasOdds && odds.swap && !odds.swap.differs && <p className="mt-4 text-caption text-muted">{NO_SWAP_TEXT}</p>}
       {hasOdds && <div className="mt-8"><Comparison rows={odds.comparison} /></div>}

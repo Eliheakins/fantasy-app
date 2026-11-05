@@ -72,7 +72,7 @@ export function HistoryPanel({ onReopen }: { onReopen: () => void }) {
   const corrections = toEvalCases(entries);
 
   return (
-    <section className="card space-y-4" aria-label="Ask history">
+    <section className="space-y-4" aria-label="Ask history">
         <p className="text-caption text-muted">
           Kept in this browser only (the newest 200). A fix you make to an answer is remembered for that question.
           Exported fixes join the eval set with <code>uv run python tests/stat/eval/promote.py</code>.
@@ -102,12 +102,12 @@ export function HistoryPanel({ onReopen }: { onReopen: () => void }) {
         </div>
 
         {entries.length === 0 ? <p className="text-body text-muted">Nothing asked yet.</p> : null}
-        <ul className="divide-y divide-border">
+        <ul className="divide-y divide-line">
           {entries.map((entry) => {
             const search = reopenSearch(entry, current);
             return (
               <li key={entry.id} className="space-y-1 py-3 text-body">
-                <p className="font-medium text-text">
+                <p className="font-medium text-ink">
                   {search ? (
                     <Link to={{ pathname: "/ask", search }} onClick={onReopen} className="inline-flex min-h-11 items-center underline underline-offset-2 md:min-h-0">
                       {entry.question}
@@ -120,16 +120,16 @@ export function HistoryPanel({ onReopen }: { onReopen: () => void }) {
                   {new Date(entry.at).toLocaleString()} · {PATH_LABELS[entry.path]}
                 </p>
                 {entry.outcome.kind === "answered" ? (
-                  <p className="text-caption text-text">Answered: {describe(entry.outcome.query, chipGroups)}</p>
+                  <p className="text-caption text-ink">Answered: {describe(entry.outcome.query, chipGroups)}</p>
                 ) : entry.outcome.kind === "start_sit" ? (
-                  <p className="text-caption text-text">Start/sit: {entry.outcome.text}</p>
+                  <p className="text-caption text-ink">Start/sit: {entry.outcome.text}</p>
                 ) : entry.outcome.kind === "trade" ? (
-                  <p className="text-caption text-text">Trade: {entry.outcome.text}</p>
+                  <p className="text-caption text-ink">Trade: {entry.outcome.text}</p>
                 ) : (
                   <p className="text-caption text-warning">{entry.outcome.text}</p>
                 )}
                 {entry.corrected ? (
-                  <p className="text-caption font-medium text-accent">You changed it to: {describe(entry.corrected, chipGroups)}</p>
+                  <p className="text-caption font-medium text-focus">You changed it to: {describe(entry.corrected, chipGroups)}</p>
                 ) : null}
               </li>
             );

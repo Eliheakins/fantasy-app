@@ -6,7 +6,7 @@ import {
   type LineupRow, hasRange, injuryLabel, pointsSoFar, rangeText, slotHidesPosition, slotLabel, tableDomain,
 } from "./logic";
 
-const BADGE = "rounded border border-border px-1.5 text-caption";
+const BADGE = "rounded border border-line px-1.5 text-caption";
 const NO_VALUE = "–";
 /** Shared by Start and Bench so the two tables line up. */
 const COLUMN_WIDTHS = ["6%", "17%", "6%", "8%", "20%", "8%", "13%", "22%"];
@@ -43,7 +43,7 @@ function Wide({ rows, known, domain }: { rows: readonly LineupRow[]; known: bool
     <table className="hidden w-full table-fixed text-body lg:table">
       <colgroup>{COLUMN_WIDTHS.map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
       <thead>
-        <tr className="border-b border-border text-left text-caption text-muted">
+        <tr className="border-b border-line text-left text-caption text-muted">
           <Head>Slot</Head>
           <Head>Player</Head>
           <Head>Pos</Head>
@@ -56,9 +56,9 @@ function Wide({ rows, known, domain }: { rows: readonly LineupRow[]; known: bool
       </thead>
       <tbody>
         {rows.map((r) => (
-          <tr key={r.gsis_id} className={`border-b border-border align-top ${rowClass(r)}`}>
+          <tr key={r.gsis_id} className={`border-b border-line align-top ${rowClass(r)}`}>
             <td className="py-2 pr-3">{slotLabel(r.slot)}</td>
-            <th scope="row" className="py-2 pr-3 text-left font-normal text-text"><PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} /></th>
+            <th scope="row" className="py-2 pr-3 text-left font-normal text-ink"><PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} /></th>
             <td className="py-2 pr-3">{r.position}</td>
             <td className="py-2 pr-3 text-right tabular-nums">{formatNumber(r.projection)}</td>
             <td className="py-2 pr-3"><Bar row={r} domain={domain} /></td>
@@ -76,13 +76,13 @@ function Cards({ rows, known, domain }: { rows: readonly LineupRow[]; known: boo
   return (
     <ul className="lg:hidden">
       {rows.map((r) => (
-        <li key={r.gsis_id} className={`min-h-[44px] border-b border-border py-2 ${rowClass(r)}`}>
+        <li key={r.gsis_id} className={`min-h-[44px] border-b border-line py-2 ${rowClass(r)}`}>
           <div className="flex items-baseline justify-between gap-2">
             <span>
-              <span className="text-muted">{slotLabel(r.slot)}</span> <span className="text-text"><PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} /></span>
+              <span className="text-muted">{slotLabel(r.slot)}</span> <span className="text-ink"><PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} /></span>
               {slotHidesPosition(r.slot) && <span className="text-muted"> {r.position}</span>}
             </span>
-            <span className="whitespace-nowrap tabular-nums text-text">{formatNumber(r.projection)} <span className="text-caption text-muted">proj</span></span>
+            <span className="whitespace-nowrap tabular-nums text-ink">{formatNumber(r.projection)} <span className="text-caption text-muted">proj</span></span>
           </div>
           <div className="mt-1"><Bar row={r} domain={domain} /></div>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-caption text-muted">

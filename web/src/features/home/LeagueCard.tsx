@@ -16,7 +16,7 @@ function Odds({ rows }: { rows: SeasonOdds[] }) {
   if (!mine) return null;
   return (
     <Block title="Season odds">
-      <dl className="grid grid-cols-2 gap-3 @md:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-3 rounded-xl bg-panel p-4 text-label @md:grid-cols-4">
         <Stat label="Make playoffs" value={oddsPercent(mine.p_playoffs)} />
         <Stat label="First-round bye" value={oddsPercent(mine.p_bye)} />
         <Stat label="Win the title" value={oddsPercent(mine.p_title)} />
@@ -35,7 +35,7 @@ function LiveScoreSection({ leagueKey }: { leagueKey: string }) {
       type="button"
       onClick={() => refresh.mutate()}
       disabled={refresh.isPending}
-      className="min-h-[44px] rounded border border-border px-3 text-caption text-muted"
+      className="min-h-[44px] rounded border border-line px-3 text-caption text-muted"
     >
       {refresh.isPending ? "Refreshing…" : "Refresh scores"}
     </button>
@@ -72,7 +72,7 @@ export function LeagueCard({ league, mine = true }: CardProps) {
   const roster = useApi<RosterRow[]>(leagueUrl(key, "roster"));
   const unmatched = useApi<Unmatched>("/api/unmatched");
   return (
-    <article className="card @container min-w-0">
+    <article className="@container min-w-0 border-t border-line pt-5">
       <header>
         <h2 className="text-heading font-semibold">{league.name} · {league.team_name}</h2>
         <p className="text-caption text-muted">{recordLine(league)}</p>

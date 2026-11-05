@@ -44,7 +44,7 @@ export function PlayerGameLog({ gsisId, position, season }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-body">
             <thead>
-              <tr className="border-b border-border text-muted">
+              <tr className="border-b border-line text-muted">
                 <th scope="col" className={CELL}>Week</th>
                 {log.data && statIds.map((id) => <th key={id} scope="col" className={CELL}>{getStatById(id)?.label ?? id}</th>)}
                 {pointsByWeek && <th scope="col" className={CELL}>League pts</th>}
@@ -52,7 +52,7 @@ export function PlayerGameLog({ gsisId, position, season }: Props) {
             </thead>
             <tbody>
               {weeks.map((week) => (
-                <tr key={week} className="border-b border-border/80 last:border-0">
+                <tr key={week} className="border-b border-line last:border-0">
                   <td className={CELL}>{week}</td>
                   {log.data && statIds.map((id) => <td key={id} className={CELL}>{formatQueryValue(logByWeek.get(week)?.[metricSelectAlias(id)])}</td>)}
                   {pointsByWeek && <td className={CELL}>{formatPoints(pointsByWeek.get(week))}</td>}

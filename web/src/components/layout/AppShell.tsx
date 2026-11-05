@@ -18,12 +18,12 @@ function Frame() {
     <div className="flex min-h-screen flex-col">
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-accent focus:px-4 focus:py-3 focus:text-accent-fg"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-focus focus:px-4 focus:py-3 focus:text-white"
       >
         Skip to content
       </a>
       <TopBar />
-      <nav aria-label="Main" className="hidden border-b border-[#E4E8E3] md:block">
+      <nav aria-label="Main" className="hidden border-b border-line md:block">
         <ul className="mx-auto flex w-full max-w-[1200px] gap-6 px-4">
           {NAV_ITEMS.map(({ path, label }) => (
             <li key={path}>
@@ -33,7 +33,7 @@ function Frame() {
                 className={({ isActive }) =>
                   cn(
                     "flex min-h-[44px] items-center border-b-2 text-body",
-                    isActive ? "border-[#123D2C] font-semibold text-text" : "border-transparent text-muted hover:text-text",
+                    isActive ? "border-forest font-semibold text-ink" : "border-transparent text-muted hover:text-ink",
                   )
                 }
               >
@@ -51,7 +51,7 @@ function Frame() {
         </main>
         <Footer />
       </div>
-      <nav aria-label="Main tabs" className="tab-bar fixed inset-x-0 bottom-0 z-10 flex border-t border-border bg-page md:hidden">
+      <nav aria-label="Main tabs" className="tab-bar fixed inset-x-0 bottom-0 z-10 flex border-t border-line bg-page md:hidden">
         {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
           <NavLink
             key={path}
@@ -60,7 +60,7 @@ function Frame() {
             className={({ isActive }) =>
               cn(
                 "tab-link flex min-h-[56px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-body",
-                isActive ? "font-semibold text-text" : "text-muted",
+                isActive ? "font-semibold text-ink" : "text-muted",
               )
             }
           >

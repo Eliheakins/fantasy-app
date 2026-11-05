@@ -2,9 +2,9 @@ import { cn } from "@/lib/utils";
 import { type ConfidenceLevel, formatDelta } from "./format";
 
 const TONE_CLASS = {
-  positive: "text-positive",
-  negative: "text-negative",
-  neutral: "text-mark-muted",
+  positive: "text-better",
+  negative: "text-worse",
+  neutral: "text-muted",
 } as const;
 
 type DeltaProps = {

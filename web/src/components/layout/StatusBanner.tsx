@@ -22,8 +22,8 @@ export function StatusBanner() {
     <div aria-live="polite" role="status">
       {messages.map((m) => (
         <Fragment key={m}>
-          <div className="border-b border-border bg-warning-bg text-body text-warning">
-            <p className="mx-auto w-full max-w-[1200px] px-4 py-2">
+          <div className="border-b border-line bg-warning-bg text-body text-warning">
+            <p className="mx-auto w-full max-w-[1200px] px-[var(--page-pad)] py-2">
               <WithCode text={m} />
             </p>
           </div>

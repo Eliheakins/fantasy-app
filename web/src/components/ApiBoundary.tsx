@@ -21,9 +21,9 @@ function Loading() {
   return (
     <div role="status" aria-busy="true" className="min-h-[160px] space-y-3 py-4">
       <span className="sr-only">Loading…</span>
-      <div aria-hidden className="h-5 w-1/3 animate-pulse rounded bg-surface" />
-      <div aria-hidden className="h-24 animate-pulse rounded bg-surface" />
-      <div aria-hidden className="h-5 w-1/2 animate-pulse rounded bg-surface" />
+      <div aria-hidden className="h-5 w-1/3 animate-pulse rounded bg-panel" />
+      <div aria-hidden className="h-24 animate-pulse rounded bg-panel" />
+      <div aria-hidden className="h-5 w-1/2 animate-pulse rounded bg-panel" />
     </div>
   );
 }
@@ -31,14 +31,14 @@ function Loading() {
 /** Looks unlike loading: amber edge, plain sentence, the cause in small type, and a way to try again. */
 function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div role="alert" className="my-4 border-l-4 border-warning bg-surface px-4 py-3">
+    <div role="alert" className="my-4 border-l-4 border-warning-edge bg-panel px-4 py-3">
       <p className="text-body font-semibold">This did not load.</p>
       <p className="text-caption text-muted">{message}</p>
       {onRetry && (
         <button
           type="button"
           onClick={onRetry}
-          className="mt-2 min-h-[44px] rounded border border-border bg-page px-4 text-body text-text"
+          className="mt-2 min-h-[44px] rounded border border-line bg-page px-4 text-body text-ink"
         >
           Try again
         </button>

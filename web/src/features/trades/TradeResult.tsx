@@ -26,7 +26,7 @@ function domainFor(index: 0 | 1 | 2, side: TradeSide, sides: readonly TradeSide[
 function SideCard({ title, side, sides }: { title: string; side: TradeSide; sides: readonly TradeSide[] }) {
   const measures = sideMeasures(side);
   return (
-    <section aria-label={title} className="card-flat">
+    <section aria-label={title} className="border-t border-line pt-3">
       <h3 className="mb-2 font-semibold">{title}</h3>
       <dl className="space-y-2">
         {measures.map((m, i) => (

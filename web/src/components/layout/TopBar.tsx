@@ -43,11 +43,11 @@ export function TopBar() {
   const live = status.kind === "ready" ? liveLabel(status.data, now) : null;
   const list = leagues.kind === "ready" ? leagues.data : [];
   return (
-    <header className="on-chrome bg-[#123D2C] text-white">
+    <header className="on-chrome bg-forest text-white">
       <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
         <div className="min-w-0 flex-1 md:flex-none">
           <p className="truncate font-display text-[22px] font-medium leading-7">{shown?.team_name ?? "Fantasy"}</p>
-          <p className="min-h-4 text-caption text-[#9CC7B2]">
+          <p className="min-h-4 text-caption text-chrome-label">
             {status.kind === "ready" ? (live ?? `Updated ${updated ? formatAsOf(updated) : "unknown"}`) : null}
           </p>
         </div>

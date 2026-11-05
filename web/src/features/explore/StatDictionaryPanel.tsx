@@ -23,8 +23,8 @@ function StatHelpButton({ label, help }: { label: string; help: string }) {
         <button
           type="button"
           className={cn(
-            "inline-flex min-h-11 min-w-11 shrink-0 md:min-h-5 md:min-w-5 items-center justify-center rounded-full border border-border",
-            "text-caption font-semibold text-muted hover:border-accent/50 hover:text-accent",
+            "inline-flex min-h-11 min-w-11 shrink-0 md:min-h-5 md:min-w-5 items-center justify-center rounded-full border border-line",
+            "text-caption font-semibold text-muted hover:border-focus/50 hover:text-focus",
           )}
           aria-label={`More about ${label}`}
           onClick={(e) => e.stopPropagation()}
@@ -50,7 +50,7 @@ export function StatDictionaryPanel({ className }: StatDictionaryPanelProps) {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <section className={cn("border-b border-border pb-5", className)}>
+      <section className={cn("border-b border-line pb-5", className)}>
         <Accordion type="single" defaultValue="what" collapsible>
           <AccordionItem value="what" className="border-0">
             <AccordionTrigger className="py-2 hover:no-underline">
@@ -62,7 +62,7 @@ export function StatDictionaryPanel({ className }: StatDictionaryPanelProps) {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <div className="space-y-3 border-t border-border pt-3">
+              <div className="space-y-3 border-t border-line pt-3">
                 <p className="text-caption text-muted">
                   Select up to {MAX_SELECTED_STATS} metrics (same role/play-type bucket are computed in one pass). Hover
                   “?” for definitions.
@@ -87,8 +87,8 @@ export function StatDictionaryPanel({ className }: StatDictionaryPanelProps) {
                                       className={cn(
                                         "flex items-start gap-3 rounded-lg border px-3 py-2 transition",
                                         checked
-                                          ? "border-accent/40 bg-nav-active-bg"
-                                          : "border-transparent hover:border-border hover:bg-surface/80",
+                                          ? "border-focus/40 bg-panel"
+                                          : "border-transparent hover:border-line hover:bg-panel/80",
                                         disableSelect && "opacity-60",
                                       )}
                                     >
@@ -99,7 +99,7 @@ export function StatDictionaryPanel({ className }: StatDictionaryPanelProps) {
                                         disabled={disableSelect}
                                         onChange={() => toggleStatId(s.id)}
                                         className={cn(
-                                          "mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-border bg-surface text-accent",
+                                          "mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-line bg-panel text-focus",
                                           disableSelect && "cursor-not-allowed",
                                         )}
                                         aria-label={`Select ${s.label}`}
@@ -112,7 +112,7 @@ export function StatDictionaryPanel({ className }: StatDictionaryPanelProps) {
                                         )}
                                       >
                                         <span className="flex items-center gap-2">
-                                          <span className="text-body font-medium text-text">{s.label}</span>
+                                          <span className="text-body font-medium text-ink">{s.label}</span>
                                           {s.help ? <StatHelpButton label={s.label} help={s.help} /> : null}
                                         </span>
                                         {s.description && !s.help ? (
@@ -138,13 +138,13 @@ export function StatDictionaryPanel({ className }: StatDictionaryPanelProps) {
                 </div>
 
                 {selectedIds.length > 0 ? (
-                  <div className="rounded-md border border-border bg-surface/90 p-2">
+                  <div className="rounded-md border border-line bg-panel/90 p-2">
                     <p className="text-caption font-medium text-muted">Preview</p>
                     <ul className="mt-1 max-h-28 space-y-1 overflow-y-auto text-caption leading-snug text-muted">
                       {selectedIds.map((id) => {
                         const st = getStatById(id);
                         return st ? (
-                          <li key={id} className="border-b border-border/80 pb-1 last:border-0 last:pb-0">
+                          <li key={id} className="border-b border-line pb-1 last:border-0 last:pb-0">
                             {describeStat(st)}
                           </li>
                         ) : null;

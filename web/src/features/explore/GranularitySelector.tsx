@@ -31,7 +31,7 @@ export function GranularitySelector({ embedded = false }: GranularitySelectorPro
         <h3 className="text-caption font-semibold uppercase tracking-wide text-muted">Granularity</h3>
       )}
       <p className="mt-0.5 text-caption text-muted">
-        How the stat is aggregated. Per game divides by the <span className="font-medium text-text">games played</span>{" "}
+        How the stat is aggregated. Per game divides by the <span className="font-medium text-ink">games played</span>{" "}
         (any role) within the season, season type, week and home/away filters. Down, quarter and other situational
         filters do not shrink it.
       </p>
@@ -73,5 +73,5 @@ export function GranularitySelector({ embedded = false }: GranularitySelectorPro
     return <div className="space-y-1">{body}</div>;
   }
 
-  return <section className="border-b border-border pb-5">{body}</section>;
+  return <section className="border-b border-line pb-5">{body}</section>;
 }

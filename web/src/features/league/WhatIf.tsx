@@ -10,7 +10,7 @@ import type { WhatIfRow } from "./types";
 
 const WEEKS_AHEAD = 4;
 const OPTION_CLASS = (on: boolean) =>
-  cn("min-h-[44px] rounded border px-4 text-body", on ? "border-accent bg-surface font-semibold text-text" : "border-border bg-page text-muted");
+  cn("min-h-[44px] rounded-full border px-4 text-body", on ? "border-focus bg-focus font-semibold text-white" : "border-panel-line bg-panel text-ink");
 
 /** Odds change in percentage points, so the shared Delta formatting applies. */
 const points = (fraction: number) => fraction * 100;
@@ -53,7 +53,7 @@ function Picker({ matchups, owner }: { matchups: readonly Matchup[]; owner: stri
         id="what-if-matchup"
         value={matchup.key}
         onChange={(e) => { setMatchupKey(e.target.value); setOutcomeIndex(0); }}
-        className="min-h-[44px] w-full max-w-md rounded border border-border bg-surface px-2 text-body"
+        className="min-h-[44px] w-full max-w-md rounded border border-line bg-panel px-2 text-body"
       >
         {matchups.map((m) => (
           <option key={m.key} value={m.key}>{m.involvesMe ? `${m.label} (you)` : m.label}</option>

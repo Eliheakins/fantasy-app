@@ -25,7 +25,7 @@ export function Comparison({ rows }: { rows: readonly ComparisonRow[] }) {
     <Section title="Compare lineups" howCalculated={how}>
       <table className="hidden w-full text-body lg:table">
         <thead>
-          <tr className="border-b border-border text-left text-caption text-muted">
+          <tr className="border-b border-line text-left text-caption text-muted">
             <th className="py-2 pr-3 font-normal">Lineup</th>
             <th className="pr-3 font-normal">Chance to win</th>
             <th className="pr-3 text-right font-normal">Floor, 10% (pts)</th>
@@ -35,7 +35,7 @@ export function Comparison({ rows }: { rows: readonly ComparisonRow[] }) {
         </thead>
         <tbody>
           {groups.map(({ labels, row }) => (
-            <tr key={labels.join("|")} className="border-b border-border">
+            <tr key={labels.join("|")} className="border-b border-line">
               <th scope="row" className="py-2 pr-3 text-left font-normal">{labels[0]}</th>
               <td className="pr-3"><WinBar fraction={row.win_prob} /></td>
               <td className="pr-3 text-right tabular-nums">{formatNumber(row.floor, 0)}</td>
@@ -47,7 +47,7 @@ export function Comparison({ rows }: { rows: readonly ComparisonRow[] }) {
       </table>
       <ul className="lg:hidden">
         {groups.map(({ labels, row }) => (
-          <li key={labels.join("|")} className="border-b border-border py-2">
+          <li key={labels.join("|")} className="border-b border-line py-2">
             <div>{labels[0]}</div>
             <WinBar fraction={row.win_prob} />
             <div className="text-caption text-muted">

@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils";
 import {
   Confidence,
   DataTableFallback,
@@ -20,10 +19,9 @@ const ROWS = [
 const DOMAIN = sharedDomain(ROWS) ?? ([0, 1] as const);
 const DELTAS = [4.1, -2.0, 0.4, -0.4, 0.5];
 
-function Panel({ theme }: { theme: "theme-light" | "theme-dark" }) {
+function Panel() {
   return (
-    <div className={cn(theme, "flex-1 card")}>
-      <h2 className="mb-2 text-body font-semibold">{theme === "theme-light" ? "Light" : "Dark"}</h2>
+    <div className="flex-1">
       <table className="w-full text-body">
         <thead>
           <tr className="text-left text-caption text-muted">
@@ -60,15 +58,12 @@ function Panel({ theme }: { theme: "theme-light" | "theme-dark" }) {
   );
 }
 
-/** Visual check of every chart part in both themes. */
+/** Visual check of every chart part. */
 export default function DevViz() {
   return (
     <section>
       <h1 className="mb-4 text-display font-semibold">Viz gallery</h1>
-      <div className="flex flex-col gap-4 lg:flex-row">
-        <Panel theme="theme-light" />
-        <Panel theme="theme-dark" />
-      </div>
+      <Panel />
     </section>
   );
 }

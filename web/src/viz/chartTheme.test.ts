@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { TICK_COLOR, axisCaption } from "./chartTheme";
+import { BAR_FILL, GRID_COLOR, MY_LINE, OTHER_LINE, TICK_COLOR, axisCaption } from "./chartTheme";
 
 const css = readFileSync(`${__dirname}/../index.css`, "utf8");
 
@@ -24,11 +24,16 @@ function contrast(a: string, b: string): number {
 
 describe("chart theme", () => {
   it("tick colour is the muted text token and meets 4.5:1 on the look F page and panel", () => {
-    expect(TICK_COLOR).toBe("var(--text-muted)");
-    const look = css.slice(css.indexOf("/* Look F tokens"), css.indexOf("/* Graphite names"));
+    expect(TICK_COLOR).toBe("var(--lf-muted)");
+    const look = css;
     const muted = token(look, "--lf-muted");
     expect(contrast(muted, token(look, "--lf-page"))).toBeGreaterThanOrEqual(4.5);
     expect(contrast(muted, token(look, "--lf-panel"))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("series, bars and axes use neutral tokens only: green and red are for changes, amber for warnings", () => {
+    const neutral = [TICK_COLOR, GRID_COLOR, BAR_FILL, OTHER_LINE, MY_LINE];
+    for (const colour of neutral) expect(colour).not.toMatch(/better|worse|warning|forest|focus/);
   });
 
   it("axis caption carries its text in the muted tick colour", () => {

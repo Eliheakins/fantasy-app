@@ -6,9 +6,9 @@ export function Toggle({ className, ...props }: ComponentProps<typeof TogglePrim
   return (
     <TogglePrimitive.Root
       className={cn(
-        "inline-flex min-h-11 items-center justify-center rounded-md bg-transparent text-body font-medium text-muted transition-colors",
-        "hover:bg-nav-active-bg hover:text-text disabled:pointer-events-none",
-        "data-[state=on]:bg-nav-active-bg data-[state=on]:text-accent data-[state=on]:ring-1 data-[state=on]:ring-accent/35",
+        "inline-flex min-h-11 items-center justify-center rounded-full bg-transparent text-body font-medium text-muted transition-colors",
+        "data-[state=off]:hover:text-ink data-[state=off]:hover:border-focus disabled:pointer-events-none",
+        "data-[state=on]:bg-focus data-[state=on]:text-white",
         className,
       )}
       {...props}

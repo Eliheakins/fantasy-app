@@ -5,18 +5,18 @@ describe("Delta", () => {
   it("a gain carries a plus sign, an up arrow and the better colour", () => {
     render(<Delta points={4.1} />);
     const el = screen.getByText("+4.1 ▲");
-    expect(el.className).toContain("text-positive");
+    expect(el.className).toContain("text-better");
   });
 
   it("a loss carries a minus sign, a down arrow and the worse colour", () => {
     render(<Delta points={-2} />);
-    expect(screen.getByText("-2.0 ▼").className).toContain("text-negative");
+    expect(screen.getByText("-2.0 ▼").className).toContain("text-worse");
   });
 
   it("a change inside the noise band is ~ prefixed and neutral", () => {
     render(<Delta points={0.3} />);
     const el = screen.getByText("~0.3");
-    expect(el.className).toContain("text-mark-muted");
+    expect(el.className).toContain("text-muted");
   });
 
   it("takes the noise threshold of its unit", () => {
@@ -26,6 +26,6 @@ describe("Delta", () => {
 
   it("a toss-up change is never coloured", () => {
     render(<Delta points={3} confidence="toss-up" />);
-    expect(screen.getByText("+3.0 ▲").className).toContain("text-mark-muted");
+    expect(screen.getByText("+3.0 ▲").className).toContain("text-muted");
   });
 });

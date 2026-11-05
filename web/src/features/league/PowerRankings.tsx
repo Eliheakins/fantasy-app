@@ -7,8 +7,8 @@ import type { PowerRankingRow } from "./types";
 /** A grey bar, as long as `fraction` of its track. Length carries the value; there is no colour. */
 export function HBar({ fraction, label }: { fraction: number; label: string }) {
   return (
-    <span role="img" aria-label={label} className="block h-2 w-full rounded-sm bg-border">
-      <span className="block h-2 rounded-sm bg-range" style={{ width: `${Math.round(fraction * 100)}%` }} />
+    <span role="img" aria-label={label} className="block h-2 w-full rounded-sm bg-line">
+      <span className="block h-2 rounded-sm bg-faint" style={{ width: `${Math.round(fraction * 100)}%` }} />
     </span>
   );
 }
@@ -23,7 +23,7 @@ export function PowerRankings({ rows }: { rows: readonly PowerRankingRow[] }) {
           key={r.roster_id}
           className={cn(
             "grid min-h-[44px] grid-cols-[1.5rem_1fr_3.5rem] items-center gap-x-2 gap-y-1 border-l-4 border-transparent px-2 py-1 md:grid-cols-[1.5rem_14rem_1fr_3.5rem]",
-            r.is_me && "border-l-accent font-semibold",
+            r.is_me && "border-l-focus font-semibold",
           )}
         >
           <span className="tabular-nums text-muted">{r.rank}</span>

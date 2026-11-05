@@ -29,7 +29,7 @@ function TeamRow({ side, status, domain }: { side: ScoreboardSide; status: Score
         </span>
       </div>
       <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-caption">
-        <span className="text-text">{pointsLine(side, status)}</span>
+        <span className="text-ink">{pointsLine(side, status)}</span>
         {!final && domain && (
           <span className="ml-auto inline-flex items-center gap-2 text-muted">
             <RangeBar p10={side.floor} p50={side.median} p90={side.ceiling} domain={domain} width={RANGE_WIDTH} />
@@ -49,15 +49,15 @@ export function MatchupCard({ row, showStatus = false }: { row: ScoreboardRow; s
   return (
     <article
       aria-label={matchupTitle(row)}
-      className={cn("card", mine && "border-accent")}
+      className={cn("border-t border-line pt-4", mine && "border-t-2 border-ink")}
     >
       {(mine || showStatus) && (
         <div className="flex items-center justify-between text-caption text-muted">
           <span>{mine ? "Your matchup" : ""}</span>
-          {showStatus && <span className="font-medium text-text">{row.status}</span>}
+          {showStatus && <span className="font-medium text-ink">{row.status}</span>}
         </div>
       )}
-      <div className="divide-y divide-border">
+      <div className="divide-y divide-line">
         <TeamRow side={first} status={row.status} domain={domain} />
         <TeamRow side={second} status={row.status} domain={domain} />
       </div>

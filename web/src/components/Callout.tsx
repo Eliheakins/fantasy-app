@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 export type CalloutVariant = "error" | "warn" | "info";
 
 const variantClass: Record<CalloutVariant, string> = {
-  error: "border-warning bg-warning-bg text-warning",
-  warn: "border-warning bg-warning-bg text-warning",
-  info: "border-border bg-surface text-muted",
+  error: "border-warning-edge bg-warning-bg text-warning",
+  warn: "border-warning-edge bg-warning-bg text-warning",
+  info: "border-line text-muted",
 };
 
 export interface CalloutProps {
@@ -17,5 +17,5 @@ export interface CalloutProps {
 }
 
 export function Callout({ variant = "info", className, children }: CalloutProps) {
-  return <div className={cn("rounded-md border px-3 py-2 text-body", variantClass[variant], className)}>{children}</div>;
+  return <div className={cn("rounded-lg border px-3 py-2 text-body", variantClass[variant], className)}>{children}</div>;
 }
