@@ -618,12 +618,12 @@
     },
     {
       "id": "wind-gte15",
-      "label": "Wind ≥ 15 mph",
+      "label": "Windy (wind 15 mph or more)",
       "group": "Weather"
     },
     {
       "id": "temp-lte32",
-      "label": "Cold ≤ 32°F",
+      "label": "Cold weather (32°F or colder)",
       "group": "Weather"
     }
   ]

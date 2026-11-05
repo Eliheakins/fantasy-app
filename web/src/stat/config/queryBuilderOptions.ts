@@ -182,8 +182,8 @@ const GROUP_TEMPLATES: FilterChipGroup[] = [
     label: "Weather",
     combine: "or",
     options: [
-      { id: "wind-gte15", label: "Wind ≥ 15 mph", predicate: "wind >= 15" },
-      { id: "temp-lte32", label: "Cold ≤ 32°F", predicate: "temp <= 32" },
+      { id: "wind-gte15", label: "Windy (wind 15 mph or more)", predicate: "wind >= 15" },
+      { id: "temp-lte32", label: "Cold weather (32°F or colder)", predicate: "temp <= 32" },
     ],
   },
 ];
