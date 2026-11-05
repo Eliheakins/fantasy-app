@@ -1,7 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Callout } from "@/components/Callout";
-import { useLeagueOwners } from "@/features/explore/useLeagueOwners";
 import { useApi } from "@/hooks/useApi";
+import { useTeam } from "@/lib/teamContext";
 import { statIdsFor, statLink } from "@/lib/statLink";
 import { getStatById } from "@/stat/config/statDictionary";
 import { metricSelectAlias } from "@/stat/lib/queryBuilder";
@@ -21,19 +21,17 @@ export function PlayerGameLog({ gsisId, position, season }: Props) {
   const { search } = useLocation();
   const statIds = statIdsFor(position) ?? [];
   const log = useGameLog(gsisId, statIds, season);
-  const { league, state: ownersState, byPlayer } = useLeagueOwners();
+  const { league } = useTeam();
   const points = useApi<PointsRow[]>(
     league === null ? null : `/api/leagues/${encodeURIComponent(league)}/player-points?gsis_id=${encodeURIComponent(gsisId)}&season=${season}`,
   );
   const pointsByWeek = points.kind === "ready" ? new Map(points.data.map((p) => [p.week, p.points])) : null;
   const logByWeek = new Map((log.data?.rows ?? []).map((r) => [Number(r.week), r]));
   const weeks = [...new Set([...logByWeek.keys(), ...(pointsByWeek?.keys() ?? [])])].sort((a, b) => a - b);
-  const owner = byPlayer?.get(gsisId);
   const href = statLink({ gsisId, position, season, search });
   const waiting = log.isPending || (league !== null && points.kind === "loading");
   return (
     <div className="space-y-3">
-      {league !== null && ownersState.kind === "ready" && <p className="text-body text-muted">{owner ? `Owned by ${owner.owner}` : "Free agent"}</p>}
       {log.isError && <Callout variant="warn">The game log did not load: {log.error.message}</Callout>}
       {league !== null && points.kind === "error" && <Callout variant="warn">League points did not load: {points.error.message}</Callout>}
       {waiting ? (

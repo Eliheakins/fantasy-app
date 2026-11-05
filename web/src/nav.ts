@@ -25,6 +25,7 @@ export const EXTRA_TITLES: Readonly<Record<string, string>> = {
   "/ask": "Ask",
   "/model": "Model scorecard",
   "/players/find": "Find players",
+  "/players/compare": "Compare players",
 };
 
 /** The routes whose data follows the global ?week=; the week select is disabled elsewhere. */

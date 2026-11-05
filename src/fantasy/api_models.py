@@ -257,6 +257,35 @@ class PlayerWeekRow(Row):
     projection: float
 
 
+class RoleWeek(Row):
+    week: int
+    snap_share: float | None
+    target_share: float | None
+
+
+class PlayerProfile(Row):
+    """Display only: next game range, rest of season over replacement, injury, outlook."""
+
+    gsis_id: str
+    full_name: str | None
+    position: str | None
+    week: int
+    projection: float | None
+    p10: float | None
+    median: float | None
+    p90: float | None
+    chance_to_play: float | None
+    injury: str | None
+    injury_note: str | None
+    ros_points: float | None
+    replacement_name: str | None
+    replacement_points: float | None
+    ros_over_replacement: float | None
+    outlook_label: str | None
+    why: str | None
+    role_weeks: list[RoleWeek]
+
+
 class OutlookRow(Row):
     gsis_id: str
     full_name: str

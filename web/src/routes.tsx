@@ -11,6 +11,7 @@ import Moves from "@/pages/Moves";
 import NotFound from "@/pages/NotFound";
 import Player from "@/pages/Player";
 import Players from "@/pages/Players";
+import PlayersCompare from "@/pages/PlayersCompare";
 import Scorecard from "@/pages/Scorecard";
 import Season from "@/pages/Season";
 import ThisWeek from "@/pages/ThisWeek";
@@ -30,6 +31,7 @@ export const routes: RouteObject[] = [
     children: [
       ...NAV_ITEMS.map(({ path }) => ({ path, element: TABS[path] })),
       { path: "/players/find", element: <Explore /> },
+      { path: "/players/compare", element: <PlayersCompare /> },
       { path: "/players/:gsisId", element: <Player /> },
       { path: "/ask", element: <Ask /> },
       { path: "/model", element: <Scorecard /> },

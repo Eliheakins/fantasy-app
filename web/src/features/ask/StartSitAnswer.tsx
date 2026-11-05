@@ -4,6 +4,7 @@ import { ApiBoundary } from "@/components/ApiBoundary";
 import { PlayerLink } from "@/components/PlayerLink";
 import { Callout } from "@/components/Callout";
 import { navSearch } from "@/components/layout/navLinks";
+import { compareHref } from "@/features/players/profile";
 import type { LineupRow } from "@/features/lineup/logic";
 import { useLeagueApi } from "@/lib/league";
 import { Delta, formatNumber, RangeBar, sharedDomain } from "@/viz";
@@ -28,6 +29,9 @@ export function StartSitAnswer({ a, b, names }: Props) {
         {(rows) => <Body rows={rows} a={a} b={b} names={names} />}
       </ApiBoundary>
       <p className="text-caption text-muted">
+        <Link to={compareHref([a, b], search)} className="font-medium text-ink underline-offset-2 hover:underline">
+          Compare {names[a] ?? a} and {names[b] ?? b}
+        </Link>{" · "}
         <Link to={lineupLink} className="font-medium text-ink underline-offset-2 hover:underline">
           Open the Lineup page
         </Link>{" "}
