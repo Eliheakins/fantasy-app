@@ -179,3 +179,13 @@ describe("toEvalCases", () => {
     expect(toEvalCases([entry("a", { corrected: board })])).toEqual([]);
   });
 });
+
+describe("start/sit entries", () => {
+  it("survive a save and load", () => {
+    const entry = { id: "1", at: "t", question: "start A or B", path: "rules" as const, outcome: { kind: "start_sit" as const, text: "A or B" }, corrected: null };
+    const store = new Map<string, string>();
+    const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) };
+    saveLog(storage, [entry]);
+    expect(loadLog(storage)).toEqual([entry]);
+  });
+});

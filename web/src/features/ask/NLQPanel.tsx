@@ -17,6 +17,7 @@ import { useQueryState } from "@/features/explore/useQueryState";
 import { buildAnswer } from "./answerText";
 import { InterpretationChips } from "./InterpretationChips";
 import { PlayerChips, PlayerChoices } from "./NlqPlayerPickers";
+import { StartSitAnswer } from "./StartSitAnswer";
 import { useAsk } from "./useAsk";
 
 /** The intent endpoint rejects longer questions (max_length in nfl_stat/schemas/nlq.py); it also bounds the ask log. */
@@ -131,6 +132,10 @@ export function NLQPanel() {
                 </p>
               ) : null}
             </section>
+          ) : null}
+
+          {ask.startSit && ask.phase === "idle" ? (
+            <StartSitAnswer a={ask.startSit.a} b={ask.startSit.b} names={ask.startSit.names} />
           ) : null}
 
           {showingAnswer ? <InterpretationChips /> : null}

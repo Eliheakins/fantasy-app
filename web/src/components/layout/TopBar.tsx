@@ -5,6 +5,7 @@ import { useApi } from "@/hooks/useApi";
 import { useLeague } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
 import { formatAsOf, latestUpdate, liveLabel } from "@/lib/status";
+import { AskBox } from "./AskBox";
 
 const LIVE_TICK_MS = 30_000;
 
@@ -61,7 +62,10 @@ export function TopBar() {
           ))}
         </SelectContent>
       </Select>
-      <p className="col-span-2 text-caption text-muted">{live ?? (updated ? `as of ${formatAsOf(updated)}` : "as of unknown")}</p>
+      <div className="col-span-2 flex flex-wrap items-center justify-between gap-2 md:contents">
+        <p className="text-caption text-muted">{live ?? (updated ? `as of ${formatAsOf(updated)}` : "as of unknown")}</p>
+        <AskBox />
+      </div>
     </header>
   );
 }

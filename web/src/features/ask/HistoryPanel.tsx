@@ -34,6 +34,14 @@ function describe(query: LoggedQuery, chipGroups: FilterChipGroup[]): string {
 
 /** The Ask URL that shows an entry again, on the same league and team. */
 const reopenSearch = (entry: AskLogEntry, current: URLSearchParams): string | null => {
+  if (entry.outcome.kind === "start_sit") {
+    const params = new URLSearchParams({ q: entry.question });
+    for (const key of ["league", "team"]) {
+      const value = current.get(key);
+      if (value !== null) params.set(key, value);
+    }
+    return params.toString();
+  }
   if (entry.outcome.kind !== "answered") {
     return null;
   }
@@ -113,6 +121,8 @@ export function HistoryPanel({ onReopen }: { onReopen: () => void }) {
                 </p>
                 {entry.outcome.kind === "answered" ? (
                   <p className="text-caption text-text">Answered: {describe(entry.outcome.query, chipGroups)}</p>
+                ) : entry.outcome.kind === "start_sit" ? (
+                  <p className="text-caption text-text">Start/sit: {entry.outcome.text}</p>
                 ) : (
                   <p className="text-caption text-warning">{entry.outcome.text}</p>
                 )}

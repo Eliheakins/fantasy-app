@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { getStatById, type PlayerRole } from "@/stat/config/statDictionary";
 import { useFilterChipGroups } from "@/features/explore/filterChipGroups";
@@ -35,8 +36,12 @@ import { withDefaultSeasonType } from "./intentFilters";
 import { narrowByRoles, type PlayerMatch, pickCandidate, resolvePlayers } from "./resolvePlayers";
 import { dropTeamNames, resolveTeams } from "./resolveTeams";
 import { type Leaderboard, parseRules, splitAsked } from "./ruleParser";
+import { finishStartSit, readStartSit, type StartSitOutcome } from "./startSit";
 
 export type AskPhase = "idle" | "working" | "choosing";
+
+/** A start/sit answer on screen: the two players and their names. */
+export type StartSitShown = StartSitOutcome & { names: Record<string, string> };
 
 const NO_PLAYER_MESSAGE =
   "I couldn't find a player or team in that question. Name a player by last or full name, like " +
@@ -138,6 +143,11 @@ export function useAsk() {
   const [resolved, setResolved] = useState<PlayerDictionaryRow[]>([]);
   const [choices, setChoices] = useState<PlayerMatch[]>([]);
   const [intent, setIntent] = useState<QueryIntent | null>(null);
+  const [startSit, setStartSit] = useState<StartSitShown | null>(null);
+  const [, setParams] = useSearchParams();
+  // The question a start/sit answer belongs to, and whether the pending namesake choice is for one.
+  const startSitFor = useRef<string | null>(null);
+  const choosingStartSit = useRef(false);
   const [answeredBy, setAnsweredBy] = useState<{
     question: string;
     path: AnswerPath;
@@ -172,6 +182,10 @@ export function useAsk() {
     setResolved([]);
     setChoices([]);
     setIntent(null);
+    choosingStartSit.current = false;
+    if (startSitFor.current !== urlQuestion) {
+      setStartSit(null);
+    }
     setPhase("idle");
   }, [urlQuestion]);
 
@@ -257,8 +271,25 @@ export function useAsk() {
     [answer],
   );
 
-  const onAsk = useCallback(async () => {
-    const trimmed = question.trim();
+  /** A start/sit answer: the URL keeps the question, so reload or a shared link answers it again. */
+  const showStartSit = useCallback(
+    (shown: StartSitShown, asked: string) => {
+      startSitFor.current = asked;
+      const [first, second] = [shown.names[shown.a], shown.names[shown.b]];
+      logAsk({ question: asked, path: "rules", outcome: { kind: "start_sit", text: `${first} or ${second}` } });
+      setStartSit(shown);
+      setPhase("idle");
+      setParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("q", asked);
+        return next;
+      });
+    },
+    [setParams],
+  );
+
+  const onAsk = useCallback(async (text?: string) => {
+    const trimmed = (text ?? question).trim();
     if (!trimmed) {
       setMessage("Type a question first.");
       return;
@@ -272,10 +303,30 @@ export function useAsk() {
     setResolved([]);
     setChoices([]);
     setIntent(null);
+    setStartSit(null);
+    startSitFor.current = null;
+    choosingStartSit.current = false;
 
     try {
       const dictionary = await getPlayerDictionary(manifest);
       if (request !== currentRequest.current) {
+        return;
+      }
+      // Start/sit is read by rules alone: the model is never asked and the catalog stays as it is.
+      const sitRead = readStartSit(trimmed, dictionary);
+      if (sitRead.status === "message") {
+        fail(trimmed, "rules", sitRead.text);
+        return;
+      }
+      if (sitRead.status === "choose") {
+        choosingStartSit.current = true;
+        setResolved(sitRead.sure);
+        setChoices(sitRead.unsure);
+        setPhase("choosing");
+        return;
+      }
+      if (sitRead.status === "resolved") {
+        showStartSit({ ...sitRead.outcome, names: sitRead.names }, trimmed);
         return;
       }
       const matches = dropTeamNames(resolvePlayers(trimmed, dictionary), resolveTeams(trimmed));
@@ -334,11 +385,11 @@ export function useAsk() {
         fail(trimmed, "none", errorText(e));
       }
     }
-  }, [question, show, showRules, fail, manifest, seasons, chipGroups]);
+  }, [question, show, showRules, showStartSit, fail, manifest, seasons, chipGroups]);
 
   const onChoose = useCallback(
     (player: PlayerDictionaryRow) => {
-      if (!intent) {
+      if (!intent && !choosingStartSit.current) {
         return;
       }
       const remaining = choices.filter((c) => !c.candidates.some((x) => x.gsis_id === player.gsis_id));
@@ -348,9 +399,22 @@ export function useAsk() {
       if (remaining.length > 0) {
         return;
       }
+      if (choosingStartSit.current) {
+        choosingStartSit.current = false;
+        const done = finishStartSit(players);
+        if (done.status === "resolved") {
+          showStartSit({ ...done.outcome, names: done.names }, question.trim());
+        } else if (done.status === "message") {
+          fail(question.trim(), "rules", done.text);
+        }
+        return;
+      }
+      if (!intent) {
+        return;
+      }
       show(players, intent, question.trim(), pending.path, pending.unrecognized);
     },
-    [intent, choices, resolved, show, question, pending],
+    [intent, choices, resolved, show, showStartSit, fail, question, pending],
   );
 
   /** True when the URL holds a query to show: players (or a leaderboard) and at least one stat. */
@@ -389,6 +453,17 @@ export function useAsk() {
     });
   }, [state, answeredBy, urlQuestion, hasResult, seasons]);
 
+  // Arriving with a question in the URL and no answer in it (the top bar's Ask box) answers it, as the box does.
+  const arrivalAsk = useRef(onAsk);
+  arrivalAsk.current = onAsk;
+  const hasResultRef = useRef(hasResult);
+  hasResultRef.current = hasResult;
+  useEffect(() => {
+    if (urlQuestion.trim() && !hasResultRef.current && startSitFor.current !== urlQuestion) {
+      void arrivalAsk.current(urlQuestion);
+    }
+  }, [urlQuestion]);
+
   // Which path answered is known only for the answer produced in this session, not after a reload.
   const current = answeredBy && answeredBy.question === urlQuestion ? answeredBy : null;
 
@@ -402,6 +477,7 @@ export function useAsk() {
     onAsk,
     onChoose,
     hasResult,
+    startSit,
     path: current?.path ?? null,
     unrecognized: current?.unrecognized ?? [],
   };

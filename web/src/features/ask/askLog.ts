@@ -33,6 +33,8 @@ const entrySchema = z.object({
   outcome: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("answered"), query: loggedQuerySchema }),
     z.object({ kind: z.literal("message"), text: z.string() }),
+    // A start/sit answer comes from the lineup, so there is no query to keep, only what it was about.
+    z.object({ kind: z.literal("start_sit"), text: z.string() }),
   ]),
   corrected: loggedQuerySchema.nullable(),
 });
