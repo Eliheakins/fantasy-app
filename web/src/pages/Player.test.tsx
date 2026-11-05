@@ -128,9 +128,9 @@ describe("Player page", () => {
     expect(screen.queryByText(/no games this season/i)).toBeNull();
   });
 
-  it("Open in Explore keeps league, team and week", async () => {
+  it("Open in Find players keeps league, team and week", async () => {
     renderPage();
-    const link = await screen.findByRole("link", { name: /open in explore/i });
+    const link = await screen.findByRole("link", { name: /open in find players/i });
     const href = new URL(link.getAttribute("href") ?? "", "http://x");
     expect(href.pathname).toBe("/players/find");
     expect(href.searchParams.get("p")).toBe("00-1");

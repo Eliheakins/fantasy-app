@@ -40,7 +40,7 @@ export function PlayerGameLog({ gsisId, position, season }: Props) {
         log.isError ? null : <p className="text-body text-muted">No games this season.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-body">
+          <table className="w-full max-w-2xl border-collapse text-body">
             <thead>
               <tr className="border-b border-line text-muted">
                 <th scope="col" className={CELL}>Week</th>
@@ -62,7 +62,7 @@ export function PlayerGameLog({ gsisId, position, season }: Props) {
       )}
       {href && (
         <Link to={href} className="inline-flex min-h-[44px] items-center underline decoration-border underline-offset-4 hover:decoration-text">
-          Open in Explore
+          Open in Find players
         </Link>
       )}
     </div>

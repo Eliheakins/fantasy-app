@@ -58,9 +58,9 @@ export default function Moves() {
   return (
     <div className="flex flex-col">
       <PageHeader title={header.title} eyebrow={eyebrow} answer={header.answer} />
-      <section aria-labelledby="moves-heading" className="mb-8 rounded-xl bg-panel p-4">
+      <section aria-labelledby="moves-heading" className="mb-8 rounded-xl bg-panel p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 id="moves-heading" className="text-heading font-semibold">Moves, best first</h2>
+          <h2 id="moves-heading" className="text-section font-semibold">Moves, best first</h2>
           <ToggleGroup type="single" aria-label="Moves view" value={view} onValueChange={choose}>
             {VIEWS.map((v) => (
               <ToggleGroupItem key={v.value} value={v.value}>{v.label}</ToggleGroupItem>
@@ -81,7 +81,7 @@ export default function Moves() {
       </section>
       <Trades />
       <details className="mt-8 border-t border-line pt-2">
-        <summary className="flex min-h-[44px] cursor-pointer items-center text-heading font-semibold">Details</summary>
+        <summary className="flex min-h-[44px] cursor-pointer items-center text-section font-semibold">Details</summary>
         <div className="flex flex-col gap-8 pt-4">
           <WaiversContent />
           <TradeDetails />

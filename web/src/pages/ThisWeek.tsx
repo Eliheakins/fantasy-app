@@ -13,7 +13,7 @@ export default function ThisWeek() {
       <PageHeader title="What should I do this week?" eyebrow={eyebrow} answer={<Answer />} />
       <ThisWeekBoard />
       <details className="border-t border-line pt-2">
-        <summary className="flex min-h-[44px] cursor-pointer items-center text-heading font-semibold">League details</summary>
+        <summary className="flex min-h-[44px] cursor-pointer items-center text-section font-semibold">League details</summary>
         <div className="flex flex-col gap-8 pt-4">
           <HomeLeagues />
           <DigestView />

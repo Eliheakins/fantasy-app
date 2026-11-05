@@ -9,7 +9,7 @@ export default function Scorecard() {
   const card = useLeagueApi<ScorecardData>("scorecard");
   return (
     <div key={league}>
-      <PageHeader title="Model scorecard" />
+      <PageHeader title="Model scorecard" eyebrow="Model · how close the projections were" />
       <ApiBoundary state={card}>{(data) => <ScorecardView data={data} />}</ApiBoundary>
     </div>
   );

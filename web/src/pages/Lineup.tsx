@@ -83,7 +83,7 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
       <CloseCalls calls={slotCalls(odds, objective)} rows={rows} objective={objective} />
       {hasOdds && !result && (
         <details className="group mt-8">
-          <summary className="inline-flex min-h-[44px] cursor-pointer list-none items-center gap-2 rounded-full border border-panel-line bg-white px-4 font-medium text-ink hover:bg-panel [&::-webkit-details-marker]:hidden">
+          <summary className="no-chevron inline-flex min-h-[44px] cursor-pointer list-none items-center gap-2 rounded-full border border-panel-line bg-white px-4 font-medium text-ink hover:bg-panel [&::-webkit-details-marker]:hidden">
             Other ways to pick
             <ChevronDown aria-hidden size={16} className="text-muted transition-transform group-open:rotate-180" />
           </summary>

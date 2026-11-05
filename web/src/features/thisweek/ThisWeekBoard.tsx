@@ -15,8 +15,8 @@ export function ThisWeekBoard() {
       {live && <GameDay intervalMs={intervalMs} />}
       {calendar && <WeekStrip calendar={calendar} now={now} />}
       {calendarFailed && <p className="mb-4 text-caption text-muted">The week calendar did not load, so deadlines are not shown.</p>}
-      <section aria-labelledby="todo-heading" className={live ? "mb-6" : "mb-6 rounded-xl bg-panel p-4"}>
-        <h2 id="todo-heading" className="mb-3 text-heading font-semibold">To do, both leagues</h2>
+      <section aria-labelledby="todo-heading" className={live ? "mb-6" : "mb-6 rounded-xl bg-panel p-5"}>
+        <h2 id="todo-heading" className="mb-3 text-section font-semibold">To do, both leagues</h2>
         {leaguesError !== null ? (
           <p role="alert" className="text-body text-warning">The leagues did not load, so there are no to-dos to show: {leaguesError}</p>
         ) : pending ? (

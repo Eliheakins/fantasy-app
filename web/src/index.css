@@ -102,6 +102,7 @@
 }
 
 html {
+  scroll-padding-top: calc(var(--chrome-h) + 8px); /* focus and anchor jumps clear the sticky header */
   background: var(--lf-page);
   color: var(--lf-ink);
   font-family: var(--font-body);
@@ -193,6 +194,29 @@ nav[aria-label="Main tabs"] a[aria-current="page"] {
 /* Programmatic focus on a tabindex=-1 target (the page h1, main) moves screen readers without drawing a box. */
 [tabindex="-1"]:focus-visible {
   outline: none;
+}
+
+/* Disclosures: a flex summary loses the native marker, so every summary draws one chevron that turns when open. */
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
+details > summary:not(.no-chevron)::after {
+  content: "";
+  flex: none;
+  display: inline-block;
+  width: 0.45em;
+  height: 0.45em;
+  margin-left: 0.6em;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-0.15em) rotate(45deg);
+  transition: transform 120ms;
+}
+details[open] > summary:not(.no-chevron)::after {
+  transform: translateY(0.1em) rotate(-135deg);
 }
 
 /* Disabled controls read as unavailable, not washed out: flat, muted text at 4.5:1 or better on the panel. */

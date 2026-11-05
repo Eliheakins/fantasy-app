@@ -82,7 +82,7 @@ export function NLQPanel() {
   return (
     <div className="space-y-4">
       <section className="space-y-4" aria-label="Ask a question">
-          <p className="text-caption text-muted">
+          <p className="measure text-caption text-muted">
             Names are matched in your browser. Built-in rules read what they can; a local model reads the rest. The
             numbers are computed in your browser from play-by-play data.
           </p>
@@ -92,7 +92,7 @@ export function NLQPanel() {
             onChange={(e) => ask.setQuestion(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="e.g. Mahomes passing yards and touchdowns in 2023, or Kelce vs Kittle receptions per game"
-            className="min-h-24"
+            className="min-h-24 max-w-3xl"
             maxLength={MAX_QUESTION_LENGTH}
             disabled={busy}
             aria-label="Question"

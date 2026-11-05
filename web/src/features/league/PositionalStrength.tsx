@@ -16,7 +16,7 @@ function Cell({ cell, max, mine }: { cell: TeamGradeRow | undefined; max: number
   return (
     <span className="block min-w-[5.5rem]" title={detail(cell)}>
       <details>
-        <summary className="min-h-[44px] list-none [&::-webkit-details-marker]:hidden cursor-pointer py-1 lg:min-h-0">
+        <summary className="no-chevron min-h-[44px] list-none [&::-webkit-details-marker]:hidden cursor-pointer py-1 lg:min-h-0">
           <span className="font-semibold">{cell.grade}</span> <span className="tabular-nums">{ordinal(cell.rank)}</span>
         </summary>
         <span className="block text-caption text-muted">{detail(cell)}</span>

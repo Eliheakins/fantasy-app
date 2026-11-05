@@ -137,7 +137,7 @@ export function ExploreResultsCanvas({
     <section aria-labelledby="explore-results-heading" className="min-h-[160px] space-y-3 overflow-hidden">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 id="explore-results-heading" className="text-heading font-semibold">
+          <h2 id="explore-results-heading" className="text-section font-semibold">
             Results
           </h2>
           <p className="mt-1 text-caption text-muted">{canvasSubtitle}</p>

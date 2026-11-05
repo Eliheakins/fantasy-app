@@ -13,6 +13,7 @@ export default function Ask() {
     <section>
       <PageHeader
         title="Ask"
+        eyebrow="Ask · players, stats, start or sit, trades"
         subtitle="Ask in plain language, like Mahomes passing yards and touchdowns in 2023. The answer is a link: reload or share it and nothing is asked again."
       />
       <TooltipProvider>

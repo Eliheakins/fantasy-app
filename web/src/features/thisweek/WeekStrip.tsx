@@ -7,13 +7,14 @@ export function WeekStrip({ calendar, now }: { calendar: WeekCalendar; now: Date
   const notes = stripNotes(now, calendar);
   return (
     <section aria-labelledby="week-strip-heading" className="mb-6">
-      <h2 id="week-strip-heading" className="mb-2 text-heading font-semibold">The week</h2>
+      <h2 id="week-strip-heading" className="mb-2 text-section font-semibold">The week</h2>
+      {/* phones list only today and the days with something on, so the to-dos stay near the top */}
       <ol className="grid grid-cols-1 gap-2 sm:grid-cols-7">
         {days.map((d) => (
           <li
             key={d.day}
             aria-current={d.isToday ? "date" : undefined}
-            className={`min-w-0 rounded border px-2 py-2 text-caption ${d.isToday ? "border-2 border-forest" : "border-line"} ${d.isPast ? "text-muted" : ""}`}
+            className={`min-w-0 rounded-lg border px-2 py-2 text-caption ${d.isToday ? "border-2 border-forest" : "border-line"} ${d.isPast ? "text-muted" : ""} ${d.events.length === 0 && !d.isToday ? "hidden sm:block" : ""}`}
           >
             <div className="font-semibold">
               {d.label} {d.dayOfMonth}

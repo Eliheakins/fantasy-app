@@ -52,7 +52,7 @@ export default function Player() {
           player === null ? (
             <NotFound />
           ) : (
-            <div className="space-y-6">
+            <div className="max-w-[960px] space-y-6">
               <PageHeader
                 title={player.full_name}
                 eyebrow={["Players", player.position, player.team].filter(Boolean).join(" · ")}

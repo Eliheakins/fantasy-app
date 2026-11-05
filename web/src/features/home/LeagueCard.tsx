@@ -74,7 +74,7 @@ export function LeagueCard({ league, mine = true }: CardProps) {
   return (
     <article className="@container min-w-0 border-t border-line pt-5">
       <header>
-        <h2 className="text-heading font-semibold">{league.name} · {league.team_name}</h2>
+        <h2 className="text-section font-semibold">{league.name} · {league.team_name}</h2>
         <p className="text-caption text-muted">{recordLine(league)}</p>
         <p className="text-caption text-muted">{league.scoring_labels}</p>
       </header>

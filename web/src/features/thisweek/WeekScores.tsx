@@ -100,7 +100,7 @@ export function WeekScores({ kickoff }: { kickoff: Date | null }) {
   if (leagues.kind !== "ready") return null; // the to-do section already reports a league list failure
   return (
     <section aria-labelledby="scores-heading" className="mb-8">
-      <h2 id="scores-heading" className="text-heading font-semibold">{week ? `Scores, week ${week}` : "Scores"}</h2>
+      <h2 id="scores-heading" className="text-section font-semibold">{week ? `Scores, week ${week}` : "Scores"}</h2>
       <p className="measure mt-1 text-caption text-muted">
         Every matchup in both leagues.{rows.some((r) => r.status === "Live") ? ` ${LIVE_NOTE}` : ""}
       </p>

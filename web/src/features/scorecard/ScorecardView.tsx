@@ -70,7 +70,7 @@ function LineTable({ caption, first, lines }: { caption: string; first: string; 
 function WeekBars({ lines }: { lines: Line[] }) {
   const max = Math.max(0, ...lines.flatMap((l) => MODELS.map((m) => l.cells[m]?.mae ?? 0)));
   return (
-    <ul aria-label="Average error by week" className="space-y-3">
+    <ul aria-label="Average error by week" className="max-w-3xl space-y-3">
       {lines.map((l) => (
         <li key={l.key}>
           <div className="text-body font-medium">{l.label}</div>

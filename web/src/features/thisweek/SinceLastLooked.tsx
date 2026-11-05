@@ -78,7 +78,7 @@ export function SinceLastLooked() {
   if (leagues.kind === "error" || leagues.kind === "no_data") {
     return (
       <section aria-labelledby="since-heading" className="mb-6">
-        <h2 id="since-heading" className="text-heading font-semibold">Since you last looked</h2>
+        <h2 id="since-heading" className="text-section font-semibold">Since you last looked</h2>
         <p role="alert" className="text-body text-warning">The leagues did not load, so changes cannot be shown.</p>
       </section>
     );
@@ -86,7 +86,7 @@ export function SinceLastLooked() {
   if (leagues.kind !== "ready" || leagues.data.length === 0) return null;
   return (
     <section aria-labelledby="since-heading" className="mb-6">
-      <h2 id="since-heading" className="text-heading font-semibold">Since you last looked</h2>
+      <h2 id="since-heading" className="text-section font-semibold">Since you last looked</h2>
       {leagues.data.map((l) => <LeagueSince key={l.league_key} league={l} />)}
     </section>
   );
