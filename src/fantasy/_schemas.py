@@ -163,6 +163,8 @@ ENGINE_SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "d_playoffs": _F,
         "d_title": _F,
     },
+    # my playoff odds given `wins` of my next `n_games` (simulate's sim_win_need)
+    "win_needs": {"n_games": _I, "wins": _I, "n_runs": _I, "p_condition": _F, "p_playoffs": _F},
 }
 
 _SIDE_COLUMNS: dict[str, pl.DataType | type[pl.DataType]] = {

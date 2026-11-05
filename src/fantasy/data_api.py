@@ -17,7 +17,7 @@ from typing import Any
 
 import polars as pl
 
-from fantasy import _digest, _league_view, store
+from fantasy import _digest, _league_view, _season_events, store
 from fantasy._engine import _league, _names, _opponent_of, _read, viewed_team
 from fantasy._engine import _tier as _tier  # re-exported: tests import it from here
 from fantasy._engine import _tier_edges as _tier_edges
@@ -98,6 +98,8 @@ __all__ = [
     "unmatched",
     "waivers",
     "what_if",
+    "win_needs",
+    "season_events",
     "win_probability",
 ]
 
@@ -254,6 +256,22 @@ def season_odds(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFram
         .select(*ENGINE_SCHEMAS["season_odds"])
         .sort("p_title", descending=True)
     )
+
+
+def win_needs(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+    """The viewed team's playoff odds by wins in its next games; empty until simulate has run."""
+    me = _my_league(league_key, data_dir)
+    if me is None:
+        return pl.DataFrame(schema=ENGINE_SCHEMAS["win_needs"])
+    return _league_view.win_needs(me, data_dir)
+
+
+def season_events(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:
+    """Trades, injuries to starters and big weeks of the viewed team, placed on saved runs."""
+    me = _my_league(league_key, data_dir)
+    if me is None:
+        return pl.DataFrame(schema=_season_events.COLUMNS)
+    return _season_events.season_events(me, data_dir)
 
 
 def odds_history(league_key: str, data_dir: Path = store.DATA_DIR) -> pl.DataFrame:

@@ -228,6 +228,14 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         ints="as_of_week week winner_id loser_id roster_id n_runs",
         floats="p_condition p_playoffs p_title",
     ),
+    # written by simulate with sim_season, display only (nothing reads it back into odds): a team's
+    # playoff odds given it wins `wins` of its next `n_games` (up to four) regular-season games,
+    # over the n_runs runs where that happened (p_condition of all runs)
+    "sim_win_need": _cols(
+        strings="league_id",
+        ints="as_of_week roster_id n_games wins n_runs",
+        floats="p_condition p_playoffs",
+    ),
     # written by digest (area: derived): my top waiver adds and trade ideas as of the last refresh.
     # Waivers: give is the player dropped, get the one added. Trades: my_playoff and my_title as
     # playoff_delta and title_delta. delta_points is for waivers only

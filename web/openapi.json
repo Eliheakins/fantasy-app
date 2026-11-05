@@ -760,6 +760,121 @@
         }
       }
     },
+    "/api/leagues/{league}/win-needs": {
+      "get": {
+        "summary": "Win Needs",
+        "operationId": "win_needs_api_leagues__league__win_needs_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_WinNeedRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/season-events": {
+      "get": {
+        "summary": "Season Events",
+        "description": "Annotations for the season-odds chart, oldest first.",
+        "operationId": "season_events_api_leagues__league__season_events_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_SeasonEventRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/what-if": {
       "get": {
         "summary": "What If",
@@ -3964,6 +4079,63 @@
         ],
         "title": "Envelope[list[ScoreboardRow]]"
       },
+      "Envelope_list_SeasonEventRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SeasonEventRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[SeasonEventRow]]"
+      },
       "Envelope_list_SeasonOddsRow__": {
         "properties": {
           "status": {
@@ -4476,6 +4648,63 @@
           "started_at"
         ],
         "title": "Envelope[list[WhatIfRow]]"
+      },
+      "Envelope_list_WinNeedRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/WinNeedRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[WinNeedRow]]"
       },
       "FoundTradeRow": {
         "properties": {
@@ -6855,6 +7084,47 @@
         ],
         "title": "ScorecardRow"
       },
+      "SeasonEventRow": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "trade",
+              "injury",
+              "big_week"
+            ],
+            "title": "Kind"
+          },
+          "when": {
+            "type": "string",
+            "title": "When"
+          },
+          "run_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run At"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "when",
+          "run_at",
+          "label"
+        ],
+        "title": "SeasonEventRow"
+      },
       "SeasonOddsRow": {
         "properties": {
           "roster_id": {
@@ -7926,6 +8196,40 @@
           "d_title"
         ],
         "title": "WhatIfRow"
+      },
+      "WinNeedRow": {
+        "properties": {
+          "n_games": {
+            "type": "integer",
+            "title": "N Games"
+          },
+          "wins": {
+            "type": "integer",
+            "title": "Wins"
+          },
+          "n_runs": {
+            "type": "integer",
+            "title": "N Runs"
+          },
+          "p_condition": {
+            "type": "number",
+            "title": "P Condition"
+          },
+          "p_playoffs": {
+            "type": "number",
+            "title": "P Playoffs"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "n_games",
+          "wins",
+          "n_runs",
+          "p_condition",
+          "p_playoffs"
+        ],
+        "title": "WinNeedRow"
       },
       "WinProbabilityData": {
         "properties": {

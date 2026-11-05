@@ -32,7 +32,13 @@ from fantasy.sim.odds import CurrentWeek, LeagueData, build_inputs
 from fantasy.sim.outlook import apply_outlook, effects_dict
 from fantasy.sim.schedule import pairings, standings
 from fantasy.sim.scoring_scale import position_scale, reference_league, scale_points
-from fantasy.sim.season import N_PLAYOFF_TEAMS, SeasonInputs, conditional_odds, simulate_season
+from fantasy.sim.season import (
+    N_PLAYOFF_TEAMS,
+    SeasonInputs,
+    conditional_odds,
+    simulate_season,
+    win_need_odds,
+)
 from fantasy.stages.crosswalk import TEAM_MAP
 from fantasy.stages.distributions import calibrated
 from fantasy.stages.environment import live as environment_live
@@ -624,7 +630,7 @@ def run(n_sims: int | None = None, archive: bool = True) -> pl.DataFrame:
     """Simulate every league. `archive=False` skips the append-only history (live ticks)."""
     cfg = load_config()
     n_sims = n_sims or cfg.n_sims
-    rows, seed_rows, week_rows, conditional = [], [], [], []
+    rows, seed_rows, week_rows, conditional, win_need = [], [], [], [], []
     for league in store.read_table("leagues", "raw").iter_rows(named=True):
         data = load_league_data(league)
         inp = build_inputs(data, None, n_sims, 0)
@@ -635,6 +641,11 @@ def run(n_sims: int | None = None, archive: bool = True) -> pl.DataFrame:
             pl.lit(data.current_week).cast(pl.Int64).alias("as_of_week"),
         )
         conditional.append(cond.select(*store.SCHEMAS["sim_conditional"]))
+        need = win_need_odds(inp, result).with_columns(
+            pl.lit(league["league_id"]).alias("league_id"),
+            pl.lit(data.current_week).cast(pl.Int64).alias("as_of_week"),
+        )
+        win_need.append(need.select(*store.SCHEMAS["sim_win_need"]))
         for i, roster_id in enumerate(data.roster_ids):
             seed_rows += [
                 (league["league_id"], roster_id, k + 1, float(result.p_seed[i, k]))
@@ -665,6 +676,9 @@ def run(n_sims: int | None = None, archive: bool = True) -> pl.DataFrame:
             "sim_conditional": pl.concat(conditional)
             if conditional
             else pl.DataFrame(schema=store.SCHEMAS["sim_conditional"]),
+            "sim_win_need": pl.concat(win_need)
+            if win_need
+            else pl.DataFrame(schema=store.SCHEMAS["sim_win_need"]),
             "sim_season": latest,
         }
     )

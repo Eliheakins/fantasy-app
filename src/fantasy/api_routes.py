@@ -42,6 +42,7 @@ from fantasy.api_models import (
     ScheduleRow,
     ScoreboardRow,
     ScorecardData,
+    SeasonEventRow,
     SeasonOddsRow,
     SeedRow,
     StatusChangeRow,
@@ -56,6 +57,7 @@ from fantasy.api_models import (
     WaiverRow,
     WeekCalendarData,
     WhatIfRow,
+    WinNeedRow,
     WinProbabilityData,
 )
 
@@ -295,6 +297,17 @@ def luck(league: str, team: Team = None) -> Any:
 @router.get("/leagues/{league}/manager-grades", response_model=Envelope[list[ManagerGradeRow]])
 def manager_grades(league: str, team: Team = None) -> Any:
     return guarded(as_team(team, lambda: rows(data_api.manager_grades(league, store.DATA_DIR))))
+
+
+@router.get("/leagues/{league}/win-needs", response_model=Envelope[list[WinNeedRow]])
+def win_needs(league: str, team: Team = None) -> Any:
+    return guarded(as_team(team, lambda: rows(data_api.win_needs(league, store.DATA_DIR))))
+
+
+@router.get("/leagues/{league}/season-events", response_model=Envelope[list[SeasonEventRow]])
+def season_events(league: str, team: Team = None) -> Any:
+    """Annotations for the season-odds chart, oldest first."""
+    return guarded(as_team(team, lambda: rows(data_api.season_events(league, store.DATA_DIR))))
 
 
 @router.get("/leagues/{league}/what-if", response_model=Envelope[list[WhatIfRow]])

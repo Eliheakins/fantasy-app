@@ -152,3 +152,44 @@ def conditional_odds(inp: SeasonInputs, result: SeasonResult) -> pl.DataFrame:
                     for t in range(n_teams)
                 ]  # fmt: skip
     return pl.DataFrame(rows, schema=CONDITIONAL_SCHEMA, orient="row")
+
+
+WIN_NEED_SCHEMA = {
+    "roster_id": pl.Int64,
+    "n_games": pl.Int64,
+    "wins": pl.Int64,
+    "n_runs": pl.Int64,
+    "p_condition": pl.Float64,
+    "p_playoffs": pl.Float64,
+}
+NEED_GAMES = 4
+
+
+def win_need_odds(
+    inp: SeasonInputs, result: SeasonResult, horizon: int = NEED_GAMES
+) -> pl.DataFrame:
+    """Each team's playoff odds given how many of its next `horizon` regular-season games it wins
+    (a tie is not a win). Display only: it reads the draws and result the season run already made
+    and changes nothing in them. One row per (team, wins) that happened in at least one run;
+    p_condition is the share of runs, n_runs the runs behind p_playoffs."""
+    scores = team_scores(inp)
+    column = {week: w for w, week in enumerate(inp.weeks)}
+    n_sims = scores.shape[2]
+    games: dict[int, list[tuple[int, int]]] = {t: [] for t in range(len(inp.roster_ids))}
+    for week in sorted(w for w in inp.pairs if w in column):
+        for a, b in inp.pairs[week]:
+            games[a].append((column[week], b))
+            games[b].append((column[week], a))
+    rows = []
+    for t, schedule in games.items():
+        ahead = schedule[:horizon]
+        wins = sum((scores[t, w] > scores[opp, w]).astype(int) for w, opp in ahead)
+        for k in range(len(ahead) + 1):
+            mask = wins == k
+            n_runs = int(mask.sum())
+            if n_runs:
+                rows.append(
+                    (inp.roster_ids[t], len(ahead), k, n_runs, n_runs / n_sims,
+                     float(result.made_playoffs[t, mask].mean()))
+                )  # fmt: skip
+    return pl.DataFrame(rows, schema=WIN_NEED_SCHEMA, orient="row")

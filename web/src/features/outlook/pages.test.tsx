@@ -55,6 +55,12 @@ describe("Outlook page", () => {
     expect(screen.getByRole("heading", { name: "Season odds, all teams" })).toBeInTheDocument();
     expect(screen.queryByText(HISTORY_WAIT_MESSAGE)).toBeNull();
   });
+  it("history={false} leaves the all-teams chart to the page that draws it", () => {
+    outlookWith([...run("2026-10-01T00:00"), ...run("2026-10-08T00:00")]);
+    render(<Outlook history={false} />);
+    expect(screen.queryByRole("heading", { name: "Season odds, all teams" })).toBeNull();
+    expect(screen.queryByText(HISTORY_WAIT_MESSAGE)).toBeNull();
+  });
   it("loading, running, no_data and error", () => {
     const cases: [ApiState<unknown>, RegExp][] = [
       [{ kind: "loading" }, /Loading/],

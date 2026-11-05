@@ -174,6 +174,21 @@ class WhatIfRow(Row):
     d_title: float
 
 
+class WinNeedRow(Row):
+    n_games: int
+    wins: int
+    n_runs: int
+    p_condition: float
+    p_playoffs: float
+
+
+class SeasonEventRow(Row):
+    kind: Literal["trade", "injury", "big_week"]
+    when: str
+    run_at: str | None  # the saved run that first reflects it; null before the first run
+    label: str
+
+
 class StreamerRow(Row):
     unit: str
     name: str | None

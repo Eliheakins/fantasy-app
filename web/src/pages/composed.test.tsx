@@ -5,6 +5,7 @@ import Season from "./Season";
 import ThisWeek from "./ThisWeek";
 
 vi.mock("@/lib/league", () => ({
+  useLeagueApi: () => ({ kind: "loading" }),
   useLeague: () => ({ league: "a", leagues: { kind: "ready", data: [{ league_key: "a", name: "L", current_week: 9 }] } }),
 }));
 vi.mock("@/features/digest/DigestView", async () => ({ DigestView: (await import("@/test/stubPage")).stubSection("digest") }));
@@ -12,6 +13,9 @@ vi.mock("@/features/home/HomeLeagues", async () => ({ HomeLeagues: (await import
 vi.mock("@/features/thisweek/ThisWeekBoard", async () => ({ ThisWeekBoard: (await import("@/test/stubPage")).stubSection("board") }));
 vi.mock("@/features/thisweek/Answer", () => ({ Answer: () => <span>answer</span> }));
 vi.mock("@/features/outlook/OutlookView", async () => ({ OutlookView: (await import("@/test/stubPage")).stubSection("outlook") }));
+vi.mock("@/features/season/WhatYouNeed", async () => ({ WhatYouNeed: (await import("@/test/stubPage")).stubSection("need") }));
+vi.mock("@/features/season/RootFor", async () => ({ RootForSection: (await import("@/test/stubPage")).stubSection("root for") }));
+vi.mock("@/features/season/SeasonOdds", async () => ({ SeasonOdds: (await import("@/test/stubPage")).stubSection("odds chart") }));
 vi.mock("@/features/league/LeagueView", async () => ({ LeagueView: (await import("@/test/stubPage")).stubSection("league") }));
 vi.mock("@/features/players/PlayersView", async () => ({ PlayersView: (await import("@/test/stubPage")).stubSection("players") }));
 vi.mock("@/pages/Scoreboard", () => ({ default: () => <p>scores</p> }));
@@ -19,7 +23,7 @@ vi.mock("@/pages/Scoreboard", () => ({ default: () => <p>scores</p> }));
 describe("composed pages", () => {
   it.each([
     ["What should I do this week?", ThisWeek],
-    ["Season", Season],
+    ["Am I making the playoffs?", Season],
     ["Players", Players],
   ])("%s has exactly one h1", (title, Page) => {
     render(<MemoryRouter><Page /></MemoryRouter>);

@@ -1,4 +1,4 @@
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, ReferenceDot, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { DataTableFallback, formatPercent } from "@/viz";
 import { useMinWidth } from "@/hooks/useMediaQuery";
 import { AXIS, GRID, MY_LINE, OTHER_LINE, axisCaption } from "@/viz/chartTheme";
@@ -44,11 +44,12 @@ function labeledIds(latest: HistoryPoint | undefined, teams: readonly { id: stri
 }
 
 /** Playoff odds per saved run: mine bold, rivals grey, names at the line ends. */
-export function OddsHistoryChart({ odds, history }: { odds: readonly SeasonOddsRow[]; history: readonly OddsHistoryRow[] }) {
+export function OddsHistoryChart({ odds, history, marks }: { odds: readonly SeasonOddsRow[]; history: readonly OddsHistoryRow[]; marks?: ReadonlyMap<string, readonly unknown[]> }) {
   const data = pivotHistory(history);
   const teams = historyTeams(odds, history);
   const ordered = [...teams.filter((t) => !t.isMe), ...teams.filter((t) => t.isMe)]; // mine drawn last, on top
   const last = data.length - 1;
+  const mineId = teams.find((t) => t.isMe)?.id;
   const wide = useMinWidth("lg");
   const named = labeledIds(data[last], teams, wide);
   const shifts = labelShifts(data[last], teams.filter((t) => named.has(t.id)));
@@ -75,6 +76,12 @@ export function OddsHistoryChart({ odds, history }: { odds: readonly SeasonOddsR
                 label={named.has(t.id) ? <EndLabel text={t.name} last={last} bold={t.isMe} shift={shifts.get(t.id) ?? 0} maxChars={wide ? END_LABEL_CHARS : PHONE_LABEL_CHARS} /> : undefined}
               />
             ))}
+            {mineId !== undefined && data.flatMap((p) => {
+              const y = p[mineId];
+              return marks?.has(p.run_at) && typeof y === "number"
+                ? [<ReferenceDot key={`mark-${p.run_at}`} x={p.run_at} y={y} r={5} fill="var(--lf-panel)" stroke={MY_LINE} strokeWidth={2} ifOverflow="visible" />]
+                : [];
+            })}
           </LineChart>
         </ResponsiveContainer>
       </div>
