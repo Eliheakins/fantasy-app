@@ -11,6 +11,7 @@ import {
   QueryBuilderSidebarExecuteFooter,
   QueryBuilderSidebarScroll,
 } from "@/features/explore/QueryBuilderSidebarBody";
+import { SavedSearches } from "@/features/explore/SavedSearches";
 import { rememberExplore } from "@/features/explore/routeMemory";
 import { useExplorePlayerSearch } from "@/features/explore/useExplorePlayerSearch";
 import { useExploreQueryExecution } from "@/features/explore/useExploreQueryExecution";
@@ -51,6 +52,7 @@ export function QueryBuilderPanel() {
           </>
         }
       />
+      <div className="mb-6"><SavedSearches /></div>
       <div className="lg:grid lg:grid-cols-[360px_1fr] lg:items-start lg:gap-6">
         <aside
           aria-label="Query builder"

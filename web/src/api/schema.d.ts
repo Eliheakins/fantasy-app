@@ -518,6 +518,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/players/{gsis_id}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Player Profile */
+        get: operations["player_profile_api_leagues__league__players__gsis_id__profile_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/outlook": {
         parameters: {
             query?: never;
@@ -820,6 +837,18 @@ export interface components {
              */
             status: "ok" | "running" | "error";
             data: components["schemas"]["OwnersData"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[PlayerProfile] */
+        Envelope_PlayerProfile_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["PlayerProfile"] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -1781,6 +1810,54 @@ export interface components {
             /** Points */
             points: number;
         };
+        /**
+         * PlayerProfile
+         * @description Display only: next game range, rest of season over replacement, injury, outlook.
+         */
+        PlayerProfile: {
+            /** Gsis Id */
+            gsis_id: string;
+            /** Full Name */
+            full_name: string | null;
+            /** Position */
+            position: string | null;
+            /** Week */
+            week: number | null;
+            /** Result Week */
+            result_week: number | null;
+            /** Result Points */
+            result_points: number | null;
+            /** Projection */
+            projection: number | null;
+            /** P10 */
+            p10: number | null;
+            /** Median */
+            median: number | null;
+            /** P90 */
+            p90: number | null;
+            /** Chance To Play */
+            chance_to_play: number | null;
+            /** Injury */
+            injury: string | null;
+            /** Injury Note */
+            injury_note: string | null;
+            /** Is Out */
+            is_out: boolean;
+            /** Ros Points */
+            ros_points: number | null;
+            /** Replacement Name */
+            replacement_name: string | null;
+            /** Replacement Points */
+            replacement_points: number | null;
+            /** Ros Over Replacement */
+            ros_over_replacement: number | null;
+            /** Outlook Label */
+            outlook_label: string | null;
+            /** Why */
+            why: string | null;
+            /** Role Weeks */
+            role_weeks: components["schemas"]["RoleWeek"][];
+        };
         /** PlayerWeekRow */
         PlayerWeekRow: {
             /** Week */
@@ -1852,6 +1929,15 @@ export interface components {
         RefreshData: {
             /** Player Rows */
             player_rows: number;
+        };
+        /** RoleWeek */
+        RoleWeek: {
+            /** Week */
+            week: number;
+            /** Snap Share */
+            snap_share: number | null;
+            /** Target Share */
+            target_share: number | null;
         };
         /** RosterChangeRow */
         RosterChangeRow: {
@@ -3237,6 +3323,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_PlayerPointsRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    player_profile_api_leagues__league__players__gsis_id__profile_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+                gsis_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_PlayerProfile_"];
                 };
             };
             /** @description Validation Error */

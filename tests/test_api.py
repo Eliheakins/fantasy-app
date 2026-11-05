@@ -738,3 +738,17 @@ def test_player_points_errors_follow_the_sibling_routes(client: TestClient) -> N
     assert client.get("/api/leagues/t/player-points").status_code == 422
     all_players = body(client.get("/api/leagues/zzz/player-points?season=2026"))
     assert all_players["error"]["code"] == "invalid"
+
+
+def test_player_profile_serves_range_and_ros_over_replacement(client: TestClient) -> None:
+    out = body(client.get("/api/leagues/t/players/G_QB/profile"))
+    assert out["status"] == "ok"
+    assert out["data"]["gsis_id"] == "G_QB"
+    assert out["data"]["p10"] < out["data"]["median"] < out["data"]["p90"]
+    assert "ros_over_replacement" in out["data"]
+    assert body(client.get("/api/leagues/zzz/players/G_QB/profile"))["status"] == "error"
+
+
+def test_player_profile_rejects_a_malformed_id(client: TestClient) -> None:
+    assert client.get("/api/leagues/t/players/bad%20id/profile").status_code == 422
+    assert client.get(f"/api/leagues/t/players/{'x' * 21}/profile").status_code == 422

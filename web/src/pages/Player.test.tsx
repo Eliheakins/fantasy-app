@@ -29,9 +29,15 @@ const gameLog = {
 const ready = <T,>(data: T): ApiState<T> => ({ kind: "ready", data }) as ApiState<T>;
 const failed = { kind: "error", error: { message: "boom", code: null }, retry: () => {} } as ApiState<never>;
 
+const profile = {
+  gsis_id: "00-1", full_name: "Ja'Marr Chase", position: "WR", week: 5, result_week: null, result_points: null, is_out: false, projection: 18, p10: 6, median: 17.5, p90: 31, chance_to_play: 1,
+  injury: null, injury_note: null, ros_points: 90, replacement_name: "Free Guy", replacement_points: 60, ros_over_replacement: 30,
+  outlook_label: null, why: null, role_weeks: [],
+};
+
 function mockApi(points: ApiState<unknown>, owners: ApiState<unknown> = ready({ rows: [{ gsis_id: "00-1", owner: "Lisan Al-Caleb", is_mine: true }], unmatched: 0 })) {
   vi.mocked(useApi).mockImplementation(((path: string | null) =>
-    path?.includes("/player-points") ? points : path?.includes("/owners") ? owners : { kind: "loading" }) as typeof useApi);
+    path?.includes("/player-points") ? points : path?.includes("/owners") ? owners : path?.includes("/profile") ? ready(profile) : path?.includes("/market-values") ? ready([]) : { kind: "loading" }) as typeof useApi);
 }
 
 function renderPage(entry = "/players/00-1?league=a&team=2&week=5") {
@@ -70,6 +76,18 @@ describe("Player page", () => {
       statIds: ["rec_receptions", "rec_yards"], gsisIds: ["00-1"], split: "week", granularity: "total",
       filterChipState: { "season-2026": true, "stype-reg": true },
     });
+  });
+
+  it("answers with the next game range under the h1, in a tinted Next game panel, and links to Compare", async () => {
+    renderPage();
+    expect(await screen.findByText("Median 17.5 points in week 5, likely between 6.0 and 31.0.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Next game" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Rest of season" })).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: /compare with/i });
+    const href = new URL(link.getAttribute("href") ?? "", "http://x");
+    expect(href.pathname).toBe("/players/compare");
+    expect(href.searchParams.getAll("p")).toEqual(["00-1"]);
+    expect(href.searchParams.get("league")).toBe("a");
   });
 
   it("shows a not-found state for an unknown id", async () => {
@@ -141,9 +159,10 @@ describe("Player page", () => {
     expect(runStatQuery).not.toHaveBeenCalled();
   });
 
-  it("has no projection wording on the page", async () => {
+  it("keeps projection wording out of the game log section", async () => {
     renderPage();
     await screen.findAllByRole("row");
-    expect(document.body.textContent).not.toMatch(/projection|proj|floor|ceiling/i);
+    const log = screen.getByRole("heading", { level: 2, name: "This season" }).closest("section");
+    expect(log?.textContent).not.toMatch(/projection|proj|floor|ceiling/i);
   });
 });

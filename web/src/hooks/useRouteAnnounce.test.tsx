@@ -23,6 +23,7 @@ describe("route titles", () => {
     expect(pageTitle("/players")).toBe("Players");
     expect(pageTitle("/")).toBe("This week");
     expect(pageTitle("/players/find")).toBe("Find players");
+    expect(pageTitle("/players/compare")).toBe("Compare players");
     expect(pageTitle("/model")).toBe("Model scorecard");
     expect(pageTitle("/ask")).toBe("Ask");
     expect(pageTitle("/nope")).toBe("Page not found");

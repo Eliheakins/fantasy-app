@@ -11,6 +11,7 @@ from typing import Annotated, Any, Literal
 import httpx
 import polars as pl
 from fastapi import APIRouter, Depends, Query, Request
+from fastapi import Path as PathParam
 
 from fantasy import _view as view
 from fantasy import data_api, store
@@ -35,6 +36,7 @@ from fantasy.api_models import (
     OwnersData,
     PartnerRow,
     PlayerPointsRow,
+    PlayerProfile,
     PlayerWeekRow,
     PowerRankingRow,
     RefreshData,
@@ -69,6 +71,7 @@ MAX_TRADE_EVALUATIONS = 2
 TRADE_SLOTS = threading.BoundedSemaphore(MAX_TRADE_EVALUATIONS)
 REFRESH_LOCK = threading.Lock()
 MAX_IDS_LENGTH = 4000
+MAX_ID_LENGTH = 20  # nflverse ids are 10 characters (00-0012345)
 IDEA_STAMPS = frozenset({"league_id", "created_at", "as_of_week"})  # in `ideas`, not per row
 Team = Annotated[
     int | None, Query(description="Roster id to view as; omitted means my team (Sleeper is_me)")
@@ -395,6 +398,15 @@ def player_points(
     league: str, season: Annotated[int, Query(ge=1999, le=2100)], gsis_id: str | None = None
 ) -> Any:
     return guarded(lambda: rows(data_api.player_points(league, gsis_id, season)))
+
+
+@router.get("/leagues/{league}/players/{gsis_id}/profile", response_model=Envelope[PlayerProfile])
+def player_profile(
+    league: str,
+    gsis_id: Annotated[str, PathParam(max_length=MAX_ID_LENGTH, pattern=r"^[A-Za-z0-9_-]+$")],
+    team: Team = None,
+) -> Any:
+    return guarded(as_team(team, lambda: data_api.player_profile(league, gsis_id)))
 
 
 @router.get("/leagues/{league}/outlook", response_model=Envelope[list[OutlookRow]])

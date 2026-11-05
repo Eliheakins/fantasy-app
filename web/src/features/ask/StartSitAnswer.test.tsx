@@ -40,6 +40,18 @@ function renderAnswer() {
 }
 
 describe("StartSitAnswer", () => {
+  it("links to the compare page with both players, keeping league and team", async () => {
+    lineup = [row("a"), row("b", { recommended: false })];
+    renderAnswer();
+    const link = await screen.findByRole("link", { name: /compare travis kelce and george kittle/i });
+    const href = new URL(link.getAttribute("href") ?? "", "http://x");
+    expect(href.pathname).toBe("/players/compare");
+    expect(href.searchParams.getAll("p")).toEqual(["a", "b"]);
+    expect(href.searchParams.get("league")).toBe("L1");
+    expect(href.searchParams.get("team")).toBe("2");
+    expect(href.searchParams.get("q")).toBeNull();
+  });
+
   it("follows the lineup's recommended flag: one starter gives Start A over B with the gap in projected points", async () => {
     lineup = [row("a", { projection: 9, recommended: true }), row("b", { projection: 12.5, recommended: false })];
     renderAnswer();
