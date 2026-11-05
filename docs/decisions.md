@@ -979,3 +979,8 @@ Two research agents surveyed the decision code (assumptions with file and line) 
 ## 2026-11-05: Refresh scores reports a Sleeper outage
 
 - `sources/sleeper.fetch` now raises `SleeperError` (a `RuntimeError`), and Refresh scores catches it, so a Sleeper outage shows "Sleeper refresh failed" instead of a 500. Reason: the route caught `httpx` errors that `fetch` never lets out, and its test faked one.
+
+## 2026-11-05: display reads no longer build the simulation (issue #72, item 7)
+
+- `player_points` and `rostered_unmatched` read the league id with one filtered read of `leagues` (`_engine._league_id`) instead of building `LeagueData`. An unknown league still raises `ValueError`; an unknown `team` is no longer checked there (the route never passes one).
+- `data_version()` still stats every parquet under `raw` and `derived` on each call, so a write is seen at once (no TTL, no directory-mtime shortcut: tests and research scripts write in place). Only the kickoff parsing is cached, keyed on the mtime and size of `leagues` and `nfl_schedules` plus the season; the 2-minute clock bucket is computed on each call. `known_league` reads only the `league_key` column.

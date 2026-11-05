@@ -5,7 +5,7 @@ from pathlib import Path
 import polars as pl
 
 from fantasy import store
-from fantasy._engine import _id_map, _league, _names, _read
+from fantasy._engine import _id_map, _league, _league_id, _names, _read
 from fantasy._schemas import ENGINE_SCHEMAS
 from fantasy.sim import moves
 from fantasy.sim.odds import LeagueData
@@ -76,12 +76,12 @@ def player_points(
     team: int | None = None,
 ) -> pl.DataFrame:
     """Regular-season points per week under this league's scoring: one player's, or everyone's."""
-    data, _ = _league(league_key, data_dir, team)
+    league_id = _league_id(league_key, data_dir)
     path = store.table_path("player_points", "derived", data_dir)
     if not path.exists():
         raise FileNotFoundError(f"{path} does not exist; run the stage that writes 'player_points'")
     keep = (
-        (pl.col("league_id") == data.league_id)
+        (pl.col("league_id") == league_id)
         & (pl.col("season") == season)
         & (pl.col("season_type") == "REG")
     )

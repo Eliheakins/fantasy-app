@@ -732,6 +732,59 @@ def test_player_points_without_a_player_serves_everyone_for_that_league_and_seas
     assert body(client.get("/api/leagues/t/player-points?season=2031"))["data"] == []
 
 
+def test_player_points_reads_the_league_id_without_building_the_simulation(
+    store_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fantasy import _market
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError("player_points must not build LeagueData")
+
+    monkeypatch.setattr(_market, "_league", forbidden)
+    row = {"league_id": "L1", "gsis_id": "G_WR", "season": 2026, "week": 1, "points": 7.0}
+    write_rows(store_dir, "player_points", [row | {"season_type": "REG", "position": "WR"}])
+    out = data_api.player_points("t", "G_WR", 2026, store_dir)
+    assert out.rows() == [("G_WR", 1, 7.0)]
+    with pytest.raises(ValueError, match="unknown league 'zzz'"):
+        data_api.player_points("zzz", None, 2026, store_dir)
+
+
+def test_data_version_parses_the_schedule_once_per_file_state(
+    store_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[int] = []
+    real = _engine.kickoffs
+    monkeypatch.setattr(_engine, "kickoffs", lambda *a: calls.append(1) or real(*a))
+    first = _engine.data_version(store_dir)
+    assert _engine.data_version(store_dir) == first
+    assert len(calls) == 1
+    path = store_dir / "raw" / "nfl_schedules.parquet"
+    stamp = path.stat().st_mtime + 5
+    os.utime(path, (stamp, stamp))  # any change to the file is seen on the next call
+    assert _engine.data_version(store_dir) != first
+    assert len(calls) == 2
+
+
+def test_known_league_treats_missing_tables_as_before(store_dir: Path, tmp_path: Path) -> None:
+    assert api_routes.known_league("t", store_dir)
+    assert not api_routes.known_league("zzz", store_dir)
+    assert not api_routes.known_league("t", tmp_path / "empty")  # old read gave an empty frame
+    (store_dir / "raw" / "league_teams.parquet").unlink()
+    assert api_routes.known_league("t", store_dir)  # old join read the missing table as empty
+
+
+def test_data_version_without_a_schedule_has_no_clock_bucket_until_it_appears(
+    store_dir: Path,
+) -> None:
+    path = store_dir / "raw" / "nfl_schedules.parquet"
+    saved = path.read_bytes()
+    path.unlink()
+    assert _engine.data_version(store_dir).isdigit() is False  # "<mtime>-<size>", no bucket
+    assert "@" not in _engine.data_version(store_dir)
+    path.write_bytes(saved)
+    assert _engine.data_version(store_dir) != ""
+
+
 def test_player_points_errors_follow_the_sibling_routes(client: TestClient) -> None:
     out = body(client.get("/api/leagues/zzz/player-points?gsis_id=G_WR&season=2026"))
     assert out["status"] == "error" and out["data"] is None

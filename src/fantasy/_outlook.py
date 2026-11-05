@@ -5,7 +5,7 @@ from pathlib import Path
 import polars as pl
 
 from fantasy import store
-from fantasy._engine import _injury_note, _league, _names, _opponent_of, _pool
+from fantasy._engine import _injury_note, _league, _league_id, _names, _opponent_of, _pool
 from fantasy._schemas import OUTLOOK_SCHEMA
 from fantasy.config import load_config
 from fantasy.sim import moves
@@ -264,12 +264,10 @@ def rostered_unmatched(
 ) -> int:
     """Rostered skill players with no nflverse id: missing from `player_owners`, so a free-agent
     filter would count them as free agents."""
-    data, _ = _league(league_key, data_dir, team)
+    league_id = _league_id(league_key, data_dir)
     id_map = store.read_table("id_map", "derived", data_dir).select("sleeper_id", "gsis_id")
     players = store.read_table("sleeper_players", "raw", data_dir).select("sleeper_id", "position")
-    rostered = store.read_table("rosters", "raw", data_dir).filter(
-        pl.col("league_id") == data.league_id
-    )
+    rostered = store.read_table("rosters", "raw", data_dir).filter(pl.col("league_id") == league_id)
     return (
         rostered.join(id_map, on="sleeper_id", how="left")
         .join(players, on="sleeper_id", how="left")

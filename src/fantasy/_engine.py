@@ -55,26 +55,42 @@ def _clock_bucket(kicks: dict[str, datetime], now: datetime) -> str:
     return f"@{int(now.timestamp() // (LIVE_BUCKET_MINUTES * 60))}"
 
 
-def _live_bucket(data_dir: Path | None) -> str:
-    try:
-        leagues = store.read_table("leagues", "raw", data_dir)
-        schedules = store.read_table("nfl_schedules", "raw", data_dir)
-        week = int(leagues["current_week"].max())  # type: ignore[arg-type]
-    except FileNotFoundError:
+FileStamp = tuple[int, int]  # (mtime_ns, size): what data_version already treats as "changed"
+
+
+@lru_cache(maxsize=8)
+def _week_kickoffs(
+    root: str, season: int, _leagues_stamp: FileStamp, _schedules_stamp: FileStamp
+) -> dict[str, datetime]:
+    """This week's kickoffs, parsed once per state of the two tables (the stamps only key the
+    cache, so a rewrite of either file is read again on the next call)."""
+    leagues = store.read_table("leagues", "raw", Path(root))
+    schedules = store.read_table("nfl_schedules", "raw", Path(root))
+    return kickoffs(schedules, season, int(leagues["current_week"].max()))  # type: ignore[arg-type]
+
+
+def _live_bucket(root: Path, stamps: dict[str, FileStamp]) -> str:
+    leagues, schedules = stamps.get("leagues.parquet"), stamps.get("nfl_schedules.parquet")
+    if leagues is None or schedules is None:
         return ""
-    return _clock_bucket(kickoffs(schedules, load_config().season, week), datetime.now(UTC))
+    kicks = _week_kickoffs(str(root), load_config().season, leagues, schedules)
+    return _clock_bucket(kicks, datetime.now(UTC))
 
 
 def data_version(data_dir: Path | None = None) -> str:
     """Latest mtime (ns) and total size of the parquet files under raw/ and derived/ of the data
     directory, plus a clock bucket while games are on. Changes whenever a stage rewrites a table
-    or the live clock moves on."""
+    or the live clock moves on. Every call stats the files (no TTL, so a write is seen at once);
+    only the kickoff parsing is cached, keyed on the stats of the files it reads."""
     root = store.resolve(data_dir)
-    stats = [p.stat() for area in ("raw", "derived") for p in (root / area).glob("*.parquet")]
+    raw = {p.name: p.stat() for p in (root / "raw").glob("*.parquet")}
+    derived = [p.stat() for p in (root / "derived").glob("*.parquet")]
+    stats = [*raw.values(), *derived]
     if not stats:
         return "0-0"
-    return (
-        f"{max(s.st_mtime_ns for s in stats)}-{sum(s.st_size for s in stats)}{_live_bucket(root)}"
+    stamps = {name: (s.st_mtime_ns, s.st_size) for name, s in raw.items()}
+    return f"{max(s.st_mtime_ns for s in stats)}-{sum(s.st_size for s in stats)}" + _live_bucket(
+        root, stamps
     )
 
 
@@ -141,6 +157,14 @@ def _build_league(league_key: str, version: str, data_dir: str) -> tuple[LeagueD
             "and run `make refresh`"
         )
     return load_league_data(league, strict=False, data_dir=root), int(mine["roster_id"][0])
+
+
+def _league_id(league_key: str, data_dir: Path | None) -> str:
+    """The Sleeper league id for a league key: one filtered read, no simulation build."""
+    ids = store.read_table("leagues", "raw", data_dir).filter(pl.col("league_key") == league_key)
+    if ids.is_empty():
+        raise ValueError(f"unknown league {league_key!r}")
+    return str(ids["league_id"][0])
 
 
 def _id_map(data_dir: Path | None, *extra: str) -> pl.DataFrame:

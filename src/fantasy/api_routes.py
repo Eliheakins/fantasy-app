@@ -12,7 +12,7 @@ import polars as pl
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi import Path as PathParam
 
-from fantasy import _live, data_api
+from fantasy import _live, data_api, store
 from fantasy import _view as view
 from fantasy.api_deps import Ctx, DataDir, RequestContext
 from fantasy.api_envelope import NO_DATA_MESSAGE, clean, fail, guarded, ok, rows, running
@@ -88,7 +88,10 @@ Runner = Annotated[JobRunner, Depends(get_runner)]
 
 
 def known_league(league: str, data_dir: Path) -> bool:
-    return league in data_api.leagues(data_dir)["league_key"].to_list()
+    try:  # the keys alone: no join with league_teams, no scoring JSON
+        return league in store.read_table("leagues", "raw", data_dir)["league_key"].to_list()
+    except FileNotFoundError:
+        return False
 
 
 def run_job(
