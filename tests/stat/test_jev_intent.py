@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import ssl
 import tomllib
@@ -209,8 +210,9 @@ def test_at_most_five_stats_are_kept():
         {"stat__pass_yards": {}},
         {"leaderboard": None},
         {"granularity": {"choice": "weekly"}},
+        {"granularity": {"choice": ["total"]}},
     ],
-    ids=["text probability", "missing probability", "missing answer", "unknown choice"],
+    ids=["text probability", "missing probability", "missing answer", "unknown choice", "list"],
 )
 def test_a_malformed_answer_is_a_jev_error(broken: dict[str, Any]):
     with pytest.raises(JevError):
@@ -339,3 +341,36 @@ async def test_translate_with_jev_sends_the_request_and_maps_the_answers(sleeps)
     assert isinstance(outcome, QueryOutcome)
     assert outcome.intent.stat_ids == ["pass_yards"]
     assert replies[0]["model"] == "jev-x"
+
+
+async def test_a_decoding_error_is_a_jev_error_without_a_retry(sleeps):
+    transport, seen = _transport(httpx.DecodingError("bad gzip"))
+
+    with pytest.raises(JevError, match="DecodingError"):
+        await _call(transport)
+    assert len(seen) == 1
+
+
+async def test_each_attempt_opens_a_fresh_client(sleeps, monkeypatch: pytest.MonkeyPatch):
+    opened: list[httpx.AsyncClient] = []
+    real = httpx.AsyncClient
+
+    def tracking(*args: Any, **kwargs: Any) -> httpx.AsyncClient:
+        opened.append(real(*args, **kwargs))
+        return opened[-1]
+
+    monkeypatch.setattr(jev_intent.httpx, "AsyncClient", tracking)
+    transport, _ = _transport(httpx.ConnectError("x"), httpx.Response(200, json={"answers": {}}))
+
+    await _call(transport)
+
+    assert len(opened) == 2 and opened[0] is not opened[1]
+
+
+async def test_the_timeout_bounds_the_whole_call_including_retries():
+    async def slow(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(1)
+        return httpx.Response(200, json={"answers": {}})
+
+    with pytest.raises(JevError, match="longer than"):
+        await call_jev({}, api_key=KEY, timeout=0.05, transport=httpx.MockTransport(slow))

@@ -70,7 +70,7 @@ async def test_jev_answers_when_a_key_is_set(jev, provider: str):
     assert llm.calls == []
 
 
-@pytest.mark.parametrize("key", [None, ""])
+@pytest.mark.parametrize("key", [None, "", "  "])
 @pytest.mark.parametrize("provider", ["auto", "jev"])
 async def test_no_key_uses_the_local_model(jev, provider: str, key: str | None):
     llm = FakeLlm([LOCAL_REPLY])

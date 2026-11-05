@@ -142,7 +142,7 @@ def _noul(answers: dict[str, Any], key: str) -> float:
 def _choice(answers: dict[str, Any], key: str, options: dict[str, str]) -> str:
     answer = answers.get(key)
     choice = answer.get("choice") if isinstance(answer, dict) else None
-    if choice not in options:
+    if not isinstance(choice, str) or choice not in options:
         raise JevError(f"Jev gave no valid choice for {key!r}.")
     return str(choice)
 
@@ -213,12 +213,34 @@ async def call_jev(
     timeout: float,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> dict[str, Any]:
-    """POST once (retrying once on a transport error, 429 or 5xx) and return the answers."""
+    """POST (retrying once on a transport error, 429 or 5xx) and return the answers.
+
+    `timeout` bounds the whole call, retries included, so Ask falls back without a long stall.
+    """
+    try:
+        async with asyncio.timeout(timeout):
+            return await _post_with_retry(
+                payload,
+                api_key=api_key,
+                attempt_timeout=timeout / MAX_ATTEMPTS,
+                transport=transport,
+            )
+    except TimeoutError as e:
+        raise JevError(f"Jev took longer than {timeout:g} s.") from e
+
+
+async def _post_with_retry(
+    payload: dict[str, Any],
+    *,
+    api_key: str,
+    attempt_timeout: float,
+    transport: httpx.AsyncBaseTransport | None,
+) -> dict[str, Any]:
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
             # A fresh connection per request: reused async TLS connections failed with
             # "bad record mac" in the #71 runs.
-            async with httpx.AsyncClient(timeout=timeout, transport=transport) as client:
+            async with httpx.AsyncClient(timeout=attempt_timeout, transport=transport) as client:
                 response = await client.post(
                     JEV_URL, json=payload, headers={"Authorization": f"Bearer {api_key}"}
                 )
@@ -226,6 +248,8 @@ async def call_jev(
             if attempt == MAX_ATTEMPTS:
                 raise JevError(f"Jev request failed ({type(e).__name__}).") from e
             continue
+        except httpx.HTTPError as e:  # decoding, redirects: a retry would fail the same way
+            raise JevError(f"Jev request failed ({type(e).__name__}).") from e
         if response.status_code == 429 or response.status_code >= 500:
             wait = _retry_wait(response)
             if attempt == MAX_ATTEMPTS or wait is None:

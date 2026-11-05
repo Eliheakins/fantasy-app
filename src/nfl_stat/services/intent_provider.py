@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 async def answer_intent(
     req: IntentRequest, *, settings: AppSettings, llm_client: AsyncOpenAI
 ) -> IntentOutcome:
-    key = settings.jev_api_key.get_secret_value() if settings.jev_api_key else ""
+    key = settings.jev_api_key.get_secret_value().strip() if settings.jev_api_key else ""
     if settings.intent_provider != "local":
         if key:
             try:

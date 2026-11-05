@@ -31,7 +31,7 @@ class AppSettings(BaseSettings):
     )
     jev_api_key: SecretStr | None = Field(default=None, validation_alias="JEV_API_KEY")
     jev_model: str = Field(default="jev-latest", validation_alias="JEV_MODEL")
-    jev_timeout_seconds: float = Field(default=10.0, validation_alias="JEV_TIMEOUT_SECONDS")
+    jev_timeout_seconds: float = Field(default=10.0, gt=0, validation_alias="JEV_TIMEOUT_SECONDS")
 
     @property
     def data_dir(self) -> Path:
