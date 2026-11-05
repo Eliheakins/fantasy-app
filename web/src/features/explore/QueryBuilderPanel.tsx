@@ -5,14 +5,14 @@ import { PageHeader } from "@/components/PageHeader";
 import { ExploreMobileBuilderDrawer } from "@/features/explore/ExploreMobileBuilderDrawer";
 import { ExploreResultsCanvas } from "@/features/explore/ExploreResultsCanvas";
 import { IgnoredFiltersNotice } from "@/features/explore/IgnoredFiltersNotice";
-import { useManifest } from "@/features/explore/manifest";
+import { useManifest } from "@/stat/react/manifest";
 import { ParticipationNotice } from "@/features/explore/ParticipationNotice";
 import {
   QueryBuilderSidebarExecuteFooter,
   QueryBuilderSidebarScroll,
 } from "@/features/explore/QueryBuilderSidebarBody";
 import { SavedSearches } from "@/features/explore/SavedSearches";
-import { rememberExplore } from "@/features/explore/routeMemory";
+import { rememberExplore } from "@/stat/react/routeMemory";
 import { useExplorePlayerSearch } from "@/features/explore/useExplorePlayerSearch";
 import { useExploreQueryExecution } from "@/features/explore/useExploreQueryExecution";
 import { dataThrough } from "@/stat/lib/dataFreshness";

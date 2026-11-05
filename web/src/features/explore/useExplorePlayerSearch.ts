@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getPlayers, searchPlayers } from "@/stat/lib/players";
 import type { NFLPlayer } from "@/stat/types/workbench";
 import { MAX_PINNED_PLAYERS } from "@/stat/lib/queryUrl";
-import { useManifest } from "@/features/explore/manifest";
+import { useManifest } from "@/stat/react/manifest";
 import { usePinnedPlayers } from "@/features/explore/usePinnedPlayers";
-import { useQueryState } from "@/features/explore/useQueryState";
+import { useQueryState } from "@/stat/react/useQueryState";
 
 export function useExplorePlayerSearch() {
   const [query, setQuery] = useState("");

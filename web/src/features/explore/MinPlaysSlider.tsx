@@ -1,4 +1,4 @@
-import { useQueryState } from "@/features/explore/useQueryState";
+import { useQueryState } from "@/stat/react/useQueryState";
 
 import { cn } from "@/lib/utils";
 

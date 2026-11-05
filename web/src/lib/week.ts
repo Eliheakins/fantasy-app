@@ -1,7 +1,11 @@
 import { useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { clampWeek, FIRST_WEEK, LAST_WEEK } from "@/features/scoreboard/logic";
 import { useLeague } from "@/lib/league";
+
+export const FIRST_WEEK = 1;
+export const LAST_WEEK = 18;
+
+export const clampWeek = (week: number): number => Math.min(Math.max(week, FIRST_WEEK), LAST_WEEK);
 
 const isWeek = (n: number): boolean => Number.isInteger(n) && n >= FIRST_WEEK && n <= LAST_WEEK;
 

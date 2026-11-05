@@ -5,12 +5,13 @@ import { MoveList } from "@/features/moves/MoveList";
 import { MOVE_NOISE_PERCENT, type MoveView, filterMoves, moveHeadline, worthMove } from "@/features/moves/moves";
 import { useMoves } from "@/features/moves/useMoves";
 import { EffectText } from "@/features/thisweek/TodoList";
-import { WaiversContent } from "@/features/waivers/WaiversView";
+import { WaiversContent } from "@/features/moves/waivers/WaiversView";
 import { useLeague } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
 import { useHeld } from "@/lib/useHeld";
 import { usePageEyebrow } from "@/lib/week";
-import Trades, { TradeDetails } from "@/pages/Trades";
+import { TradeBuilder } from "@/features/moves/trade/TradeBuilder";
+import { TradeDetails } from "@/features/moves/trade/TradeDetails";
 
 const VIEWS = [
   { value: "all", label: "All" },
@@ -79,7 +80,7 @@ export default function Moves() {
           Trade ideas are your stored finds; build any other trade below.
         </p>
       </section>
-      <Trades />
+      <TradeBuilder />
       <details className="mt-8 border-t border-line pt-2">
         <summary className="flex min-h-[44px] cursor-pointer items-center text-section font-semibold">Details</summary>
         <div className="flex flex-col gap-8 pt-4">

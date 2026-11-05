@@ -1,6 +1,6 @@
 import type { components } from "@/api/schema";
-import { actionGain, actionSentence, worthActing } from "@/features/home/logic";
-import type { ActionRow } from "@/features/home/logic";
+import { actionGain, actionSentence, worthActing } from "@/features/thisweek/leagues/logic";
+import type { ActionRow } from "@/features/thisweek/leagues/logic";
 import { type EffectWhy, lineupWhy, waiverWhy } from "./explain";
 
 type MoveIdea = components["schemas"]["MoveIdeaRow"];

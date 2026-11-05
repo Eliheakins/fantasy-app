@@ -3,13 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { render, screen, within } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import type { ApiState } from "@/api/envelope";
-import { useApi } from "@/hooks/useApi";
+import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { TeamContext } from "@/lib/teamContext";
 import { fetchManifest } from "@/stat/lib/api";
 import { getPlayers, getPlayersByIds } from "@/stat/lib/players";
 import PlayersCompare from "./PlayersCompare";
 
-vi.mock("@/hooks/useApi", () => ({ useApi: vi.fn() }));
+vi.mock("@/api/useEnvelope", () => ({ useEnvelopeQuery: vi.fn() }));
 vi.mock("@/stat/lib/api", () => ({ fetchManifest: vi.fn() }));
 vi.mock("@/stat/lib/players", async (orig) => ({ ...(await orig<typeof import("@/stat/lib/players")>()), getPlayers: vi.fn(), getPlayersByIds: vi.fn() }));
 
@@ -29,11 +29,11 @@ beforeEach(() => {
   vi.mocked(fetchManifest).mockResolvedValue({ built_at: "t" } as never);
   vi.mocked(getPlayers).mockResolvedValue(PEOPLE as never);
   vi.mocked(getPlayersByIds).mockImplementation((async (_m: unknown, ids: string[]) => PEOPLE.filter((p) => ids.includes(p.gsis_id))) as never);
-  vi.mocked(useApi).mockImplementation(((path: string | null) => {
+  vi.mocked(useEnvelopeQuery).mockImplementation(((path: string | null) => {
     const hit = path?.match(/players\/([^/]+)\/profile/);
     if (hit) return ready(profileOf(decodeURIComponent(hit[1] ?? "")));
     return path?.includes("/market-values") ? ready([]) : path?.includes("/owners") ? ready({ rows: [], unmatched: 0 }) : { kind: "loading" };
-  }) as typeof useApi);
+  }) as typeof useEnvelopeQuery);
 });
 afterEach(() => vi.resetAllMocks());
 
@@ -107,7 +107,7 @@ describe("Players compare", () => {
     const router = renderAt("/players/compare?p=a&p=zzz");
     const column = await screen.findByRole("group", { name: "Player not found" });
     expect(within(column).getByText(/zzz/)).toBeInTheDocument();
-    expect(vi.mocked(useApi).mock.calls.some(([path]) => String(path).includes("/zzz/"))).toBe(false);
+    expect(vi.mocked(useEnvelopeQuery).mock.calls.some(([path]) => String(path).includes("/zzz/"))).toBe(false);
     await userEvent.setup().click(within(column).getByRole("button", { name: "Remove Player not found" }));
     expect(router.state.location.search).toBe("?p=a");
   });

@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/PageHeader";
-import { DigestView } from "@/features/digest/DigestView";
-import { HomeLeagues } from "@/features/home/HomeLeagues";
+import { DigestView } from "@/features/thisweek/digest/DigestView";
+import { HomeLeagues } from "@/features/thisweek/leagues/HomeLeagues";
 import { Answer } from "@/features/thisweek/Answer";
 import { ThisWeekBoard } from "@/features/thisweek/ThisWeekBoard";
 import { usePageEyebrow } from "@/lib/week";

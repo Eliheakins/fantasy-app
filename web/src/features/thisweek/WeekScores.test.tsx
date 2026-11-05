@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { row } from "@/features/scoreboard/fixtures";
+import { row } from "@/lib/scoreboardFixtures";
 import { WeekScores } from "./WeekScores";
 
 const ok = (data: unknown) => ({ status: "ok", data, error: null, started_at: null });

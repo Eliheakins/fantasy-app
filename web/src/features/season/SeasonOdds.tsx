@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
-import { OddsHistoryChart } from "@/features/outlook/OddsHistoryChart";
-import { HISTORY_WAIT_MESSAGE, canShowHistory, runWeeks } from "@/features/outlook/logic";
-import type { OddsHistoryRow, SeasonOddsRow } from "@/features/outlook/types";
+import { OddsHistoryChart } from "@/features/season/outlook/OddsHistoryChart";
+import { HISTORY_WAIT_MESSAGE, canShowHistory, runWeeks } from "@/features/season/outlook/logic";
+import type { OddsHistoryRow, SeasonOddsRow } from "@/lib/outlookTypes";
 import { useLeagueApi } from "@/lib/league";
 import { formatPercent } from "@/viz";
 import { myOddsByWeek, weekMarks } from "./logic";

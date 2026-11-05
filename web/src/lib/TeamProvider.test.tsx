@@ -3,7 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { TeamBanner } from "@/components/layout/TeamBanner";
-import { useApi } from "@/hooks/useApi";
+import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { LeagueProvider } from "@/lib/league";
 import { TeamProvider } from "@/lib/TeamProvider";
 import { useTeam } from "@/lib/teamContext";
@@ -28,7 +28,7 @@ function mockFetch(): string[] {
 }
 
 function Probe() {
-  useApi("/api/leagues/a/roster");
+  useEnvelopeQuery("/api/leagues/a/roster");
   const { setTeam } = useTeam();
   const { search } = useLocation();
   return (

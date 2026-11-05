@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { League } from "@/api/types";
-import type { DigestData } from "@/features/digest/types";
+import type { DigestData } from "@/lib/digestTypes";
 import { ExplainDelta, NOISE_PERCENT } from "@/viz";
-import { useHomeLeagues } from "@/features/home/hooks";
 import type { components } from "@/api/schema";
 import type { ApiState } from "@/api/envelope";
-import { useLeagueQuery } from "./hooks";
+import { useAllLeagues, useLeagueQuery } from "@/lib/league";
 import { type OddsRun, type Visit, asMs, newAdds, oddsSince, readVisit, writeVisit } from "./visit";
 
 type StatusChange = components["schemas"]["StatusChangeRow"];
@@ -74,7 +73,7 @@ function LeagueSince({ league }: { league: League }) {
 
 /** Per league: what changed since this browser last opened the page (odds, my players' status, new waiver adds). */
 export function SinceLastLooked() {
-  const leagues = useHomeLeagues();
+  const leagues = useAllLeagues();
   if (leagues.kind === "error" || leagues.kind === "no_data") {
     return (
       <section aria-labelledby="since-heading" className="mb-6">

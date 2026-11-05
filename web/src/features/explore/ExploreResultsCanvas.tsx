@@ -11,7 +11,7 @@ import { TEAMS } from "@/stat/config/teams";
 import { formatMetricValueHeader, metricSelectAlias, statLabel } from "@/stat/lib/queryBuilder";
 import { formatQueryValue } from "@/stat/lib/formatQueryValue";
 import type { NFLPlayer, QueryResult } from "@/stat/types/workbench";
-import { useQueryState } from "@/features/explore/useQueryState";
+import { useQueryState } from "@/stat/react/useQueryState";
 import { useLeagueName } from "@/lib/league";
 import { useLeagueOwners } from "@/features/explore/useLeagueOwners";
 import { isLeagueQuery } from "@/stat/lib/queryUrl";

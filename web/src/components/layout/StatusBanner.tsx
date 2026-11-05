@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import type { StatHealth, Status } from "@/api/types";
-import { useApi } from "@/hooks/useApi";
+import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { bannerMessages } from "@/lib/status";
 
 function WithCode({ text }: { text: string }) {
@@ -36,7 +36,7 @@ const INNER = "mx-auto w-full max-w-[1200px] px-[var(--page-pad)]";
 
 /** One amber line at every width with a details disclosure; stacked rows pushed each page's answer down. */
 export function StatusBanner() {
-  const state = useApi<Status>("/api/status");
+  const state = useEnvelopeQuery<Status>("/api/status");
   const [open, setOpen] = useState(false);
   const statHealth = useStatHealth();
   const messages = bannerMessages(state.kind === "ready" ? state.data : null, statHealth);

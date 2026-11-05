@@ -3,14 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { ApiState } from "@/api/envelope";
-import { useApi } from "@/hooks/useApi";
+import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { TeamContext } from "@/lib/teamContext";
 import { runStatQuery } from "@/stat/engine/statQuery";
 import { fetchManifest } from "@/stat/lib/api";
 import { getPlayersByIds } from "@/stat/lib/players";
 import Player from "./Player";
 
-vi.mock("@/hooks/useApi", () => ({ useApi: vi.fn() }));
+vi.mock("@/api/useEnvelope", () => ({ useEnvelopeQuery: vi.fn() }));
 vi.mock("@/stat/engine/statQuery", () => ({ runStatQuery: vi.fn() }));
 vi.mock("@/stat/lib/api", () => ({ fetchManifest: vi.fn() }));
 vi.mock("@/stat/lib/players", () => ({ getPlayersByIds: vi.fn() }));
@@ -36,8 +36,8 @@ const profile = {
 };
 
 function mockApi(points: ApiState<unknown>, owners: ApiState<unknown> = ready({ rows: [{ gsis_id: "00-1", owner: "Lisan Al-Caleb", is_mine: true }], unmatched: 0 })) {
-  vi.mocked(useApi).mockImplementation(((path: string | null) =>
-    path?.includes("/player-points") ? points : path?.includes("/owners") ? owners : path?.includes("/profile") ? ready(profile) : path?.includes("/market-values") ? ready([]) : { kind: "loading" }) as typeof useApi);
+  vi.mocked(useEnvelopeQuery).mockImplementation(((path: string | null) =>
+    path?.includes("/player-points") ? points : path?.includes("/owners") ? owners : path?.includes("/profile") ? ready(profile) : path?.includes("/market-values") ? ready([]) : { kind: "loading" }) as typeof useEnvelopeQuery);
 }
 
 function renderPage(entry = "/players/00-1?league=a&team=2&week=5") {

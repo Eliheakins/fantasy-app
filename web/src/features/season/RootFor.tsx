@@ -1,6 +1,6 @@
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
-import type { WhatIfRow } from "@/features/league/types";
+import type { WhatIfRow } from "@/features/season/league/types";
 import { useLeagueApi } from "@/lib/league";
 import { Explain, formatNumber } from "@/viz";
 import { type RootFor as RootForRow, rootFor } from "./logic";

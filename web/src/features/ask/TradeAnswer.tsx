@@ -3,11 +3,11 @@ import { Link, useLocation } from "react-router-dom";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Callout } from "@/components/Callout";
 import { navSearch } from "@/components/layout/navLinks";
-import { FailureNotice } from "@/features/trades/FailureNotice";
-import { tradeKey } from "@/features/trades/logic";
-import { TradeResult } from "@/features/trades/TradeResult";
-import type { TradeEvaluation, TradeRequest } from "@/features/trades/types";
-import { usePostApi } from "@/features/trades/usePostApi";
+import { FailureNotice } from "@/features/moves/trade/FailureNotice";
+import { tradeKey } from "@/features/moves/trade/logic";
+import { TradeResult } from "@/features/moves/trade/TradeResult";
+import type { TradeEvaluation, TradeRequest } from "@/features/moves/trade/types";
+import { usePostEnvelope } from "@/api/useEnvelope";
 import { useLeague, useLeagueApi } from "@/lib/league";
 import type { components } from "@/api/schema";
 
@@ -57,7 +57,7 @@ function Plan({ owners, tradesLink, ...trade }: Props & { owners: Owners["rows"]
 
 function Evaluation({ request }: { request: TradeRequest }) {
   const { league } = useLeague();
-  const { state, refetch } = usePostApi<TradeEvaluation>(
+  const { state, refetch } = usePostEnvelope<TradeEvaluation>(
     ["ask-trade", tradeKey({ partner: request.partner_roster_id, give: request.give_ids, get: request.get_ids })],
     `/api/leagues/${encodeURIComponent(league ?? "")}/trades/evaluate`,
     request,

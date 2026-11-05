@@ -1,4 +1,4 @@
-import { lastExploreParams } from "@/features/explore/routeMemory";
+import { lastExploreParams } from "@/stat/react/routeMemory";
 
 /** Query parameters every page shares: the viewed league and team, and the global week. Nothing else crosses pages. */
 const SHARED_KEYS = ["league", "team", "week"];

@@ -17,8 +17,9 @@ vi.mock("@/lib/league", () => ({
   useLeagueName: () => "L",
   useLeagueApi: (path: string) => (path === "waivers" ? waivers : digest),
 }));
-vi.mock("@/features/waivers/WaiversView", () => ({ WaiversContent: () => <p>waivers details</p> }));
-vi.mock("@/pages/Trades", () => ({ default: () => <p>trade builder</p>, TradeDetails: () => <p>trade details</p> }));
+vi.mock("@/features/moves/waivers/WaiversView", () => ({ WaiversContent: () => <p>waivers details</p> }));
+vi.mock("@/features/moves/trade/TradeBuilder", () => ({ TradeBuilder: () => <p>trade builder</p> }));
+vi.mock("@/features/moves/trade/TradeDetails", () => ({ TradeDetails: () => <p>trade details</p> }));
 
 const ready = (data: unknown): ApiState<unknown> => ({ kind: "ready", data }) as ApiState<unknown>;
 const digestWith = (trades: unknown[]) => ready({ waivers: [], trades, ideas: { is_mine: true } });

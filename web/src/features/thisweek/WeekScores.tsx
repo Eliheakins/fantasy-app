@@ -1,6 +1,5 @@
 import type { League } from "@/api/types";
 import type { ApiState } from "@/api/envelope";
-import { useHomeLeagues } from "@/features/home/hooks";
 import {
   LIVE_NOTE,
   type ScoreboardRow,
@@ -11,9 +10,9 @@ import {
   sideName,
   sideScore,
   sortMineFirst,
-} from "@/features/scoreboard/logic";
+} from "@/lib/scoreboard";
 import { cn } from "@/lib/utils";
-import { useEachLeague } from "./hooks";
+import { useAllLeagues, useEachLeague } from "@/lib/league";
 
 const leagueName = (l: League) => l.name?.trim() || l.league_key;
 
@@ -92,7 +91,7 @@ function LeagueScores({ league, state, kickoff }: { league: League; state: ApiSt
 
 /** Every matchup of the week in both leagues, grouped by league, my matchup first on the tint. Always my own teams. */
 export function WeekScores({ kickoff }: { kickoff: Date | null }) {
-  const leagues = useHomeLeagues();
+  const leagues = useAllLeagues();
   const list = leagues.kind === "ready" ? leagues.data : [];
   const boards = useEachLeague<ScoreboardRow[]>(list.map((l) => l.league_key), "scoreboard");
   const rows = boards.flatMap((b) => (b.kind === "ready" ? b.data : []));

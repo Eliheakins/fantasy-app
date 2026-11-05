@@ -1,14 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ApiState } from "@/api/envelope";
-import { MANIFEST_QUERY_KEY } from "@/features/explore/manifest";
-import { fetchManifest } from "@/stat/lib/api";
+import { useManifestQuery } from "@/stat/react/manifest";
 import { getPlayersByIds } from "@/stat/lib/players";
 
 export type PlayerInfo = Awaited<ReturnType<typeof getPlayersByIds>>[number];
 
 /** The player with this id from the stat data's player list; ready with null when the id is unknown. */
 export function usePlayer(gsisId: string): ApiState<PlayerInfo | null> {
-  const manifestQuery = useQuery({ queryKey: MANIFEST_QUERY_KEY, queryFn: fetchManifest, retry: false, refetchOnWindowFocus: false });
+  const manifestQuery = useManifestQuery();
   const manifest = manifestQuery.data;
   const query = useQuery<PlayerInfo | null, Error>({
     queryKey: ["player-info", gsisId, manifest?.built_at ?? null],

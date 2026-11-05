@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AppShell } from "./AppShell";
 import { PageHeader } from "@/components/PageHeader";
-import { rememberExplore } from "@/features/explore/routeMemory";
+import { rememberExplore } from "@/stat/react/routeMemory";
 import { LeagueProvider } from "@/lib/league";
 import { NAV_ITEMS } from "@/nav";
 

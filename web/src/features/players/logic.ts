@@ -1,4 +1,4 @@
-import type { OutlookRow } from "@/features/outlook/types";
+import type { OutlookRow } from "@/lib/outlookTypes";
 
 export const PAGE_SIZE = 25;
 export const ALL_POSITIONS = "ALL";

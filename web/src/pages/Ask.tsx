@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HistoryPanel } from "@/features/ask/HistoryPanel";
 import { NLQPanel } from "@/features/ask/NLQPanel";
-import { ManifestProvider } from "@/features/explore/manifest";
+import { ManifestProvider } from "@/stat/react/manifest";
 
 /** Ask in plain language: rules read the question first, a local model the rest, and Explore's engine answers. */
 export default function Ask() {

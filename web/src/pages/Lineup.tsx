@@ -5,7 +5,7 @@ import { RadioGroup } from "@/components/RadioGroup";
 import { useLeague, useLeagueApi } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
 import { usePageEyebrow, useWeek } from "@/lib/week";
-import type { ScoreboardRow } from "@/features/scoreboard/logic";
+import type { ScoreboardRow } from "@/lib/scoreboard";
 import { ChevronDown } from "lucide-react";
 import { Explain, ExplainDelta, NOISE_PERCENT, formatNumber, formatPercent } from "@/viz";
 import { CloseCalls } from "@/features/lineup/CloseCalls";

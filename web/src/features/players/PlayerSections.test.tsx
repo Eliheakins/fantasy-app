@@ -2,12 +2,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { ApiState } from "@/api/envelope";
-import { useApi } from "@/hooks/useApi";
+import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { TeamContext } from "@/lib/teamContext";
 import { PlayerSections } from "./PlayerSections";
 import type { PlayerProfile } from "./profile";
 
-vi.mock("@/hooks/useApi", () => ({ useApi: vi.fn() }));
+vi.mock("@/api/useEnvelope", () => ({ useEnvelopeQuery: vi.fn() }));
 
 const profile: PlayerProfile = {
   gsis_id: "a", full_name: "Ann", position: "WR", week: 9, result_week: null, result_points: null, is_out: false, projection: 11, p10: 4, median: 12, p90: 21, chance_to_play: 0.76,
@@ -20,8 +20,8 @@ const owners = { rows: [{ gsis_id: "a", owner: "Theirs", roster_id: 3, is_mine: 
 const ready = <T,>(data: T): ApiState<T> => ({ kind: "ready", data }) as ApiState<T>;
 
 function mock(p: ApiState<unknown>, m: ApiState<unknown> = ready(market), o: ApiState<unknown> = ready(owners)) {
-  vi.mocked(useApi).mockImplementation(((path: string | null) =>
-    path?.includes("/profile") ? p : path?.includes("/market-values") ? m : path?.includes("/owners") ? o : { kind: "loading" }) as typeof useApi);
+  vi.mocked(useEnvelopeQuery).mockImplementation(((path: string | null) =>
+    path?.includes("/profile") ? p : path?.includes("/market-values") ? m : path?.includes("/owners") ? o : { kind: "loading" }) as typeof useEnvelopeQuery);
 }
 
 function renderSections(level: 2 | 3 = 2) {

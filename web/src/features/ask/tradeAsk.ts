@@ -2,8 +2,8 @@
  * Trade questions ("trade A for B", "A for B trade", "trade A and B for C"), read by rules only: the
  * model prompt and catalog do not know about them. The answer is the Trades page's own evaluation.
  */
-import { formatValue, points } from "@/features/trades/logic";
-import type { TradeRequest, TradeSide } from "@/features/trades/types";
+import { formatValue, points } from "@/features/moves/trade/logic";
+import type { TradeRequest, TradeSide } from "@/features/moves/trade/types";
 import type { PlayerDictionaryRow } from "@/stat/lib/schemas/players";
 
 import { type PlayerMatch, pickCandidate } from "./resolvePlayers";

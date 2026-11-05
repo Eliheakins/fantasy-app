@@ -1,6 +1,6 @@
 import { MAX_PINNED_PLAYERS } from "@/stat/lib/queryUrl";
 import { usePinnedPlayers } from "@/features/explore/usePinnedPlayers";
-import { useQueryState } from "@/features/explore/useQueryState";
+import { useQueryState } from "@/stat/react/useQueryState";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

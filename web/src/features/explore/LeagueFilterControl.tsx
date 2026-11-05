@@ -1,6 +1,6 @@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useLeagueOwners } from "@/features/explore/useLeagueOwners";
-import { useQueryState } from "@/features/explore/useQueryState";
+import { useQueryState } from "@/stat/react/useQueryState";
 import { useTeam } from "@/lib/teamContext";
 import type { RosterFilter } from "@/stat/lib/queryUrl";
 

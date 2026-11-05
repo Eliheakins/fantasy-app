@@ -2,7 +2,7 @@ import { act, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { createMemoryRouter, MemoryRouter, RouterProvider, useLocation } from "react-router-dom";
-import { usePageEyebrow, useWeek } from "./week";
+import { clampWeek, usePageEyebrow, useWeek } from "./week";
 
 vi.mock("@/lib/league", () => ({
   useLeague: () => ({ league: "a", leagues: { kind: "ready", data: [{ league_key: "a", name: "Colgate ", current_week: 9 }] } }),
@@ -66,4 +66,8 @@ describe("setWeek history", () => {
     expect(router.state.location.search).toBe("?week=3");
     expect(router.state.historyAction).toBe("REPLACE");
   });
+});
+
+test("clampWeek keeps a week inside the season", () => {
+  expect([clampWeek(0), clampWeek(7), clampWeek(30)]).toEqual([1, 7, 18]);
 });

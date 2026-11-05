@@ -2,8 +2,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useLeagueName } from "@/lib/league";
 import { getStatById } from "@/stat/config/statDictionary";
 import { statLabel } from "@/stat/lib/queryBuilder";
-import { useFilterChipGroups } from "@/features/explore/filterChipGroups";
-import { useQueryState } from "@/features/explore/useQueryState";
+import { useFilterChipGroups } from "@/stat/react/filterChipGroups";
+import { useQueryState } from "@/stat/react/useQueryState";
 import type { GranularityMode } from "@/stat/types/queryBuilder";
 
 const GRANULARITY_LABELS: Record<GranularityMode, string> = {

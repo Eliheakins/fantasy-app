@@ -1,9 +1,8 @@
 import type { ApiState } from "@/api/envelope";
-import { useApi } from "@/hooks/useApi";
-import type { ActionRow } from "@/features/home/logic";
-import { useHomeLeagues } from "@/features/home/hooks";
-import type { DigestData } from "@/features/digest/types";
-import { useEachLeague } from "./hooks";
+import { useEnvelopeQuery } from "@/api/useEnvelope";
+import type { ActionRow } from "@/features/thisweek/leagues/logic";
+import type { DigestData } from "@/lib/digestTypes";
+import { useAllLeagues, useEachLeague } from "@/lib/league";
 import { useNow } from "./useNow";
 import { type Todo, leagueTodos, orderByDeadline } from "./todos";
 import { type WeekCalendar, lineupDeadlineDay, waiverDeadlineDay } from "./weekLogic";
@@ -26,8 +25,8 @@ export type TodosState = {
 
 /** Both leagues' to-dos in one ordered list, plus the week calendar their deadlines come from. */
 export function useTodos(): TodosState {
-  const leagues = useHomeLeagues();
-  const calendarState = useApi<WeekCalendar>("/api/week-calendar");
+  const leagues = useAllLeagues();
+  const calendarState = useEnvelopeQuery<WeekCalendar>("/api/week-calendar");
   const list = leagues.kind === "ready" ? leagues.data : [];
   const keys = list.map((l) => l.league_key);
   const actions = useEachLeague<ActionRow[]>(keys, "actions?stored_adds=true");

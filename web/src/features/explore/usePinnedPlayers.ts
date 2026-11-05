@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { useManifest } from "@/features/explore/manifest";
+import { useManifest } from "@/stat/react/manifest";
 import { getPlayersByIds } from "@/stat/lib/players";
 import type { NFLPlayer } from "@/stat/types/workbench";
 

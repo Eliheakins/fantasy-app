@@ -1,8 +1,8 @@
 import { Callout } from "@/components/Callout";
 import { participationGap } from "@/stat/lib/dataFreshness";
-import { useFilterChipGroups } from "@/features/explore/filterChipGroups";
-import { useQueryState } from "@/features/explore/useQueryState";
-import { useManifest } from "@/features/explore/manifest";
+import { useFilterChipGroups } from "@/stat/react/filterChipGroups";
+import { useQueryState } from "@/stat/react/useQueryState";
+import { useManifest } from "@/stat/react/manifest";
 
 /**
  * Personnel, box-count and pass-rusher filters need participation data, which is published after a

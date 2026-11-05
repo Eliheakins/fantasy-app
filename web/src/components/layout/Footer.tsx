@@ -1,11 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
 import type { Status } from "@/api/types";
-import { useApi } from "@/hooks/useApi";
+import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { navSearch } from "./navLinks";
 
 /** Model scorecard link, data freshness per source and the attribution Sleeper asks for. */
 export function Footer() {
-  const state = useApi<Status>("/api/status");
+  const state = useEnvelopeQuery<Status>("/api/status");
   const { search, pathname } = useLocation();
   const rows = state.kind === "ready" ? state.data.freshness : [];
   return (

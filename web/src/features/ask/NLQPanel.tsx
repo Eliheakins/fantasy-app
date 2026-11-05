@@ -2,7 +2,7 @@ import { PlayerLink } from "@/components/PlayerLink";
 import { type KeyboardEvent, useMemo } from "react";
 import { Link } from "react-router-dom";
 
-import { useFilterChipGroups } from "@/features/explore/filterChipGroups";
+import { useFilterChipGroups } from "@/stat/react/filterChipGroups";
 import { IgnoredFiltersNotice } from "@/features/explore/IgnoredFiltersNotice";
 import { ParticipationNotice } from "@/features/explore/ParticipationNotice";
 import { ExploreResultsCanvas } from "@/features/explore/ExploreResultsCanvas";
@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useLeagueName } from "@/lib/league";
 import { TEAMS } from "@/stat/config/teams";
 import { isLeagueQuery, serializeQuery } from "@/stat/lib/queryUrl";
-import { useQueryState } from "@/features/explore/useQueryState";
+import { useQueryState } from "@/stat/react/useQueryState";
 
 import { buildAnswer } from "./answerText";
 import { InterpretationChips } from "./InterpretationChips";

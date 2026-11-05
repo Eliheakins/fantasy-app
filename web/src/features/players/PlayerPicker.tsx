@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { MANIFEST_QUERY_KEY } from "@/features/explore/manifest";
-import { fetchManifest } from "@/stat/lib/api";
+import { useManifestQuery } from "@/stat/react/manifest";
 import { getPlayers, searchPlayers } from "@/stat/lib/players";
 
 const MIN_QUERY = 2;
@@ -17,7 +16,7 @@ export function PlayerPicker({ onPick, exclude }: Props) {
     const t = window.setTimeout(() => setQuery(text.trim()), DEBOUNCE_MS);
     return () => window.clearTimeout(t);
   }, [text]);
-  const manifest = useQuery({ queryKey: MANIFEST_QUERY_KEY, queryFn: fetchManifest, retry: false, refetchOnWindowFocus: false });
+  const manifest = useManifestQuery();
   const found = useQuery({
     queryKey: ["compare-search", manifest.data?.built_at ?? null, query],
     enabled: manifest.data !== undefined && query.length >= MIN_QUERY,

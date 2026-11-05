@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { OutlookRow } from "@/features/outlook/types";
+import type { OutlookRow } from "@/lib/outlookTypes";
 import { ALL_POSITIONS, filterByPosition, isOut, positionsIn, sortByChange } from "./logic";
 
 const row = (position: string, change: number | null, chance: number | null = 1) =>

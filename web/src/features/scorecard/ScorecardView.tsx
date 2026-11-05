@@ -1,6 +1,6 @@
 import { Section } from "@/components/Section";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
-import { HBar } from "@/features/league/PowerRankings";
+import { HBar } from "@/features/season/league/PowerRankings";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/viz";
 import {

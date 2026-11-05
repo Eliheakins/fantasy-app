@@ -1,5 +1,5 @@
-import { LeagueView } from "@/features/league/LeagueView";
-import { OutlookView } from "@/features/outlook/OutlookView";
+import { LeagueView } from "@/features/season/league/LeagueView";
+import { OutlookView } from "@/features/season/outlook/OutlookView";
 import { RootForSection } from "@/features/season/RootFor";
 import { SeasonHeader } from "@/features/season/SeasonHeader";
 import { SeasonOdds } from "@/features/season/SeasonOdds";

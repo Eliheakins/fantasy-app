@@ -10,7 +10,7 @@ import { runStatQuery } from "@/stat/engine/statQuery";
 
 import { ExploreResultsCanvas } from "./ExploreResultsCanvas";
 import { LeagueFilterControl } from "./LeagueFilterControl";
-import { ManifestContext } from "./manifest";
+import { ManifestContext } from "@/stat/react/manifest";
 import { useExploreQueryExecution } from "./useExploreQueryExecution";
 
 vi.mock("@/stat/engine/statQuery", () => ({

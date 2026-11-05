@@ -1,5 +1,5 @@
-import { useFilterChipGroups } from "@/features/explore/filterChipGroups";
-import { useQueryState } from "@/features/explore/useQueryState";
+import { useFilterChipGroups } from "@/stat/react/filterChipGroups";
+import { useQueryState } from "@/stat/react/useQueryState";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";

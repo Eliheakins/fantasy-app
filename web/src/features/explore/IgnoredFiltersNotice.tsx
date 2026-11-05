@@ -1,5 +1,5 @@
 import { Callout } from "@/components/Callout";
-import { useQueryState } from "@/features/explore/useQueryState";
+import { useQueryState } from "@/stat/react/useQueryState";
 
 /** A shared link can name filters this data does not have (a season that was never built); say so. */
 export function IgnoredFiltersNotice() {

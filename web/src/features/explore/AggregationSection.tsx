@@ -1,4 +1,4 @@
-import { useQueryState } from "@/features/explore/useQueryState";
+import { useQueryState } from "@/stat/react/useQueryState";
 
 import { GranularitySelector } from "@/features/explore/GranularitySelector";
 import { MinPlaysSlider } from "@/features/explore/MinPlaysSlider";

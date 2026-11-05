@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { ApiState } from "@/api/envelope";
-import { HISTORY_WAIT_MESSAGE } from "@/features/outlook/logic";
+import { HISTORY_WAIT_MESSAGE } from "@/features/season/outlook/logic";
 import { RootForSection } from "./RootFor";
 import { SeasonHeader } from "./SeasonHeader";
 import { SeasonOdds } from "./SeasonOdds";

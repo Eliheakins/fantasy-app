@@ -1,6 +1,6 @@
 import type { components } from "@/api/schema";
 import { confidenceFromShare, formatNumber, formatPercent } from "@/viz";
-import { isMine, orderedSides, type ScoreboardRow } from "@/features/scoreboard/logic";
+import { isMine, orderedSides, type ScoreboardRow } from "@/lib/scoreboard";
 import { type LineupRow, type ObjectiveKey, type WinProbability, slotLabel } from "./logic";
 
 export type SlotCall = components["schemas"]["SlotCall"];

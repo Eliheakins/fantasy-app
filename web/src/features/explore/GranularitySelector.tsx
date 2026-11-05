@@ -1,7 +1,7 @@
 import { getStatById } from "@/stat/config/statDictionary";
 import { cn } from "@/lib/utils";
 import type { GranularityMode } from "@/stat/types/queryBuilder";
-import { useQueryState } from "@/features/explore/useQueryState";
+import { useQueryState } from "@/stat/react/useQueryState";
 
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 

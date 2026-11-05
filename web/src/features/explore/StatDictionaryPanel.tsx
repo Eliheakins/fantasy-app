@@ -7,7 +7,7 @@ import {
 import { describeStat } from "@/stat/lib/queryBuilder";
 import { cn } from "@/lib/utils";
 import { MAX_SELECTED_STATS } from "@/stat/lib/queryUrl";
-import { useQueryState } from "@/features/explore/useQueryState";
+import { useQueryState } from "@/stat/react/useQueryState";
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";

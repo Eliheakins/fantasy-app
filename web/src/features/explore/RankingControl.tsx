@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { getStatById } from "@/stat/config/statDictionary";
 import { clampLimit, MAX_LIMIT } from "@/stat/lib/queryUrl";
-import { useQueryState } from "@/features/explore/useQueryState";
+import { useQueryState } from "@/stat/react/useQueryState";
 
 const NO_RANKING = "none";
 

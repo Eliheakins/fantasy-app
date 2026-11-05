@@ -1,4 +1,4 @@
-import { ManifestProvider } from "@/features/explore/manifest";
+import { ManifestProvider } from "@/stat/react/manifest";
 import { QueryBuilderPanel } from "@/features/explore/QueryBuilderPanel";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PlayersNav } from "@/features/players/PlayersNav";

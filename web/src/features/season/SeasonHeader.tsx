@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/PageHeader";
-import type { DigestData } from "@/features/digest/types";
-import type { SeasonOddsRow } from "@/features/outlook/types";
-import { useWho } from "@/features/outlook/who";
+import type { DigestData } from "@/lib/digestTypes";
+import type { SeasonOddsRow } from "@/lib/outlookTypes";
+import { useWho } from "@/lib/who";
 import { useLeague, useLeagueApi } from "@/lib/league";
 import { useHeld } from "@/lib/useHeld";
 import { Explain, ExplainDelta, NOISE_PERCENT, formatPercent } from "@/viz";

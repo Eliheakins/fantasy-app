@@ -3,7 +3,7 @@ import type { LineupRow } from "./logic";
 import {
   type SlotCall, callText, recommendedObjective, scratchFallbacks, splitCalls, startAnswer, winnerShare, weekOverText, weekResult, resultText,
 } from "./calls";
-import type { ScoreboardRow } from "@/features/scoreboard/logic";
+import type { ScoreboardRow } from "@/lib/scoreboard";
 
 const call = (slot: string, share: number | null, o: Partial<SlotCall> = {}): SlotCall => ({
   slot, starter: `s-${slot}`, alternative: share === null ? null : `b-${slot}`, share, ...o,

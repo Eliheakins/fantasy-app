@@ -11,7 +11,7 @@ import { TeamPicker } from "@/features/explore/TeamPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { useQueryState } from "@/features/explore/useQueryState";
+import { useQueryState } from "@/stat/react/useQueryState";
 
 export interface QueryBuilderSidebarScrollProps {
   query: string;

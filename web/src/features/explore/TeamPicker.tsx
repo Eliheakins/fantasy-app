@@ -1,7 +1,7 @@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { TEAMS } from "@/stat/config/teams";
 import { MAX_PINNED_TEAMS } from "@/stat/lib/queryUrl";
-import { useQueryState } from "@/features/explore/useQueryState";
+import { useQueryState } from "@/stat/react/useQueryState";
 
 /**
  * Picks up to MAX_PINNED_TEAMS teams and whether to count their offense or their defense (what

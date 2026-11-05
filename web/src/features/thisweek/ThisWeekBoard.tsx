@@ -3,7 +3,7 @@ import { SinceLastLooked } from "./SinceLastLooked";
 import { TodoList } from "./TodoList";
 import { useTodos } from "./useTodos";
 import { WeekScores } from "./WeekScores";
-import { firstKickoff } from "@/features/scoreboard/logic";
+import { firstKickoff } from "@/lib/scoreboard";
 import { WeekStrip } from "./WeekStrip";
 
 /** The week strip, the to-do list for both leagues (the page's tinted panel, unless game day takes it), every matchup's score and the visit changes. */

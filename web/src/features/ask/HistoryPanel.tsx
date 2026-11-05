@@ -5,7 +5,7 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { getStatById } from "@/stat/config/statDictionary";
-import { useFilterChipGroups } from "@/features/explore/filterChipGroups";
+import { useFilterChipGroups } from "@/stat/react/filterChipGroups";
 import { EMPTY_QUERY, serializeQuery } from "@/stat/lib/queryUrl";
 
 import type { AskLogEntry, LoggedQuery } from "./askLog";

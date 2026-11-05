@@ -1,7 +1,7 @@
-import { type Matchup, groupMatchups, isThin } from "@/features/league/logic";
-import { weeklyHistory } from "@/features/outlook/logic";
-import type { OddsHistoryRow } from "@/features/outlook/types";
-import type { WhatIfRow } from "@/features/league/types";
+import { type Matchup, groupMatchups, isThin } from "@/features/season/league/logic";
+import { weeklyHistory } from "@/features/season/outlook/logic";
+import type { OddsHistoryRow } from "@/lib/outlookTypes";
+import type { WhatIfRow } from "@/features/season/league/types";
 import { formatPercent } from "@/viz";
 import type { SeasonEventRow, WinNeedRow } from "./types";
 

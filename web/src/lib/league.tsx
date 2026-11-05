@@ -1,6 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
 import type { League } from "@/api/types";
-import { useApi } from "@/hooks/useApi";
+import { useEnvelopeMutation, useEnvelopeQueries, useEnvelopeQuery } from "@/api/useEnvelope";
 import type { ApiState } from "@/api/envelope";
 
 const STORAGE_KEY = "fantasy.league";
@@ -39,7 +39,7 @@ type LeagueContextValue = {
 const LeagueContext = createContext<LeagueContextValue | null>(null);
 
 export function LeagueProvider({ children }: { children: ReactNode }) {
-  const raw = useApi<League[]>("/api/leagues");
+  const raw = useEnvelopeQuery<League[]>("/api/leagues");
   const leagues = useMemo(() => trimLeagueNames(raw), [raw]);
   const [chosen, setChosen] = useState<string | null>(readStored);
   const setLeague = useCallback((key: string) => {
@@ -70,5 +70,28 @@ export function useLeague(): LeagueContextValue {
 /** GET /api/leagues/{league}/{path} for the selected league; path may carry a query string. */
 export function useLeagueApi<T>(path: string): ApiState<T> {
   const { league } = useLeague();
-  return useApi<T>(league === null ? null : `/api/leagues/${encodeURIComponent(league)}/${path}`);
+  return useEnvelopeQuery<T>(league === null ? null : `/api/leagues/${encodeURIComponent(league)}/${path}`);
 }
+
+/** Every league from /api/leagues, independent of the top-bar picker (untrimmed, for per-league blocks). */
+export function useAllLeagues(): ApiState<League[]> {
+  return useEnvelopeQuery<League[]>("/api/leagues");
+}
+
+export const leagueUrl = (key: string, path: string) => `/api/leagues/${encodeURIComponent(key)}/${path}`;
+
+/**
+ * One GET per league, whatever the league select says and always for my own team (no `?team=`):
+ * to-dos and visit changes are about my teams. Same query key as `useEnvelopeQuery`, so the cache is shared.
+ * A null path turns the queries off.
+ */
+export function useEachLeague<T>(leagueKeys: readonly string[], path: string | null): ApiState<T>[] {
+  return useEnvelopeQueries<T>(leagueKeys.map((key) => (path === null ? null : leagueUrl(key, path))));
+}
+
+export function useLeagueQuery<T>(leagueKey: string, path: string | null): ApiState<T> {
+  return useEachLeague<T>([leagueKey], path)[0] ?? { kind: "loading" };
+}
+
+/** POST /api/live/refresh, then refetch everything. */
+export const useRefreshScores = () => useEnvelopeMutation<{ player_rows: number }>("/api/live/refresh");

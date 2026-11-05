@@ -1,16 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { MANIFEST_QUERY_KEY, seasonsOf } from "@/features/explore/manifest";
+import { seasonsOf, useManifestQuery } from "@/stat/react/manifest";
 import { buildFilterChipGroups } from "@/stat/config/queryBuilderOptions";
 import { browserColumnStore } from "@/stat/engine/parquetColumns";
 import { runStatQuery } from "@/stat/engine/statQuery";
-import { fetchManifest } from "@/stat/lib/api";
 import { playerGameSource, seasonSources } from "@/stat/lib/dataSources";
 import type { QueryResult } from "@/stat/types/workbench";
 
 /** The player's weekly regular-season totals for `season` from the stat engine. */
 export function useGameLog(gsisId: string, statIds: readonly string[], season: number) {
   // The manifest is read first so its build time keys the result: a data rebuild is never served from cache.
-  const manifestQuery = useQuery({ queryKey: MANIFEST_QUERY_KEY, queryFn: fetchManifest, retry: false, refetchOnWindowFocus: false });
+  const manifestQuery = useManifestQuery();
   const manifest = manifestQuery.data;
   const log = useQuery<QueryResult, Error>({
     queryKey: ["player-game-log", gsisId, season, manifest?.built_at ?? null],

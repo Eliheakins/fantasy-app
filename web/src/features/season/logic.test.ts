@@ -1,4 +1,4 @@
-import type { WhatIfRow } from "@/features/league/types";
+import type { WhatIfRow } from "@/features/season/league/types";
 import { weekMarks, myOddsByWeek, needSentence, needTable, rootFor } from "./logic";
 import type { SeasonEventRow, WinNeedRow } from "./types";
 

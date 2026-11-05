@@ -4,7 +4,7 @@ import { PlayerLink } from "@/components/PlayerLink";
 import { RadioGroup } from "@/components/RadioGroup";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { Section } from "@/components/Section";
-import type { OutlookRow } from "@/features/outlook/types";
+import type { OutlookRow } from "@/lib/outlookTypes";
 import { useLeagueApi } from "@/lib/league";
 import { cn } from "@/lib/utils";
 import { Delta, formatNumber, formatPercent } from "@/viz";

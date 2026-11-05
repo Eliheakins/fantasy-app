@@ -1,6 +1,6 @@
 import type { ApiState } from "@/api/envelope";
-import type { DigestData } from "@/features/digest/types";
-import type { WaiverRow } from "@/features/waivers/logic";
+import type { DigestData } from "@/lib/digestTypes";
+import type { WaiverRow } from "@/features/moves/waivers/logic";
 import { useLeagueApi } from "@/lib/league";
 import { type Move, rankMoves, tradeMoves, waiverMoves } from "./moves";
 
