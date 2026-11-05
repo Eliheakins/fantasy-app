@@ -206,7 +206,13 @@ def test_run_writes_the_new_tables_in_one_call_with_the_season_tables(
     latest = sim.run(n_sims=300)
     assert len(written) == 1
     tables: dict[str, Any] = written[0]
-    assert set(tables) == {"sim_season", "sim_seeds", "sim_team_weeks", "sim_conditional"}
+    assert set(tables) == {
+        "sim_season",
+        "sim_seeds",
+        "sim_team_weeks",
+        "sim_conditional",
+        "sim_win_need",
+    }
     assert tables["sim_season"].equals(latest)
     cond = tables["sim_conditional"]
     assert set(cond["league_id"]) == {LID} and set(cond["as_of_week"]) == {3}

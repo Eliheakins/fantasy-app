@@ -291,6 +291,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/win-needs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Win Needs
+         * @description Playoff odds by wins in the next four games (empty until simulate has run).
+         */
+        get: operations["win_needs_api_leagues__league__win_needs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/leagues/{league}/season-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Season Events
+         * @description Annotations for the season-odds chart, oldest first.
+         */
+        get: operations["season_events_api_leagues__league__season_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/what-if": {
         parameters: {
             query?: never;
@@ -1171,6 +1211,19 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** Envelope[list[SeasonEventRow]] */
+        Envelope_list_SeasonEventRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["SeasonEventRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[list[SeasonOddsRow]] */
         Envelope_list_SeasonOddsRow__: {
             /**
@@ -1284,6 +1337,19 @@ export interface components {
             status: "ok" | "running" | "error";
             /** Data */
             data: components["schemas"]["WhatIfRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[list[WinNeedRow]] */
+        Envelope_list_WinNeedRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["WinNeedRow"][] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -2068,6 +2134,20 @@ export interface components {
             /** Bias */
             bias: number | null;
         };
+        /** SeasonEventRow */
+        SeasonEventRow: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "trade" | "injury" | "big_week";
+            /** When */
+            when: string;
+            /** Run At */
+            run_at: string | null;
+            /** Label */
+            label: string;
+        };
         /** SeasonOddsRow */
         SeasonOddsRow: {
             /** Roster Id */
@@ -2372,6 +2452,19 @@ export interface components {
             d_playoffs: number;
             /** D Title */
             d_title: number;
+        };
+        /** WinNeedRow */
+        WinNeedRow: {
+            /** N Games */
+            n_games: number;
+            /** Wins */
+            wins: number;
+            /** N Runs */
+            n_runs: number;
+            /** P Condition */
+            p_condition: number;
+            /** P Playoffs */
+            p_playoffs: number;
         };
         /** WinProbabilityData */
         WinProbabilityData: {
@@ -2874,6 +2967,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_ManagerGradeRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    win_needs_api_leagues__league__win_needs_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_WinNeedRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    season_events_api_leagues__league__season_events_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_SeasonEventRow__"];
                 };
             };
             /** @description Validation Error */

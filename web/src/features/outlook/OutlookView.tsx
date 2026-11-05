@@ -25,12 +25,28 @@ const ODDS_METHOD =
 const SCHEDULE_METHOD =
   "Expected points are each team's best lineup this week, with each team's own kicker and defense projection. The win chance is a quick normal approximation, not the full simulation.";
 
-export function OutlookView() {
+/** Fetches odds-history only when it is drawn, so a page that draws its own chart does not load it twice. */
+function AllTeamsHistory({ odds, who }: { odds: SeasonOddsRow[]; who: ReturnType<typeof useWho> }) {
+  const history = useLeagueApi<OddsHistoryRow[]>("odds-history");
+  if (history.kind === "ready" && canShowHistory(odds, history.data)) {
+    return (
+      <Section
+        title="Season odds, all teams"
+        caption={`Chance to make the playoffs after each saved run. ${who.name ?? "Your team"} is the bold line.`}
+      >
+        <OddsHistoryChart odds={odds} history={history.data} />
+      </Section>
+    );
+  }
+  return <p className="measure mt-8 text-caption text-muted">{HISTORY_WAIT_MESSAGE}</p>;
+}
+
+/** `history` false leaves the all-teams odds chart out, for a page that draws it itself (Season). */
+export function OutlookView({ history: withHistory = true }: { history?: boolean }) {
   const who = useWho();
   const odds = useLeagueApi<SeasonOddsRow[]>("season-odds");
   const seeds = useLeagueApi<SeedRow[]>("seeds");
   const schedule = useLeagueApi<ScheduleRow[]>("schedule");
-  const history = useLeagueApi<OddsHistoryRow[]>("odds-history");
   return (
     <ApiBoundary state={odds}>
       {(oddsRows) =>
@@ -58,16 +74,7 @@ export function OutlookView() {
                 </Section>
               )}
             </Optional>
-            {history.kind === "ready" && canShowHistory(oddsRows, history.data) ? (
-              <Section
-                title="Season odds, all teams"
-                caption={`Chance to make the playoffs after each saved run. ${who.name ?? "Your team"} is the bold line.`}
-              >
-                <OddsHistoryChart odds={oddsRows} history={history.data} />
-              </Section>
-            ) : (
-              <p className="measure mt-8 text-caption text-muted">{HISTORY_WAIT_MESSAGE}</p>
-            )}
+            {withHistory && <AllTeamsHistory odds={oddsRows} who={who} />}
           </>
         )
       }

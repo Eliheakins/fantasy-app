@@ -188,6 +188,14 @@ def what_if(me: dict[str, Any], week: int, data_dir: Path) -> pl.DataFrame:
     return ordered.select(*ENGINE_SCHEMAS["what_if"])
 
 
+def win_needs(me: dict[str, Any], data_dir: Path) -> pl.DataFrame:
+    """My playoff odds by number of wins in my next games, from the simulation's sim_win_need."""
+    need = _read("sim_win_need", data_dir, area="derived").filter(
+        (pl.col("league_id") == me["league_id"]) & (pl.col("roster_id") == me["roster_id"])
+    )
+    return need.select(*ENGINE_SCHEMAS["win_needs"]).sort("wins")
+
+
 def team_grades(
     me: dict[str, Any], strength: pl.DataFrame, depth: pl.DataFrame, data_dir: Path
 ) -> pl.DataFrame:
