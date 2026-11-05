@@ -9,14 +9,13 @@ import polars as pl
 import pytest
 from fastapi.testclient import TestClient
 from store_fixture import write_rows
-from test_league_view import league  # noqa: F401  (league is a fixture)
 
 from fantasy import api, store
 from fantasy.config import load_config
 
 
 @pytest.fixture
-def client(league: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:  # noqa: F811
+def client(league: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("LIVE_REFRESH", "off")
     headers = {"X-Requested-With": "fantasy-app"}
     with TestClient(
@@ -39,7 +38,7 @@ def set_settings(path: Path, settings: dict[str, Any] | None) -> None:
 
 def test_calendar_gives_kickoffs_of_the_current_week_with_the_offset(
     client: TestClient,
-    league: Path,  # noqa: F811
+    league: Path,
 ) -> None:
     season = load_config().season
     games = [
@@ -64,7 +63,7 @@ def test_calendar_without_a_schedule_still_answers_with_no_kickoffs(client: Test
 
 def test_calendar_reads_the_waiver_day_and_marks_daily_waivers(
     client: TestClient,
-    league: Path,  # noqa: F811
+    league: Path,
 ) -> None:
     set_settings(league, {"waiver_day_of_week": 2, "daily_waivers": 0})
     assert get(client, "/api/week-calendar")["data"]["waivers"] == [
@@ -75,7 +74,7 @@ def test_calendar_reads_the_waiver_day_and_marks_daily_waivers(
     assert row["daily"] is True and row["day_of_week"] is None
 
 
-def test_calendar_with_no_settings_has_no_waiver_day(client: TestClient, league: Path) -> None:  # noqa: F811
+def test_calendar_with_no_settings_has_no_waiver_day(client: TestClient, league: Path) -> None:
     set_settings(league, None)
     row = get(client, "/api/week-calendar")["data"]["waivers"][0]
     assert row["day_of_week"] is None and row["daily"] is False
@@ -93,7 +92,7 @@ def snap(sleeper_id: str, fetched_at: str, injury: str | None) -> dict[str, Any]
 
 
 @pytest.fixture
-def my_roster(league: Path) -> Path:  # noqa: F811
+def my_roster(league: Path) -> Path:
     write_rows(
         league,
         "rosters",
@@ -203,7 +202,7 @@ def test_status_changes_uses_the_one_snapshot_at_or_before_since(
 
 def test_calendar_survives_bad_settings_and_reports_teams_without_a_kickoff_time(
     client: TestClient,
-    league: Path,  # noqa: F811
+    league: Path,
 ) -> None:
     frame = store.read_table("leagues", "raw", league)
     store.write_table(
@@ -224,7 +223,7 @@ def test_calendar_survives_bad_settings_and_reports_teams_without_a_kickoff_time
 
 def test_calendar_kickoff_offset_follows_daylight_saving(
     client: TestClient,
-    league: Path,  # noqa: F811
+    league: Path,
 ) -> None:
     season = load_config().season
     games = [

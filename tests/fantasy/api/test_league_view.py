@@ -5,75 +5,13 @@ from typing import Any
 
 import polars as pl
 import pytest
-from store_fixture import write_rows
+from store_fixture import LID, write_rows
 from test_simulate_load import LEAGUE, build_store
 
 from fantasy import data_api, store
 from fantasy.sim.odds import build_inputs
 from fantasy.stages import simulate as sim
 from fantasy.stages.simulate import load_league_data
-
-LID = "L1"
-POSITIONS = ["QB", "RB", "K", "BN", "BN"]
-# weeks 1 and 2 scored; later weeks are the zero-point placeholders Sleeper pre-fills
-SCORES = {1: {1: 100.0, 2: 90.0, 3: 80.0, 4: 70.0}, 2: {1: 60.0, 3: 95.0, 2: 75.0, 4: 75.0}}
-PAIRS = {1: [(1, 2), (3, 4)], 2: [(1, 3), (2, 4)], 3: [(1, 4), (2, 3)], 4: [(1, 2), (3, 4)]}
-
-
-@pytest.fixture
-def league(tmp_path: Path) -> Path:
-    write_rows(
-        tmp_path,
-        "leagues",
-        [
-            {
-                "league_key": "t",
-                "league_id": LID,
-                "current_week": 3,
-                "playoff_week_start": 10,
-                "roster_positions": POSITIONS,
-                "scoring_settings": "{}",
-            }
-        ],
-    )
-    teams = [
-        {"league_id": LID, "roster_id": r, "team_name": f"T{r}", "is_me": r == 1}
-        for r in range(1, 5)
-    ]
-    write_rows(tmp_path, "league_teams", teams)
-    rows = []
-    for week, pairs in PAIRS.items():
-        for m, pair in enumerate(pairs, start=1):
-            rows += [
-                {"league_id": LID, "week": week, "roster_id": r, "matchup_id": m}
-                | {"points": SCORES.get(week, {}).get(r, 0.0)}
-                for r in pair
-            ]
-    write_rows(tmp_path, "matchups", rows)
-    write_rows(
-        tmp_path,
-        "sleeper_players",
-        [
-            {"sleeper_id": s, "position": p, "fantasy_positions": [p]}
-            for s, p in (("qb1", "QB"), ("rb1", "RB"), ("rb2", "RB"), ("k1", "K"), ("ir", "WR"))
-        ],
-    )
-    players = [
-        # sleeper_id, points, is_starter
-        ("qb1", 20.0, True), ("rb1", 10.0, True), ("rb2", 15.0, False), ("k1", 5.0, True),
-        ("ir", None, False),
-    ]  # fmt: skip
-    write_rows(
-        tmp_path,
-        "matchup_players",
-        [
-            {"league_id": LID, "week": w, "roster_id": 1, "sleeper_id": s, "points": p}
-            | {"is_starter": st}
-            for w in (1, 2)
-            for s, p, st in players
-        ],
-    )
-    return tmp_path
 
 
 def sim_tables(path: Path) -> None:

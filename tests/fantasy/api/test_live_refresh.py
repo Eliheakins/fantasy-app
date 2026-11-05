@@ -5,7 +5,6 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 from store_fixture import write_rows
-from test_api import store_dir as store_dir  # noqa: F401 - fixture
 
 from fantasy import api, api_routes, data_api, live_refresh
 from fantasy.api_jobs import JobRunner
@@ -131,7 +130,7 @@ def test_lifespan_starts_and_stops_thread(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_status_route_reports_live_refresh(
-    store_dir: Path,  # noqa: F811
+    store_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("LIVE_REFRESH", "off")

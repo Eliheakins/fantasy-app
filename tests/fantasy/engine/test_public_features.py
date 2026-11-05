@@ -5,7 +5,7 @@ from pathlib import Path
 
 import polars as pl
 
-_PATH = Path(__file__).resolve().parents[1] / "research" / "public_features.py"
+_PATH = Path(__file__).resolve().parents[3] / "research" / "public_features.py"
 _SPEC = importlib.util.spec_from_file_location("public_features", _PATH)
 assert _SPEC is not None and _SPEC.loader is not None
 pf = importlib.util.module_from_spec(_SPEC)

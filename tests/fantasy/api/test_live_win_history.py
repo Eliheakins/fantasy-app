@@ -1,4 +1,3 @@
-# ruff: noqa: F811
 """Game-day history: one row per live tick (and manual refresh) for the current week only."""
 
 from datetime import UTC, datetime
@@ -8,8 +7,7 @@ import polars as pl
 import pytest
 from fastapi.testclient import TestClient
 from store_fixture import write_rows
-from test_api import body, client  # noqa: F401 - fixture
-from test_api import store_dir as base_store_dir  # noqa: F401 - fixture
+from test_api import body
 
 from fantasy import api, data_api, store
 
@@ -18,7 +16,7 @@ T2 = datetime(2026, 9, 6, 17, 10, tzinfo=UTC)
 
 
 @pytest.fixture
-def store_dir(base_store_dir: Path) -> Path:
+def store_dir(store_dir: Path) -> Path:
     """The API fixture store plus set starters in week 3, so both sides have points to come."""
     starters = [(1, "qb"), (2, "opp")]
     rows = [
@@ -26,8 +24,8 @@ def store_dir(base_store_dir: Path) -> Path:
         | {"points": 0.0}
         for r, s in starters
     ]
-    write_rows(base_store_dir, "matchup_players", rows)
-    return base_store_dir
+    write_rows(store_dir, "matchup_players", rows)
+    return store_dir
 
 
 def history(path: Path) -> pl.DataFrame:

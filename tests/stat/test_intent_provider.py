@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 import openai
 import pytest
-from conftest import FILTERS, STATS, FakeLlm
+from fakes import FILTERS, STATS, FakeLlm
 from pydantic import SecretStr
 
 from nfl_stat.schemas.nlq import IntentRequest, QueryOutcome, UnsupportedOutcome

@@ -6,8 +6,7 @@ import polars as pl
 import pytest
 from fastapi.testclient import TestClient
 from store_fixture import write_rows
-from test_api import client, wait_ok  # noqa: F401  (fixture)
-from test_api import store_dir as store_dir  # noqa: F401  (fixture)
+from test_api import wait_ok
 
 from fantasy import api, data_api, store
 from fantasy._values import past_trade_ratios
@@ -149,13 +148,13 @@ def test_market_values_maps_to_gsis_and_is_empty_without_the_table(tmp_path: Pat
     assert out["gsis_id"].to_list() == ["00-1"] and out["value"].to_list() == [7000.0]
 
 
-def test_route_returns_ok_with_empty_data_when_the_table_is_missing(store_dir: Path) -> None:  # noqa: F811
+def test_route_returns_ok_with_empty_data_when_the_table_is_missing(store_dir: Path) -> None:
     with TestClient(api.create_app(data_dir=store_dir), base_url="http://localhost") as bare:
         r = bare.get("/api/leagues/t/market-values", params={"ids": "00-1,00-2"})
     assert r.json()["status"] == "ok" and r.json()["data"] == []
 
 
-def test_route_serves_values(store_dir: Path) -> None:  # noqa: F811
+def test_route_serves_values(store_dir: Path) -> None:
     seed_values(store_dir)
     with TestClient(api.create_app(data_dir=store_dir), base_url="http://localhost") as bare:
         data = bare.get("/api/leagues/t/market-values", params={"ids": "00-1"}).json()["data"]
@@ -268,14 +267,14 @@ def test_trade_market_reports_the_share_from_the_partners_side_and_skips_unfinis
 PAYLOAD = {"partner_roster_id": 2, "give_ids": ["G_QB", "G_WR"], "get_ids": ["G_OPP"]}
 
 
-def test_evaluate_route_has_no_market_without_the_table(client: TestClient) -> None:  # noqa: F811
+def test_evaluate_route_has_no_market_without_the_table(client: TestClient) -> None:
     out = client.post("/api/leagues/t/trades/evaluate", json=PAYLOAD).json()
     assert out["status"] == "ok" and out["data"]["market"] is None
 
 
 def test_evaluate_route_carries_the_market_summary(
-    client: TestClient,  # noqa: F811
-    store_dir: Path,  # noqa: F811
+    client: TestClient,
+    store_dir: Path,
 ) -> None:
     mapped = store.read_table("id_map", "derived", store_dir)
     seed_values(store_dir)  # replaces the map with sleeper 1 as 00-1
@@ -287,8 +286,8 @@ def test_evaluate_route_carries_the_market_summary(
 
 
 def test_find_route_rows_carry_the_market_summary(
-    client: TestClient,  # noqa: F811
-    store_dir: Path,  # noqa: F811
+    client: TestClient,
+    store_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     seed_values(store_dir)

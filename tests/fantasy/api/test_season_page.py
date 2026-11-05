@@ -8,7 +8,7 @@ import polars as pl
 import pytest
 from fastapi.testclient import TestClient
 from store_fixture import write_rows
-from test_league_view import LID, league  # noqa: F401  (league is a fixture)
+from test_league_view import LID
 
 from fantasy import api, data_api, store
 
@@ -32,7 +32,7 @@ def write_archive(path: Path, name: str, rows: list[dict], area: str = "archive"
 
 
 @pytest.fixture
-def season(league: Path) -> Path:  # noqa: F811
+def season(league: Path) -> Path:
     write_rows(
         league, "leagues",
         [{"league_key": "t", "league_id": LID, "current_week": 8, "playoff_week_start": 15,

@@ -5,7 +5,7 @@ from pathlib import Path
 import httpx
 import openai
 import pytest
-from conftest import FILTERS, STATS
+from fakes import FILTERS, STATS
 
 from nfl_stat.api.deps import get_llm_client
 from nfl_stat.pipeline.manifest import write_manifest

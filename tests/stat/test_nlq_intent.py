@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 import pytest
-from conftest import FILTERS, STATS, FakeLlm
+from fakes import FILTERS, STATS, FakeLlm
 from pydantic import ValidationError
 
 from nfl_stat.schemas.nlq import CatalogStat, IntentRequest, QueryOutcome, UnsupportedOutcome

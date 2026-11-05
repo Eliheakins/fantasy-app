@@ -2,7 +2,7 @@ import json
 import os
 import threading
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -11,56 +11,16 @@ import polars as pl
 import pytest
 from fastapi.testclient import TestClient
 from store_fixture import write_rows
-from test_data_api_characterization import _engine_store
 
-from fantasy import _engine, api, api_envelope, api_routes, data_api, store
+from fantasy import _engine, api, api_envelope, api_routes, data_api
 from fantasy.api_jobs import Busy, JobRunner
 from fantasy.sources import sleeper
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[3]
 CSRF_HEADER = {"X-Requested-With": "fantasy-app"}
 LEAGUE_ROWS = [
     {"league_key": "t", "league_id": "L1", "name": "Test", "roster_id": 1},
 ]
-
-
-@pytest.fixture
-def store_dir(tmp_path: Path) -> Path:
-    _engine_store(tmp_path)
-    write_rows(
-        tmp_path,
-        "sim_season",
-        [
-            {"league_id": "L1", "roster_id": 1, "team_name": "Mine", "p_title": 0.5},
-            {"league_id": "L1", "roster_id": 2, "team_name": "Theirs", "p_title": 0.1},
-        ],
-    )
-    write_rows(tmp_path, "sim_seeds", [{"league_id": "L1", "roster_id": 1, "seed": 1, "p": 1.0}])
-    history = [
-        {"league_id": "L1", "roster_id": r, "team_name": n, "run_at": "2026-09-01"}
-        for r, n in ((1, "Mine"), (2, "Theirs"))
-    ]
-    frame = pl.DataFrame(history, schema=store.SCHEMAS["sim_season_history"])
-    store.write_table("sim_season_history", frame, "archive", tmp_path)
-    write_rows(
-        tmp_path,
-        "streaming_projection",
-        [
-            {"league_id": "L1", "kind": "K", "unit": "G_FREEK", "team": "KC", "week": 3}
-            | {"projection": 6.0},
-        ],
-    )
-    _engine._clear_league_cache()
-    return tmp_path
-
-
-@pytest.fixture
-def client(store_dir: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
-    monkeypatch.setenv("LIVE_REFRESH", "off")  # no background thread in API tests
-    with TestClient(
-        api.create_app(data_dir=store_dir), base_url="http://localhost", headers=CSRF_HEADER
-    ) as c:
-        yield c
 
 
 def body(response: Any) -> dict[str, Any]:

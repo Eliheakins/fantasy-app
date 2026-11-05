@@ -7,20 +7,20 @@ from pathlib import Path
 import polars as pl
 import pytest
 from fastapi.testclient import TestClient
-from test_api import client, store_dir, wait_ok  # noqa: F401  (fixtures)
+from test_api import wait_ok
 
 from fantasy import _engine, data_api
 
 
 def test_default_view_is_unchanged_and_the_team_argument_overrides_it(
-    store_dir: Path,  # noqa: F811
+    store_dir: Path,
 ) -> None:
     assert _engine._league("t", store_dir)[1] == 1
     assert _engine._league("t", store_dir, team=2)[1] == 2
     assert _engine._league("t", store_dir)[1] == 1
 
 
-def test_same_team_as_me_gives_identical_results(store_dir: Path) -> None:  # noqa: F811
+def test_same_team_as_me_gives_identical_results(store_dir: Path) -> None:
     calls = (
         data_api.lineup,
         data_api.waivers,
@@ -34,7 +34,7 @@ def test_same_team_as_me_gives_identical_results(store_dir: Path) -> None:  # no
 
 
 def test_another_team_changes_roster_lineup_odds_flags_and_partners(
-    store_dir: Path,  # noqa: F811
+    store_dir: Path,
 ) -> None:
     d = store_dir
     mine_ids = set(data_api.lineup("t", data_dir=d)["gsis_id"])
@@ -50,13 +50,13 @@ def test_another_team_changes_roster_lineup_odds_flags_and_partners(
     assert back.filter(pl.col("is_me"))["roster_id"].to_list() == [1]
 
 
-def test_teams_lists_every_team_with_me_marked(store_dir: Path) -> None:  # noqa: F811
+def test_teams_lists_every_team_with_me_marked(store_dir: Path) -> None:
     teams = data_api.teams("t", store_dir)
     assert teams["roster_id"].to_list() == [1, 2, 3, 4, 5, 6]
     assert teams.filter(pl.col("is_me"))["team_name"].to_list() == ["Mine"]
 
 
-def test_unknown_team_is_a_value_error(store_dir: Path) -> None:  # noqa: F811
+def test_unknown_team_is_a_value_error(store_dir: Path) -> None:
     with pytest.raises(ValueError, match="unknown team 99"):
         data_api.lineup("t", data_dir=store_dir, team=99)
     with pytest.raises(ValueError, match="unknown team 99"):
@@ -66,7 +66,7 @@ def test_unknown_team_is_a_value_error(store_dir: Path) -> None:  # noqa: F811
 # --- API ----------------------------------------------------------------------------
 
 
-def test_routes_follow_the_team_param_and_default_to_me(client: TestClient) -> None:  # noqa: F811
+def test_routes_follow_the_team_param_and_default_to_me(client: TestClient) -> None:
     default = client.get("/api/leagues/t/roster").json()["data"]
     same = client.get("/api/leagues/t/roster?team=1").json()["data"]
     other = client.get("/api/leagues/t/roster?team=2").json()["data"]
@@ -76,7 +76,7 @@ def test_routes_follow_the_team_param_and_default_to_me(client: TestClient) -> N
     assert [r["roster_id"] for r in odds if r["is_me"]] == [2]
 
 
-def test_teams_route(client: TestClient) -> None:  # noqa: F811
+def test_teams_route(client: TestClient) -> None:
     out = client.get("/api/leagues/t/teams").json()
     assert out["status"] == "ok" and len(out["data"]) == 6
     assert [r["team_name"] for r in out["data"] if r["is_me"]] == ["Mine"]
@@ -86,12 +86,12 @@ def test_teams_route(client: TestClient) -> None:  # noqa: F811
 @pytest.mark.parametrize(
     "path", ["roster", "lineup", "schedule", "strength", "season-odds", "outlook", "trade-partners"]
 )
-def test_invalid_team_is_an_invalid_envelope(client: TestClient, path: str) -> None:  # noqa: F811
+def test_invalid_team_is_an_invalid_envelope(client: TestClient, path: str) -> None:
     out = client.get(f"/api/leagues/t/{path}?team=99").json()
     assert out["status"] == "error" and out["error"]["code"] == "invalid"
 
 
-def test_invalid_team_on_a_job_and_a_trade(client: TestClient) -> None:  # noqa: F811
+def test_invalid_team_on_a_job_and_a_trade(client: TestClient) -> None:
     out = wait_ok(client, lambda: client.get("/api/leagues/t/waivers?team=99"))
     assert out["error"]["code"] == "invalid"
     payload = {"partner_roster_id": 2, "give_ids": ["G_QB"], "get_ids": ["G_OPP"]}
@@ -99,7 +99,7 @@ def test_invalid_team_on_a_job_and_a_trade(client: TestClient) -> None:  # noqa:
     assert out["error"]["code"] == "invalid"
 
 
-def test_trade_evaluate_is_from_the_viewed_team(client: TestClient) -> None:  # noqa: F811
+def test_trade_evaluate_is_from_the_viewed_team(client: TestClient) -> None:
     payload = {"partner_roster_id": 1, "give_ids": ["G_OPP"], "get_ids": ["G_RB"]}
     out = client.post("/api/leagues/t/trades/evaluate?team=2", json=payload).json()
     assert out["status"] == "ok"
@@ -108,7 +108,7 @@ def test_trade_evaluate_is_from_the_viewed_team(client: TestClient) -> None:  # 
 
 
 def test_job_keys_and_results_are_per_team(
-    client: TestClient,  # noqa: F811
+    client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     gate = threading.Event()
@@ -133,7 +133,7 @@ def test_job_keys_and_results_are_per_team(
 
 
 def test_jobs_run_for_the_viewed_roster_not_is_me(
-    client: TestClient,  # noqa: F811
+    client: TestClient,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     seen: dict[str, int] = {}

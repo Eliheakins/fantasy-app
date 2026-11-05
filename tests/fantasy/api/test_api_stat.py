@@ -9,6 +9,7 @@ from typing import Any
 import httpx
 import openai
 import pytest
+from fakes import FakeLlm
 from fastapi.testclient import TestClient
 
 from fantasy import api
@@ -35,17 +36,6 @@ MANIFEST = {
         }
     ],
 }
-
-
-class FakeLlm:
-    def __init__(self, reply: str) -> None:
-        self.base_url = "http://fake-llm/v1"
-        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
-        self._reply = reply
-
-    async def _create(self, **_: Any) -> Any:
-        message = SimpleNamespace(content=self._reply)
-        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
 
 
 @pytest.fixture
@@ -85,7 +75,7 @@ def client(
     )
     app = api.create_app(web_dist, stat_settings=settings)
     reply = json.dumps({"unsupported": "no such stat"})
-    app.dependency_overrides[get_llm_client] = lambda: FakeLlm(reply)
+    app.dependency_overrides[get_llm_client] = lambda: FakeLlm([reply])
     with TestClient(app, base_url="http://localhost") as c:
         yield c
 

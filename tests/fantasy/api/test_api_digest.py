@@ -7,16 +7,14 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 from store_fixture import write_rows
-from test_api import store_dir as store_dir  # noqa: F401  (fixture)
 from test_api import wait_ok
 from test_digest import idea_rows
-from test_league_view import league  # noqa: F401  (league is a fixture)
 
 from fantasy import api, data_api
 
 
 @pytest.fixture
-def client(league: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:  # noqa: F811
+def client(league: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("LIVE_REFRESH", "off")
     headers = {"X-Requested-With": "fantasy-app"}
     with TestClient(
@@ -78,7 +76,7 @@ def test_digest_marks_the_deadline_as_passed_and_rejects_unknown_leagues(
 
 
 def test_actions_can_reuse_the_stored_waivers(
-    store_dir: Path,  # noqa: F811
+    store_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     write_rows(store_dir, "move_ideas", idea_rows(league_id="L1"))

@@ -5,50 +5,13 @@ from pathlib import Path
 
 import polars as pl
 import pytest
-from store_fixture import write_rows
-from test_simulate_load import build_store
+from store_fixture import _engine_store, write_rows
 
-from fantasy import data_api, store
+from fantasy import data_api
 
 NOW = datetime(2026, 9, 1, tzinfo=UTC)
 LEVELS = range(1, 100)
 SKILL = (("G_QB", "QB"), ("G_WR", "WR"), ("G_RB", "RB"), ("G_OPP", "WR"))
-
-
-def _engine_store(tmp_path: Path) -> None:
-    build_store(tmp_path, [(100.0, 90.0)])
-    write_rows(tmp_path, "trending")
-    marginals = [
-        {
-            "league_id": "L1",
-            "position": pos,
-            "tier": tier,
-            "tau": round(k / 100, 2),
-            "ratio": 0.4 + k / 100 + 0.1 * tier,
-            "cv": 0.5,
-            "proj_max": {0: 8.0, 1: 14.0}.get(tier),
-        }
-        for pos in ("QB", "RB", "WR", "TE")
-        for tier in (-1, 0, 1, 2)
-        for k in LEVELS
-    ]
-    write_rows(tmp_path, "marginals", marginals)
-    points = [
-        {"league_id": "L1", "gsis_id": g, "season": 2026, "week": w, "points": 5.0 + w + len(g) % 3}
-        | {"season_type": "REG", "position": pos}
-        for g, pos in SKILL
-        for w in (1, 2)
-    ]
-    write_rows(tmp_path, "player_points", points)
-    schema = store.SCHEMAS["nfl_ff_opportunity"]
-    opportunity = [
-        {"player_id": g, "season": 2026, "week": w, "position": pos, "posteam": "KC"}
-        | {"total_fantasy_points_exp": 7.0, "rec_attempt": 5.0, "receptions_exp": 4.0}
-        for g, pos in SKILL
-        for w in (1, 2)
-    ]
-    frame = pl.DataFrame([{**dict.fromkeys(schema), **r} for r in opportunity], schema=schema)
-    store.write_table("nfl_ff_opportunity", frame, "raw", tmp_path)
 
 
 def _round(row: dict) -> dict:

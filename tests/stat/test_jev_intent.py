@@ -9,7 +9,7 @@ from typing import Any
 
 import httpx
 import pytest
-from conftest import FILTERS, STATS
+from fakes import FILTERS, STATS
 
 from nfl_stat.core.config import REPO_ROOT
 from nfl_stat.schemas.nlq import IntentRequest, QueryOutcome, UnsupportedOutcome

@@ -7,7 +7,7 @@ from typing import Any
 import polars as pl
 import pytest
 from store_fixture import write_rows
-from test_league_view import LID, league  # noqa: F401  (league is a fixture)
+from test_league_view import LID
 
 from fantasy import _digest, data_api, store
 from fantasy.stages import digest as stage

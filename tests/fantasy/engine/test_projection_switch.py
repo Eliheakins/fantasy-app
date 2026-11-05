@@ -65,7 +65,7 @@ def test_early_learned_history_is_left_out_because_those_models_saw_later_season
 
 
 def test_config_defaults_to_the_baseline_and_rejects_an_unknown_model(tmp_path: Path) -> None:
-    text = (Path(__file__).parent.parent / "config.toml").read_text()
+    text = (Path(__file__).resolve().parents[3] / "config.toml").read_text()
     lines = [x for x in text.splitlines() if "projection_model" not in x]
     without = tmp_path / "a.toml"
     without.write_text("\n".join(lines) + "\n")
@@ -81,7 +81,7 @@ def test_the_shipped_config_uses_the_learned_model() -> None:
 
 
 def test_the_environment_layer_can_be_switched_off_and_is_on_by_default(tmp_path: Path) -> None:
-    text = (Path(__file__).parent.parent / "config.toml").read_text()
+    text = (Path(__file__).resolve().parents[3] / "config.toml").read_text()
     without = tmp_path / "a.toml"
     without.write_text(
         "\n".join(x for x in text.splitlines() if "environment_layer" not in x) + "\n"

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from test_league_view import league, sim_tables  # noqa: F401  (league is a fixture)
+from test_league_view import sim_tables
 
 from fantasy import api
 
@@ -30,7 +30,7 @@ COLUMNS = {
 
 
 @pytest.fixture
-def client(league: Path) -> Iterator[TestClient]:  # noqa: F811
+def client(league: Path) -> Iterator[TestClient]:
     sim_tables(league)
     headers = {"X-Requested-With": "fantasy-app"}
     with TestClient(
