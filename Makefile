@@ -23,6 +23,7 @@ refresh: backup
 	uv run python -m fantasy.stages.simulate
 	uv run python -m fantasy.stages.digest
 	uv run python -m fantasy.stages.market_values
+	$(MAKE) stat-data-refresh
 
 # nflverse play-by-play shards for the stat app, into data/stat (needs the network, takes minutes)
 stat-data:

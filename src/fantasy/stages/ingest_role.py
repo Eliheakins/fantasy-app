@@ -16,6 +16,7 @@ import polars as pl
 from fantasy import store
 from fantasy.config import load_config
 from fantasy.store import SKILL
+from nfl_stat.pipeline.pbp_source import read_pbp
 
 FIRST_SEASON = 2018
 MAX_UNMATCHED_SHARE = 0.05  # rows lost to an ID join before the stage fails
@@ -24,6 +25,17 @@ OLD_DEPTH_LAST_SEASON = 2024  # the weekly depth chart; later seasons are dated 
 UNDRAFTED_PICK = 300.0
 RANKING_MAX_GAP_DAYS = 9  # a scrape counts for a week only this close before its first game
 KEY = ["gsis_id", "season", "week"]
+PACE_COLUMNS = [
+    "season",
+    "week",
+    "season_type",
+    "pass",
+    "rush",
+    "posteam",
+    "qb_dropback",
+    "pass_oe",
+    "epa",
+]
 
 
 def seasons() -> list[int]:
@@ -225,7 +237,7 @@ def load_pace() -> pl.DataFrame:
     rows = []
     for season in wanted:
         try:
-            pbp = nfl.load_pbp([season])
+            pbp = read_pbp(season, PACE_COLUMNS)
         except Exception as error:
             # only the in-progress season may be missing; anything else is a fetch failure that
             # would leave the learned model with thinner features, so it must stop the run

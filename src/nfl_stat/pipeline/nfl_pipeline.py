@@ -10,21 +10,15 @@ Joins:
 
 from __future__ import annotations
 
-import os
-import tempfile
 from pathlib import Path
-from urllib.parse import urljoin
-from urllib.request import urlretrieve
 
 import nflreadpy as nfl
 import polars as pl
 from nflreadpy.utils_date import get_current_season
 
 from nfl_stat.pipeline.atomic import atomic_path
+from nfl_stat.pipeline.pbp_source import ensure_pbp
 from nfl_stat.pipeline.players import merge_player_index, read_player_index
-
-# Same release host as nflreadpy downloader; override with NFLVERSE_DOWNLOAD_BASE.
-_DEFAULT_NFLVERSE_DL = "https://github.com/nflverse/nflverse-data/releases/download/"
 
 # --- PBP (lean) + join keys + advanced --------------------------------------
 PBP_COLS = [
@@ -94,37 +88,17 @@ PART_DTYPES: dict[str, pl.DataType | type[pl.DataType]] = {
 }
 
 
-def get_nfl_url(year: int, kind: str) -> str:
-    """Public nflverse-data release URL (same paths as nflreadpy `downloader.download`)."""
-    base = os.environ.get("NFLVERSE_DOWNLOAD_BASE", _DEFAULT_NFLVERSE_DL).strip()
-    if not base.startswith(("https://", "http://")):
-        raise ValueError(
-            f"NFLVERSE_DOWNLOAD_BASE must start with https:// or http://, got {base!r}"
-        )
-    if not base.endswith("/"):
-        base = f"{base}/"
-    if kind == "pbp":
-        rel = f"pbp/play_by_play_{year}.parquet"
-    else:
-        raise ValueError(f"Unknown nflverse asset kind {kind!r} (supported: 'pbp')")
-    return urljoin(base, rel)
-
-
 def _load_pbp_parquet_pruned(year: int) -> pl.DataFrame:
-    """Read PBP from nflverse Parquet with column pruning (lower RAM than full `load_pbp`)."""
-    url = get_nfl_url(year, "pbp")
-    # GitHub's release CDN answers Polars' remote range requests with 501, so download the file first.
-    with tempfile.TemporaryDirectory() as tmp:
-        local_path = Path(tmp) / f"play_by_play_{year}.parquet"
-        urlretrieve(url, local_path)
-        names = set(pl.scan_parquet(local_path).collect_schema().names())
-        cols = [c for c in PBP_COLS if c in names]
-        missing = [c for c in PBP_COLS if c not in names]
-        if missing:
-            print(f"⚠️  PBP URL missing columns (omitted): {missing}")
-        if "play_type" not in cols:
-            raise ValueError(f"PBP file for {year} has no play_type column (url={url})")
-        return pl.read_parquet(local_path, columns=cols)
+    """Read PBP from the shared local copy (`pbp_source`), keeping only the PBP_COLS columns."""
+    path = ensure_pbp(year)
+    names = set(pl.scan_parquet(path).collect_schema().names())
+    cols = [c for c in PBP_COLS if c in names]
+    missing = [c for c in PBP_COLS if c not in names]
+    if missing:
+        print(f"⚠️  PBP file missing columns (omitted): {missing}")
+    if "play_type" not in cols:
+        raise ValueError(f"PBP file for {year} has no play_type column ({path})")
+    return pl.read_parquet(path, columns=cols)
 
 
 def create_player_index(data_dir: Path, years: list[int]) -> None:

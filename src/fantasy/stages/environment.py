@@ -22,7 +22,6 @@ Run: uv run python -m fantasy.stages.environment
 import time
 from typing import NamedTuple
 
-import nflreadpy
 import numpy as np
 import polars as pl
 
@@ -33,6 +32,7 @@ from fantasy.stages.crosswalk import SUFFIXES
 from fantasy.stages.distributions import calibrated
 from fantasy.stages.outlook import build_panel
 from fantasy.store import SKILL
+from nfl_stat.pipeline.pbp_source import read_pbp
 
 HALF_LIFE = 6.0  # games
 WINDOW = 17  # games
@@ -47,6 +47,7 @@ RIDGE = 1.0
 CONTROLS = ["first_back", "second_back", "vac_target", "vac_carry", "log_context"]
 FEATURES = ["pass_epa", "sack_rate", "cb_out"]
 KINDS = {"pass_epa": "team_pass_epa", "sack_rate": "team_sack_rate", "cb_out": "opp_cb_out"}
+EFFICIENCY_COLUMNS = ["season", "week", "season_type", "posteam", "defteam", "pass", "epa", "sack"]
 LATEST = 99  # the "week" that holds a team's rating after its latest game
 
 
@@ -62,7 +63,7 @@ def team_efficiency(seasons: range) -> pl.DataFrame:
     """Per team-game: offense pass EPA per dropback and sack rate, from play-by-play."""
     frames = []
     for season in seasons:
-        pbp = nflreadpy.load_pbp(season)
+        pbp = read_pbp(season, EFFICIENCY_COLUMNS)
         plays = pbp.filter(
             (pl.col("season_type") == "REG")
             & pl.col("epa").is_not_null()

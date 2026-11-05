@@ -101,6 +101,7 @@ not deterministic (see the 2026-10-25 entry).
 |---|---|---|---|---|
 | `regret.py` | Do candidates pick better lineups (start/sit regret, error near the flex cutoff)? | Learned beats baseline by 0.55 to 0.71 points a team-week; component average and reconciliation win against learned but not against a two-seed average | Report only (proposed as a second gate) | 10-26 |
 | `news_residual_check.py` | Do day-over-day Sleeper status changes predict the blend's residual? | Harness; archive started 2026-10-26 | Waiting for weeks | 10-26 |
+| `pbp_parity_check.py` | Do `nfl_team_pace` and the team-efficiency table come out identical when play-by-play is read through the shared cache `data/raw/pbp/` instead of nflreadpy? | Identical: 9 seasons, 4,496 rows each, all columns and dtypes | Shipped (S4a) | 11-04 |
 
 ## Spread, correlations and team totals
 
