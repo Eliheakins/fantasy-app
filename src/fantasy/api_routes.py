@@ -135,6 +135,7 @@ def status(request: Request, data_dir: DataDir) -> Any:
             "freshness": rows(data_api.freshness(data_dir=data_dir)),
             "missing_layers": data_api.missing_layers(data_dir),
             "simulation_behind_inputs": data_api.simulation_behind_inputs(data_dir),
+            "refresh_runs": rows(data_api.refresh_runs(data_dir)),
             "data_version": data_version(data_dir),
             "live_refresh": request.app.state.live.status(),
         }

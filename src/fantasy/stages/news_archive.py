@@ -21,6 +21,7 @@ from typing import Any
 import polars as pl
 
 from fantasy import store
+from fantasy._runs import note_soft_failure
 from fantasy.stages.sync_sleeper import PLAYERS_CACHE, _int
 
 TABLE = "sleeper_player_status"
@@ -62,6 +63,7 @@ def run(data_dir: Path | None = None) -> int:
         store.write_table(TABLE, pl.concat([old, new]), "archive", data_dir)
     except Exception as err:  # fail soft: the archive is optional, make refresh must run on
         print(f"warning: {TABLE} snapshot skipped: {err!r}")
+        note_soft_failure(repr(err))
         return 0
     return new.height
 

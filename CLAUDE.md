@@ -10,7 +10,7 @@ Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, 
 
 ## Run it
 
-- `make refresh`: back up `data/archive/`, then pull Sleeper and nflverse, rebuild every table, and finish with `stat-data-refresh` (needs the network)
+- `make refresh`: back up `data/archive/`, then pull Sleeper and nflverse, rebuild every table, and finish with `stat-data-refresh` (needs the network). Every step runs through `stages/run_recorded.py` (`fantasy/_runs.py`), which appends `{stage, finished_at, status, error}` to the `refresh_runs` table (`data/derived`, never `data/stat`); a stage that fails soft calls `note_soft_failure(error)` and is recorded failed with exit 0, so later steps still run. The last step, `stages/refresh_report.py --since <start>`, prints each stage that failed in this run and exits 1 (so `data/refresh.log` has a `REFRESH FAILED` line and launchd sees a failure). `/api/status` returns the latest row per stage as `refresh_runs`, and the stale banner shows a notice for each failed one. A stage with no row did not run
 - `make stat-data` (`stat-data-refresh` for the current season only): build the stat app's nflverse shards into `data/stat` (network, minutes; `make refresh` ends with the `--refresh` form). `make ask-model`: local MLX model server for Ask on port 8080
 - `make serve`: build `web/` and serve the React UI plus the API at http://127.0.0.1:8000. `make dev`: API plus the Vite dev server (hot reload)
 - `make schedule-install` / `schedule-remove`: a macOS launchd job running `make refresh` Tuesday 06:00, Friday 18:00 and Sunday 08:00 (Mac awake; log in `data/refresh.log`). Installed on the main Mac on 2026-10-28; `make schedule-remove` undoes it.

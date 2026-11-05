@@ -145,6 +145,9 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         ),
         **_cols(strings="team_changed_at fetched_at"),
     },
+    # written by stages/run_recorded.py around every `make refresh` step (area: derived, appended;
+    # never under data/stat, which is served over HTTP): one row per stage run
+    "refresh_runs": _cols(strings="stage finished_at status error"),
     # written by crosswalk (area: derived)
     "id_map": {"sleeper_id": _S, "gsis_id": _S, "nfl_team": _S, "match_method": _S},
     # written by score (area: derived)

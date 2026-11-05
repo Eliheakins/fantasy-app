@@ -15,6 +15,7 @@ from pathlib import Path
 import polars as pl
 
 from fantasy import data_api, store
+from fantasy._runs import note_soft_failure
 
 log = logging.getLogger(__name__)
 TOP_WAIVERS = 5
@@ -98,8 +99,9 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO)
     try:
         print(f"{run()} move ideas stored")
-    except Exception:
+    except Exception as err:
         log.exception("digest stage failed; previous move ideas left in place")
+        note_soft_failure(repr(err))
     return 0
 
 

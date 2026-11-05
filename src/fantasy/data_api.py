@@ -46,7 +46,7 @@ from fantasy._profile import player_profile
 from fantasy._schemas import ENGINE_SCHEMAS
 from fantasy._scoreboard import SCOREBOARD_SIMS, scoreboard_of
 from fantasy._scorecard import Scorecard, scorecard_of
-from fantasy._status import freshness, missing_layers, simulation_behind_inputs
+from fantasy._status import freshness, missing_layers, refresh_runs, simulation_behind_inputs
 from fantasy._values import market_values as _market_values
 from fantasy._values import trade_market as _trade_market
 from fantasy._watch import watchlist as _watchlist
@@ -92,6 +92,7 @@ __all__ = [
     "power_rankings",
     "team_grades",
     "refresh_live",
+    "refresh_runs",
     "roster",
     "schedule",
     "scorecard",

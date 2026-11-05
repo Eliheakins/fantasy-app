@@ -5,12 +5,15 @@ import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { bannerMessages } from "@/lib/status";
 
 function WithCode({ text }: { text: string }) {
-  const [before, after] = text.split("`make refresh`");
+  const parts = text.split("`make refresh`");
   return (
     <>
-      {before}
-      <code>make refresh</code>
-      {after}
+      {parts.map((part, i) => (
+        <span key={i}>
+          {i > 0 && <code>make refresh</code>}
+          {part}
+        </span>
+      ))}
     </>
   );
 }
@@ -63,7 +66,7 @@ export function StatusBanner() {
           </div>
           {open && (
             <ul id="data-notices" aria-live="off" className={`${INNER} list-disc space-y-1 pb-3 pl-[calc(var(--page-pad)+1rem)]`}>
-              {messages.map((m) => <li key={m}><WithCode text={m} /></li>)}
+              {messages.map((m) => <li key={m} className="break-words"><WithCode text={m} /></li>)}
             </ul>
           )}
         </div>

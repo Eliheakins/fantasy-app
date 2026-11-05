@@ -22,6 +22,7 @@ import httpx
 import polars as pl
 
 from fantasy import store
+from fantasy._runs import note_soft_failure
 from fantasy.config import load_config
 from fantasy.stages.crosswalk import norm_team, normalize_name
 
@@ -131,6 +132,7 @@ def snapshot(
             parsed = parse(check_week(fetch(season, week, position), season, week), position)
         except Exception as err:  # fail soft: a site change must not stop make refresh
             print(f"warning: {source} {position} week {week} skipped: {err!r}")
+            note_soft_failure(f"{source} {position}: {err!r}")
             continue
         rows += [
             {

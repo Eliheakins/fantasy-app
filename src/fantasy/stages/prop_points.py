@@ -36,6 +36,7 @@ from scipy.optimize import brentq
 from scipy.special import gammaincc
 
 from fantasy import store
+from fantasy._runs import note_soft_failure
 from fantasy.config import load_config
 from fantasy.sim.availability import EASTERN
 from fantasy.stages import outside_projections as op
@@ -453,6 +454,7 @@ def run(data_dir: Path | None = None, odds_dir: Path = ODDS_DIR) -> tuple[int, i
             )
     except Exception as err:  # fail soft like outside_projections: the blend runs without props
         print(f"warning: prop points skipped for week {week}: {err!r}")
+        note_soft_failure(repr(err))
         implied = []
     tables = {
         name: _typed(name, frames, stamp)

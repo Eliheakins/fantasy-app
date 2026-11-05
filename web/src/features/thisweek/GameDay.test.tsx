@@ -16,7 +16,7 @@ const now = {
   my_points: 18, opp_points: 20, my_projected: 110, opp_projected: 100, my_left: 3, opp_left: 4, points_needed: 82,
 };
 const status = (active: boolean) =>
-  ok({ freshness: [], missing_layers: [], simulation_behind_inputs: null, data_version: "v", live_refresh: { enabled: true, active, last_ok_at: null, last_error: null, interval_minutes: 10 } });
+  ok({ freshness: [], missing_layers: [], simulation_behind_inputs: null, refresh_runs: [], data_version: "v", live_refresh: { enabled: true, active, last_ok_at: null, last_error: null, interval_minutes: 10 } });
 
 let live = true;
 let gameDay: () => Response = () => Response.json(ok({ week: 9, as_of: "2026-11-08T17:20:00Z", current: now, history }));

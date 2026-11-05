@@ -37,10 +37,18 @@ class LiveRefreshData(Row):
     interval_minutes: int
 
 
+class RefreshRunRow(Row):
+    stage: str
+    finished_at: str
+    status: Literal["ok", "failed"]
+    error: str | None
+
+
 class StatusData(Row):
     freshness: list[FreshnessRow]
     missing_layers: list[str]
     simulation_behind_inputs: str | None
+    refresh_runs: list[RefreshRunRow]
     data_version: str
     live_refresh: LiveRefreshData
 

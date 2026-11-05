@@ -62,6 +62,7 @@ def test_status_reports_freshness_layers_and_version_in_one_call(client: TestCli
         "freshness",
         "missing_layers",
         "simulation_behind_inputs",
+        "refresh_runs",
         "data_version",
         "live_refresh",
     }
@@ -807,3 +808,19 @@ def test_player_profile_serves_range_and_ros_over_replacement(client: TestClient
 def test_player_profile_rejects_a_malformed_id(client: TestClient) -> None:
     assert client.get("/api/leagues/t/players/bad%20id/profile").status_code == 422
     assert client.get(f"/api/leagues/t/players/{'x' * 21}/profile").status_code == 422
+
+
+def test_status_returns_the_latest_run_per_stage(client: TestClient, store_dir: Path) -> None:
+    from datetime import UTC, datetime
+
+    from fantasy import _runs
+
+    _runs.record_run("digest", "failed", "boom", store_dir, now=datetime(2026, 11, 1, tzinfo=UTC))
+    _runs.record_run("digest", "failed", "down", store_dir, now=datetime(2026, 11, 2, tzinfo=UTC))
+    _runs.record_run("score", "ok", None, store_dir, now=datetime(2026, 11, 2, tzinfo=UTC))
+    runs = body(client.get("/api/status"))["data"]["refresh_runs"]
+    assert {(r["stage"], r["status"], r["error"]) for r in runs} == {
+        ("digest", "failed", "down"),
+        ("score", "ok", None),
+    }
+    assert set(runs[0]) == {"stage", "finished_at", "status", "error"}

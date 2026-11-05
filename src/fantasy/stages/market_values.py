@@ -16,6 +16,7 @@ import httpx
 import polars as pl
 
 from fantasy import store
+from fantasy._runs import note_soft_failure
 from fantasy.sim.setting import Setting, setting_for
 
 log = logging.getLogger(__name__)
@@ -89,10 +90,11 @@ def run(
             continue
         try:
             new.append(to_frame(fetch(setting), setting.key, now))
-        except Exception:
+        except Exception as err:
             log.exception(
                 "market values fetch failed for %s; keeping the previous rows", setting.key
             )
+            note_soft_failure(f"{setting.key}: {err!r}")
     if not new:
         return 0
     replaced = {f["format"][0] for f in new if f.height}
@@ -105,8 +107,9 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO)
     try:
         print(f"{run()} market value rows fetched")
-    except Exception:
+    except Exception as err:
         log.exception("market values stage failed; previous table left in place")
+        note_soft_failure(repr(err))
     return 0
 
 

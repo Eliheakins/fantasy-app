@@ -6,6 +6,7 @@ from pathlib import Path
 import polars as pl
 
 from fantasy import store
+from fantasy._runs import latest_runs
 from fantasy.config import load_config
 
 _FRESHNESS_SCHEMA: dict[str, pl.DataType | type[pl.DataType]] = {
@@ -45,6 +46,11 @@ def simulation_behind_inputs(data_dir: Path | None = None) -> str | None:
     if not behind:
         return None
     return f"Season odds are older than {', '.join(behind)}: the last refresh may have failed"
+
+
+def refresh_runs(data_dir: Path | None = None) -> pl.DataFrame:
+    """The latest recorded outcome of each refresh stage: stage, finished_at, status, error."""
+    return latest_runs(data_dir)
 
 
 # projection layers that the simulation skips, without error, when their table is missing

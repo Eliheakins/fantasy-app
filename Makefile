@@ -1,29 +1,36 @@
+# Every refresh step goes through run_recorded, which records ok or failed in data/derived/refresh_runs.
+# A soft failure still exits 0 so later steps run; the last step (refresh_report) exits 1 for the
+# failures since REFRESH_START, which puts a clear line in data/refresh.log and fails the launchd job.
+stage = uv run python -m fantasy.stages.run_recorded $(1) fantasy.stages.$(1)
+REFRESH_START := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+
 .PHONY: setup test lint fmt check refresh backup schedule-install schedule-remove serve dev web-build odds odds-slate stat-data stat-data-refresh ask-model
 
 backup:
-	uv run python -m fantasy.stages.backup
+	$(call stage,backup)
 
 refresh: backup
-	uv run python -m fantasy.stages.sync_sleeper
-	uv run python -m fantasy.stages.news_archive
-	uv run python -m fantasy.stages.sleeper_projections
-	uv run python -m fantasy.stages.outside_projections
-	uv run python -m fantasy.stages.ingest_nfl
-	uv run python -m fantasy.stages.crosswalk
-	uv run python -m fantasy.stages.score
-	uv run python -m fantasy.stages.prop_points
-	uv run python -m fantasy.stages.streaming
-	uv run python -m fantasy.stages.project
-	uv run python -m fantasy.stages.learn
-	uv run python -m fantasy.stages.availability
-	uv run python -m fantasy.stages.distributions
-	uv run python -m fantasy.stages.injuries
-	uv run python -m fantasy.stages.outlook
-	uv run python -m fantasy.stages.environment
-	uv run python -m fantasy.stages.simulate
-	uv run python -m fantasy.stages.digest
-	uv run python -m fantasy.stages.market_values
-	$(MAKE) stat-data-refresh
+	$(call stage,sync_sleeper)
+	$(call stage,news_archive)
+	$(call stage,sleeper_projections)
+	$(call stage,outside_projections)
+	$(call stage,ingest_nfl)
+	$(call stage,crosswalk)
+	$(call stage,score)
+	$(call stage,prop_points)
+	$(call stage,streaming)
+	$(call stage,project)
+	$(call stage,learn)
+	$(call stage,availability)
+	$(call stage,distributions)
+	$(call stage,injuries)
+	$(call stage,outlook)
+	$(call stage,environment)
+	$(call stage,simulate)
+	$(call stage,digest)
+	$(call stage,market_values)
+	$(MAKE) stat-data-refresh; rc=$$?; \
+	uv run python -m fantasy.stages.refresh_report --since $(REFRESH_START) && exit $$rc
 
 # nflverse play-by-play shards for the stat app, into data/stat (needs the network, takes minutes)
 stat-data:
@@ -31,7 +38,7 @@ stat-data:
 
 # Rebuild only the current season; other seasons are kept
 stat-data-refresh:
-	uv run python -m nfl_stat.pipeline.cli --refresh
+	uv run python -m fantasy.stages.run_recorded stat_data nfl_stat.pipeline.cli --refresh
 
 # Local model for Ask (Apple Silicon; first run downloads about 2 GB). Ask works without it for
 # questions the rules can read.

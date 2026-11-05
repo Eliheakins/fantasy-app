@@ -1,7 +1,7 @@
 import type { StatHealth, Status } from "@/api/types";
 import { bannerMessages, liveLabel } from "./status";
 
-const base: Status = { freshness: [], missing_layers: [], data_version: "v1", simulation_behind_inputs: null,
+const base: Status = { freshness: [], missing_layers: [], data_version: "v1", simulation_behind_inputs: null, refresh_runs: [],
   live_refresh: { enabled: true, active: false, last_ok_at: null, last_error: null, interval_minutes: 10 },
 };
 
@@ -16,6 +16,7 @@ describe("bannerMessages", () => {
       missing_layers: ["injury model", "outlook"],
       data_version: "v1",
       live_refresh: base.live_refresh,
+      refresh_runs: [],
       simulation_behind_inputs: "Season odds are older than sleeper: the last refresh may have failed",
     };
     expect(bannerMessages(status)).toEqual([
@@ -23,6 +24,30 @@ describe("bannerMessages", () => {
       "Running without: injury model, outlook. Run `make refresh`.",
       "Season odds are older than sleeper: the last refresh may have failed. Run `make refresh`.",
     ]);
+  });
+});
+
+describe("bannerMessages with refresh runs", () => {
+  const run = (stage: string, status: "ok" | "failed", error: string | null = null) => ({ stage, finished_at: "2026-11-05T06:00:00+00:00", status, error });
+  it("gives one notice per stage whose latest run failed", () => {
+    const status: Status = { ...base, refresh_runs: [run("score", "ok"), run("digest", "failed", "RuntimeError('boom')"), run("market_values", "failed", "down")] };
+    expect(bannerMessages(status)).toEqual([
+      "Refresh step digest failed: RuntimeError('boom'). Run `make refresh`.",
+      "Refresh step market_values failed: down. Run `make refresh`.",
+    ]);
+  });
+  it("tolerates a server without refresh_runs", () => {
+    const { refresh_runs: _omit, ...old } = base;
+    expect(bannerMessages(old as unknown as Status)).toEqual([]);
+  });
+  it("cuts a long multi-line error to its first line and handles a null error", () => {
+    const long = `${"x".repeat(300)}\nTraceback line 2`;
+    const [a, b] = bannerMessages({ ...base, refresh_runs: [run("b_stage", "failed"), run("a_stage", "failed", long)] });
+    expect(a).toBe(`Refresh step a_stage failed: ${"x".repeat(200)}.... Run \`make refresh\`.`);
+    expect(b).toBe("Refresh step b_stage failed: no error recorded. Run `make refresh`.");
+  });
+  it("is quiet when every latest run is ok", () => {
+    expect(bannerMessages({ ...base, refresh_runs: [run("score", "ok")] })).toEqual([]);
   });
 });
 

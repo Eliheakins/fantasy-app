@@ -6,7 +6,7 @@ import { StatusBanner } from "./StatusBanner";
 const STATUS = {
   freshness: [{ source: "Sleeper", age_hours: 60, updated_at: "2026-11-01T00:00:00Z" }],
   missing_layers: ["odds"],
-  simulation_behind_inputs: null,
+  simulation_behind_inputs: null, refresh_runs: [],
   live_refresh: { enabled: false, active: false, last_ok_at: null },
 };
 
@@ -44,6 +44,13 @@ describe("StatusBanner", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText(/Stale data/)).toBeInTheDocument();
     expect(screen.getByText(/Running without/)).toBeInTheDocument();
+  });
+
+  it("lists a failed refresh step in the details", async () => {
+    stubFetch({ ...STATUS, freshness: [], missing_layers: [], refresh_runs: [{ stage: "digest", finished_at: "2026-11-05T06:00:00+00:00", status: "failed", error: "boom" }] });
+    renderBanner();
+    await userEvent.setup().click(await screen.findByRole("button", { name: /details/i }));
+    expect(screen.getByText(/Refresh step digest failed: boom/)).toBeInTheDocument();
   });
 
   it("shows nothing when the data is fresh", async () => {

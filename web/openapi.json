@@ -7040,6 +7040,46 @@
         ],
         "title": "RefreshData"
       },
+      "RefreshRunRow": {
+        "properties": {
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "finished_at": {
+            "type": "string",
+            "title": "Finished At"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "stage",
+          "finished_at",
+          "status",
+          "error"
+        ],
+        "title": "RefreshRunRow"
+      },
       "RoleWeek": {
         "properties": {
           "week": {
@@ -7789,6 +7829,13 @@
             ],
             "title": "Simulation Behind Inputs"
           },
+          "refresh_runs": {
+            "items": {
+              "$ref": "#/components/schemas/RefreshRunRow"
+            },
+            "type": "array",
+            "title": "Refresh Runs"
+          },
           "data_version": {
             "type": "string",
             "title": "Data Version"
@@ -7803,6 +7850,7 @@
           "freshness",
           "missing_layers",
           "simulation_behind_inputs",
+          "refresh_runs",
           "data_version",
           "live_refresh"
         ],

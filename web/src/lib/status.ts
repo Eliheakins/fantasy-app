@@ -9,6 +9,15 @@ const STALE_HOURS: Readonly<Record<string, number>> = {
 };
 const MS_PER_HOUR = 3_600_000;
 
+const MAX_ERROR_CHARS = 200;
+
+/** First line of a recorded error, cut to a banner-sized length; `make refresh` is dropped so the notice keeps one. */
+function shortError(error: string | null): string {
+  const line = ((error ?? "").split("\n")[0] ?? "").replaceAll("`make refresh`", "make refresh").trim();
+  if (!line) return "no error recorded";
+  return line.length > MAX_ERROR_CHARS ? `${line.slice(0, MAX_ERROR_CHARS)}...` : line;
+}
+
 /** Banner lines, worded as the retired Streamlit stale_banner() was (each ends "Run `make refresh`."). */
 export function bannerMessages(status: Status | null, statHealth: StatHealth | null = null, now = new Date()): string[] {
   const rows = [...(status?.freshness ?? [])];
@@ -26,6 +35,8 @@ export function bannerMessages(status: Status | null, statHealth: StatHealth | n
   if (status.missing_layers.length) {
     messages.push(`Running without: ${status.missing_layers.join(", ")}. Run \`make refresh\`.`);
   }
+  const failed = (status.refresh_runs ?? []).filter((r) => r.status === "failed").sort((a, b) => a.stage.localeCompare(b.stage));
+  for (const run of failed) messages.push(`Refresh step ${run.stage} failed: ${shortError(run.error)}. Run \`make refresh\`.`);
   if (status.simulation_behind_inputs) messages.push(`${status.simulation_behind_inputs}. Run \`make refresh\`.`);
   return messages;
 }

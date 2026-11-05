@@ -2003,6 +2003,20 @@ export interface components {
             /** Player Rows */
             player_rows: number;
         };
+        /** RefreshRunRow */
+        RefreshRunRow: {
+            /** Stage */
+            stage: string;
+            /** Finished At */
+            finished_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "failed";
+            /** Error */
+            error: string | null;
+        };
         /** RoleWeek */
         RoleWeek: {
             /** Week */
@@ -2216,6 +2230,8 @@ export interface components {
             missing_layers: string[];
             /** Simulation Behind Inputs */
             simulation_behind_inputs: string | null;
+            /** Refresh Runs */
+            refresh_runs: components["schemas"]["RefreshRunRow"][];
             /** Data Version */
             data_version: string;
             live_refresh: components["schemas"]["LiveRefreshData"];
