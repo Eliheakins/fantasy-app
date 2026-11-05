@@ -441,6 +441,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/player-points": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Player Points */
+        get: operations["player_points_api_leagues__league__player_points_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/outlook": {
         parameters: {
             query?: never;
@@ -959,6 +976,19 @@ export interface components {
             status: "ok" | "running" | "error";
             /** Data */
             data: components["schemas"]["PartnerRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[list[PlayerPointsRow]] */
+        Envelope_list_PlayerPointsRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["PlayerPointsRow"][] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -1569,6 +1599,13 @@ export interface components {
             roster_id: number;
             /** Team Name */
             team_name: string;
+        };
+        /** PlayerPointsRow */
+        PlayerPointsRow: {
+            /** Week */
+            week: number;
+            /** Points */
+            points: number;
         };
         /** PlayerWeekRow */
         PlayerWeekRow: {
@@ -2853,6 +2890,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_PlayerWeekRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    player_points_api_leagues__league__player_points_get: {
+        parameters: {
+            query: {
+                gsis_id: string;
+                season: number;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_PlayerPointsRow__"];
                 };
             };
             /** @description Validation Error */

@@ -7,6 +7,12 @@ const STATS_BY_POSITION: Readonly<Record<string, readonly string[]>> = {
   TE: RECEIVING,
 };
 
+/** The stat ids shown for a position's game log; null where there is none (K, DEF, unknown). */
+export function statIdsFor(position: string): readonly string[] | null {
+  const key = position.toUpperCase();
+  return Object.hasOwn(STATS_BY_POSITION, key) ? (STATS_BY_POSITION[key] ?? null) : null;
+}
+
 type StatLinkArgs = { gsisId: string | null; position: string; season: number; search?: string };
 
 /**
@@ -14,8 +20,7 @@ type StatLinkArgs = { gsisId: string | null; position: string; season: number; s
  * current URL's query); null where there is nothing to open (no id, K, DEF).
  */
 export function statLink({ gsisId, position, season, search = "" }: StatLinkArgs): string | null {
-  const key = position.toUpperCase();
-  const stats = Object.hasOwn(STATS_BY_POSITION, key) ? STATS_BY_POSITION[key] : undefined;
+  const stats = statIdsFor(position);
   if (!gsisId || !stats) return null;
   const query = new URLSearchParams([
     ["p", gsisId],

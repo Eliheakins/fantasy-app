@@ -22,6 +22,7 @@ from fantasy._lineup import lineup, win_probability
 from fantasy._market import (
     evaluate_trade,
     find_trades,
+    player_points,
     player_weeks,
     position_strength,
     trade_assets,
@@ -64,6 +65,7 @@ __all__ = [
     "player_owners",
     "rostered_unmatched",
     "player_vs_projection",
+    "player_points",
     "player_weeks",
     "position_strength",
     "power_rankings",

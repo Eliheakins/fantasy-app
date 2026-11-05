@@ -32,6 +32,7 @@ from fantasy.api_models import (
     OutlookRow,
     OwnersData,
     PartnerRow,
+    PlayerPointsRow,
     PlayerWeekRow,
     PowerRankingRow,
     RefreshData,
@@ -357,6 +358,13 @@ def player_weeks(
     league: str, gsis_id: str, n: Annotated[int, Query(ge=1, le=18)] = 4, team: Team = None
 ) -> Any:
     return guarded(as_team(team, lambda: rows(data_api.player_weeks(league, gsis_id, n))))
+
+
+@router.get("/leagues/{league}/player-points", response_model=Envelope[list[PlayerPointsRow]])
+def player_points(
+    league: str, gsis_id: str, season: Annotated[int, Query(ge=1999, le=2100)]
+) -> Any:
+    return guarded(lambda: rows(data_api.player_points(league, gsis_id, season)))
 
 
 @router.get("/leagues/{league}/outlook", response_model=Envelope[list[OutlookRow]])

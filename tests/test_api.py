@@ -676,3 +676,31 @@ def test_scorecard_is_an_empty_ok_envelope_before_anything_is_archived(
     assert out["data"]["rows"] == [] and out["data"]["weeks_archived"] == []
     assert out["data"]["has_quantiles"] is False
     assert body(client.get("/api/leagues/nope/scorecard"))["error"]["code"] == "invalid"
+
+
+def test_player_points_serves_one_players_weekly_points_for_the_league(
+    client: TestClient, store_dir: Path
+) -> None:
+    rows = [
+        {"league_id": lid, "gsis_id": g, "season": s, "week": w, "points": p}
+        | {"season_type": "REG", "position": "WR"}
+        for lid, g, s, w, p in (
+            ("L1", "G_WR", 2026, 2, 11.5),
+            ("L1", "G_WR", 2026, 1, 7.0),
+            ("L1", "G_WR", 2025, 1, 99.0),
+            ("L1", "G_OTHER", 2026, 1, 50.0),
+            ("L2", "G_WR", 2026, 1, 60.0),
+        )
+    ]
+    write_rows(store_dir, "player_points", rows)
+    out = body(client.get("/api/leagues/t/player-points?gsis_id=G_WR&season=2026"))
+    assert out["data"] == [{"week": 1, "points": 7.0}, {"week": 2, "points": 11.5}]
+    empty = body(client.get("/api/leagues/t/player-points?gsis_id=NOBODY&season=2026"))
+    assert empty["data"] == []
+
+
+def test_player_points_errors_follow_the_sibling_routes(client: TestClient) -> None:
+    out = body(client.get("/api/leagues/zzz/player-points?gsis_id=G_WR&season=2026"))
+    assert out["status"] == "error" and out["data"] is None
+    assert out["error"]["code"] == "invalid"
+    assert client.get("/api/leagues/t/player-points?gsis_id=G_WR&season=1900").status_code == 422

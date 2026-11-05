@@ -246,6 +246,11 @@ class MarketValueRow(Row):
     fetched_at: str
 
 
+class PlayerPointsRow(Row):
+    week: int
+    points: float
+
+
 class PlayerWeekRow(Row):
     week: int
     projection: float
