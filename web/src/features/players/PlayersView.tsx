@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ApiBoundary } from "@/components/ApiBoundary";
+import { PlayerLink } from "@/components/PlayerLink";
 import { RadioGroup } from "@/components/RadioGroup";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { Section } from "@/components/Section";
@@ -25,7 +26,7 @@ function columns(showOwner: boolean): Column<OutlookRow>[] {
       role: "primary",
       render: (r) => (
         <>
-          {r.full_name} <span className="text-caption font-normal text-muted">{r.position}</span>
+          <PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} /> <span className="text-caption font-normal text-muted">{r.position}</span>
         </>
       ),
     },

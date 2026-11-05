@@ -1,9 +1,10 @@
+import { PlayerLink } from "@/components/PlayerLink";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { formatNumber } from "@/viz";
 import type { WatchRow } from "./types";
 
 const COLUMNS: Column<WatchRow>[] = [
-  { label: "Player", role: "primary", render: (r) => `${r.full_name} (${r.position})` },
+  { label: "Player", role: "primary", render: (r) => <><PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} /> ({r.position})</> },
   { label: "Rest of season", numeric: true, render: (r) => formatNumber(r.ros_points) },
   { label: "Why", render: (r) => r.reasons.join("; ") },
 ];

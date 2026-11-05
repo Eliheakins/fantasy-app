@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { PlayerLink } from "@/components/PlayerLink";
 import { Section } from "@/components/Section";
 import { RangeBar, formatNumber } from "@/viz";
 import {
@@ -57,7 +58,7 @@ function Wide({ rows, known, domain }: { rows: readonly LineupRow[]; known: bool
         {rows.map((r) => (
           <tr key={r.gsis_id} className={`border-b border-border align-top ${rowClass(r)}`}>
             <td className="py-2 pr-3">{slotLabel(r.slot)}</td>
-            <th scope="row" className="py-2 pr-3 text-left font-normal text-text">{r.full_name}</th>
+            <th scope="row" className="py-2 pr-3 text-left font-normal text-text"><PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} /></th>
             <td className="py-2 pr-3">{r.position}</td>
             <td className="py-2 pr-3 text-right tabular-nums">{formatNumber(r.projection)}</td>
             <td className="py-2 pr-3"><Bar row={r} domain={domain} /></td>
@@ -78,7 +79,7 @@ function Cards({ rows, known, domain }: { rows: readonly LineupRow[]; known: boo
         <li key={r.gsis_id} className={`min-h-[44px] border-b border-border py-2 ${rowClass(r)}`}>
           <div className="flex items-baseline justify-between gap-2">
             <span>
-              <span className="text-muted">{slotLabel(r.slot)}</span> <span className="text-text">{r.full_name}</span>
+              <span className="text-muted">{slotLabel(r.slot)}</span> <span className="text-text"><PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} /></span>
               {slotHidesPosition(r.slot) && <span className="text-muted"> {r.position}</span>}
             </span>
             <span className="whitespace-nowrap tabular-nums text-text">{formatNumber(r.projection)} <span className="text-caption text-muted">proj</span></span>

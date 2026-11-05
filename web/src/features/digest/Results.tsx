@@ -1,3 +1,4 @@
+import { PlayerLink } from "@/components/PlayerLink";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { Delta, NOISE_PERCENT, NOISE_POINTS, NOISE_WINS, formatNumber, formatPercent } from "@/viz";
 import { barSpan, maxAbsDiff, oddsComparison, resultSentence, toPoints } from "./logic";
@@ -60,7 +61,7 @@ function columns(max: number): Column<ProjectionMissRow>[] {
       role: "primary",
       render: (r) => (
         <>
-          {r.full_name ?? r.gsis_id} <span className="text-caption font-normal text-muted">{r.position}</span>
+          {r.full_name ? <PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} /> : r.gsis_id} <span className="text-caption font-normal text-muted">{r.position}</span>
         </>
       ),
     },

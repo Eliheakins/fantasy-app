@@ -1,3 +1,4 @@
+import { PlayerLink } from "@/components/PlayerLink";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { Delta, formatNumber } from "@/viz";
 import { classifyChange, type WaiverRow } from "./logic";
@@ -28,7 +29,10 @@ function columns(selected: string | null, onSelect: (id: string) => void): Colum
           <button type="button" className={BTN} aria-pressed={selected === r.gsis_id} onClick={() => onSelect(r.gsis_id)}>
             {r.full_name}
           </button>{" "}
-          <span className="text-caption font-normal text-muted">{r.position}</span>
+          <span className="text-caption font-normal text-muted">{r.position}</span>{" "}
+          <span className="text-caption font-normal">
+            <PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} text="stats" />
+          </span>
         </>
       ),
     },
