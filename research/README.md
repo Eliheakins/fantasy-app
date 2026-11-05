@@ -1,7 +1,8 @@
 # Research
 
 One-off analysis scripts behind the entries in `docs/decisions.md`, grouped below by topic. They
-are not maintained code: ruff skips this folder and no test imports it. Older scripts were written
+are not maintained code: ruff skips this folder and no test imports it, except
+`tests/test_public_features.py`, which loads `public_features.py` by path for its leakage test. Older scripts were written
 in a scratch directory and copied here; expect to fix a path or a column name before a rerun.
 
 Run from the repo root with `make refresh` already done: `uv run python research/<script>.py`.
@@ -74,6 +75,7 @@ not deterministic (see the 2026-10-25 entry).
 | `pbp_features_check.py` | Red-zone and goal-line shares, neutral pass rate, FTN, combine, contracts? | All within 0.11% and within their placebos | Rejected | 10-25 |
 | `td_redundancy_check.py` | Is goal-line share redundant with lagged expected TDs? | Correlated 0.85; both add nothing beyond lagged points | Explained | 10-25 |
 | `news_features_check.py` | Teammate vacancy from the final injury report; own status, practice and body part? | Vacancy -0.25 and -0.18% played (t 3.6 and 2.6), -0.46 and -0.40% protocol; own status t below 2 | Vacancy shipped, own rejected | 10-26 |
+| `public_model_check.py`, `public_features.py` | Can a public build drop rankings, PFR, NGS, depth chart and schedule lines; do pbp stand-ins (involvement share, role rank, efficiency) recover it? | Played RMSE +2.1% removed, +1.1 to 1.3% replaced, +1.5 to 1.7% also without lines; role rank recovers most, pbp efficiency nothing | Research only (public build viable) | 11-05 |
 | `role_features_check.py` | Depth moves, team and coach tenure, weeks since IR or practice squad, pre-kickoff chart? | All under 0.06% overall (t below 2); a post-hoc pair flagged for retest | Rejected | 10-26 |
 | `weather_check.py` | Do temperature and wind help the learned model? | Within a random placebo | Rejected | 10-25 |
 | `avail_test.py` | Do line, safety or linebacker absences move points? | Only the opposing leading corner | Shipped, later switched off | 10-23 |
