@@ -575,3 +575,40 @@ class StatusChangeRow(Row):
     team: str | None
     before: str | None  # injury status in the older snapshot; null is healthy
     after: str | None
+
+
+class GameDayNow(Row):
+    league_id: str
+    week: int
+    roster_id: int
+    my_team: str
+    opp_team: str
+    win_prob: float  # the existing win probability of the matchup, not a new model
+    my_points: float
+    opp_points: float
+    my_projected: float
+    opp_projected: float
+    my_left: int  # set starters still to score
+    opp_left: int
+    points_needed: float  # opponent's projected final minus my points so far
+
+
+class GameDayPoint(Row):
+    league_id: str
+    run_at: str
+    week: int
+    roster_id: int
+    win_prob: float
+    my_points: float
+    opp_points: float
+    my_projected: float
+    opp_projected: float
+    my_left: int
+    opp_left: int
+
+
+class GameDayData(Row):
+    week: int | None
+    as_of: str | None  # ISO time `current` was computed; the chart's last point
+    current: GameDayNow | None
+    history: list[GameDayPoint]  # this week's ticks for the viewed team, oldest first

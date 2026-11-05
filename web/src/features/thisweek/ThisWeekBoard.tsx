@@ -1,16 +1,19 @@
+import { GameDay, useLiveStatus } from "./GameDay";
 import { SinceLastLooked } from "./SinceLastLooked";
 import { TodoList } from "./TodoList";
 import { useTodos } from "./useTodos";
 import { WeekStrip } from "./WeekStrip";
 
-/** The week strip, the to-do list for both leagues (the page's one tinted panel) and the visit changes. */
+/** The week strip, the to-do list for both leagues (the page's tinted panel, unless game day takes it) and the visit changes. */
 export function ThisWeekBoard() {
   const { pending, todos, failed, calendar, calendarFailed, leaguesError, now } = useTodos();
+  const { live, intervalMs } = useLiveStatus();
   return (
     <>
+      {live && <GameDay intervalMs={intervalMs} />}
       {calendar && <WeekStrip calendar={calendar} now={now} />}
       {calendarFailed && <p className="mb-4 text-caption text-muted">The week calendar did not load, so deadlines are not shown.</p>}
-      <section aria-labelledby="todo-heading" className="mb-6 rounded-xl bg-panel p-4">
+      <section aria-labelledby="todo-heading" className={live ? "mb-6" : "mb-6 rounded-xl bg-panel p-4"}>
         <h2 id="todo-heading" className="mb-3 text-heading font-semibold">To do, both leagues</h2>
         {leaguesError !== null ? (
           <p role="alert" className="text-body text-warning">The leagues did not load, so there are no to-dos to show: {leaguesError}</p>

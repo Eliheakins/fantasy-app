@@ -23,6 +23,7 @@ from fantasy.api_models import (
     DigestData,
     Envelope,
     FoundTradeRow,
+    GameDayData,
     LeagueRow,
     LineupRow,
     LiveScoreRow,
@@ -194,6 +195,12 @@ def season_odds(league: str, team: Team = None) -> Any:
 def week_calendar() -> Any:
     """Kickoffs of the current NFL week and each league's waiver clear day, for the week strip."""
     return guarded(lambda: data_api.week_calendar(store.DATA_DIR))
+
+
+@router.get("/leagues/{league}/game-day", response_model=Envelope[GameDayData])
+def game_day(league: str, team: Team = None) -> Any:
+    """Win chance over the day (live ticks of the current week) and the numbers now."""
+    return guarded(as_team(team, lambda: data_api.game_day(league)))
 
 
 @router.get("/leagues/{league}/status-changes", response_model=Envelope[list[StatusChangeRow]])
@@ -529,6 +536,7 @@ def refresh_live(runner: Runner) -> Any:
         return fail("busy", BUSY_MESSAGE)
     try:
         player_rows = data_api.refresh_live()
+        data_api.record_live_tick()  # the league cache follows data_version, so it is fresh
     except (OSError, httpx.HTTPError):
         log.exception("live refresh failed")
         return fail("server", "Sleeper refresh failed. See the server log.")

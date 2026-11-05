@@ -242,6 +242,13 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         ints="roster_id as_of_week n_sims",
         floats="p_playoffs p_bye p_title exp_wins",
     ),
+    # written by data_api.record_live_tick (area: derived): my matchup in the current week at each
+    # live tick or manual score refresh (current week only; run_at is the dedupe key)
+    "live_win_history": _cols(
+        strings="league_id run_at",
+        ints="week roster_id my_left opp_left",
+        floats="win_prob my_points opp_points my_projected opp_projected",
+    ),
     # written by backtest (area: derived)
     "backtest_metrics": _cols(
         strings="league_id position forecaster",

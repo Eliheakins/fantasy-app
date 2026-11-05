@@ -231,6 +231,64 @@
         }
       }
     },
+    "/api/leagues/{league}/game-day": {
+      "get": {
+        "summary": "Game Day",
+        "description": "Win chance over the day (live ticks of the current week) and the numbers now.",
+        "operationId": "game_day_api_leagues__league__game_day_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_GameDayData_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/status-changes": {
       "get": {
         "summary": "Status Changes",
@@ -2403,6 +2461,59 @@
         ],
         "title": "Envelope[DigestData]"
       },
+      "Envelope_GameDayData_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GameDayData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[GameDayData]"
+      },
       "Envelope_OwnersData_": {
         "properties": {
           "status": {
@@ -4495,6 +4606,196 @@
           "age_hours"
         ],
         "title": "FreshnessRow"
+      },
+      "GameDayData": {
+        "properties": {
+          "week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GameDayNow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/GameDayPoint"
+            },
+            "type": "array",
+            "title": "History"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "week",
+          "as_of",
+          "current",
+          "history"
+        ],
+        "title": "GameDayData"
+      },
+      "GameDayNow": {
+        "properties": {
+          "league_id": {
+            "type": "string",
+            "title": "League Id"
+          },
+          "week": {
+            "type": "integer",
+            "title": "Week"
+          },
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          },
+          "my_team": {
+            "type": "string",
+            "title": "My Team"
+          },
+          "opp_team": {
+            "type": "string",
+            "title": "Opp Team"
+          },
+          "win_prob": {
+            "type": "number",
+            "title": "Win Prob"
+          },
+          "my_points": {
+            "type": "number",
+            "title": "My Points"
+          },
+          "opp_points": {
+            "type": "number",
+            "title": "Opp Points"
+          },
+          "my_projected": {
+            "type": "number",
+            "title": "My Projected"
+          },
+          "opp_projected": {
+            "type": "number",
+            "title": "Opp Projected"
+          },
+          "my_left": {
+            "type": "integer",
+            "title": "My Left"
+          },
+          "opp_left": {
+            "type": "integer",
+            "title": "Opp Left"
+          },
+          "points_needed": {
+            "type": "number",
+            "title": "Points Needed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "league_id",
+          "week",
+          "roster_id",
+          "my_team",
+          "opp_team",
+          "win_prob",
+          "my_points",
+          "opp_points",
+          "my_projected",
+          "opp_projected",
+          "my_left",
+          "opp_left",
+          "points_needed"
+        ],
+        "title": "GameDayNow"
+      },
+      "GameDayPoint": {
+        "properties": {
+          "league_id": {
+            "type": "string",
+            "title": "League Id"
+          },
+          "run_at": {
+            "type": "string",
+            "title": "Run At"
+          },
+          "week": {
+            "type": "integer",
+            "title": "Week"
+          },
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          },
+          "win_prob": {
+            "type": "number",
+            "title": "Win Prob"
+          },
+          "my_points": {
+            "type": "number",
+            "title": "My Points"
+          },
+          "opp_points": {
+            "type": "number",
+            "title": "Opp Points"
+          },
+          "my_projected": {
+            "type": "number",
+            "title": "My Projected"
+          },
+          "opp_projected": {
+            "type": "number",
+            "title": "Opp Projected"
+          },
+          "my_left": {
+            "type": "integer",
+            "title": "My Left"
+          },
+          "opp_left": {
+            "type": "integer",
+            "title": "Opp Left"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "league_id",
+          "run_at",
+          "week",
+          "roster_id",
+          "win_prob",
+          "my_points",
+          "opp_points",
+          "my_projected",
+          "opp_projected",
+          "my_left",
+          "opp_left"
+        ],
+        "title": "GameDayPoint"
       },
       "HTTPValidationError": {
         "properties": {

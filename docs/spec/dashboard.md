@@ -50,7 +50,7 @@ One user, opens it a few times a week (Tuesday and Wednesday for waivers and tra
 | `better` / `worse` | `#157A3D` / `#B4261A` | Deltas only, always with sign and arrow | 5.2:1 / 6.3:1 on page |
 | `warning`, `warning-bg`, `warning-edge` | `#6B4200`, `#FFF4DB`, `#F3DFAE` | The only non-change colour: warnings, stale banner | 8.0:1 |
 
-Rules. Green is frame (band, panel tint, selection, focus), never content: labels, series and bars are neutral. The tinted panel holds at most one key result per page (This week: the to-do list; Lineup: the comparison verdict; Season: your odds). No cards inside cards: sections are divided by spacing and 1px `line` rules. Tables (`ResponsiveTable` and `DataTableFallback`): header `muted` 12px over a 1.5px `ink` rule, rows 1px `line`, numbers right-aligned with tabular figures; below `lg` the same rows stack as divided rows with a "More" fold. Chart series, bars and axes use `ink`, `muted`, `faint` and `line` only (`viz/chartTheme.ts`). Fields (button, select, toggle, input) are `panel` pills with a `panel-line` border; the active pill is `focus` with white text; all targets are 44px on phones.
+Rules. Green is frame (band, panel tint, selection, focus), never content: labels, series and bars are neutral. The tinted panel holds at most one key result per page (This week: the to-do list, or the game-day block while a game is on, when the to-do panel steps down to plain; Lineup: the comparison verdict; Season: your odds). No cards inside cards: sections are divided by spacing and 1px `line` rules. Tables (`ResponsiveTable` and `DataTableFallback`): header `muted` 12px over a 1.5px `ink` rule, rows 1px `line`, numbers right-aligned with tabular figures; below `lg` the same rows stack as divided rows with a "More" fold. Chart series, bars and axes use `ink`, `muted`, `faint` and `line` only (`viz/chartTheme.ts`). Fields (button, select, toggle, input) are `panel` pills with a `panel-line` border; the active pill is `focus` with white text; all targets are 44px on phones.
 
 Colorblind check: green and red always travel with a sign and an arrow (`+4.1 pts`, `-2.0 pts`). Sign carries the meaning, color is redundant.
 
@@ -85,7 +85,7 @@ Table and column names below are the data layer's output (section 4). Names are 
 
 ### 2.1 Home
 
-Purpose: "Do I need to do anything this week, and what?" Both leagues side by side.
+Purpose: "Do I need to do anything this week, and what?" Both leagues side by side. While a game of the week is on (`/api/status` `live_refresh.active`), a game-day block tops the page: per league the win chance (the scoreboard's win probability), points so far and projected finals, starters left, points needed to match the opponent's projected final, and a line of win chance over the day from `live_win_history`.
 
 ```
 +--------------------------------------------------------------------------------+

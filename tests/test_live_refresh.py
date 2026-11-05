@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from test_api import store_dir as store_dir  # noqa: F401 - fixture
 
-from fantasy import api, api_routes, live_refresh, store
+from fantasy import api, api_routes, data_api, live_refresh, store
 from fantasy.api_jobs import JobRunner
 from fantasy.live_refresh import LIVE_REFRESH_MINUTES, LiveRefresher
 from fantasy.sim.availability import GAME_MINUTES, LIVE_WINDOW_PAD_MINUTES, games_on
@@ -36,6 +36,7 @@ def calls(monkeypatch: pytest.MonkeyPatch) -> list[str]:
         simulate, "run", lambda *a, **k: log.append(f"sim archive={k.get('archive')}")
     )
     monkeypatch.setattr(live_refresh, "_clear_league_cache", lambda: log.append("clear"))
+    monkeypatch.setattr(data_api, "record_live_tick", lambda now: log.append("record"))
     return log
 
 
@@ -46,7 +47,7 @@ def refresher() -> LiveRefresher:
 def test_tick_syncs_then_simulates_without_archive_then_clears(calls: list[str]) -> None:
     live = refresher()
     assert live.step(KICK)
-    assert calls == ["sync8", "sim archive=False", "clear"]
+    assert calls == ["sync8", "sim archive=False", "record", "clear"]
     assert live.status()["last_ok_at"] == KICK.isoformat(timespec="seconds")
     assert live.status()["active"]
 
@@ -64,7 +65,7 @@ def test_ticks_every_interval_and_once_more_after_close(calls: list[str]) -> Non
     live.step(END - timedelta(minutes=1))
     n = len(calls)
     assert live.step(END + timedelta(minutes=1))  # final tick, before the next interval is due
-    assert len(calls) == n + 3
+    assert len(calls) == n + 4
     assert not live.step(END + timedelta(minutes=2))
     assert not live.status()["active"]
 
@@ -154,3 +155,19 @@ def test_simulate_run_archives_only_when_asked(monkeypatch: pytest.MonkeyPatch) 
     assert appended == []
     simulate.run(n_sims=1)
     assert appended == [1]
+
+
+def test_a_failing_history_write_does_not_stop_the_tick_clearing_the_cache(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def broken(*a: object, **k: object) -> None:
+        raise OSError("disk")
+
+    log: list[str] = []
+    monkeypatch.setattr(live_refresh, "current_week_kickoffs", lambda: (8, {"A": KICK}))
+    monkeypatch.setattr(sync_sleeper, "sync_week", lambda week: 1)
+    monkeypatch.setattr(simulate, "run", lambda *a, **k: None)
+    monkeypatch.setattr(live_refresh, "_clear_league_cache", lambda: log.append("clear"))
+    monkeypatch.setattr(data_api, "leagues", broken)
+    assert refresher().step(KICK)
+    assert log == ["clear"]

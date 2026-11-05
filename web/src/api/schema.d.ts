@@ -126,6 +126,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/game-day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Game Day
+         * @description Win chance over the day (live ticks of the current week) and the numbers now.
+         */
+        get: operations["game_day_api_leagues__league__game_day_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/status-changes": {
         parameters: {
             query?: never;
@@ -780,6 +800,18 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** Envelope[GameDayData] */
+        Envelope_GameDayData_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["GameDayData"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[OwnersData] */
         Envelope_OwnersData_: {
             /**
@@ -1275,6 +1307,70 @@ export interface components {
             updated_at: string;
             /** Age Hours */
             age_hours: number;
+        };
+        /** GameDayData */
+        GameDayData: {
+            /** Week */
+            week: number | null;
+            /** As Of */
+            as_of: string | null;
+            current: components["schemas"]["GameDayNow"] | null;
+            /** History */
+            history: components["schemas"]["GameDayPoint"][];
+        };
+        /** GameDayNow */
+        GameDayNow: {
+            /** League Id */
+            league_id: string;
+            /** Week */
+            week: number;
+            /** Roster Id */
+            roster_id: number;
+            /** My Team */
+            my_team: string;
+            /** Opp Team */
+            opp_team: string;
+            /** Win Prob */
+            win_prob: number;
+            /** My Points */
+            my_points: number;
+            /** Opp Points */
+            opp_points: number;
+            /** My Projected */
+            my_projected: number;
+            /** Opp Projected */
+            opp_projected: number;
+            /** My Left */
+            my_left: number;
+            /** Opp Left */
+            opp_left: number;
+            /** Points Needed */
+            points_needed: number;
+        };
+        /** GameDayPoint */
+        GameDayPoint: {
+            /** League Id */
+            league_id: string;
+            /** Run At */
+            run_at: string;
+            /** Week */
+            week: number;
+            /** Roster Id */
+            roster_id: number;
+            /** Win Prob */
+            win_prob: number;
+            /** My Points */
+            my_points: number;
+            /** Opp Points */
+            opp_points: number;
+            /** My Projected */
+            my_projected: number;
+            /** Opp Projected */
+            opp_projected: number;
+            /** My Left */
+            my_left: number;
+            /** Opp Left */
+            opp_left: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2377,6 +2473,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_WeekCalendarData_"];
+                };
+            };
+        };
+    };
+    game_day_api_leagues__league__game_day_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_GameDayData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

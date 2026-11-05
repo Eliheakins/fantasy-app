@@ -84,6 +84,7 @@ class LiveRefresher:
         try:
             sync_sleeper.sync_week(week)
             simulate.run(archive=False)
+            data_api.record_live_tick(now)  # display-only day history, never the archive
         finally:
             api_routes.REFRESH_LOCK.release()
         _clear_league_cache()
