@@ -975,3 +975,7 @@ Two research agents surveyed the decision code (assumptions with file and line) 
 - **Live fallback check.** With a wrong key, Jev returned 401 and the same question was answered by the local Qwen server; with the local server also unreachable, the endpoint returned the existing 503.
 - **Review.** Python and security reviews found no critical issues. Fixed: a decoding error or a non-text choice from Jev escaped the fallback as a 500, the timeout was per attempt rather than for the whole call, a blank key counted as set, and `results.jsonl` is now gitignored. Not changed: the catalog sent to Jev is client-supplied (as on the local path), so the no-league-data rule rests on the frontend building it from `metrics.json` and the chip groups (tests on both sides); the route has no rate limit beyond the localhost-only Host and `X-Requested-With` checks.
 - **Terms.** TypeSafe's Master Customer Agreement (updated 2026-09-23) §2.2 allows integrating the API into applications for end users; §2.3 forbids offering it as a standalone service and using its outputs to train a model that imitates it. Ask uses it as one step of the app and its outputs are not used for training, so neither applies.
+
+## 2026-11-05: Refresh scores reports a Sleeper outage
+
+- `sources/sleeper.fetch` now raises `SleeperError` (a `RuntimeError`), and Refresh scores catches it, so a Sleeper outage shows "Sleeper refresh failed" instead of a 500. Reason: the route caught `httpx` errors that `fetch` never lets out, and its test faked one.

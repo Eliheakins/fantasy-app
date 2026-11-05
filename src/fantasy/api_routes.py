@@ -8,7 +8,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
-import httpx
 import polars as pl
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi import Path as PathParam
@@ -62,6 +61,7 @@ from fantasy.api_models import (
     WinNeedRow,
     WinProbabilityData,
 )
+from fantasy.sources.sleeper import SleeperError
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
@@ -563,7 +563,7 @@ def refresh_live(runner: Runner) -> Any:
     try:
         player_rows = data_api.refresh_live()
         data_api.record_live_tick()  # the league cache follows data_version, so it is fresh
-    except (OSError, httpx.HTTPError):
+    except (OSError, SleeperError):
         log.exception("live refresh failed")
         return fail("server", "Sleeper refresh failed. See the server log.")
     finally:

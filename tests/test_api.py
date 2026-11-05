@@ -15,6 +15,7 @@ from test_data_api_characterization import _engine_store
 
 from fantasy import _engine, api, api_routes, data_api, store
 from fantasy.api_jobs import Busy, JobRunner
+from fantasy.sources import sleeper
 
 ROOT = Path(__file__).resolve().parent.parent
 CSRF_HEADER = {"X-Requested-With": "fantasy-app"}
@@ -639,12 +640,16 @@ def test_refresh_second_caller_gets_busy(
 def test_refresh_failure_message_is_fixed_and_hides_the_detail(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def broken() -> int:
+    def refused(*args: Any, **kwargs: Any) -> httpx.Response:
         raise httpx.ConnectError("secret-host.internal refused")
 
-    monkeypatch.setattr(data_api, "refresh_live", broken)
+    # fail inside the real Sleeper client so the route sees the exception it really raises
+    monkeypatch.setattr(sleeper.httpx, "get", refused)
+    monkeypatch.setattr(sleeper.time, "sleep", lambda _: None)
+    monkeypatch.setattr(data_api, "refresh_live", lambda: sleeper.fetch("/state/nfl"))
     out = body(client.post("/api/live/refresh"))
-    assert out["status"] == "error" and "secret" not in out["error"]["message"]
+    assert out["status"] == "error" and out["error"]["message"].startswith("Sleeper refresh failed")
+    assert "secret" not in out["error"]["message"]
 
 
 def test_unexpected_exceptions_become_a_server_error_without_the_text(
