@@ -230,9 +230,15 @@ def player_owners(league_key: str) -> pl.DataFrame:
             {
                 "gsis_id": r["gsis_id"],
                 "owner": [data.team_names.get(i, "Unknown team") for i in r["roster_id"]],
+                "roster_id": r["roster_id"],
                 "is_mine": [i == mine for i in r["roster_id"]],
             },
-            schema={"gsis_id": pl.String, "owner": pl.String, "is_mine": pl.Boolean},
+            schema={
+                "gsis_id": pl.String,
+                "owner": pl.String,
+                "roster_id": pl.Int64,
+                "is_mine": pl.Boolean,
+            },
         )
         .drop_nulls("gsis_id")
         .unique("gsis_id", keep="first", maintain_order=True)

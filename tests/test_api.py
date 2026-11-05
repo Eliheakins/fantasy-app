@@ -396,11 +396,13 @@ def test_owners_lists_every_rostered_player_and_follows_the_viewed_team(
         return {r["gsis_id"]: (r["owner"], r["is_mine"]) for r in data}
 
     first = body(client.get("/api/leagues/t/owners"))["data"]["rows"]
-    assert set(first[0]) == {"gsis_id", "owner", "is_mine"}
+    assert set(first[0]) == {"gsis_id", "owner", "roster_id", "is_mine"}
     assert all(r["gsis_id"] for r in first)  # no null ids
     mine = owners("/api/leagues/t/owners")
     assert mine["G_QB"] == ("Mine", True)  # the real team name, not "You"
     assert mine["G_OPP"] == ("Theirs", False)
+    by_id = {r["gsis_id"]: r["roster_id"] for r in first}
+    assert (by_id["G_QB"], by_id["G_OPP"]) == (1, 2)  # the id tells apart teams that share a name
     assert "G_FA" not in mine  # a free agent has no owner, so no row
     viewed = owners("/api/leagues/t/owners?team=2")
     assert viewed["G_OPP"] == ("Theirs", True) and viewed["G_QB"] == ("Mine", False)

@@ -5543,6 +5543,10 @@
             "type": "string",
             "title": "Owner"
           },
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          },
           "is_mine": {
             "type": "boolean",
             "title": "Is Mine"
@@ -5553,6 +5557,7 @@
         "required": [
           "gsis_id",
           "owner",
+          "roster_id",
           "is_mine"
         ],
         "title": "OwnerRow"

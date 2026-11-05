@@ -37,11 +37,18 @@ import { narrowByRoles, type PlayerMatch, pickCandidate, resolvePlayers } from "
 import { dropTeamNames, resolveTeams } from "./resolveTeams";
 import { type Leaderboard, parseRules, splitAsked } from "./ruleParser";
 import { finishStartSit, readStartSit, type StartSitOutcome } from "./startSit";
+import { finishTrade, readTrade, type TradeOutcome, type TradeRead } from "./tradeAsk";
 
 export type AskPhase = "idle" | "working" | "choosing";
 
 /** A start/sit answer on screen: the two players and their names. */
 export type StartSitShown = StartSitOutcome & { names: Record<string, string> };
+
+/** A trade answer on screen: the players on each side and their names. */
+export type TradeShown = TradeOutcome & { names: Record<string, string>; positions: Record<string, string | null> };
+
+/** Which rules-read question a pending namesake choice belongs to; a trade keeps its give side to tell sides apart. */
+type Choosing = { kind: "start_sit" } | { kind: "trade"; give: PlayerMatch[] } | null;
 
 const NO_PLAYER_MESSAGE =
   "I couldn't find a player or team in that question. Name a player by last or full name, like " +
@@ -144,10 +151,11 @@ export function useAsk() {
   const [choices, setChoices] = useState<PlayerMatch[]>([]);
   const [intent, setIntent] = useState<QueryIntent | null>(null);
   const [startSit, setStartSit] = useState<StartSitShown | null>(null);
+  const [trade, setTrade] = useState<TradeShown | null>(null);
   const [, setParams] = useSearchParams();
-  // The question a start/sit answer belongs to, and whether the pending namesake choice is for one.
+  // The question a start/sit or trade answer belongs to, and which of them the pending namesake choice is for.
   const startSitFor = useRef<string | null>(null);
-  const choosingStartSit = useRef(false);
+  const choosing = useRef<Choosing>(null);
   const [answeredBy, setAnsweredBy] = useState<{
     question: string;
     path: AnswerPath;
@@ -182,9 +190,10 @@ export function useAsk() {
     setResolved([]);
     setChoices([]);
     setIntent(null);
-    choosingStartSit.current = false;
+    choosing.current = null;
     if (startSitFor.current !== urlQuestion) {
       setStartSit(null);
+      setTrade(null);
     }
     setPhase("idle");
   }, [urlQuestion]);
@@ -288,6 +297,44 @@ export function useAsk() {
     [setParams],
   );
 
+  /** A trade answer: the URL keeps the question, so reload or a shared link answers it again. */
+  const showTrade = useCallback(
+    (shown: TradeShown, asked: string) => {
+      startSitFor.current = asked;
+      const list = (ids: string[]) => ids.map((id) => shown.names[id]).join(" and ");
+      logAsk({ question: asked, path: "rules", outcome: { kind: "trade", text: `${list(shown.give)} for ${list(shown.get)}` } });
+      setTrade(shown);
+      setPhase("idle");
+      setParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("q", asked);
+        return next;
+      });
+    },
+    [setParams],
+  );
+
+  /** Acts on a trade read; false when the question is not a trade. */
+  const handleTrade = useCallback(
+    (read: TradeRead, asked: string): boolean => {
+      if (read.status === "none") {
+        return false;
+      }
+      if (read.status === "message") {
+        fail(asked, "rules", read.text);
+      } else if (read.status === "choose") {
+        choosing.current = { kind: "trade", give: read.give };
+        setResolved(read.sure);
+        setChoices(read.unsure);
+        setPhase("choosing");
+      } else {
+        showTrade({ ...read.outcome, names: read.names, positions: read.positions }, asked);
+      }
+      return true;
+    },
+    [fail, showTrade],
+  );
+
   const onAsk = useCallback(async (text?: string) => {
     const trimmed = (text ?? question).trim();
     if (!trimmed) {
@@ -304,8 +351,9 @@ export function useAsk() {
     setChoices([]);
     setIntent(null);
     setStartSit(null);
+    setTrade(null);
     startSitFor.current = null;
-    choosingStartSit.current = false;
+    choosing.current = null;
 
     try {
       const dictionary = await getPlayerDictionary(manifest);
@@ -319,7 +367,7 @@ export function useAsk() {
         return;
       }
       if (sitRead.status === "choose") {
-        choosingStartSit.current = true;
+        choosing.current = { kind: "start_sit" };
         setResolved(sitRead.sure);
         setChoices(sitRead.unsure);
         setPhase("choosing");
@@ -327,6 +375,10 @@ export function useAsk() {
       }
       if (sitRead.status === "resolved") {
         showStartSit({ ...sitRead.outcome, names: sitRead.names }, trimmed);
+        return;
+      }
+      // Trades are read by rules alone too, before the intent flow.
+      if (handleTrade(readTrade(trimmed, dictionary), trimmed)) {
         return;
       }
       const matches = dropTeamNames(resolvePlayers(trimmed, dictionary), resolveTeams(trimmed));
@@ -385,11 +437,11 @@ export function useAsk() {
         fail(trimmed, "none", errorText(e));
       }
     }
-  }, [question, show, showRules, showStartSit, fail, manifest, seasons, chipGroups]);
+  }, [question, show, showRules, showStartSit, handleTrade, fail, manifest, seasons, chipGroups]);
 
   const onChoose = useCallback(
     (player: PlayerDictionaryRow) => {
-      if (!intent && !choosingStartSit.current) {
+      if (!intent && !choosing.current) {
         return;
       }
       const remaining = choices.filter((c) => !c.candidates.some((x) => x.gsis_id === player.gsis_id));
@@ -399,8 +451,14 @@ export function useAsk() {
       if (remaining.length > 0) {
         return;
       }
-      if (choosingStartSit.current) {
-        choosingStartSit.current = false;
+      const pendingChoice = choosing.current;
+      if (pendingChoice?.kind === "trade") {
+        choosing.current = null;
+        handleTrade(finishTrade(players, pendingChoice.give), question.trim());
+        return;
+      }
+      if (pendingChoice) {
+        choosing.current = null;
         const done = finishStartSit(players);
         if (done.status === "resolved") {
           showStartSit({ ...done.outcome, names: done.names }, question.trim());
@@ -414,7 +472,7 @@ export function useAsk() {
       }
       show(players, intent, question.trim(), pending.path, pending.unrecognized);
     },
-    [intent, choices, resolved, show, showStartSit, fail, question, pending],
+    [intent, choices, resolved, show, showStartSit, handleTrade, fail, question, pending],
   );
 
   /** True when the URL holds a query to show: players (or a leaderboard) and at least one stat. */
@@ -478,6 +536,7 @@ export function useAsk() {
     onChoose,
     hasResult,
     startSit,
+    trade,
     path: current?.path ?? null,
     unrecognized: current?.unrecognized ?? [],
   };

@@ -1583,6 +1583,8 @@ export interface components {
             gsis_id: string;
             /** Owner */
             owner: string;
+            /** Roster Id */
+            roster_id: number;
             /** Is Mine */
             is_mine: boolean;
         };

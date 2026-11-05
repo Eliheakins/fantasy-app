@@ -35,6 +35,8 @@ const entrySchema = z.object({
     z.object({ kind: z.literal("message"), text: z.string() }),
     // A start/sit answer comes from the lineup, so there is no query to keep, only what it was about.
     z.object({ kind: z.literal("start_sit"), text: z.string() }),
+    // A trade answer comes from the trade evaluation: only what it was about is kept.
+    z.object({ kind: z.literal("trade"), text: z.string() }),
   ]),
   corrected: loggedQuerySchema.nullable(),
 });

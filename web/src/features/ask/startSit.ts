@@ -38,7 +38,7 @@ export function parseStartSit(question: string): { a: string; b: string; hasVerb
 const words = (text: string) => tokenize(text).filter((t) => !NAME_SUFFIXES.has(t)).length;
 
 /** One side as a single player match; "extra" means words beyond the name (a stat comparison), "none" no player. */
-function sideMatch(side: string, dict: readonly PlayerDictionaryRow[]): PlayerMatch | "extra" | "none" {
+export function sideMatch(side: string, dict: readonly PlayerDictionaryRow[]): PlayerMatch | "extra" | "none" {
   const matches = resolvePlayers(side, dict);
   if (matches.length === 0) {
     return "none";

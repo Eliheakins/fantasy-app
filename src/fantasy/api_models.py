@@ -274,6 +274,7 @@ class OutlookRow(Row):
 class OwnerRow(Row):
     gsis_id: str
     owner: str
+    roster_id: int
     is_mine: bool
 
 
