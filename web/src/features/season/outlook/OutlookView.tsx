@@ -9,7 +9,7 @@ import { SeedChart } from "./SeedChart";
 import type { ScheduleRow, SeasonOddsRow, SeedRow } from "@/lib/outlookTypes";
 import { capitalize, useWho } from "@/lib/who";
 
-/** Optional blocks show only when they have rows, as Streamlit does; an error says so. */
+/** Optional blocks show only when they have rows; an error says so. */
 function Optional<T>({ state, children }: { state: ApiState<T[]>; children: (rows: T[]) => ReactNode }) {
   if (state.kind === "error") {
     return <p role="alert" className="mt-6 text-caption text-warning">Could not load this section: {state.error.message}</p>;

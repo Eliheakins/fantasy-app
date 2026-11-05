@@ -984,3 +984,14 @@ Two research agents surveyed the decision code (assumptions with file and line) 
 
 - `player_points` and `rostered_unmatched` read the league id with one filtered read of `leagues` (`_engine._league_id`) instead of building `LeagueData`. An unknown league still raises `ValueError`; an unknown `team` is no longer checked there (the route never passes one).
 - `data_version()` still stats every parquet under `raw` and `derived` on each call, so a write is seen at once (no TTL, no directory-mtime shortcut: tests and research scripts write in place). Only the kickoff parsing is cached, keyed on the mtime and size of `leagues` and `nfl_schedules` plus the season; the 2-minute clock bucket is computed on each call. `known_league` reads only the `league_key` column.
+- Timing on real data (colgate, 2026): `player_points` for every player 445 ms cold before, 52 ms after, identical rows; `data_version` 2.7 ms before and after, so caching it was not worth the staleness risk.
+
+## 2026-11-05: architecture cleanup after the stat app merge (issue #72)
+
+- **Data folder and team are arguments.** No import-time `store.DATA_DIR` defaults and no ContextVar: the API builds a `RequestContext(data_dir, team)` per request and passes it down; `None` means the project data folder and Sleeper's `is_me`.
+- **One error envelope.** Every `/api/*` error, stat routes included, is the fantasy envelope with its real status code; the UI shows its message.
+- **One current season.** `nfl_stat.core.seasons.current_season()` is `config.toml`'s `season` when set, else nflreadpy's clock (stat-only use). Off-season the stat build stays on the pinned season until the pin is bumped. The three first seasons (2018 model data, 2021 stat shards, 1999 nflverse pbp) are different concepts and keep their values.
+- **Not unified on purpose:** the player directory (the Player page takes position and team from `players.json` and owner and points from the fantasy tables; merging would change what it shows) and the dataclass vs pydantic-settings config split (not small).
+- **Refresh failures are visible.** Each `make refresh` stage records ok or failed in `refresh_runs`; a soft failure still lets later stages run, but `refresh_report` makes the run exit 1 and the stale banner names the stage.
+- **Public readiness moved out.** Sign-in, per-league access and rate limits are issue #73 and wait on Sleeper's written permission.
+- **Docs.** CLAUDE.md is split into one file per area, next to the code it governs.

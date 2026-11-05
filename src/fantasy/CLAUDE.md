@@ -1,0 +1,41 @@
+# src/fantasy: API and read layer
+
+The FastAPI app (`api.py`, `api_routes.py`) and the read layer behind it. Refresh stages: `stages/CLAUDE.md`. Simulation: `sim/CLAUDE.md`.
+
+## Read path
+
+- `api_routes.py` imports `data_api`, `_live`, `_view`, `api_deps` and `api_envelope`.
+- The read path imports no `fantasy.stages` module. The exceptions import inside a function: `_live.refresh_live` (Sleeper sync) and `live_refresh` (simulate and sync). Test: `tests/fantasy/api/test_api_import_boundary.py`.
+- `data_api.py` is a read facade. It re-exports entry points from the private `_` modules, so callers use `data_api.<name>`. Put new read logic in the `_` module that owns it, and re-export it from `data_api`.
+- `_` modules:
+  - `_engine.py`: `_league(league_key, data_dir, team)` returns the simulation inputs and "my" roster id, built once per data version. `_league_id` is one filtered read for display reads that need no projections or draws. `_week_values` gives current-week lineup values.
+  - `_leagues.py`: `leagues`, `scoring_labels`, `my_league`, `team_fields`.
+  - `_lineup.py`, `_outlook.py` (`player_owners`, `schedule`, `player_outlook`), `_market.py` (`player_points`, market reads), `_profile.py` (`player_profile`).
+  - `_status.py` (`freshness`, `simulation_behind_inputs`, `missing_layers`, `refresh_runs`), `_calendar.py` (`week_calendar`, `status_changes`), `_actions.py` (`actions`, `streamers`).
+  - `_live.py` (`refresh_live`, `live_win_row`, `record_live_tick`, `game_day`) is the live writer.
+  - `_scoreboard.py`, `_scorecard.py`, `_values.py`, `_watch.py`, `_season_events.py`, `_league_view.py`, `_digest.py`, `_schemas.py`, `_view.py` (page logic the API serves).
+
+## Request context
+
+- `api_deps.py`: `RequestContext(data_dir, team)`. `create_app(data_dir=None)` sets `app.state.data_dir` once.
+- A route takes `Ctx` (data dir plus the `?team=` roster id) or `DataDir` (no team), and passes the values down as arguments. Nothing is read from a global. `_engine.viewing_team` is gone.
+- `?team=<roster id>` on any `/api/leagues/{league}/...` route makes that team "me".
+- Anything that decides "my team" goes through `_league()` or `_leagues.my_league`. Never read `league_teams.is_me` directly. Sleeper's `is_me` flag decides, not the top team. My teams: Colgate "Lisan Al-Caleb", YinzBurgh "LaPorta Potty".
+
+## API rules
+
+- Non-GET requests need `X-Requested-With: fantasy-app`. The server binds 127.0.0.1 and rejects unknown Host headers; extra names go in `API_ALLOWED_HOSTS`, comma separated. Phone access only through `tailscale serve`, never funnel.
+- Errors use one envelope. Errors from `guarded()` are HTTP 200 (`fail`). Other errors use the same shape with real status codes (`register_error_handlers` in `api_envelope.py`).
+- OpenAPI: `uv run python -m fantasy.api --openapi > web/openapi.json`, then `cd web && npm run types`. Checks are in `web/CLAUDE.md`.
+- The stat routes (`/api/stat/*`) are attached by `create_app`. See `src/nfl_stat/CLAUDE.md`.
+
+## Live refresh
+
+- `make serve` runs `live_refresh.py` every 10 minutes while a game of the current week is on: `sync_week`, then `simulate.run(archive=False)`. `LIVE_REFRESH=off` disables it.
+- Never let a live tick append to `sim_season_history`.
+- A live tick, and the Refresh scores button, append one row per league for my team to `live_win_history` (current week only, deduplicated by `run_at`, written by `data_api.record_live_tick`). The game-day block on This week reads it.
+
+## Gotchas
+
+- Current-week lineup values include players whose game is over, at their actual points (`_engine._week_values`). Never read `moves.week_values` for a current-week lineup.
+- Known gaps, not fixed: `PLAYERS_CACHE` (`stages/sync_sleeper.py`) and `ODDS_DIR` (`stages/snapshot_odds.py`) are import-time paths that ignore `data_dir`.

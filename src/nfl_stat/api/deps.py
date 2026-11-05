@@ -9,7 +9,7 @@ from nfl_stat.core.config import AppSettings
 from nfl_stat.core.state import AppState
 
 
-# Both live on `app.state`, set by `create_app`, so every app (and every test) has its own.
+# Both live on `app.state`, set by `attach`, so every app (and every test) has its own.
 def get_app_state(request: Request) -> AppState:
     return request.app.state.stat_state
 

@@ -56,7 +56,7 @@ export function historyTeams(
   });
 }
 
-/** Ranked list: best playoff odds first (Streamlit shows API order); ties keep API order. */
+/** Ranked list: best playoff odds first; ties keep API order. */
 export function rankOdds(rows: readonly SeasonOddsRow[]): SeasonOddsRow[] {
   return [...rows].sort((a, b) => (b.p_playoffs ?? -1) - (a.p_playoffs ?? -1));
 }

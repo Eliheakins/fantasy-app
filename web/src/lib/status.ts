@@ -1,6 +1,6 @@
 import type { StatHealth, Status } from "@/api/types";
 
-/** Hours after which a source is stale; the retired Streamlit app used the same limits. */
+/** Hours after which a source is stale. */
 const STALE_HOURS: Readonly<Record<string, number>> = {
   Sleeper: 24,
   "NFL stats": 48,
@@ -18,7 +18,7 @@ function shortError(error: string | null): string {
   return line.length > MAX_ERROR_CHARS ? `${line.slice(0, MAX_ERROR_CHARS)}...` : line;
 }
 
-/** Banner lines, worded as the retired Streamlit stale_banner() was (each ends "Run `make refresh`."). */
+/** Banner lines; each ends "Run `make refresh`.". */
 export function bannerMessages(status: Status | null, statHealth: StatHealth | null = null, now = new Date()): string[] {
   const rows = [...(status?.freshness ?? [])];
   const built = statHealth?.built_at ? Date.parse(statHealth.built_at) : Number.NaN;
