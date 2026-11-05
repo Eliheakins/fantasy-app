@@ -6,7 +6,10 @@ from collections.abc import Callable
 from typing import Any
 
 import polars as pl
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 log = logging.getLogger(__name__)
 NO_DATA_MESSAGE = "No data yet. Run `make refresh`, then reload."
@@ -56,3 +59,36 @@ def guarded(fn: Callable[[], Any]) -> Any:
     except Exception:  # last resort: never leak the text of an unexpected error
         log.exception("unexpected error")
         return fail("server", SERVER_MESSAGE)
+
+
+def _validation_message(err: RequestValidationError) -> str:
+    """The first problem as "field: message"; the field is the loc without its query/body prefix."""
+    first = err.errors()[0]
+    parts = first["loc"][1:]
+    field = "" if any(isinstance(p, int) for p in parts) else ".".join(map(str, parts))
+    return f"{field}: {first['msg']}" if field else str(first["msg"])
+
+
+def register_error_handlers(app: FastAPI) -> None:
+    """Make the envelope the one error shape: validation, response drift and HTTP errors."""
+
+    @app.exception_handler(RequestValidationError)
+    async def on_invalid_request(_: Request, err: RequestValidationError) -> JSONResponse:
+        return fail("invalid", _validation_message(err), 422)
+
+    @app.exception_handler(ResponseValidationError)
+    async def on_response_drift(_: Request, err: ResponseValidationError) -> JSONResponse:
+        log.error("response failed its model", exc_info=err)
+        return fail("server", SERVER_MESSAGE, 500)
+
+    @app.exception_handler(StarletteHTTPException)
+    async def on_http_error(_: Request, err: StarletteHTTPException) -> JSONResponse:
+        code = "server" if err.status_code >= 500 else "invalid"
+        response = fail(code, str(err.detail), err.status_code)
+        response.headers.update(err.headers or {})  # e.g. a 405's Allow
+        return response
+
+    @app.exception_handler(Exception)
+    async def on_unexpected(_: Request, err: Exception) -> JSONResponse:
+        log.exception("unhandled error", exc_info=err)
+        return fail("server", SERVER_MESSAGE, 500)

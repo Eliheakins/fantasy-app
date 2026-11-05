@@ -57,6 +57,13 @@ export function elapsedSeconds(startedAt: string | null, now: number): number | 
   return Number.isNaN(started) ? null : Math.max(0, Math.floor((now - started) / 1000));
 }
 
+/** The `error.message` of an envelope-shaped body, or null. */
+function errorMessage(body: unknown): string | null {
+  const error = (body as { error?: unknown } | null)?.error;
+  const message = (error as { message?: unknown } | null)?.message;
+  return typeof message === "string" ? message : null;
+}
+
 export async function fetchEnvelope<T>(url: string, init?: RequestInit): Promise<Envelope<T>> {
   // the server rejects non-GET requests without this header (blocks cross-site POSTs)
   const headers = { ...init?.headers, "X-Requested-With": "fantasy-app" };
@@ -73,7 +80,7 @@ export async function fetchEnvelope<T>(url: string, init?: RequestInit): Promise
     !("status" in body) ||
     !ENVELOPE_STATUSES.includes(body.status as EnvelopeStatus)
   ) {
-    throw new ApiFailure(`Unexpected response from ${url}`);
+    throw new ApiFailure(errorMessage(body) ?? `Unexpected response from ${url}`);
   }
   return body as Envelope<T>;
 }

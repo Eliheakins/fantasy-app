@@ -16,7 +16,11 @@ const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
 /** URLs are usually relative to the page, so resolve them before taking the origin (outside a browser there is no page, so absolute URLs stand alone). */
 const originOf = (url: string) => new URL(url, globalThis.location?.href).origin;
 
-const errorBodySchema = z.object({ detail: z.unknown() });
+// `detail` is FastAPI's own shape; `error.message` is the fantasy envelope the host app now sends.
+const errorBodySchema = z.object({
+  detail: z.unknown(),
+  error: z.object({ message: z.string() }).nullish().catch(null),
+});
 
 /** FastAPI sends `detail` as a string, or as a list of validation errors with a `msg` each. */
 function describeDetail(detail: unknown): string | null {
@@ -36,7 +40,8 @@ function describeDetail(detail: unknown): string | null {
 async function errorDetail(res: Response): Promise<string | null> {
   try {
     const parsed = errorBodySchema.safeParse(await res.json());
-    return parsed.success ? describeDetail(parsed.data.detail) : null;
+    if (!parsed.success) return null;
+    return describeDetail(parsed.data.detail) ?? parsed.data.error?.message ?? null;
   } catch {
     // The body was not JSON; the caller falls back to the status.
     return null;

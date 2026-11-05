@@ -16,7 +16,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.types import Scope
 
 from fantasy.api_envelope import clean as clean
-from fantasy.api_envelope import fail
+from fantasy.api_envelope import fail, register_error_handlers
 from fantasy.api_envelope import rows as rows
 from fantasy.api_jobs import JobRunner
 from fantasy.api_routes import router
@@ -78,6 +78,7 @@ def create_app(web_dist: Path | None = None, stat_settings: StatSettings | None 
         reason = forbidden(request, hosts)
         return fail("invalid", reason, 403) if reason else await call_next(request)
 
+    register_error_handlers(app)
     app.include_router(router)
     attach_stat(app, stat_settings or get_stat_settings())  # before the SPA mount
     if dist.is_dir():  # mounted last so /api wins; absent until `web/` is built

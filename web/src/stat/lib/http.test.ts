@@ -79,6 +79,19 @@ describe("requestJson", () => {
     await expect(requestJson(URL, schema, options)).rejects.toThrow("String should have at most 2000 characters");
   });
 
+  it("reads the message from an error envelope", async () => {
+    const envelope = { status: "error", data: null, error: { code: "invalid", message: "Missing X-Requested-With header." } };
+    vi.stubGlobal("fetch", respond(envelope, { status: 403 }));
+
+    await expect(requestJson(URL, schema, options)).rejects.toThrow("Missing X-Requested-With header.");
+  });
+
+  it("keeps a valid detail when the error field has an odd shape", async () => {
+    vi.stubGlobal("fetch", respond({ detail: "Index not loaded.", error: "boom" }, { status: 503 }));
+
+    await expect(requestJson(URL, schema, options)).rejects.toThrow("Index not loaded.");
+  });
+
   it("explains a missing file with the hint for it", async () => {
     vi.stubGlobal("fetch", respond({ detail: "Not Found" }, { status: 404 }));
 

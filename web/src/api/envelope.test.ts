@@ -82,4 +82,14 @@ describe("fetchEnvelope", () => {
     stub({ status: "weird", data: 1, error: null, started_at: null });
     await expect(fetchEnvelope("/x")).rejects.toThrow(/Unexpected response/);
   });
+  it("returns an error envelope sent with a non-2xx status", async () => {
+    const body = { status: "error", data: null, error: { code: "invalid", message: "week: too big" }, started_at: null };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 422, json: async () => body }));
+    const env = await fetchEnvelope<number>("/x");
+    expect(resolveState(env, null)).toEqual({ kind: "error", error: { message: "week: too big", code: "invalid" } });
+  });
+  it("surfaces error.message from a body that has no status", async () => {
+    stub({ error: { code: "server", message: "Something went wrong" } });
+    await expect(fetchEnvelope("/x")).rejects.toThrow("Something went wrong");
+  });
 });

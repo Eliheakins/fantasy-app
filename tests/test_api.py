@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from store_fixture import write_rows
 from test_data_api_characterization import _engine_store
 
-from fantasy import _engine, api, api_routes, data_api, store
+from fantasy import _engine, api, api_envelope, api_routes, data_api, store
 from fantasy.api_jobs import Busy, JobRunner
 from fantasy.sources import sleeper
 
@@ -254,6 +254,39 @@ def test_a_failed_job_reports_the_error_and_can_be_retried(
         "message": "the trade deadline (week 2) has passed",
     }
     assert client.post("/api/leagues/t/trades/find").status_code in (200, 202)  # retried
+
+
+def test_a_row_that_drifts_from_its_model_is_a_500_envelope(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original = data_api.leagues
+    monkeypatch.setattr(
+        data_api,
+        "leagues",
+        lambda *a, **k: original(*a, **k).with_columns(surprise=pl.lit(1)),
+    )
+
+    r = client.get("/api/leagues")
+
+    assert r.status_code == 500
+    out = r.json()
+    assert out["status"] == "error" and out["error"]["code"] == "server"
+    assert out["error"]["message"] == api_envelope.SERVER_MESSAGE
+
+
+def test_a_validation_error_is_an_envelope_with_the_field(client: TestClient) -> None:
+    r = client.get("/api/leagues/t/scoreboard?week=99")
+
+    assert r.status_code == 422
+    assert r.json()["error"]["code"] == "invalid"
+    assert r.json()["error"]["message"].startswith("week: ")
+
+
+def test_an_unknown_api_path_is_a_404_envelope(client: TestClient) -> None:
+    r = client.get("/api/nope")
+
+    assert r.status_code == 404
+    assert r.json()["status"] == "error"
 
 
 # --- hosts and static files -----------------------------------------------------------

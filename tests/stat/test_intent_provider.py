@@ -8,13 +8,13 @@ import httpx
 import openai
 import pytest
 from conftest import FILTERS, STATS, FakeLlm
-from fastapi import HTTPException
 from pydantic import SecretStr
 
 from nfl_stat.schemas.nlq import IntentRequest, QueryOutcome, UnsupportedOutcome
 from nfl_stat.services import intent_provider
 from nfl_stat.services.intent_provider import answer_intent
 from nfl_stat.services.jev_intent import JevError
+from nfl_stat.services.llm_client import ModelUnavailable
 
 KEY = "sk-test-not-a-real-key"
 LOCAL_REPLY = '{"stat_ids": ["rec_yards"], "granularity": "total"}'
@@ -108,10 +108,8 @@ async def test_a_jev_failure_with_the_local_server_down_is_the_model_unavailable
         base_url=base_url, chat=SimpleNamespace(completions=SimpleNamespace(create=refuse))
     )
 
-    with pytest.raises(HTTPException) as err:
+    with pytest.raises(ModelUnavailable):
         await answer_intent(_req(), settings=_settings("jev"), llm_client=down)
-
-    assert err.value.status_code == 503
 
 
 async def test_the_endpoint_falls_back_to_the_local_model_when_jev_fails(
