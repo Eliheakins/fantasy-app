@@ -16,7 +16,7 @@ function Odds({ rows }: { rows: SeasonOdds[] }) {
   if (!mine) return null;
   return (
     <Block title="Season odds">
-      <dl className="grid grid-cols-2 gap-3 rounded-xl bg-panel p-4 text-label @md:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-3 border-y border-line py-3 text-label @md:grid-cols-4">
         <Stat label="Make playoffs" value={oddsPercent(mine.p_playoffs)} />
         <Stat label="First-round bye" value={oddsPercent(mine.p_bye)} />
         <Stat label="Win the title" value={oddsPercent(mine.p_title)} />

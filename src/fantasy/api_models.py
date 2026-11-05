@@ -548,3 +548,30 @@ class DigestData(Row):
     waivers: list[MoveIdeaRow]
     trades: list[MoveIdeaRow]
     ideas: IdeasInfo
+
+
+class KickoffRow(Row):
+    team: str
+    kickoff: str | None  # ISO time with the US Eastern offset; null: the schedule has no time
+
+
+class WaiverClearRow(Row):
+    league_key: str
+    name: str | None
+    day_of_week: int | None  # Sleeper's waiver clear day, 0 is Monday; null when not in the data
+    daily: bool  # waivers run every day, so there is no single clear day
+
+
+class WeekCalendarData(Row):
+    week: int | None
+    kickoffs: list[KickoffRow]
+    waivers: list[WaiverClearRow]
+
+
+class StatusChangeRow(Row):
+    sleeper_id: str
+    full_name: str | None
+    position: str | None
+    team: str | None
+    before: str | None  # injury status in the older snapshot; null is healthy
+    after: str | None

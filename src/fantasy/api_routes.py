@@ -4,6 +4,7 @@ import logging
 import threading
 from collections.abc import Callable
 from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -42,6 +43,7 @@ from fantasy.api_models import (
     ScorecardData,
     SeasonOddsRow,
     SeedRow,
+    StatusChangeRow,
     StatusData,
     StreamerRow,
     StrengthRow,
@@ -51,6 +53,7 @@ from fantasy.api_models import (
     TradeRequest,
     UnmatchedData,
     WaiverRow,
+    WeekCalendarData,
     WhatIfRow,
     WinProbabilityData,
 )
@@ -185,6 +188,26 @@ def teams(league: str) -> Any:
 @router.get("/leagues/{league}/season-odds", response_model=Envelope[list[SeasonOddsRow]])
 def season_odds(league: str, team: Team = None) -> Any:
     return guarded(as_team(team, lambda: rows(data_api.season_odds(league, store.DATA_DIR))))
+
+
+@router.get("/week-calendar", response_model=Envelope[WeekCalendarData])
+def week_calendar() -> Any:
+    """Kickoffs of the current NFL week and each league's waiver clear day, for the week strip."""
+    return guarded(lambda: data_api.week_calendar(store.DATA_DIR))
+
+
+@router.get("/leagues/{league}/status-changes", response_model=Envelope[list[StatusChangeRow]])
+def status_changes(
+    league: str,
+    since: Annotated[
+        datetime, Query(description="Compare with the last snapshot at or before this")
+    ],
+    team: Team = None,
+) -> Any:
+    """Players on the roster whose injury status changed since a time (daily Sleeper snapshots)."""
+    return guarded(
+        as_team(team, lambda: rows(data_api.status_changes(league, since, store.DATA_DIR)))
+    )
 
 
 @router.get("/leagues/{league}/seeds", response_model=Envelope[list[SeedRow]])

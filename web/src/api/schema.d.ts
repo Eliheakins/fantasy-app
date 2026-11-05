@@ -106,6 +106,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/week-calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Week Calendar
+         * @description Kickoffs of the current NFL week and each league's waiver clear day, for the week strip.
+         */
+        get: operations["week_calendar_api_week_calendar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/leagues/{league}/status-changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Status Changes
+         * @description Players on the roster whose injury status changed since a time (daily Sleeper snapshots).
+         */
+        get: operations["status_changes_api_leagues__league__status_changes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/seeds": {
         parameters: {
             query?: never;
@@ -812,6 +852,18 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** Envelope[WeekCalendarData] */
+        Envelope_WeekCalendarData_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["WeekCalendarData"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[WinProbabilityData] */
         Envelope_WinProbabilityData_: {
             /**
@@ -1084,6 +1136,19 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** Envelope[list[StatusChangeRow]] */
+        Envelope_list_StatusChangeRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["StatusChangeRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[list[StreamerRow]] */
         Envelope_list_StreamerRow__: {
             /**
@@ -1262,6 +1327,13 @@ export interface components {
             stats: components["schemas"]["CatalogStat"][];
             /** Filters */
             filters?: components["schemas"]["CatalogFilter"][];
+        };
+        /** KickoffRow */
+        KickoffRow: {
+            /** Team */
+            team: string;
+            /** Kickoff */
+            kickoff: string | null;
         };
         /** LastWeekRow */
         LastWeekRow: {
@@ -1836,6 +1908,21 @@ export interface components {
             /** P */
             p: number;
         };
+        /** StatusChangeRow */
+        StatusChangeRow: {
+            /** Sleeper Id */
+            sleeper_id: string;
+            /** Full Name */
+            full_name: string | null;
+            /** Position */
+            position: string | null;
+            /** Team */
+            team: string | null;
+            /** Before */
+            before: string | null;
+            /** After */
+            after: string | null;
+        };
         /** StatusData */
         StatusData: {
             /** Freshness */
@@ -2013,6 +2100,17 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /** WaiverClearRow */
+        WaiverClearRow: {
+            /** League Key */
+            league_key: string;
+            /** Name */
+            name: string | null;
+            /** Day Of Week */
+            day_of_week: number | null;
+            /** Daily */
+            daily: boolean;
+        };
         /** WaiverRow */
         WaiverRow: {
             /** Gsis Id */
@@ -2046,6 +2144,15 @@ export interface components {
             ros_points: number;
             /** Reasons */
             reasons: string[];
+        };
+        /** WeekCalendarData */
+        WeekCalendarData: {
+            /** Week */
+            week: number | null;
+            /** Kickoffs */
+            kickoffs: components["schemas"]["KickoffRow"][];
+            /** Waivers */
+            waivers: components["schemas"]["WaiverClearRow"][];
         };
         /** WhatIfRow */
         WhatIfRow: {
@@ -2241,6 +2348,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_SeasonOddsRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    week_calendar_api_week_calendar_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_WeekCalendarData_"];
+                };
+            };
+        };
+    };
+    status_changes_api_leagues__league__status_changes_get: {
+        parameters: {
+            query: {
+                /** @description Compare with the last snapshot at or before this */
+                since: string;
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_StatusChangeRow__"];
                 };
             };
             /** @description Validation Error */

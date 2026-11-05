@@ -212,6 +212,95 @@
         }
       }
     },
+    "/api/week-calendar": {
+      "get": {
+        "summary": "Week Calendar",
+        "description": "Kickoffs of the current NFL week and each league's waiver clear day, for the week strip.",
+        "operationId": "week_calendar_api_week_calendar_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_WeekCalendarData_"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/status-changes": {
+      "get": {
+        "summary": "Status Changes",
+        "description": "Players on the roster whose injury status changed since a time (daily Sleeper snapshots).",
+        "operationId": "status_changes_api_leagues__league__status_changes_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Compare with the last snapshot at or before this",
+              "title": "Since"
+            },
+            "description": "Compare with the last snapshot at or before this"
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_StatusChangeRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/seeds": {
       "get": {
         "summary": "Seeds",
@@ -2632,6 +2721,59 @@
         ],
         "title": "Envelope[UnmatchedData]"
       },
+      "Envelope_WeekCalendarData_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeekCalendarData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[WeekCalendarData]"
+      },
       "Envelope_WinProbabilityData_": {
         "properties": {
           "status": {
@@ -3825,6 +3967,63 @@
         ],
         "title": "Envelope[list[SeedRow]]"
       },
+      "Envelope_list_StatusChangeRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StatusChangeRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[StatusChangeRow]]"
+      },
       "Envelope_list_StreamerRow__": {
         "properties": {
           "status": {
@@ -4449,6 +4648,32 @@
         ],
         "title": "IntentRequest",
         "description": "The frontend owns the stat and filter catalog, so it sends the allowed ids with each ask."
+      },
+      "KickoffRow": {
+        "properties": {
+          "team": {
+            "type": "string",
+            "title": "Team"
+          },
+          "kickoff": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kickoff"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "team",
+          "kickoff"
+        ],
+        "title": "KickoffRow"
       },
       "LastWeekRow": {
         "properties": {
@@ -6412,6 +6637,80 @@
         ],
         "title": "SeedRow"
       },
+      "StatusChangeRow": {
+        "properties": {
+          "sleeper_id": {
+            "type": "string",
+            "title": "Sleeper Id"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "team": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sleeper_id",
+          "full_name",
+          "position",
+          "team",
+          "before",
+          "after"
+        ],
+        "title": "StatusChangeRow"
+      },
       "StatusData": {
         "properties": {
           "freshness": {
@@ -7022,6 +7321,49 @@
         ],
         "title": "ValidationError"
       },
+      "WaiverClearRow": {
+        "properties": {
+          "league_key": {
+            "type": "string",
+            "title": "League Key"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "day_of_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day Of Week"
+          },
+          "daily": {
+            "type": "boolean",
+            "title": "Daily"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "league_key",
+          "name",
+          "day_of_week",
+          "daily"
+        ],
+        "title": "WaiverClearRow"
+      },
       "WaiverRow": {
         "properties": {
           "gsis_id": {
@@ -7140,6 +7482,43 @@
           "reasons"
         ],
         "title": "WatchRow"
+      },
+      "WeekCalendarData": {
+        "properties": {
+          "week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Week"
+          },
+          "kickoffs": {
+            "items": {
+              "$ref": "#/components/schemas/KickoffRow"
+            },
+            "type": "array",
+            "title": "Kickoffs"
+          },
+          "waivers": {
+            "items": {
+              "$ref": "#/components/schemas/WaiverClearRow"
+            },
+            "type": "array",
+            "title": "Waivers"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "week",
+          "kickoffs",
+          "waivers"
+        ],
+        "title": "WeekCalendarData"
       },
       "WhatIfRow": {
         "properties": {
