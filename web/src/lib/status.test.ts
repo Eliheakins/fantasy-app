@@ -1,4 +1,4 @@
-import type { Status } from "@/api/types";
+import type { StatHealth, Status } from "@/api/types";
 import { bannerMessages, liveLabel } from "./status";
 
 const base: Status = { freshness: [], missing_layers: [], data_version: "v1", simulation_behind_inputs: null,
@@ -22,6 +22,30 @@ describe("bannerMessages", () => {
       "Stale data: Sleeper (30 hours old). Run `make refresh`.",
       "Running without: injury model, outlook. Run `make refresh`.",
       "Season odds are older than sleeper: the last refresh may have failed. Run `make refresh`.",
+    ]);
+  });
+});
+
+describe("bannerMessages with stat data", () => {
+  const now = new Date("2026-11-05T12:00:00Z");
+  const health = (patch: Partial<StatHealth>): StatHealth => ({
+    status: "ok", data_ready: true, data_through: "2026 week 9", built_at: "2026-11-05T00:00:00Z", seasons: [2026], ...patch,
+  });
+  it("is quiet when the stat shards are recent or health is unknown", () => {
+    expect(bannerMessages(base, health({}), now)).toEqual([]);
+    expect(bannerMessages(base, null, now)).toEqual([]);
+  });
+  it("lists stale stat data next to the other stale sources", () => {
+    const status: Status = { ...base, freshness: [{ source: "Sleeper", updated_at: "", age_hours: 3 }] };
+    const old = health({ built_at: "2026-11-02T12:00:00Z" });
+    expect(bannerMessages(status, old, now)).toEqual(["Stale data: Stat data (72 hours old). Run `make refresh`."]);
+    expect(bannerMessages({ ...status, freshness: [{ source: "Sleeper", updated_at: "", age_hours: 60 }] }, old, now)).toEqual([
+      "Stale data: Sleeper (60 hours old), Stat data (72 hours old). Run `make refresh`.",
+    ]);
+  });
+  it("says so when the stat shards were never built", () => {
+    expect(bannerMessages(base, health({ data_ready: false, built_at: null, seasons: [] }), now)).toEqual([
+      "Stat data is not built. Run `make refresh`.",
     ]);
   });
 });

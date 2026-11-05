@@ -32,6 +32,7 @@ from fantasy.stages.crosswalk import SUFFIXES
 from fantasy.stages.distributions import calibrated
 from fantasy.stages.outlook import build_panel
 from fantasy.store import SKILL
+from nfl_stat.core.seasons import FANTASY_FIRST_SEASON
 from nfl_stat.pipeline.pbp_source import read_pbp
 
 HALF_LIFE = 6.0  # games
@@ -87,7 +88,9 @@ def load_efficiency(season: int) -> pl.DataFrame:
     path = store.table_path("nfl_team_efficiency", "raw")
     if path.exists() and (time.time() - path.stat().st_mtime) / 3600 < TTL_HOURS:
         return store.read_table("nfl_team_efficiency", "raw")
-    table = team_efficiency(range(2018, season + 1)).select(*store.SCHEMAS["nfl_team_efficiency"])
+    table = team_efficiency(range(FANTASY_FIRST_SEASON, season + 1)).select(
+        *store.SCHEMAS["nfl_team_efficiency"]
+    )
     store.write_table("nfl_team_efficiency", table, "raw")
     return table
 

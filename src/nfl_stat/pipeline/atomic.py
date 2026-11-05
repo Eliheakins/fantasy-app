@@ -7,6 +7,12 @@ from contextlib import contextmanager
 from pathlib import Path
 
 
+def _umask() -> int:
+    mask = os.umask(0)
+    os.umask(mask)
+    return mask
+
+
 @contextmanager
 def atomic_path(target: Path) -> Iterator[Path]:
     """
@@ -20,6 +26,7 @@ def atomic_path(target: Path) -> Iterator[Path]:
     tmp = Path(name)
     try:
         yield tmp
+        os.chmod(tmp, 0o666 & ~_umask())  # mkstemp makes 0600; keep the mode a plain write gets
         os.replace(tmp, target)
     finally:
         tmp.unlink(missing_ok=True)

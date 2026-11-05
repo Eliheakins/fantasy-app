@@ -15,8 +15,8 @@ import re
 from typing import Any
 
 import httpx
-from nflreadpy.utils_date import get_current_season
 
+from nfl_stat.core.seasons import current_season as _season_now
 from nfl_stat.schemas.nlq import (
     MAX_INTENT_STATS,
     IntentOutcome,
@@ -281,7 +281,7 @@ async def translate_with_jev(
     answers = await call_jev(
         build_jev_request(req, model=model), api_key=api_key, timeout=timeout, transport=transport
     )
-    season = get_current_season() if current_season is None else current_season
+    season = _season_now() if current_season is None else current_season
     try:
         return to_outcome(answers, req, current_season=season)
     except IntentError as e:  # cannot happen with catalog-built ids; keep it a Jev failure

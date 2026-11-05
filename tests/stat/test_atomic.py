@@ -43,3 +43,14 @@ def test_two_writers_never_share_a_temp_path(tmp_path: Path):
 
     with atomic_path(target) as first, atomic_path(target) as second:
         assert first != second
+
+
+def test_the_new_file_gets_the_mode_a_plain_write_would_get(tmp_path: Path):
+    plain = tmp_path / "plain.txt"
+    plain.write_text("x")
+    target = tmp_path / "out.txt"
+
+    with atomic_path(target) as tmp:
+        tmp.write_text("x")
+
+    assert target.stat().st_mode & 0o777 == plain.stat().st_mode & 0o777

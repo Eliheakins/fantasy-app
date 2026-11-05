@@ -31,7 +31,7 @@ def fetch(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Fetcher:
     fetcher = Fetcher()
     monkeypatch.setattr(pbp_source, "PBP_DIR", tmp_path / "pbp")
     monkeypatch.setattr(pbp_source, "_fetch", fetcher)
-    monkeypatch.setattr(pbp_source, "get_current_season", lambda: CURRENT)
+    monkeypatch.setattr(pbp_source, "current_season", lambda: CURRENT)
     return fetcher
 
 

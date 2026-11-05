@@ -14,8 +14,9 @@ from pathlib import Path
 
 import nflreadpy as nfl
 import polars as pl
-from nflreadpy.utils_date import get_current_season
 
+from nfl_stat.core.seasons import roster_season
+from nfl_stat.pipeline import nflverse
 from nfl_stat.pipeline.atomic import atomic_path
 from nfl_stat.pipeline.pbp_source import ensure_pbp
 from nfl_stat.pipeline.players import merge_player_index, read_player_index
@@ -104,7 +105,7 @@ def _load_pbp_parquet_pruned(year: int) -> pl.DataFrame:
 def create_player_index(data_dir: Path, years: list[int]) -> None:
     """One row per player (latest season seen, across builds) in player_index.parquet."""
     print("Building player index…")
-    rosters = nfl.load_rosters(years)
+    rosters = nflverse.rosters(years)
     player_index = rosters.select(
         [
             "gsis_id",
@@ -150,7 +151,7 @@ def _prepare_pbp_base(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def _join_participation_for_year(pbp: pl.DataFrame, year: int) -> pl.DataFrame:
-    max_part_season = get_current_season(roster=True) - 1
+    max_part_season = roster_season() - 1
     if year > max_part_season:
         print(f"Skipping participation for {year} (max participation season {max_part_season}).")
         return pbp.with_columns([pl.lit(None, dtype=PART_DTYPES[c]).alias(c) for c in PART_COLS])

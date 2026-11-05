@@ -15,7 +15,9 @@ DEFAULT_DATA_DIR = REPO_ROOT / "data" / "stat"
 
 
 class AppSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=REPO_ROOT / ".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=REPO_ROOT / ".env", extra="ignore", populate_by_name=True
+    )
 
     # OpenAI-compatible local server, e.g. `uv run --group llm mlx_lm.server --model <LLM_MODEL>`.
     llm_base_url: str = Field(default="http://127.0.0.1:8080/v1", validation_alias="LLM_BASE_URL")
@@ -33,9 +35,8 @@ class AppSettings(BaseSettings):
     jev_model: str = Field(default="jev-latest", validation_alias="JEV_MODEL")
     jev_timeout_seconds: float = Field(default=10.0, gt=0, validation_alias="JEV_TIMEOUT_SECONDS")
 
-    @property
-    def data_dir(self) -> Path:
-        return DEFAULT_DATA_DIR
+    # The alias keeps a stray DATA_DIR in the environment from moving the served folder.
+    data_dir: Path = Field(default=DEFAULT_DATA_DIR, validation_alias="NFL_STAT_DATA_DIR")
 
 
 @lru_cache

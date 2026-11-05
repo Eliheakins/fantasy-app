@@ -10,6 +10,7 @@ import pytest
 from fastapi import FastAPI
 
 from nfl_stat.api.deps import get_llm_client
+from nfl_stat.core.config import AppSettings
 from nfl_stat.main import create_app
 from nfl_stat.schemas.nlq import CatalogFilter, CatalogStat
 
@@ -58,7 +59,7 @@ def data_dir(tmp_path: Path) -> Path:
 def app(data_dir: Path) -> Iterator[FastAPI]:
     # Each test gets its own settings and state, so nothing leaks between tests.
     yield create_app(
-        SimpleNamespace(
+        AppSettings(
             data_dir=data_dir,
             llm_model="test-model",
             llm_base_url="http://fake-llm/v1",

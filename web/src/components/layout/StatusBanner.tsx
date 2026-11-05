@@ -1,5 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import type { Status } from "@/api/types";
+import type { StatHealth, Status } from "@/api/types";
 import { useApi } from "@/hooks/useApi";
 import { bannerMessages } from "@/lib/status";
 
@@ -14,13 +15,31 @@ function WithCode({ text }: { text: string }) {
   );
 }
 
+const STAT_HEALTH_REFETCH_MS = 5 * 60_000;
+
+/** The stat app's health (plain JSON, not the envelope); null until it loads or if it fails. */
+function useStatHealth(): StatHealth | null {
+  const { data } = useQuery<StatHealth, Error>({
+    queryKey: ["stat-health"],
+    queryFn: async () => {
+      const res = await fetch("/api/stat/health");
+      if (!res.ok) throw new Error(`stat health ${res.status}`);
+      return (await res.json()) as StatHealth;
+    },
+    refetchInterval: STAT_HEALTH_REFETCH_MS,
+    retry: false,
+  });
+  return typeof data?.data_ready === "boolean" ? data : null;
+}
+
 const INNER = "mx-auto w-full max-w-[1200px] px-[var(--page-pad)]";
 
 /** One amber line at every width with a details disclosure; stacked rows pushed each page's answer down. */
 export function StatusBanner() {
   const state = useApi<Status>("/api/status");
   const [open, setOpen] = useState(false);
-  const messages = state.kind === "ready" ? bannerMessages(state.data) : [];
+  const statHealth = useStatHealth();
+  const messages = bannerMessages(state.kind === "ready" ? state.data : null, statHealth);
   const label = `${messages.length} data ${messages.length === 1 ? "notice" : "notices"}`;
   return (
     <div aria-live="polite" role="status">

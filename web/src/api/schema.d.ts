@@ -1487,6 +1487,11 @@ export interface components {
              */
             data_through?: string | null;
             /**
+             * Built At
+             * @description When the shards were built (ISO 8601, UTC): what the stale banner ages
+             */
+            built_at?: string | null;
+            /**
              * Seasons
              * @description Seasons with a shard
              */

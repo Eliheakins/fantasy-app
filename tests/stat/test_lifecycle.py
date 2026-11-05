@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import SimpleNamespace
 
 import polars as pl
 import pytest
 
 from nfl_stat.core import lifecycle, manifest_state
+from nfl_stat.core.config import AppSettings
 from nfl_stat.main import create_app
 from nfl_stat.pipeline.manifest import build_manifest, write_manifest
 
@@ -19,8 +19,8 @@ def _write_shard(data_dir: Path) -> None:
 
 
 @pytest.fixture
-def settings(tmp_path: Path) -> SimpleNamespace:
-    return SimpleNamespace(
+def settings(tmp_path: Path) -> AppSettings:
+    return AppSettings(
         data_dir=tmp_path,
         # Port 9 refuses connections, so the keep-alive ping fails fast and is ignored.
         llm_base_url="http://127.0.0.1:9/v1",
@@ -29,7 +29,7 @@ def settings(tmp_path: Path) -> SimpleNamespace:
     )
 
 
-async def test_lifespan_starts_the_llm_client_and_closes_it(settings: SimpleNamespace):
+async def test_lifespan_starts_the_llm_client_and_closes_it(settings: AppSettings):
     app = create_app(settings)
 
     async with lifecycle.lifespan(app):
@@ -38,7 +38,7 @@ async def test_lifespan_starts_the_llm_client_and_closes_it(settings: SimpleName
     assert app.state.stat_state.llm_client is None
 
 
-async def test_lifespan_loads_the_manifest_when_one_was_built(settings: SimpleNamespace):
+async def test_lifespan_loads_the_manifest_when_one_was_built(settings: AppSettings):
     _write_shard(settings.data_dir)
     write_manifest(build_manifest(settings.data_dir), settings.data_dir)
     app = create_app(settings)
@@ -49,7 +49,7 @@ async def test_lifespan_loads_the_manifest_when_one_was_built(settings: SimpleNa
 
 
 async def test_lifespan_starts_without_a_manifest_when_the_file_is_invalid(
-    settings: SimpleNamespace,
+    settings: AppSettings,
 ):
     (settings.data_dir / "manifest.json").write_text("{not json")
     app = create_app(settings)
@@ -60,7 +60,7 @@ async def test_lifespan_starts_without_a_manifest_when_the_file_is_invalid(
 
 
 async def test_lifespan_starts_when_the_manifest_cannot_be_read_at_all(
-    settings: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+    settings: AppSettings, monkeypatch: pytest.MonkeyPatch
 ):
     def unreadable(data_dir: Path):
         raise PermissionError("denied")
@@ -73,8 +73,8 @@ async def test_lifespan_starts_when_the_manifest_cannot_be_read_at_all(
         assert app.state.stat_state.llm_client is not None
 
 
-async def test_two_apps_do_not_share_state(settings: SimpleNamespace, tmp_path: Path):
-    other = SimpleNamespace(**{**vars(settings), "data_dir": tmp_path / "other"})
+async def test_two_apps_do_not_share_state(settings: AppSettings, tmp_path: Path):
+    other = settings.model_copy(update={"data_dir": tmp_path / "other"})
     first, second = create_app(settings), create_app(other)
 
     async with lifecycle.lifespan(first):

@@ -17,3 +17,5 @@ export type Envelope<T> = {
 
 export type League = Schemas["LeagueRow"];
 export type Status = Schemas["StatusData"];
+/** `/api/stat/health`: a plain body, not the envelope. */
+export type StatHealth = Schemas["HealthResponse"];

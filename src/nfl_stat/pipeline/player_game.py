@@ -10,9 +10,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import nflreadpy as nfl
 import polars as pl
 
+from nfl_stat.pipeline import nflverse
 from nfl_stat.pipeline.atomic import atomic_path
 
 PLAYER_GAME_FILENAME = "player_game.parquet"
@@ -87,7 +87,7 @@ def normalize_player_game(df: pl.DataFrame) -> pl.DataFrame:
 
 def build_player_game(years: list[int]) -> pl.DataFrame:
     """Download and normalize the requested seasons."""
-    return normalize_player_game(nfl.load_player_stats(years, summary_level="week"))
+    return normalize_player_game(nflverse.player_stats(years))
 
 
 def merge_player_game(existing: pl.DataFrame | None, new: pl.DataFrame) -> pl.DataFrame:

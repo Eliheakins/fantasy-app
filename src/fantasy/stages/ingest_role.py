@@ -16,9 +16,10 @@ import polars as pl
 from fantasy import store
 from fantasy.config import load_config
 from fantasy.store import SKILL
+from nfl_stat.core.seasons import FANTASY_FIRST_SEASON as FIRST_SEASON
+from nfl_stat.pipeline import nflverse
 from nfl_stat.pipeline.pbp_source import read_pbp
 
-FIRST_SEASON = 2018
 MAX_UNMATCHED_SHARE = 0.05  # rows lost to an ID join before the stage fails
 MAX_UNMATCHED_SHARE_ECR = 0.15  # rankings cover players the ID table lacks; 4 to 6% on 2026-10-23
 OLD_DEPTH_LAST_SEASON = 2024  # the weekly depth chart; later seasons are dated snapshots
@@ -189,7 +190,7 @@ def load_depth() -> pl.DataFrame:
 
 
 def load_rosters() -> pl.DataFrame:
-    return roster_features(nfl.load_rosters_weekly(seasons()))
+    return roster_features(nflverse.rosters_weekly(seasons()))
 
 
 def load_advanced() -> pl.DataFrame:

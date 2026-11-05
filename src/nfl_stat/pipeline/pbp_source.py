@@ -19,9 +19,10 @@ from urllib.parse import urljoin
 
 import polars as pl
 import requests
-from nflreadpy.utils_date import get_current_season
 
 from nfl_stat.core.config import REPO_ROOT
+from nfl_stat.core.seasons import NFLVERSE_PBP_FIRST_SEASON as FIRST_SEASON
+from nfl_stat.core.seasons import current_season
 from nfl_stat.pipeline.atomic import atomic_path
 
 # Same release host as nflreadpy downloader; override with NFLVERSE_DOWNLOAD_BASE.
@@ -29,7 +30,6 @@ _DEFAULT_NFLVERSE_DL = "https://github.com/nflverse/nflverse-data/releases/downl
 COMPLETE_AFTER = (3, 1)  # month, day of the year after the season: the file is final from then
 PBP_DIR = REPO_ROOT / "data" / "raw" / "pbp"
 TTL_HOURS = 12.0
-FIRST_SEASON = 1999  # nflreadpy's own lower bound
 TIMEOUT_SECONDS = 120
 CHUNK_BYTES = 1 << 20
 
@@ -80,7 +80,7 @@ def _is_fresh(path: Path, season: int) -> bool:
 
 def ensure_pbp(season: int) -> Path:
     """The local file for the season, downloaded (atomically) first if missing or not fresh."""
-    current = get_current_season()
+    current = current_season()
     if not FIRST_SEASON <= season <= current:  # the message nflreadpy gives; callers match it
         raise ValueError(f"Season must be between {FIRST_SEASON} and {current}")
     path = pbp_path(season)

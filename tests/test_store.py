@@ -65,3 +65,50 @@ def test_write_tables_replaces_nothing_when_one_table_fails_its_schema(
     with pytest.raises(ValueError):
         store.write_tables({"t_good": good, "t_bad": good})
     assert list(tmp_path.iterdir()) == []
+
+
+def _two_tables(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(store.SCHEMAS, "demo_a", {"x": pl.Int64})
+    monkeypatch.setitem(store.SCHEMAS, "demo_b", {"x": pl.Int64})
+
+
+def test_write_tables_replaces_every_table_and_leaves_no_temp_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _two_tables(monkeypatch)
+    store.write_tables({"demo_a": pl.DataFrame({"x": [1]})}, data_dir=tmp_path)
+
+    store.write_tables(
+        {"demo_a": pl.DataFrame({"x": [2]}), "demo_b": pl.DataFrame({"x": [3]})},
+        data_dir=tmp_path,
+    )
+
+    assert store.read_table("demo_a", data_dir=tmp_path)["x"].to_list() == [2]
+    assert store.read_table("demo_b", data_dir=tmp_path)["x"].to_list() == [3]
+    assert not list(tmp_path.rglob("*.tmp"))
+
+
+def test_write_tables_keeps_the_old_files_when_a_later_table_fails_to_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _two_tables(monkeypatch)
+    store.write_tables({"demo_a": pl.DataFrame({"x": [1]})}, data_dir=tmp_path)
+    real_write = pl.DataFrame.write_parquet
+    calls: list[object] = []
+
+    def flaky(self: pl.DataFrame, file: object, *args: object, **kwargs: object) -> None:
+        calls.append(file)
+        if len(calls) == 2:
+            raise OSError("disk full")
+        real_write(self, file, *args, **kwargs)  # type: ignore[arg-type]
+
+    with monkeypatch.context() as patch, pytest.raises(OSError, match="disk full"):
+        patch.setattr(pl.DataFrame, "write_parquet", flaky)
+        store.write_tables(
+            {"demo_a": pl.DataFrame({"x": [2]}), "demo_b": pl.DataFrame({"x": [3]})},
+            data_dir=tmp_path,
+        )
+
+    assert store.read_table("demo_a", data_dir=tmp_path)["x"].to_list() == [1]
+    assert not store.table_path("demo_b", data_dir=tmp_path).exists()
+    assert not list(tmp_path.rglob("*.tmp"))

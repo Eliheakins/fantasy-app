@@ -60,7 +60,7 @@ def test_finalize_ignores_columns_that_are_not_present():
 
 
 def test_season_without_participation_gets_typed_null_columns(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(nfl_pipeline, "get_current_season", lambda roster=False: 2026)
+    monkeypatch.setattr(nfl_pipeline, "roster_season", lambda: 2026)
     pbp = pl.DataFrame({"play_id": [1, 2], "old_game_id": ["g", "g"]})
 
     out = nfl_pipeline._join_participation_for_year(pbp, 2026)

@@ -12,9 +12,9 @@ import gc
 import os
 from pathlib import Path
 
-from nflreadpy.utils_date import get_current_season
-
 from nfl_stat.core.config import DEFAULT_DATA_DIR
+from nfl_stat.core.seasons import STAT_SHARDS_FIRST_SEASON as FIRST_SEASON
+from nfl_stat.core.seasons import current_season
 from nfl_stat.pipeline.atomic import atomic_path
 from nfl_stat.pipeline.manifest import build_manifest, write_manifest
 from nfl_stat.pipeline.nfl_pipeline import (
@@ -53,12 +53,9 @@ def _parse_years(raw: str) -> list[int]:
     return years
 
 
-FIRST_SEASON = 2021
-
-
 def default_years() -> list[int]:
     """Every season from FIRST_SEASON through the current one, so a new season needs no code edit."""
-    return list(range(FIRST_SEASON, max(FIRST_SEASON, get_current_season()) + 1))
+    return list(range(FIRST_SEASON, max(FIRST_SEASON, current_season()) + 1))
 
 
 def run_build(data_dir: Path, years: list[int]) -> None:
@@ -129,7 +126,7 @@ def main(argv: list[str] | None = None) -> int:
 
     data_dir = Path(args.data_dir).resolve() if args.data_dir else data_output_dir()
     if args.refresh:
-        years = [get_current_season()]
+        years = [current_season()]
     else:
         years = _parse_years(args.years) if args.years else default_years()
 

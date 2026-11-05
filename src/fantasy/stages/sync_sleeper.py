@@ -14,6 +14,7 @@ import polars as pl
 from fantasy import store
 from fantasy.config import Config, load_config
 from fantasy.sources.sleeper import fetch
+from nfl_stat.pipeline.atomic import atomic_path
 
 PLAYERS_CACHE = store.DATA_DIR / "raw" / "sleeper_players_cache.json"
 PLAYERS_TTL_SECONDS = 24 * 3600  # Sleeper asks for at most one players pull a day
@@ -55,9 +56,8 @@ def load_players(
     data: dict[str, dict[str, Any]] = fetch("/players/nfl")
     check_players(data)
     cache.parent.mkdir(parents=True, exist_ok=True)
-    tmp = cache.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(data))
-    tmp.replace(cache)
+    with atomic_path(cache) as tmp:
+        tmp.write_text(json.dumps(data))
     return data
 
 

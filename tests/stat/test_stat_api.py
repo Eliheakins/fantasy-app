@@ -29,6 +29,7 @@ async def test_health_is_degraded_until_the_data_is_built(client: httpx.AsyncCli
         "status": "degraded",
         "data_ready": False,
         "data_through": None,
+        "built_at": None,
         "seasons": [],
     }
 
@@ -61,6 +62,7 @@ async def test_health_reports_how_current_the_data_is(client: httpx.AsyncClient,
     assert body["status"] == "ok"
     assert body["data_ready"] is True
     assert body["data_through"] == "2026 week 9"
+    assert body["built_at"] == "2026-11-04T12:00:00+00:00"
     assert body["seasons"] == [2025, 2026]
 
 

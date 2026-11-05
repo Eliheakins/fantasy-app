@@ -5184,6 +5184,18 @@
             "title": "Data Through",
             "description": "How current the data is, e.g. \"2026 week 9\""
           },
+          "built_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Built At",
+            "description": "When the shards were built (ISO 8601, UTC): what the stale banner ages"
+          },
           "seasons": {
             "items": {
               "type": "integer"

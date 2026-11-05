@@ -26,5 +26,6 @@ async def health(
         status="ok" if ready else "degraded",
         data_ready=ready,
         data_through=state.manifest.data_through if state.manifest else None,
+        built_at=state.manifest.built_at if state.manifest else None,
         seasons=seasons,
     )

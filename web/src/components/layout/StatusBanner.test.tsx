@@ -19,9 +19,17 @@ function renderBanner() {
   render(<QueryClientProvider client={client}><StatusBanner /></QueryClientProvider>);
 }
 
-beforeEach(() => {
-  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ status: "ok", data: STATUS, error: null, started_at: null })));
-});
+const HEALTH = { status: "ok", data_ready: true, data_through: "2026 week 9", built_at: new Date().toISOString(), seasons: [2026] };
+
+/** Answers /api/stat/health with a plain body and every other route with the envelope. */
+function stubFetch(status: unknown, health: unknown = HEALTH) {
+  vi.stubGlobal("fetch", vi.fn(async (url: string) =>
+    String(url).includes("/api/stat/health")
+      ? Response.json(health)
+      : Response.json({ status: "ok", data: status, error: null, started_at: null })));
+}
+
+beforeEach(() => stubFetch(STATUS));
 afterEach(() => vi.unstubAllGlobals());
 
 describe("StatusBanner", () => {
@@ -39,9 +47,36 @@ describe("StatusBanner", () => {
   });
 
   it("shows nothing when the data is fresh", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ status: "ok", data: { ...STATUS, freshness: [], missing_layers: [] }, error: null, started_at: null })));
+    stubFetch({ ...STATUS, freshness: [], missing_layers: [] });
     renderBanner();
     await new Promise((r) => setTimeout(r, 0));
     expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("adds stale stat data from /api/stat/health to the notices", async () => {
+    const built = new Date(Date.now() - 100 * 3_600_000).toISOString();
+    stubFetch({ ...STATUS, freshness: [], missing_layers: [] }, { ...HEALTH, built_at: built });
+    renderBanner();
+    await userEvent.setup().click(await screen.findByRole("button", { name: /details/i }));
+    expect(screen.getByText(/Stale data: Stat data \(100 hours old\)/)).toBeInTheDocument();
+  });
+
+  it("keeps the /api/status notices when the health call fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).includes("/api/stat/health")) return new Response("boom", { status: 500 });
+      return Response.json({ status: "ok", data: STATUS, error: null, started_at: null });
+    }));
+    renderBanner();
+    expect(await screen.findByText(/2 data notices/i)).toBeInTheDocument();
+  });
+
+  it("shows the not-built notice even when /api/status fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).includes("/api/stat/health")) return Response.json({ ...HEALTH, data_ready: false, built_at: null });
+      throw new Error("status down");
+    }));
+    renderBanner();
+    await userEvent.setup().click(await screen.findByRole("button", { name: /details/i }));
+    expect(screen.getByText(/Stat data is not built/)).toBeInTheDocument();
   });
 });

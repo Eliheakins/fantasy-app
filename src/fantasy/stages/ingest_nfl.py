@@ -18,6 +18,7 @@ import polars as pl
 
 from fantasy import store
 from fantasy.stages import ingest_role as role
+from nfl_stat.pipeline import nflverse
 
 TTL_SECONDS = 12 * 3600
 
@@ -39,7 +40,7 @@ def with_gsis(snaps: pl.DataFrame, ffids: pl.DataFrame) -> pl.DataFrame:
 
 # table name -> (loader, column that must not be null)
 SOURCES: dict[str, tuple[Callable[[], pl.DataFrame], str | None]] = {
-    "nfl_player_stats": (lambda: nfl.load_player_stats(role.seasons()), "player_id"),
+    "nfl_player_stats": (lambda: nflverse.player_stats(role.seasons()), "player_id"),
     "nfl_team_stats": (lambda: nfl.load_team_stats(role.seasons()), None),
     "nfl_snaps": (
         lambda: with_gsis(nfl.load_snap_counts(role.seasons()), nfl.load_ff_playerids()),

@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+from nfl_stat.core.config import REPO_ROOT as ROOT
+from nfl_stat.core.seasons import current_season
+
 PROJECTION_MODELS = ("learned", "baseline")
 # sites whose terms do not forbid scraping and storage; see stages/outside_projections
 OUTSIDE_SOURCES = ("fftoday",)
@@ -61,8 +63,9 @@ def _load(path: Path, _mtime_ns: int) -> Config:
     if not set(positions) <= set(SKILL_POSITIONS):
         raise ValueError(f"{path}: prop_positions must be among {SKILL_POSITIONS}, not {positions}")
     try:
+        raw["season"]  # a missing season stays an error here; only stat-only use may fall back
         return Config(
-            season=raw["season"],
+            season=current_season(path),
             user_id=raw["user_id"],
             n_sims=raw["n_sims"],
             leagues={name: league["id"] for name, league in raw["leagues"].items()},

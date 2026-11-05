@@ -5,13 +5,14 @@ data/<area>/<name>.parquet, where area is raw, derived or archive. Stages regist
 tables in SCHEMAS; reads and writes assert the columns and dtypes match.
 """
 
-import os
 import re
+from contextlib import ExitStack
 from pathlib import Path
 
 import polars as pl
 
 from fantasy.config import ROOT, load_config
+from nfl_stat.pipeline.atomic import atomic_path
 
 DATA_DIR = ROOT / "data"
 AREAS = ("raw", "derived", "archive")
@@ -403,19 +404,11 @@ def write_tables(
     checked and written to a temp file first, and the files are moved into place at the end."""
     for name, df in tables.items():
         check_schema(name, df)
-    staged: dict[Path, Path] = {}
-    try:
+    with ExitStack() as stack:  # each temp file is moved into place only when all are written
         for name, df in tables.items():
             path = table_path(name, area, data_dir)
             path.parent.mkdir(parents=True, exist_ok=True)
-            tmp = path.with_suffix(".parquet.tmp")
-            staged[tmp] = path
-            df.write_parquet(tmp)
-        for tmp, path in staged.items():
-            os.replace(tmp, path)
-    finally:
-        for tmp in staged:
-            tmp.unlink(missing_ok=True)
+            df.write_parquet(stack.enter_context(atomic_path(path)))
 
 
 def write_table(

@@ -46,3 +46,11 @@ def test_a_switch_that_is_not_true_or_false_is_rejected(tmp_path: Path, key: str
     )
     with pytest.raises(ValueError, match=key):
         load_config(path)
+
+
+def test_a_missing_season_is_still_an_error(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+    path.write_text('user_id = "u"\nn_sims = 10\n[leagues.a]\nid = "1"\n')
+
+    with pytest.raises(ValueError, match="season"):
+        load_config(path)

@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 
 from fantasy import api
 from nfl_stat.api.deps import get_llm_client
+from nfl_stat.core.config import AppSettings
 
 CSRF_HEADER = {"X-Requested-With": "fantasy-app"}
 SHARD = b"PAR1-fake-shard-bytes"
@@ -72,7 +73,7 @@ def client(
     data_root: Path, web_dist: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[TestClient]:
     monkeypatch.setenv("LIVE_REFRESH", "off")
-    settings = SimpleNamespace(
+    settings = AppSettings(
         data_dir=data_root / "stat",
         llm_model="test-model",
         llm_base_url="http://fake-llm/v1",
