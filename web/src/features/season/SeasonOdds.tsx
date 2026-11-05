@@ -6,7 +6,7 @@ import { HISTORY_WAIT_MESSAGE, canShowHistory, runWeeks } from "@/features/outlo
 import type { OddsHistoryRow, SeasonOddsRow } from "@/features/outlook/types";
 import { useLeagueApi } from "@/lib/league";
 import { formatPercent } from "@/viz";
-import { myOddsByRun, weekMarks } from "./logic";
+import { myOddsByWeek, weekMarks } from "./logic";
 import type { SeasonEventRow } from "./types";
 
 const EVENTS_ID = "season-marked-events";
@@ -14,13 +14,13 @@ const KIND_LABEL = { trade: "Trade", injury: "Injury", big_week: "Big week" } as
 const MISSING =
   "Marked: your trades, injuries to your starters (Sleeper's Out, IR or Doubtful, from the daily snapshots) and weeks far above your average. Not marked: waiver moves, and anything before the first saved run.";
 
-function placement(e: SeasonEventRow, mine: ReadonlyMap<string, number>, weeks: ReadonlyMap<string, number>): string {
+function placement(e: SeasonEventRow, mine: ReadonlyMap<number, number>, weeks: ReadonlyMap<string, number>): string {
   const week = e.run_at === null ? undefined : weeks.get(e.run_at);
   if (e.run_at === null || week === undefined) return "before the first saved run, so not drawn";
-  return `week ${week}, your odds ${formatPercent(mine.get(e.run_at))}`;
+  return `week ${week}, your odds ${formatPercent(mine.get(week))} at the end of it`;
 }
 
-function EventList({ events, mine, weeks }: { events: readonly SeasonEventRow[]; mine: ReadonlyMap<string, number>; weeks: ReadonlyMap<string, number> }) {
+function EventList({ events, mine, weeks }: { events: readonly SeasonEventRow[]; mine: ReadonlyMap<number, number>; weeks: ReadonlyMap<string, number> }) {
   return (
     <div className="mt-2">
       <h3 id={EVENTS_ID} className="text-body font-semibold">Marked events</h3>
@@ -44,7 +44,7 @@ function Chart({ odds, history, events }: { odds: SeasonOddsRow[]; history: Odds
   const list = useMemo(() => (events.kind === "ready" ? events.data : []), [events]);
   const weeks = useMemo(() => runWeeks(history), [history]);
   const marks = useMemo(() => weekMarks(list, weeks), [list, weeks]);
-  const mine = useMemo(() => myOddsByRun(history, odds.find((o) => o.is_me)?.roster_id), [history, odds]);
+  const mine = useMemo(() => myOddsByWeek(history, odds.find((o) => o.is_me)?.roster_id), [history, odds]);
   if (!canShowHistory(odds, history)) return <p className="measure text-caption text-muted">{HISTORY_WAIT_MESSAGE}</p>;
   return (
     <>

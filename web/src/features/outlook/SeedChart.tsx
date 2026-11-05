@@ -15,7 +15,7 @@ function Marks({ count }: { count: number }) {
   const cut = scale(String(PLAYOFF_SEEDS), { position: "end" });
   const byeStart = scale("1", { position: "start" });
   const byeEnd = scale(String(BYE_SEEDS), { position: "end" });
-  const row = area.y - 40; // a label row above the tallest bar's value label
+  const row = area.y - 40; // a label row above the tallest bar's value label; needs the chart's top margin of 60
   return (
     <g fontSize={12}>
       {count > PLAYOFF_SEEDS && typeof cut === "number" && (
@@ -43,7 +43,7 @@ export function SeedChart({ rows }: { rows: readonly SeedRow[] }) {
       <div className="h-72 w-full" role="img" aria-label="Chance of each regular-season seed, bar chart; seeds 1 to 6 make the playoffs and 1 and 2 get a bye">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 60, right: 8, bottom: 0, left: 8 }} barCategoryGap="20%">
-            <XAxis dataKey="seed" {...AXIS} stroke="var(--lf-ink)" tickFormatter={(s: string) => `${s}`} label={{ value: "Seed", position: "insideBottom", offset: 0, fill: TICK_COLOR, fontSize: 12 }} height={40} />
+            <XAxis dataKey="seed" {...AXIS} stroke="var(--lf-ink)" label={{ value: "Seed", position: "insideBottom", offset: 0, fill: TICK_COLOR, fontSize: 12 }} height={40} />
             <YAxis hide domain={[0, "dataMax"]} />
             <Bar dataKey="p" maxBarSize={BAR_MAX_PX} radius={BAR_RADIUS} isAnimationActive={false}>
               {data.map((d) => <Cell key={d.seed} fill={d.fill} />)}

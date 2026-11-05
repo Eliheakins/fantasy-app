@@ -29,11 +29,12 @@ export function StatusBanner() {
           <div className={`${INNER} flex min-h-[40px] items-center justify-between gap-3`}>
             <p>
               <span className="font-medium">{label}</span>
-              <span className="hidden sm:inline">: the data may be behind. Run <code>make refresh</code>.</span>
+              <span className="hidden sm:inline">. Run <code>make refresh</code>.</span>
             </p>
             <button
               type="button"
               aria-expanded={open}
+              aria-controls="data-notices"
               onClick={() => setOpen((o) => !o)}
               className="-my-1 inline-flex min-h-[44px] items-center gap-1 font-medium underline underline-offset-2"
             >
@@ -42,7 +43,7 @@ export function StatusBanner() {
             </button>
           </div>
           {open && (
-            <ul className={`${INNER} list-disc space-y-1 pb-3 pl-[calc(var(--page-pad)+1rem)]`}>
+            <ul id="data-notices" aria-live="off" className={`${INNER} list-disc space-y-1 pb-3 pl-[calc(var(--page-pad)+1rem)]`}>
               {messages.map((m) => <li key={m}><WithCode text={m} /></li>)}
             </ul>
           )}

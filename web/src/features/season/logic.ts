@@ -1,4 +1,5 @@
 import { type Matchup, groupMatchups, isThin } from "@/features/league/logic";
+import { weeklyHistory } from "@/features/outlook/logic";
 import type { OddsHistoryRow } from "@/features/outlook/types";
 import type { WhatIfRow } from "@/features/league/types";
 import { formatPercent } from "@/viz";
@@ -59,9 +60,13 @@ export function weekMarks(events: readonly SeasonEventRow[], weeks: ReadonlyMap<
   return out;
 }
 
-/** My playoff odds at each saved run, keyed by run_at, so an event can say what the odds were there. */
-export function myOddsByRun(history: readonly OddsHistoryRow[], myRosterId: number | undefined): Map<string, number> {
-  const out = new Map<string, number>();
-  for (const r of history) if (r.roster_id === myRosterId && r.p_playoffs !== null) out.set(r.run_at, r.p_playoffs);
+/** My playoff odds at each week's point on the chart (the last saved run of the week), keyed by week. */
+export function myOddsByWeek(history: readonly OddsHistoryRow[], myRosterId: number | undefined): Map<number, number> {
+  const out = new Map<number, number>();
+  if (myRosterId === undefined) return out;
+  for (const p of weeklyHistory(history)) {
+    const v = p[String(myRosterId)];
+    if (typeof v === "number") out.set(p.week, v);
+  }
   return out;
 }

@@ -9,7 +9,7 @@ import {
 
 const NO_VALUE = "–";
 
-type Ctx = { known: boolean; domain: ReturnType<typeof tableDomain>; final: boolean };
+type Ctx = { known: boolean; domain: ReturnType<typeof tableDomain>; final: boolean; started: boolean };
 type Column = { head: string; width: string; right?: boolean; cell: (r: LineupRow, c: Ctx) => ReactNode };
 
 /** Injury note as amber text under the name, never a boxed chip. */
@@ -56,7 +56,7 @@ function columnsFor(rows: readonly LineupRow[], final: boolean): Column[] {
       { head: "Points", width: "12%", right: true, cell: (r) => formatNumber(r.actual) }, { ...GAME, width: "20%" },
     ];
   }
-  const started = rows.some((r) => r.locked || r.actual !== 0);
+  const started = hasStarted(rows);
   const status = rows.some((r) => r.locked || r.change);
   return [
     SLOT, PLAYER, POS,
@@ -66,6 +66,10 @@ function columnsFor(rows: readonly LineupRow[], final: boolean): Column[] {
     GAME,
     ...(status ? [{ head: "Status", width: "11%", cell: (r: LineupRow, c: Ctx) => <Status row={r} known={c.known} /> }] : []),
   ];
+}
+
+function hasStarted(rows: readonly LineupRow[]): boolean {
+  return rows.some((r) => r.locked || r.actual !== 0);
 }
 
 /** A locked row reads as settled while other games are left; in a finished week nothing is greyed. */
@@ -115,7 +119,7 @@ function Cards({ rows, ctx }: { rows: readonly LineupRow[]; ctx: Ctx }) {
           {!ctx.final && hasRange(r) && <div className="mt-1"><Bar row={r} domain={ctx.domain} /></div>}
           <div className="mt-1 flex flex-wrap items-center gap-x-3 text-caption text-muted">
             <span>{r.game}</span>
-            {!ctx.final && <span>Pts so far {pointsSoFar(r)}</span>}
+            {!ctx.final && ctx.started && <span>Pts so far {pointsSoFar(r)}</span>}
             {!ctx.final && <Status row={r} known={ctx.known} />}
           </div>
         </li>
@@ -128,7 +132,7 @@ type Props = { title: string; rows: readonly LineupRow[]; known: boolean; final?
 
 /** Table at lg and up, stacked cards below it. One shared range axis per table; no range column when no row has one. */
 export function PlayerTable({ title, rows, known, final = false, caption, howCalculated }: Props) {
-  const ctx = { known, final, domain: tableDomain(rows) };
+  const ctx = { known, final, started: hasStarted(rows), domain: tableDomain(rows) };
   return (
     <Section title={title} caption={caption} howCalculated={howCalculated}>
       <Wide rows={rows} ctx={ctx} columns={columnsFor(rows, final)} />

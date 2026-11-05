@@ -1,5 +1,5 @@
 import type { WhatIfRow } from "@/features/league/types";
-import { weekMarks, myOddsByRun, needSentence, needTable, rootFor } from "./logic";
+import { weekMarks, myOddsByWeek, needSentence, needTable, rootFor } from "./logic";
 import type { SeasonEventRow, WinNeedRow } from "./types";
 
 const need = (wins: number, p: number, runs = 5000, games = 4): WinNeedRow => ({
@@ -78,13 +78,14 @@ describe("weekMarks", () => {
   });
 });
 
-describe("myOddsByRun", () => {
-  it("keeps only my rows by run", () => {
+describe("myOddsByWeek", () => {
+  it("keeps my odds at each week's last run", () => {
     const h = [
       { run_at: "r1", roster_id: 1, team_name: "A", p_playoffs: 0.5, p_title: 0, as_of_week: 7 },
-      { run_at: "r1", roster_id: 2, team_name: "B", p_playoffs: 0.9, p_title: 0, as_of_week: 7 },
+      { run_at: "r2", roster_id: 1, team_name: "A", p_playoffs: 0.6, p_title: 0, as_of_week: 7 },
+      { run_at: "r2", roster_id: 2, team_name: "B", p_playoffs: 0.9, p_title: 0, as_of_week: 7 },
     ];
-    expect([...myOddsByRun(h, 1)]).toEqual([["r1", 0.5]]);
-    expect(myOddsByRun(h, undefined).size).toBe(0);
+    expect([...myOddsByWeek(h, 1)]).toEqual([[7, 0.6]]);
+    expect(myOddsByWeek(h, undefined).size).toBe(0);
   });
 });
