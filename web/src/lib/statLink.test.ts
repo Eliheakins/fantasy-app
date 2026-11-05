@@ -1,3 +1,5 @@
+import { STAT_DEFINITIONS } from "@/stat/config/statDictionary";
+
 import { currentSeason, statLink } from "./statLink";
 
 const BASE = "http://stat.test";
@@ -41,5 +43,17 @@ describe("currentSeason", () => {
     expect(currentSeason(new Date(2027, 1, 10))).toBe(2026);
     expect(currentSeason(new Date(2027, 7, 31))).toBe(2026);
     expect(currentSeason(new Date(2027, 8, 1))).toBe(2027);
+  });
+});
+
+describe("statLink stat ids", () => {
+  it("only uses stat ids that exist in metrics.json", () => {
+    const known = new Set(STAT_DEFINITIONS.map((s) => s.id));
+    const used = ["QB", "RB", "WR", "TE"].flatMap((pos) =>
+      [...new URL(link(pos) ?? "").searchParams.getAll("s")],
+    );
+
+    expect(used.length).toBeGreaterThan(0);
+    expect(used.filter((id) => !known.has(id))).toEqual([]);
   });
 });

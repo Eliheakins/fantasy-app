@@ -89,6 +89,12 @@ def test_manifest_is_served_from_data_stat(client: TestClient) -> None:
     assert r.json()["seasons"][0]["max_week"] == 9
 
 
+def test_a_version_query_on_a_shard_url_still_serves_the_shard(client: TestClient) -> None:
+    r = client.get("/api/stat/data/nfl_pbp_2026.parquet?v=2026-11-04T12%3A00%3A00%2B00%3A00")
+    assert r.status_code == 200
+    assert r.content == SHARD
+
+
 def test_plain_get_of_a_shard_advertises_ranges(client: TestClient) -> None:
     r = client.get("/api/stat/data/nfl_pbp_2026.parquet")
     assert r.status_code == 200

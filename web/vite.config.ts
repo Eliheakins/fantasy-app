@@ -9,7 +9,11 @@ const API_TARGET = process.env.VITE_API_TARGET ?? "http://127.0.0.1:8000";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: { alias: { "@": path.resolve(import.meta.dirname, "src") } },
-  server: { proxy: { "/api": API_TARGET } },
+  server: {
+    proxy: { "/api": API_TARGET },
+    // metrics/metrics.json sits at the repo root. Never allow the root itself: data/ holds private nfl_ecr.
+    fs: { allow: [import.meta.dirname, path.resolve(import.meta.dirname, "../metrics")] },
+  },
   test: {
     environment: "jsdom",
     globals: true,
