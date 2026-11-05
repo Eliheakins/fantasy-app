@@ -1,12 +1,14 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Footer } from "./Footer";
+import { MoreSheet } from "./MoreSheet";
+import { navSearch } from "./navLinks";
 import { StatusBanner } from "./StatusBanner";
 import { TeamBanner } from "./TeamBanner";
 import { TopBar } from "./TopBar";
 import { useRouteAnnounce } from "@/hooks/useRouteAnnounce";
 import { TeamProvider } from "@/lib/TeamProvider";
 import { useTeam } from "@/lib/teamContext";
-import { NAV_ITEMS } from "@/nav";
+import { NAV_GROUPS, NAV_ITEMS, TAB_ITEMS } from "@/nav";
 import { cn } from "@/lib/utils";
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -16,7 +18,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
   );
 
 function Frame() {
-  const { search } = useLocation(); // nav links keep ?team= and ?league=
+  const { search, pathname } = useLocation(); // nav links keep only ?team= and ?league=
   const { viewed } = useTeam();
   useRouteAnnounce(viewed ? (viewed.team_name ?? `Team ${viewed.roster_id}`) : null);
   return (
@@ -28,15 +30,26 @@ function Frame() {
         Skip to content
       </a>
       <nav aria-label="Main" className="hidden w-48 shrink-0 border-r border-border p-4 md:block">
-        <ul className="flex flex-col gap-1">
-          {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
-            <li key={path}>
-              <NavLink to={{ pathname: path, search }} end={path === "/"} className={(s) => cn(linkClass(s), "min-h-[44px] px-2")}>
-                <Icon size={16} aria-hidden /> {label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
+        {NAV_GROUPS.map((group) => (
+          <div key={group} className="mb-4">
+            <p id={`nav-group-${group}`} className="mb-1 px-2 text-caption font-semibold uppercase tracking-wide text-muted">
+              {group}
+            </p>
+            <ul aria-labelledby={`nav-group-${group}`} className="flex flex-col gap-1">
+              {NAV_ITEMS.filter((i) => i.group === group).map(({ path, label, icon: Icon }) => (
+                <li key={path}>
+                  <NavLink
+                    to={{ pathname: path, search: navSearch(path, search, pathname) }}
+                    end={path === "/"}
+                    className={(s) => cn(linkClass(s), "min-h-[44px] px-2")}
+                  >
+                    <Icon size={16} aria-hidden /> {label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </nav>
       <div className="tab-bar-offset flex min-w-0 flex-1 flex-col md:pb-0">
         <TopBar />
@@ -48,10 +61,10 @@ function Frame() {
         <Footer />
       </div>
       <nav aria-label="Main tabs" className="tab-bar fixed inset-x-0 bottom-0 z-10 flex border-t border-border bg-page md:hidden">
-        {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
+        {TAB_ITEMS.map(({ path, label, icon: Icon }) => (
           <NavLink
             key={path}
-            to={{ pathname: path, search }}
+            to={{ pathname: path, search: navSearch(path, search, pathname) }}
             end={path === "/"}
             className={(s) => cn(linkClass(s), "tab-link min-h-[56px] min-w-0 flex-1 flex-col justify-center gap-0.5")}
           >
@@ -59,6 +72,7 @@ function Frame() {
             <span className="tab-label">{label}</span>
           </NavLink>
         ))}
+        <MoreSheet tabClass={linkClass({ isActive: false })} />
       </nav>
     </div>
   );

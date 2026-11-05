@@ -100,6 +100,7 @@
   --color-warning: var(--warning);
   --color-warning-bg: var(--warning-bg);
   --color-range: var(--range);
+  --color-nav-active-bg: var(--nav-active-bg);
   --color-tick: var(--tick);
   /* aliases the shadcn components expect, pointed at our tokens (destructive is amber, never red) */
   --color-background: var(--page);

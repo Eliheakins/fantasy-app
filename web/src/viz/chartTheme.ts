@@ -4,7 +4,7 @@
 const CHART_FONT_SIZE = 12;
 /** --text-muted: at least 4.5:1 on page and surface in both themes (see web/CONTRAST.md). */
 export const TICK_COLOR = "var(--text-muted)";
-const GRID_COLOR = "var(--border)";
+export const GRID_COLOR = "var(--border)";
 /** Bars that carry no good/bad meaning. */
 export const BAR_FILL = "var(--range)";
 export const OTHER_LINE = "var(--range)";

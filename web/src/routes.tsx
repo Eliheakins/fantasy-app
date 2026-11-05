@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
-import { NAV_ITEMS } from "@/nav";
+import { NAV_ITEMS, type NavPath } from "@/nav";
+import Explore from "@/pages/Explore";
 import DevViz from "@/pages/DevViz";
 import Digest from "@/pages/Digest";
 import Home from "@/pages/Home";
@@ -16,7 +17,7 @@ import Trades from "@/pages/Trades";
 import Waivers from "@/pages/Waivers";
 
 /** Page agents register their page component here and touch no other shared file. */
-const PAGES: Record<(typeof NAV_ITEMS)[number]["path"], ReactNode> = {
+const PAGES: Record<NavPath, ReactNode> = {
   "/": <Home />,
   "/lineup": <Lineup />,
   "/waivers": <Waivers />,
@@ -26,6 +27,7 @@ const PAGES: Record<(typeof NAV_ITEMS)[number]["path"], ReactNode> = {
   "/league": <League />,
   "/digest": <Digest />,
   "/players": <Players />,
+  "/explore": <Explore />,
   "/scorecard": <Scorecard />,
 };
 
