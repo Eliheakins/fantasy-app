@@ -783,3 +783,8 @@ Two research agents surveyed the decision code (assumptions with file and line) 
 ## 2026-10-28: Scheduled refresh installed
 
 - `make schedule-install` was run on the main Mac at the user's request: launchd job `com.fantasy-app.refresh` (`~/Library/LaunchAgents/com.fantasy-app.refresh.plist`) runs `make refresh` Tuesday 06:00, Friday 18:00 and Sunday 08:00, local time, logging to `data/refresh.log`. `launchctl print` shows it loaded with those three entries; it has not run yet (first run Friday 18:00). It runs only while the Mac is awake and does not repeat a missed run; each run backs up the archive first. Undo with `make schedule-remove`.
+
+## 2026-11-04: Merge nfl-stat-app into this repo, then test Jev for Ask
+
+- **Merge planned, nothing built (#70).** The stat app (The Bridge: Explore, Ask, in-browser Parquet engine) joins this repo as the evidence layer behind decisions, not a second app. Integration: one shared nflverse data layer, per-league fantasy points as catalog stats, league state (roster, free agent, projections) as Explore filters, player drill-down from every decision page, and Ask routing start/sit and trade questions to the existing endpoints. This app's shell, tokens and spec win; the stat app's engine, Explore and Ask are ported and restyled. League data and `nfl_ecr` never go in the stat app's CDN-servable data directory.
+- **Model switch to test after the merge (#71).** Replace Ask's local Qwen3-4B (MLX) with Jev (TypeSafe AI's decision model) only if it matches Qwen's accuracy on the intent eval set and the terms allow it. Jev is a hosted API, not local, so questions would leave the machine; requests carry question text only, and Ask must still work without it.

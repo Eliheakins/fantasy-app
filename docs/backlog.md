@@ -4,7 +4,7 @@ One story is one working session. Engine and dashboard stories are merged per ep
 
 ## Status (2026-10-23, end of the second working session)
 
-**Dates:** trade deadline is week 11; issue #40 (retest the Sleeper blend weight on clean snapshots) is due around then. Open work on GitHub: #40, #37 (post-MVP), #65 and #66 (U17 and U18), and the #68 epic. #41 (cleanup follow-ups) is closed.
+**Dates:** trade deadline is week 11; issue #40 (retest the Sleeper blend weight on clean snapshots) is due around then. Open work on GitHub: #40, #37 (post-MVP), #65 and #66 (U17 and U18), and the #68 epic.  Planned 2026-11-04: #70 (merge nfl-stat-app) and #71 (test Jev for Ask, after #70). #41 (cleanup follow-ups) is closed.
 
 **Done and verified on live data:** every story except E3-8 (all 36 E-series issues are closed on GitHub, #18 included; the ECR check is not in the code). Added this session: E2-2 odds snapshots, E3-6 tau from history, E3-7 DEF scoring and K/DEF projections, E4-2 player sampler, E4-5 win-probability lineup, E4-7 locks and injuries, E5-2 waiver value by re-simulation, E5-5 K/DEF streaming, and the dashboard stories (footer, range bars, objective toggle, Home actions, Outlook seeds and schedule, waiver detail and trending).
 
