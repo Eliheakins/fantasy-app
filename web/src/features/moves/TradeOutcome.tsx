@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { points } from "@/features/trades/logic";
 import { TradeResult } from "@/features/trades/TradeResult";
 import type { TradeEvaluation } from "@/features/trades/types";
 import { Delta, NOISE_PERCENT, NOISE_WINS } from "@/viz";
-import { canPitch, copyText, pitchText } from "./builder";
+import { COPIED_NOTE_MS, canPitch, copyText, pitchText } from "./builder";
 
 type Side = TradeEvaluation["odds"][number];
 
@@ -22,6 +22,11 @@ function SideChange({ side }: { side: Side }) {
 
 function Pitch({ text }: { text: string }) {
   const [copied, setCopied] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (copied === null) return;
+    const timer = setTimeout(() => setCopied(null), COPIED_NOTE_MS);
+    return () => clearTimeout(timer);
+  }, [copied]);
   return (
     <div className="mt-4">
       <p className="mb-1 text-caption text-muted">This trade helps both teams. A message you can send, built from the numbers above; nothing is sent from here.</p>
@@ -38,7 +43,15 @@ function Pitch({ text }: { text: string }) {
   );
 }
 
-type Props = { result: TradeEvaluation; give: readonly string[]; get: readonly string[] };
+/** `give` and `get` are the players' names, or null when a name is not known yet (then no message is offered). */
+type Props = { result: TradeEvaluation; give: readonly string[] | null; get: readonly string[] | null };
+
+function PitchOrNote({ result, give, get }: Props) {
+  if (!canPitch(result)) return <p className="text-caption text-muted">No message offered: the trade does not raise both teams' playoff odds.</p>;
+  if (!give?.length || !get?.length) return <p className="text-caption text-muted">No message offered: the players' names are not loaded yet.</p>;
+  const text = pitchText(result, give, get);
+  return <Pitch key={text} text={text} />;
+}
 
 /** My change beside the partner's, the pitch when both gain, then the full before and after. */
 export function TradeOutcome({ result, give, get }: Props) {
@@ -52,11 +65,7 @@ export function TradeOutcome({ result, give, get }: Props) {
           <SideChange side={them} />
         </section>
       )}
-      {canPitch(result) ? (
-        <Pitch text={pitchText(result, give, get)} />
-      ) : (
-        <p className="text-caption text-muted">No message offered: the trade does not raise both teams' playoff odds.</p>
-      )}
+      <PitchOrNote result={result} give={give} get={get} />
       <TradeResult result={result} />
     </div>
   );

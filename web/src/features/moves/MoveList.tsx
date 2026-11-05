@@ -1,6 +1,6 @@
 import { PlayerLink } from "@/components/PlayerLink";
 import { EffectText } from "@/features/thisweek/TodoList";
-import type { Move } from "./moves";
+import { MOVE_NOISE_PERCENT, type Move } from "./moves";
 
 function MoveTitle({ move }: { move: Move }) {
   if (move.player === null || move.drop === null) return <>{move.title}</>;
@@ -15,7 +15,6 @@ function MoveNotes({ move }: { move: Move }) {
   return (
     <div className="flex flex-wrap items-center gap-x-2 text-caption text-muted">
       {move.detail && <span>{move.detail}</span>}
-      {move.drop && <span>points are net of dropping {move.drop.name}</span>}
       {move.likelyGone && (
         <span className="rounded border border-warning-edge px-1.5 py-0.5 text-ink">
           Likely gone: {move.trendingAdds?.toLocaleString("en-US")} Sleeper adds
@@ -26,8 +25,8 @@ function MoveNotes({ move }: { move: Move }) {
 }
 
 /** Moves in the order given; the first is the best. */
-export function MoveList({ moves }: { moves: readonly Move[] }) {
-  if (moves.length === 0) return <p className="text-body">No free agent or trade idea raises your odds right now.</p>;
+export function MoveList({ moves, empty }: { moves: readonly Move[]; empty: string }) {
+  if (moves.length === 0) return <p className="text-body">{empty}</p>;
   return (
     <ol className="divide-y divide-panel-line">
       {moves.map((m, i) => (
@@ -37,7 +36,7 @@ export function MoveList({ moves }: { moves: readonly Move[] }) {
             <span className="font-semibold"><MoveTitle move={m} /></span>
             <MoveNotes move={m} />
           </div>
-          <EffectText todo={m} />
+          <EffectText todo={m} playoffNoise={MOVE_NOISE_PERCENT} />
         </li>
       ))}
     </ol>

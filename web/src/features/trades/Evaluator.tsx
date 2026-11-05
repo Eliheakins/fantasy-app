@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useMemo } from "react";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
 import { useApi } from "@/hooks/useApi";
@@ -17,24 +17,27 @@ const toOptions = (assets: readonly Asset[]) => assets.map((a) => ({ id: a.gsis_
 /** `scope` (league plus viewed team) keys the kept draft; it defaults to the league. */
 type EvaluatorProps = { league: string; scope?: string; partners: readonly Partner[]; mine: readonly Asset[]; debounceMs?: number };
 
-const namesOf = (assets: readonly Asset[], ids: readonly string[]) =>
-  ids.flatMap((id) => assets.find((a) => a.gsis_id === id)?.full_name ?? []);
+/** Every id's name, or null when one is not in the list (the pitch must never read "for your ."). */
+function namesOf(assets: readonly Asset[], ids: readonly string[]): string[] | null {
+  const names = ids.map((id) => assets.find((a) => a.gsis_id === id)?.full_name);
+  return names.every((n): n is string => !!n) ? names : null;
+}
 
 /** The live trade builder: every change to either side re-evaluates once the picks settle for `debounceMs`. */
 export function Evaluator({ league, scope = league, partners, mine, debounceMs = BUILDER_DEBOUNCE_MS }: EvaluatorProps) {
   const selectId = useId();
-    const [stored, setDraft] = useKeptState<Draft>(["draft", scope], EMPTY_DRAFT);
+  const [stored, setDraft] = useKeptState<Draft>(["draft", scope], EMPTY_DRAFT);
   const partner = stored.partner !== null && partners.some((p) => p.roster_id === stored.partner)
     ? stored.partner
     : (partners[0]?.roster_id ?? null);
-  const draft: Draft = { ...stored, partner };
+  const draft = useMemo<Draft>(() => ({ ...stored, partner }), [stored, partner]); // stable, so the debounce timer restarts only on a real change
   const partnerName = partners.find((p) => p.roster_id === partner)?.team_name ?? "";
   const theirs = useApi<Asset[]>(
     partner === null ? null : `/api/leagues/${encodeURIComponent(league)}/trade-assets?roster_id=${partner}`,
   );
-  const settledKey = useDebounced(tradeKey(draft), debounceMs); // the key is a string, so the timer restarts only on a real change
-  const [settledPartner, settledGive, settledGet] = JSON.parse(settledKey) as [number | null, string[], string[]];
-  const settled: Draft = { partner: settledPartner, give: settledGive, get: settledGet };
+  const settled = useDebounced(draft, debounceMs);
+  const settledKey = tradeKey(settled);
+  const busy = tradeKey(draft) !== settledKey; // the result below is for the previous picks
   const active = toRequest(settled);
   const { state, refetch } = usePostApi<TradeEvaluation>(
     ["evaluate", scope, settledKey],
@@ -75,11 +78,21 @@ export function Evaluator({ league, scope = league, partners, mine, debounceMs =
         </ApiBoundary>
       </div>
       {!canEvaluate(draft) && <p className="text-caption text-muted">Pick at least one player on each side.</p>}
-      {state?.kind === "loading" && <p role="status" className="text-muted">Simulating the trade…</p>}
-      {state?.kind === "error" && <FailureNotice error={state.error} onRetry={refetch} />}
-      {state && state.kind !== "error" && state.kind !== "loading" && (
-        <ApiBoundary state={state}>{(result) => <TradeOutcome result={result} give={namesOf(mine, settled.give)} get={namesOf(theirs.kind === "ready" ? theirs.data : [], settled.get)} />}</ApiBoundary>
-      )}
+      <div data-testid="trade-result" aria-live="polite" aria-busy={busy} className={busy ? "opacity-50" : undefined}>
+        {state?.kind === "loading" && <p role="status" className="text-muted">Simulating the trade…</p>}
+        {state?.kind === "error" && <FailureNotice error={state.error} onRetry={refetch} />}
+        {state && state.kind !== "error" && state.kind !== "loading" && (
+          <ApiBoundary state={state}>
+            {(result) => (
+              <TradeOutcome
+                result={result}
+                give={namesOf(mine, settled.give)}
+                get={namesOf(theirs.kind === "ready" ? theirs.data : [], settled.get)}
+              />
+            )}
+          </ApiBoundary>
+        )}
+      </div>
       </div>
     </Section>
   );

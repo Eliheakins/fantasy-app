@@ -49,6 +49,16 @@ describe("copyText", () => {
     vi.stubGlobal("navigator", {});
     expect(await copyText("hi")).toBe(true);
   });
+  it("puts focus back where it was after the fallback", async () => {
+    document.execCommand = vi.fn().mockReturnValue(true);
+    vi.stubGlobal("navigator", {});
+    const button = document.createElement("button");
+    document.body.appendChild(button);
+    button.focus();
+    await copyText("hi");
+    expect(document.activeElement).toBe(button);
+    button.remove();
+  });
   it("reports failure when nothing works", async () => {
     document.execCommand = vi.fn().mockReturnValue(false);
     vi.stubGlobal("navigator", {});

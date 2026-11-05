@@ -128,6 +128,40 @@ describe("trade builder", () => {
     await screen.findByText("Trade deadline: week 11.");
     expect(evaluateCalls(fn)).toHaveLength(1);
   });
+  it("dims the previous result and marks it busy while the picks are still settling", async () => {
+    mockFetch((url) => (url.includes("trade-assets") ? { status: "ok", data: [asset("t1", "Theirs"), asset("t2", "Other")] } : { status: "ok", data: RESULT }));
+    wrap(<Evaluator league="L" partners={PARTNERS} mine={[asset("m1", "Mine")]} debounceMs={300} />);
+    await userEvent.click(screen.getByRole("checkbox", { name: /Mine/ }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: /Theirs/ }));
+    await screen.findByText("Trade deadline: week 11.");
+    const live = screen.getByTestId("trade-result");
+    expect(live).toHaveAttribute("aria-live", "polite");
+    expect(live).toHaveAttribute("aria-busy", "false");
+    await userEvent.click(screen.getByRole("checkbox", { name: /Other/ }));
+    expect(live).toHaveAttribute("aria-busy", "true");
+    await waitFor(() => expect(live).toHaveAttribute("aria-busy", "false"));
+  });
+  it("keeps the newer result when an older response arrives late", async () => {
+    let releaseFirst: () => void = () => {};
+    const gate = new Promise<void>((r) => (releaseFirst = r));
+    const stale = { ...RESULT, trade_deadline: 3 };
+    const fresh = { ...RESULT, trade_deadline: 12 };
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("trade-assets")) return new Response(JSON.stringify(envelope({ status: "ok", data: [asset("t1", "Theirs"), asset("t2", "Other")] })));
+      const second = String(init?.body).includes("t2");
+      if (!second) await gate;
+      return new Response(JSON.stringify(envelope({ status: "ok", data: second ? fresh : stale })));
+    }));
+    wrap(<Evaluator league="L" partners={PARTNERS} mine={[asset("m1", "Mine")]} debounceMs={0} />);
+    await userEvent.click(screen.getByRole("checkbox", { name: /Mine/ }));
+    await userEvent.click(await screen.findByRole("checkbox", { name: /Theirs/ }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /Other/ }));
+    expect(await screen.findByText("Trade deadline: week 12.")).toBeInTheDocument();
+    releaseFirst();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.getByText("Trade deadline: week 12.")).toBeInTheDocument();
+    expect(screen.queryByText("Trade deadline: week 3.")).toBeNull();
+  });
   it("shows the partner's change beside mine and the pitch with a copy button when both gain", async () => {
     await evaluate({ status: "ok", data: RESULT });
     expect(await screen.findByRole("region", { name: "Both sides" })).toHaveTextContent("Mine");

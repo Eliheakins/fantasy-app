@@ -66,7 +66,12 @@ export const rankMoves = (moves: readonly Move[]): Move[] => rankTodos(moves);
 export const filterMoves = (moves: readonly Move[], view: MoveView): Move[] =>
   moves.filter((m) => view === "all" || (view === "fa") === (m.kind === "add"));
 
-/** Worth acting on: the playoff-odds change clears the same bar as the Do this now action. */
-export const worthMove = (m: Move): boolean => m.effect.playoffPoints !== null && m.effect.playoffPoints >= MIN_PLAYOFF_GAIN * PERCENT;
+/** Playoff changes under this many points read "~" everywhere on Moves: the same bar as worthMove. */
+export const MOVE_NOISE_PERCENT = MIN_PLAYOFF_GAIN * PERCENT;
 
-export const moveHeadline = (top: Move | undefined): string => (top && worthMove(top) ? top.title : NONE_WORTH_IT);
+/** Worth acting on: the playoff-odds change clears the same bar as the Do this now action. */
+export const worthMove = (m: Move): boolean => m.effect.playoffPoints !== null && m.effect.playoffPoints >= MOVE_NOISE_PERCENT;
+
+/** `partial`: one source failed, so "none worth it" only covers what loaded. */
+export const moveHeadline = (top: Move | undefined, partial = false): string =>
+  top && worthMove(top) ? top.title : partial ? "No move is worth it in what loaded" : NONE_WORTH_IT;

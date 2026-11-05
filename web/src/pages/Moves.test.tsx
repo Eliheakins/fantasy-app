@@ -55,8 +55,8 @@ describe("Moves page", () => {
     const small = screen.getByText(/Small/).closest("li") as HTMLElement;
     expect(small).toHaveTextContent("Likely gone");
     expect(small).toHaveTextContent("Bernard");
-    expect(small).toHaveTextContent(/net of dropping Bernard/);
-    expect(screen.getByText(/Coleman/).closest("li")).not.toHaveTextContent("Likely gone");
+    expect(small).toHaveTextContent("~0.1"); // a playoff change under the worth bar reads as noise, not a signed number
+        expect(screen.getByText(/Coleman/).closest("li")).not.toHaveTextContent("Likely gone");
   });
 
   it("says no move is worth it when nothing clears the bar", () => {
@@ -84,6 +84,27 @@ describe("Moves page", () => {
     renderAt("/moves");
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
     expect(screen.getByText(/Trade ideas did not load/)).toBeInTheDocument();
+  });
+
+  it("shows the trades view when the free agent list failed, with an error line for the part that failed", () => {
+    waivers = { kind: "error", error: { code: "x", message: "boom" } } as ApiState<unknown>;
+    renderAt("/moves?view=trades");
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Trade A for B");
+    expect(screen.queryByText(/free agent list did not load/)).toBeNull();
+  });
+
+  it("does not wait for the free agents when only trades are shown", () => {
+    waivers = { kind: "loading" } as ApiState<unknown>;
+    renderAt("/moves?view=trades");
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  it("says what is empty for the chosen view", () => {
+    waivers = ready([]);
+    digest = digestWith([]);
+    renderAt("/moves?view=trades");
+    expect(screen.getByText("No trade ideas right now.")).toBeInTheDocument();
   });
 
   it("puts the builder after the list and the details last", () => {

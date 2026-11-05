@@ -3,6 +3,8 @@ import type { TradeEvaluation } from "@/features/trades/types";
 import { NOISE_PERCENT } from "@/viz";
 
 export const BUILDER_DEBOUNCE_MS = 600;
+/** How long "Copied." stays, so copying again is announced again. */
+export const COPIED_NOTE_MS = 3000;
 
 const sides = (r: TradeEvaluation) => ({ me: r.odds.find((s) => s.side === "me"), them: r.odds.find((s) => s.side === "them") });
 const playoffChange = (s: TradeEvaluation["odds"][number]) => points(s.playoff_after - s.playoff_before);
@@ -37,6 +39,7 @@ export async function copyText(text: string): Promise<boolean> {
   } catch {
     // clipboard missing or refused (insecure page, no permission): use the fallback
   }
+  const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const box = document.createElement("textarea");
   box.value = text;
   box.setAttribute("readonly", "");
@@ -44,11 +47,13 @@ export async function copyText(text: string): Promise<boolean> {
   box.style.opacity = "0";
   document.body.appendChild(box);
   box.select();
+  box.setSelectionRange(0, text.length); // iOS ignores select() alone
   try {
     return document.execCommand("copy");
   } catch {
     return false;
   } finally {
     box.remove();
+    previous?.focus();
   }
 }

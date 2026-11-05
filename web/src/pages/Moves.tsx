@@ -2,7 +2,7 @@ import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MoveList } from "@/features/moves/MoveList";
-import { type MoveView, filterMoves, moveHeadline, worthMove } from "@/features/moves/moves";
+import { MOVE_NOISE_PERCENT, type MoveView, filterMoves, moveHeadline, worthMove } from "@/features/moves/moves";
 import { useMoves } from "@/features/moves/useMoves";
 import { EffectText } from "@/features/thisweek/TodoList";
 import { WaiversContent } from "@/features/waivers/WaiversView";
@@ -15,6 +15,12 @@ const VIEWS = [
   { value: "trades", label: "Trades" },
 ] as const;
 
+const EMPTY: Record<MoveView, string> = {
+  all: "No free agent or trade idea raises your odds right now.",
+  fa: "No free agent worth adding.",
+  trades: "No trade ideas right now.",
+};
+
 const viewOf = (raw: string | null): MoveView => (raw === "fa" || raw === "trades" ? raw : "all");
 
 /**
@@ -25,7 +31,7 @@ export default function Moves() {
   const [params, setParams] = useSearchParams();
   const view = viewOf(params.get("view"));
   const eyebrow = usePageEyebrow("Moves");
-  const { pending, moves, addsError, tradesFailed } = useMoves();
+  const { addsPending, tradesPending, moves, addsError, tradesFailed } = useMoves();
   const top = moves[0];
   const choose = (next: string) => {
     if (!next) return; // clicking the selected item would clear a single-select group
@@ -35,8 +41,13 @@ export default function Moves() {
       return out;
     }, { replace: true });
   };
-  const title = pending ? "Looking for your best move…" : addsError ? "Moves did not load" : moveHeadline(top);
-  const answer = top && worthMove(top) && !pending ? <EffectText todo={top} /> : undefined;
+  const showAdds = view !== "trades"; // a part the view does not show never blocks it
+  const showTrades = view !== "fa";
+  const pending = addsPending || tradesPending;
+  const listPending = (showAdds && addsPending) || (showTrades && tradesPending);
+  const failed = [addsError !== null && "free agents", tradesFailed && "trade ideas"].filter(Boolean);
+  const title = pending ? "Looking for your best move…" : failed.length === 2 ? "Moves did not load" : moveHeadline(top, failed.length > 0);
+  const answer = top && worthMove(top) && !pending ? <EffectText todo={top} playoffNoise={MOVE_NOISE_PERCENT} /> : undefined;
   return (
     <div className="flex flex-col">
       <PageHeader title={title} eyebrow={eyebrow} answer={answer} />
@@ -49,14 +60,13 @@ export default function Moves() {
             ))}
           </ToggleGroup>
         </div>
-        {addsError !== null ? (
-          <p role="alert" className="text-body text-warning">The free agent list did not load: {addsError}</p>
-        ) : pending ? (
-          <p role="status" className="text-muted">Simulating your free agents…</p>
+        {listPending && moves.length === 0 ? (
+          <p role="status" className="text-muted">Simulating your moves…</p>
         ) : (
-          <MoveList moves={filterMoves(moves, view)} />
+          <MoveList moves={filterMoves(moves, view)} empty={EMPTY[view]} />
         )}
-        {tradesFailed && <p role="alert" className="mt-3 text-caption text-warning">Trade ideas did not load, so only free agents are listed.</p>}
+        {showAdds && addsError !== null && <p role="alert" className="mt-3 text-caption text-warning">The free agent list did not load: {addsError}</p>}
+        {showTrades && tradesFailed && <p role="alert" className="mt-3 text-caption text-warning">Trade ideas did not load.</p>}
         <p className="measure mt-3 text-caption text-muted">
           Ordered by playoff-odds change first, then fantasy points; the two are not converted. Points are net of the drop.
           Trade ideas are your stored finds; build any other trade below.
