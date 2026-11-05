@@ -1,6 +1,6 @@
 """Annotations for the season-odds chart: my trades, injuries to my starters and big weeks.
 
-Takes `me`, my row from `data_api.leagues` (this module never calls `leagues`, see data_api).
+Takes `me`, my row from `_leagues.my_league` (the caller looks it up).
 Each event carries `run_at`, the saved simulation run whose odds first reflect it, or null when it
 came before the first saved run. Only what the stored data supports: waivers are not annotated,
 and an injury is a change of the Sleeper status to Out, IR or Doubtful between two daily snapshots.

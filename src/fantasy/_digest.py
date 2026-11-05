@@ -1,9 +1,9 @@
 """Weekly digest reads behind data_api: last week's result, projection misses, odds change and
 the move ideas the digest stage stored.
 
-Each takes `me`, my row from `data_api.leagues` (this module never calls `leagues`, see the note in
-data_api). Luck and bench points left reuse the League page's season totals: last week's figure is
-the total through that week minus the total through the week before.
+Each takes `me`, my row from `_leagues.my_league` (the caller looks it up, so these stay pure over
+`me` and `data_dir`). Luck and bench points left reuse the League page's season totals: last
+week's figure is the total through that week minus the total through the week before.
 """
 
 from pathlib import Path

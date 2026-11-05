@@ -16,6 +16,7 @@ import polars as pl
 
 from fantasy import store
 from fantasy.config import load_config
+from fantasy.scoring import score_stats
 from fantasy.sources.sleeper import fetch
 
 PROJECTIONS_BASE = "https://api.sleeper.com"
@@ -48,27 +49,6 @@ def unknown_keys(snapshots: pl.DataFrame, scoring: dict[str, float]) -> list[str
     """Projected stat keys that neither the league scoring lists nor IGNORED_KEYS covers."""
     seen = {key for s in snapshots["stats"].unique() for key in json.loads(s)}
     return sorted(seen - scoring.keys() - IGNORED_KEYS)
-
-
-def score_stats(stats: dict[str, float], scoring: dict[str, float]) -> float:
-    """A projected stat line under a league's scoring. Sleeper projects kickers' long field
-    goals and misses in coarser buckets than leagues score them, so those are mapped across."""
-    total = sum(
-        value * scoring.get(key, 0.0)
-        for key, value in stats.items()
-        if not key.startswith("fgmiss_")
-    )
-    if "fgm_50p" in stats and not scoring.get("fgm_50p"):
-        total += stats["fgm_50p"] * scoring.get(
-            "fgm_50_59", 0.0
-        )  # shortcut: 60+ counted as 50 to 59
-    for key, value in stats.items():
-        if key.startswith("fgmiss_"):
-            specific = scoring.get(key) or scoring.get(
-                "fgmiss_50_59" if key == "fgmiss_50p" else ""
-            )
-            total += value * (specific or scoring.get("fgmiss", 0.0))
-    return total
 
 
 def scored_latest(snapshots: pl.DataFrame, scoring: dict[str, float]) -> pl.DataFrame:

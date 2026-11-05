@@ -12,8 +12,12 @@ projection of each of CALIBRATION_BINS quantile bins, flat beyond the ends. It i
 blended with Sleeper's projections, which have their own bias.
 """
 
+from pathlib import Path
+
 import numpy as np
 import polars as pl
+
+from fantasy import store
 
 CALIBRATION_BINS = 8
 
@@ -45,3 +49,35 @@ def apply_curves(frame: pl.DataFrame, curves: pl.DataFrame) -> pl.DataFrame:
 def tier_of(edges: list[float], projection: float) -> int:
     """0, 1 or 2: the tier of a projection given the two upper edges of tiers 0 and 1."""
     return int(sum(projection > edge for edge in edges))
+
+
+TRAIN_END = 2023
+
+
+MIN_MEAN = 0.5
+
+
+ALL_TIERS = -1  # the tier value for the whole sample
+
+
+N_TIERS = 3  # projection thirds, by the training seasons' baseline projections
+
+
+def size_tiers(train_projection: np.ndarray, projection: np.ndarray) -> np.ndarray:
+    """0 to N_TIERS - 1: the projection's third, with edges taken from the training seasons."""
+    edges = np.quantile(train_projection, np.linspace(0, 1, N_TIERS + 1)[1:-1])
+    return np.digitize(projection, edges)
+
+
+def calibrated(frame: pl.DataFrame, data_dir: Path | None = None) -> pl.DataFrame:
+    """`frame` (league_id, position, projection) with the projection calibrated by size, when the
+    curves have been estimated; otherwise unchanged. The learned projection is left alone: held
+    out, the curves made it slightly worse (RMSE up in 7 of 8 league-seasons, mean error shifted by
+    0.1 to 0.3 points), because it is already trained to be unbiased."""
+    if store.projection_name(data_dir) == "proj_learned":
+        return frame
+    try:
+        curves = store.read_table("projection_calibration", data_dir=data_dir)
+    except FileNotFoundError:
+        return frame
+    return apply_curves(frame, curves)

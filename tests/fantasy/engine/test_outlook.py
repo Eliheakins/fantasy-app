@@ -1,7 +1,13 @@
 import polars as pl
 import pytest
 
-from fantasy.sim.outlook import Context, apply_outlook, effects_dict, return_factors
+from fantasy.sim.outlook import (
+    Context,
+    apply_outlook,
+    effects_dict,
+    live_context,
+    return_factors,
+)
 from fantasy.stages import outlook as stage
 
 FIRST, SECOND = 0.8, 0.9
@@ -137,7 +143,7 @@ def test_live_context_finds_returners_and_tells_injury_from_benching() -> None:
     injuries = pl.DataFrame(
         {"gsis_id": ["hurt"], "season": [2026], "week": [3], "game_type": ["REG"]}
     )
-    context = stage.live_context(stats, team_stats, games, injuries, 2026, current_week=6)
+    context = live_context(stats, team_stats, games, injuries, 2026, current_week=6)
     assert context.missed == {}  # all three played the last game
     assert context.after_return == {"hurt": True, "sat": False}
     assert "fine" not in context.after_return

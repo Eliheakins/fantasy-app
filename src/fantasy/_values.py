@@ -7,8 +7,8 @@ import polars as pl
 
 from fantasy import store
 from fantasy._engine import _id_map, _read
+from fantasy.sim.setting import setting_for
 from fantasy.sim.value import accepted_share, market_hint
-from fantasy.stages.market_values import setting_for
 
 COLUMNS = ["gsis_id", "value", "overall_rank", "position_rank", "trend_30_day", "fetched_at"]
 

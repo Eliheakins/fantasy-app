@@ -9,9 +9,9 @@ from store_fixture import LID, write_rows
 from test_simulate_load import LEAGUE, build_store
 
 from fantasy import data_api, store
+from fantasy.sim.league_data import load_league_data
 from fantasy.sim.odds import build_inputs
 from fantasy.stages import simulate as sim
-from fantasy.stages.simulate import load_league_data
 
 
 def sim_tables(path: Path) -> None:

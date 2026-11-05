@@ -8,8 +8,8 @@ from test_simulate_load import LEAGUE, build_store, week_projection
 
 from fantasy import data_api
 from fantasy.config import load_config
+from fantasy.sim import league_data as sim
 from fantasy.sim.blend import SLEEPER_WEIGHT, blend_all
-from fantasy.stages import simulate as sim
 
 
 def test_blend_all_is_the_equal_mean_of_the_sources_each_row_has() -> None:

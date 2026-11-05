@@ -19,10 +19,10 @@ import polars as pl
 
 from fantasy import store
 from fantasy.sim.calibration import apply_curves
+from fantasy.sim.league_data import load_league_data
 from fantasy.sim.lineup import Player
 from fantasy.sim.odds import DRIFT_SD, LeagueData, lineup_moments
 from fantasy.stages.distributions import estimate_curves, residual_frame
-from fantasy.stages.simulate import load_league_data
 from fantasy.store import SKILL
 
 Z80 = 1.2815515655446004  # 80% two-sided

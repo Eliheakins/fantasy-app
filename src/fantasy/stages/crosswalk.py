@@ -16,23 +16,10 @@ import polars as pl
 
 from fantasy import store
 from fantasy.config import ROOT
+from fantasy.teams import SUFFIXES, TEAM_MAP
 
 OVERRIDES = ROOT / "overrides" / "id_map.csv"
-# Sleeper and nflverse's ID table use older or different team codes than nflverse's own stats.
-TEAM_MAP = {
-    "LAR": "LA",
-    "GBP": "GB",
-    "KCC": "KC",
-    "LVR": "LV",
-    "NEP": "NE",
-    "NOS": "NO",
-    "SFO": "SF",
-    "TBB": "TB",
-    "JAC": "JAX",
-    "WSH": "WAS",
-}
 TOP_NAMES = 5
-SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "v"}
 
 
 def norm_team(team: str | None) -> str | None:

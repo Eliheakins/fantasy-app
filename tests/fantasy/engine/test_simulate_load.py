@@ -5,8 +5,8 @@ import pytest
 from store_fixture import write_rows
 
 from fantasy import data_api
-from fantasy.stages import simulate as sim
-from fantasy.stages.simulate import load_league_data
+from fantasy.sim import league_data as sim
+from fantasy.sim.league_data import load_league_data
 
 LEAGUE = {
     "league_id": "L1",
@@ -161,7 +161,7 @@ def test_missing_effect_tables_do_not_stop_the_load(tmp_path: Path) -> None:
 
 
 def test_tier_spreads_lists_each_positions_edges_in_ascending_order() -> None:
-    from fantasy.stages.simulate import tier_spreads
+    from fantasy.sim.league_data import tier_spreads
 
     rows = [
         {"position": "WR", "tier": tier, "proj_max": edge, "cv": cv, "tau": 0.5}

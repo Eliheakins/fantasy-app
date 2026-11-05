@@ -52,8 +52,8 @@ from fantasy.sim.blend import SLEEPER_WEIGHT
 from fantasy.config import load_config
 from fantasy.stages import outside_projections as op
 from fantasy.stages import prop_points as pp
-from fantasy.stages.distributions import calibrated
-from fantasy.stages.simulate import SLEEPER_ZEROED_STATUSES
+from fantasy.sim.calibration import calibrated
+from fantasy.sim.league_data import SLEEPER_ZEROED_STATUSES
 
 ALPHA = 0.05
 MIN_WEEKS = 3  # a paired t needs at least this many held-out weeks

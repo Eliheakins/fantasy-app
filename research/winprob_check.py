@@ -44,7 +44,7 @@ from fantasy.sim.lineup import Player, auto_lineup, constant_slot_count, lineup_
 from fantasy.sim.sampler import Slate, correlation_matrix, sample_points  # noqa: E402
 from fantasy.sim.winprob import choose, pick_by_quantile, search, swap_candidates  # noqa: E402
 from fantasy.stages import distributions as dist  # noqa: E402
-from fantasy.stages.simulate import DEF_VAR  # noqa: E402
+from fantasy.sim.league_data import DEF_VAR  # noqa: E402
 
 SEASONS = {2024: 17, 2025: 17}
 SHAPE_SEASONS = (2021, 2023)

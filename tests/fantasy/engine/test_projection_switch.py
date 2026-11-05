@@ -95,7 +95,7 @@ def test_a_switched_off_environment_layer_returns_the_projections_untouched(
 ) -> None:
     import polars as pl
 
-    from fantasy.stages import simulate
+    from fantasy.sim import league_data as simulate
 
     config = load_config()
     off = Config(**{**config.__dict__, "environment_layer": False})
@@ -110,7 +110,7 @@ def test_size_calibration_is_skipped_for_the_learned_projection_and_kept_for_the
 ) -> None:
     import polars as pl
 
-    from fantasy.stages.distributions import calibrated
+    from fantasy.sim.calibration import calibrated
 
     write_rows(tmp_path, "proj_baseline", [projection_row(2025, 1, False, 10.0)])
     write_rows(tmp_path, "proj_learned", [projection_row(2025, 1, False, 10.0)])

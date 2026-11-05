@@ -12,6 +12,7 @@ import numpy as np
 import polars as pl
 
 from fantasy import store
+from fantasy.sim.calibration import ALL_TIERS, MIN_MEAN, N_TIERS, TRAIN_END, size_tiers
 from fantasy.stages.distributions import LEVELS
 from fantasy.stages.learn import history_forecasts
 from fantasy.stages.project import (
@@ -25,10 +26,6 @@ from fantasy.stages.project import (
 
 HORIZONS = (1, 5)
 QUANTILES = (0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95)
-TRAIN_END = 2023
-MIN_MEAN = 0.5
-ALL_TIERS = -1  # the tier value for the whole sample
-N_TIERS = 3  # projection thirds, by the training seasons' baseline projections
 FORECASTERS = {"baseline": "projection", "trailing_mean": "ewma_actual", "learned": "learned"}
 MIN_LEARNED_WINS = 6  # of 8 league-positions, one game ahead
 MAX_UNMATCHED = 0.02  # share of baseline rows that may lack a learned forecast
@@ -56,12 +53,6 @@ def pinball(y: np.ndarray, mu: np.ndarray, ratios: np.ndarray) -> float:
 def coverage80(y: np.ndarray, mu: np.ndarray, ratios: np.ndarray) -> float:
     inside = (y >= predict(0.1, mu, ratios)) & (y <= predict(0.9, mu, ratios))
     return float(inside.mean())
-
-
-def size_tiers(train_projection: np.ndarray, projection: np.ndarray) -> np.ndarray:
-    """0 to N_TIERS - 1: the projection's third, with edges taken from the training seasons."""
-    edges = np.quantile(train_projection, np.linspace(0, 1, N_TIERS + 1)[1:-1])
-    return np.digitize(projection, edges)
 
 
 def metrics(rows: pl.DataFrame, horizon: int) -> pl.DataFrame:

@@ -1,6 +1,6 @@
 import numpy as np, polars as pl
 from fantasy import store
-from fantasy.stages.distributions import calibrated
+from fantasy.sim.calibration import calibrated
 S="research/scratch"
 DIV={"AFC East":["BUF","MIA","NE","NYJ"],"AFC North":["BAL","CIN","CLE","PIT"],"AFC South":["HOU","IND","JAX","TEN"],"AFC West":["DEN","KC","LV","OAK","LAC","SD"],
 "NFC East":["DAL","NYG","PHI","WAS"],"NFC North":["CHI","DET","GB","MIN"],"NFC South":["ATL","CAR","NO","TB"],"NFC West":["ARI","LA","SEA","SF","STL"]}

@@ -1,6 +1,6 @@
 import numpy as np, polars as pl
 from fantasy import store
-from fantasy.stages.distributions import calibrated
+from fantasy.sim.calibration import calibrated
 S="research/scratch"
 lid=store.read_table("leagues","raw")["league_id"][0]
 base=store.read_table("proj_baseline").filter((pl.col("league_id")==lid)&~pl.col("is_future")&pl.col("has_history")).select("gsis_id","season","week","context")

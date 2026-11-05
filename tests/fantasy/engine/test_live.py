@@ -7,8 +7,8 @@ import pytest
 
 from fantasy import store
 from fantasy.sim.availability import GAME_MINUTES, kickoffs, remaining_share
+from fantasy.sim.league_data import current_state
 from fantasy.stages import sync_sleeper
-from fantasy.stages.simulate import current_state
 
 KICKOFF = datetime(2026, 10, 25, 17, 0, tzinfo=UTC)
 

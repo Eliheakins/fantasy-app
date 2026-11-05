@@ -15,7 +15,7 @@ import polars as pl
 
 from fantasy import store
 from fantasy.stages.calibration import summarize, team_week_scores
-from fantasy.stages.simulate import load_league_data
+from fantasy.sim.league_data import load_league_data
 
 SCRATCH = store.ROOT / "research" / "scratch" / "espn"
 

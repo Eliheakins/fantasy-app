@@ -115,3 +115,24 @@ def expected_points_expr(scoring: dict[str, float]) -> pl.Expr:
 def score_player_stats(stats: pl.DataFrame, scoring: dict[str, float]) -> pl.DataFrame:
     """Add a `points` column to nfl_player_stats rows under one league's scoring."""
     return stats.with_columns(points_expr(scoring).alias("points"))
+
+
+def score_stats(stats: dict[str, float], scoring: dict[str, float]) -> float:
+    """A projected stat line under a league's scoring. Sleeper projects kickers' long field
+    goals and misses in coarser buckets than leagues score them, so those are mapped across."""
+    total = sum(
+        value * scoring.get(key, 0.0)
+        for key, value in stats.items()
+        if not key.startswith("fgmiss_")
+    )
+    if "fgm_50p" in stats and not scoring.get("fgm_50p"):
+        total += stats["fgm_50p"] * scoring.get(
+            "fgm_50_59", 0.0
+        )  # shortcut: 60+ counted as 50 to 59
+    for key, value in stats.items():
+        if key.startswith("fgmiss_"):
+            specific = scoring.get(key) or scoring.get(
+                "fgmiss_50_59" if key == "fgmiss_50p" else ""
+            )
+            total += value * (specific or scoring.get("fgmiss", 0.0))
+    return total

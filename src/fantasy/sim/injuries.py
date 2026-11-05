@@ -220,3 +220,10 @@ def injury_projections(
         )
         .drop("_k", "_factor")
     )
+
+
+PRACTICE = {
+    "Did Not Participate In Practice": "DNP",
+    "Limited Participation in Practice": "Limited",
+    "Full Participation in Practice": "Full",
+}

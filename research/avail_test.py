@@ -1,6 +1,6 @@
 import numpy as np, polars as pl
 from fantasy import store
-from fantasy.stages.distributions import calibrated
+from fantasy.sim.calibration import calibrated
 S="research/scratch"
 p=pl.read_parquet(f"{S}/outlook_panel2.parquet").filter(pl.col("points").is_not_null())
 lid=store.read_table("leagues","raw")["league_id"][0]

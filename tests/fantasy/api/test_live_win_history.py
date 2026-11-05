@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from store_fixture import write_rows
 from test_api import body
 
-from fantasy import api, data_api, store
+from fantasy import _live, api, data_api, store
 
 T1 = datetime(2026, 9, 6, 17, 0, tzinfo=UTC)
 T2 = datetime(2026, 9, 6, 17, 10, tzinfo=UTC)
@@ -82,7 +82,7 @@ def test_a_failing_league_is_logged_and_the_other_still_records(
             raise RuntimeError("boom")
         return real(league_key, data_dir)
 
-    monkeypatch.setattr(data_api, "live_win_row", flaky)
+    monkeypatch.setattr(_live, "live_win_row", flaky)
     leagues = store.read_table("leagues", "raw", store_dir)
     bad = leagues.with_columns(pl.lit("bad").alias("league_key"), pl.lit("L2").alias("league_id"))
     store.write_table("leagues", pl.concat([bad, leagues]), "raw", store_dir)
@@ -170,6 +170,6 @@ def test_manual_refresh_records_a_row_too(
     store_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(data_api, "refresh_live", lambda data_dir: 1)
+    monkeypatch.setattr(_live, "refresh_live", lambda data_dir: 1)
     assert body(client.post("/api/live/refresh"))["status"] == "ok"
     assert len(history(store_dir)) == 1

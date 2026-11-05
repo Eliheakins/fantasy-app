@@ -1,6 +1,6 @@
 import numpy as np, polars as pl
 from fantasy import store
-from fantasy.stages.distributions import calibrated
+from fantasy.sim.calibration import calibrated
 S="research/scratch"
 st=store.read_table("nfl_player_stats","raw").filter((pl.col("season_type")=="REG")&(pl.col("position")=="QB")).select(pl.col("player_id").alias("gsis_id"),"season","week","team",pl.col("attempts").fill_null(0.0).alias("att"))
 # QB1 of a team before week w = most prior attempts that season (>= 3 prior team games)

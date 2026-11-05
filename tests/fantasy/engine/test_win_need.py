@@ -12,9 +12,9 @@ from test_season import N_TEAMS, inputs
 from test_simulate_load import build_store
 
 from fantasy import store
+from fantasy.sim.league_data import load_league_data
 from fantasy.sim.season import conditional_odds, simulate_season, win_need_odds
 from fantasy.stages import simulate as sim
-from fantasy.stages.simulate import load_league_data
 
 EXISTING = ("sim_season", "sim_seeds", "sim_team_weeks", "sim_conditional")
 # Digest of the four existing outputs on the fixture below, taken before win_need existed.

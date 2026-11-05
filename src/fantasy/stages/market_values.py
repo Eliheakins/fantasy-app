@@ -6,10 +6,8 @@ the stage still exits 0 with the previous table left in place.
 Run: uv run python -m fantasy.stages.market_values
 """
 
-import json
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -18,29 +16,12 @@ import httpx
 import polars as pl
 
 from fantasy import store
+from fantasy.sim.setting import Setting, setting_for
 
 log = logging.getLogger(__name__)
 URL = "https://api.fantasycalc.com/values/current"
 USER_AGENT = "fantasy-app personal tool (one fetch per league setting per day)"
 TIMEOUT_SECONDS = 20
-PPR_STEPS = (0.0, 0.5, 1.0)  # what the endpoint accepts
-
-
-@dataclass(frozen=True)
-class Setting:
-    num_qbs: int
-    num_teams: int
-    ppr: float
-
-    @property
-    def key(self) -> str:
-        return f"qb{self.num_qbs}_t{self.num_teams}_ppr{self.ppr:g}"
-
-
-def setting_for(scoring_json: str, roster_positions: list[str], num_teams: int) -> Setting:
-    rec = float(json.loads(scoring_json).get("rec", 0.0))
-    ppr = min(PPR_STEPS, key=lambda step: abs(step - rec))
-    return Setting(2 if "SUPER_FLEX" in roster_positions else 1, num_teams, ppr)
 
 
 def fetch_values(setting: Setting) -> list[dict[str, Any]]:

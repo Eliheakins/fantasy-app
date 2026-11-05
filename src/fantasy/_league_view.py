@@ -1,7 +1,7 @@
 """League page reads behind data_api: power rankings, luck, manager grades and what-ifs.
 
-Each takes `me`, my row from `data_api.leagues` (this module never calls `leagues`, see the note
-in data_api). Completed weeks are those before the current week and before the playoffs.
+Each takes `me`, my row from `_leagues.my_league` (the caller looks it up, so these stay pure over
+`me` and `data_dir`). Completed weeks are those before the current week and before the playoffs.
 Simulation tables (`sim_*`) are optional: without them the sim columns come back empty.
 """
 

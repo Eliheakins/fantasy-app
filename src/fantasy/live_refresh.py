@@ -15,7 +15,6 @@ from fantasy._engine import _clear_league_cache
 from fantasy.api_jobs import JobRunner
 from fantasy.config import load_config
 from fantasy.sim.availability import games_on, kickoffs
-from fantasy.stages import simulate, sync_sleeper
 
 log = logging.getLogger(__name__)
 LIVE_REFRESH_MINUTES = 10
@@ -86,6 +85,8 @@ class LiveRefresher:
             return False
         self._last_attempt = now  # failures wait a full interval: no tight retry loop
         try:
+            from fantasy.stages import simulate, sync_sleeper  # batch stages: not on the read path
+
             sync_sleeper.sync_week(week, self.data_dir)
             simulate.run(archive=False, data_dir=self.data_dir)
             data_api.record_live_tick(

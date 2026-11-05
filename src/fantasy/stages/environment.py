@@ -20,26 +20,19 @@ Run: uv run python -m fantasy.stages.environment
 """
 
 import time
-from typing import NamedTuple
 
 import numpy as np
 import polars as pl
 
 from fantasy import store
-from fantasy.sim.injuries import InjuryModel
+from fantasy.sim.calibration import calibrated
+from fantasy.sim.environment import CB_LEADERS, MIN_GAMES_CB, name_column, ratings
 from fantasy.sim.scoring_scale import reference_league
-from fantasy.stages.crosswalk import SUFFIXES
-from fantasy.stages.distributions import calibrated
 from fantasy.stages.outlook import build_panel
 from fantasy.store import SKILL
 from nfl_stat.core.seasons import FANTASY_FIRST_SEASON
 from nfl_stat.pipeline.pbp_source import read_pbp
 
-HALF_LIFE = 6.0  # games
-WINDOW = 17  # games
-SHRINK = 1.0  # pseudo-games at the league average
-MIN_GAMES_CB = 4  # a team needs this many games before its leading corners are known
-CB_LEADERS = 2
 MIN_T = 2.0
 REPLICATE_T = 1.0  # each half of the history must show the same sign with at least this |t|
 SPLIT_SEASON = 2024  # the halves are before this season and from it on
@@ -49,15 +42,6 @@ CONTROLS = ["first_back", "second_back", "vac_target", "vac_carry", "log_context
 FEATURES = ["pass_epa", "sack_rate", "cb_out"]
 KINDS = {"pass_epa": "team_pass_epa", "sack_rate": "team_sack_rate", "cb_out": "opp_cb_out"}
 EFFICIENCY_COLUMNS = ["season", "week", "season_type", "posteam", "defteam", "pass", "epa", "sack"]
-LATEST = 99  # the "week" that holds a team's rating after its latest game
-
-
-class Live(NamedTuple):
-    """The current situation for `sim/environment.py`."""
-
-    team_z: dict[str, tuple[float, float]]  # team -> (pass efficiency z, sack rate z)
-    cb_absent: dict[tuple[str, int], float]  # (team, week) -> expected leading corners out
-    opponent: dict[tuple[str, int], str]  # (team, week) -> opponent
 
 
 def team_efficiency(seasons: range) -> pl.DataFrame:
@@ -95,60 +79,11 @@ def load_efficiency(season: int) -> pl.DataFrame:
     return table
 
 
-def ratings(table: pl.DataFrame) -> pl.DataFrame:
-    """Each team's rating before each game (season, week, team, pass_epa, sack_rate, and `*_z`
-    scaled by the spread of ratings) and the same after its latest game (week LATEST).
-
-    A rating is the exponentially weighted average of the team's recent games minus the league
-    average, pulled toward zero by SHRINK pseudo-games."""
-    centre = (
-        float(np.nanmean(table["pass_epa"].to_numpy())),
-        float(np.nanmean(table["sack_rate"].to_numpy())),
-    )
-    rows = []
-    for (team,), g in table.sort("season", "week").group_by("team", maintain_order=True):
-        series = (g["pass_epa"].to_numpy() - centre[0], g["sack_rate"].to_numpy() - centre[1])
-        for i in range(len(g) + 1):
-            lo = max(0, i - WINDOW)
-            weights = 0.5 ** (np.arange(i - lo)[::-1] / HALF_LIFE)
-            values = [
-                float((weights * s[lo:i]).sum() / (weights.sum() + SHRINK)) if i > lo else 0.0
-                for s in series
-            ]
-            season, week = (
-                (int(g["season"][i]), int(g["week"][i]))
-                if i < len(g)
-                else (int(g["season"][-1]), LATEST)
-            )
-            rows.append((season, week, team, values[0], values[1]))
-    out = pl.DataFrame(
-        rows, schema=["season", "week", "team", "pass_epa", "sack_rate"], orient="row"
-    )
-    spread = {c: float(np.std(out[c].to_numpy(), ddof=1)) or 1.0 for c in ("pass_epa", "sack_rate")}
-    return out.with_columns(
-        (pl.col("pass_epa") / spread["pass_epa"]).alias("pass_epa_z"),
-        (pl.col("sack_rate") / spread["sack_rate"]).alias("sack_rate_z"),
-    )
-
-
-def _name(column: str) -> pl.Expr:
-    """Vectorized `normalize_name`: lowercase letters and spaces only, no name suffixes."""
-    return (
-        pl.col(column)
-        .str.to_lowercase()
-        .str.replace_all(r"[^a-z ]", "")
-        .str.split(" ")
-        .list.eval(pl.element().filter((pl.element() != "") & ~pl.element().is_in(list(SUFFIXES))))
-        .list.join(" ")
-        .alias("nm")
-    )
-
-
 def _leading_cbs(snaps: pl.DataFrame, injuries: pl.DataFrame) -> pl.DataFrame:
     """Per team-week: the leading CB_LEADERS corners by defense snaps in earlier weeks of the
     season, and whether each is listed Out or Doubtful that week (the report is final by
     Friday). Columns: season, week, team, nm, out."""
-    snaps = snaps.filter(pl.col("game_id").is_not_null()).with_columns(_name("player"))
+    snaps = snaps.filter(pl.col("game_id").is_not_null()).with_columns(name_column("player"))
     weeks = snaps.select("season", "week", "team").unique()
     cbs = (
         snaps.filter(pl.col("position") == "CB")
@@ -176,7 +111,7 @@ def _leading_cbs(snaps: pl.DataFrame, injuries: pl.DataFrame) -> pl.DataFrame:
         injuries.filter(
             (pl.col("game_type") == "REG") & pl.col("report_status").is_in(["Out", "Doubtful"])
         )
-        .with_columns(_name("full_name"))
+        .with_columns(name_column("full_name"))
         .select("season", "week", "team", "nm")
         .unique()
         .with_columns(pl.lit(True).alias("out"))
@@ -252,86 +187,6 @@ def estimate(panel: pl.DataFrame) -> pl.DataFrame:
                 }
             )
     return pl.DataFrame(records, schema=store.SCHEMAS["environment_effects"])
-
-
-def live_cb_absent(
-    snaps: pl.DataFrame,
-    injuries: pl.DataFrame,
-    team_games: pl.DataFrame,
-    model: InjuryModel | None,
-    season: int,
-    current_week: int,
-) -> dict[tuple[str, int], float]:
-    """Expected number of each team's leading corners out in its coming games.
-
-    Leading corners are the top CB_LEADERS by defense snaps in games before this week. A
-    corner on the latest injury report gets a chance of playing each game from the injury
-    model (the same curves as skill players, an approximation); without a model, Out and
-    Doubtful count as out this week only."""
-    before = snaps.filter((pl.col("season") == season) & (pl.col("week") < current_week))
-    if before.is_empty():
-        return {}
-    ranked = (
-        before.filter((pl.col("position") == "CB") & pl.col("game_id").is_not_null())
-        .with_columns(_name("player"))
-        .group_by("team", "nm")
-        .agg(pl.col("defense_snaps").fill_null(0.0).sum().alias("snaps"))
-        .with_columns(pl.col("snaps").rank("ordinal", descending=True).over("team").alias("rk"))
-        .filter(pl.col("rk") <= CB_LEADERS)
-    )
-    games_played = before.group_by("team").agg(pl.col("week").n_unique().alias("games"))
-    ready = set(games_played.filter(pl.col("games") >= MIN_GAMES_CB - 1)["team"])
-    latest = (
-        injuries.filter((pl.col("season") == season) & (pl.col("week") <= current_week))
-        .with_columns(_name("full_name"))
-        .sort("week")
-        .group_by("team", "nm")
-        .agg(
-            pl.col("report_status").last().alias("status"),
-            pl.coalesce("report_primary_injury", "practice_primary_injury").last().alias("body"),
-        )
-    )
-    flagged = {(r["team"], r["nm"]): (r["status"], r["body"]) for r in latest.iter_rows(named=True)}
-    coming = (
-        team_games.filter((pl.col("season") == season) & (pl.col("week") >= current_week))
-        .select("team", "week")
-        .sort("team", "week")
-    )
-    weeks_of: dict[str, list[int]] = {}
-    for team, week in coming.iter_rows():
-        weeks_of.setdefault(team, []).append(week)
-    out: dict[tuple[str, int], float] = {}
-    for team, nm in zip(ranked["team"], ranked["nm"], strict=True):
-        status, body = flagged.get((team, nm), (None, None))
-        if team not in ready or status not in ("Out", "Doubtful", "Questionable"):
-            continue
-        curve = model.curve((status, body, None)) if model else None
-        chances = curve[0] if curve else ((0.0,) if status in ("Out", "Doubtful") else ())
-        for k, week in enumerate(weeks_of.get(team, [])):
-            if k >= len(chances):
-                break
-            out[(team, week)] = out.get((team, week), 0.0) + (1.0 - chances[k])
-    return out
-
-
-def live(
-    efficiency: pl.DataFrame,
-    snaps: pl.DataFrame,
-    injuries: pl.DataFrame,
-    team_games: pl.DataFrame,
-    model: InjuryModel | None,
-    season: int,
-    current_week: int,
-) -> Live:
-    latest = ratings(efficiency).filter(pl.col("week") == LATEST)
-    team_z = {r["team"]: (r["pass_epa_z"], r["sack_rate_z"]) for r in latest.iter_rows(named=True)}
-    games = team_games.filter(pl.col("season") == season)
-    opponent = {
-        (r["team"], r["week"]): r["opponent"]
-        for r in games.select("team", "week", "opponent").iter_rows(named=True)
-    }
-    cb = live_cb_absent(snaps, injuries, team_games, model, season, current_week)
-    return Live(team_z, cb, opponent)
 
 
 def history_panel(league_id: str, season: int) -> pl.DataFrame:

@@ -17,6 +17,7 @@ import polars as pl
 
 from fantasy.sim.scoring_scale import Effects
 
+HALF_LIFE = 4.0  # games, for the usage averages
 MIN_SHARE = (0.04, 0.08)  # an absent teammate counts if his target or carry share is above this
 
 
@@ -134,3 +135,101 @@ def apply_outlook(
             + pl.col("play_prob") * pl.col("vacancy_points")
         ).alias("projection")
     )
+
+
+def usage_table(stats: pl.DataFrame, team_stats: pl.DataFrame) -> pl.DataFrame:
+    """Per player-game: target and carry share, and their exponentially weighted averages
+    (`*_ewma` includes the game, `*_prior` stops before it)."""
+    team_carries = team_stats.filter(pl.col("season_type") == "REG").select(
+        "team", "season", "week", pl.col("carries").alias("team_carries")
+    )
+    rows = (
+        stats.filter(pl.col("season_type") == "REG")
+        .select(
+            pl.col("player_id").alias("gsis_id"),
+            "season",
+            "week",
+            "team",
+            "target_share",
+            "carries",
+        )
+        .join(team_carries, on=["team", "season", "week"], how="left")
+        .with_columns(
+            pl.col("target_share").fill_null(0.0),
+            (pl.col("carries").fill_null(0.0) / pl.col("team_carries"))
+            .fill_null(0.0)
+            .alias("carry_share"),
+        )
+        .sort("gsis_id", "season", "week")
+    )
+    rows = rows.with_columns(
+        pl.col("target_share").ewm_mean(half_life=HALF_LIFE).over("gsis_id").alias("target_ewma"),
+        pl.col("carry_share").ewm_mean(half_life=HALF_LIFE).over("gsis_id").alias("carry_ewma"),
+    )
+    return rows.with_columns(
+        pl.col("target_ewma").shift(1).over("gsis_id").alias("target_prior"),
+        pl.col("carry_ewma").shift(1).over("gsis_id").alias("carry_prior"),
+    )
+
+
+def live_context(
+    stats: pl.DataFrame,
+    team_stats: pl.DataFrame,
+    team_games: pl.DataFrame,
+    injuries: pl.DataFrame,
+    season: int,
+    current_week: int,
+) -> Context:
+    """Who is back this week, and each player's latest usage, from games before `current_week`.
+
+    A missed stretch counts as an injury absence when the player was on the injury report in the
+    week before it began or during it."""
+    usage = usage_table(stats.filter(pl.col("season") <= season), team_stats)
+    played = usage.filter((pl.col("season") == season) & (pl.col("week") < current_week))
+    games = (
+        team_games.filter((pl.col("game_type") == "REG") & (pl.col("season") == season))
+        .select("team", "week")
+        .filter(pl.col("week") < current_week)
+        .sort("team", "week")
+        .with_columns(pl.int_range(pl.len()).over("team").alias("g"))
+    )
+    seen = played.join(games, on=["team", "week"], how="inner").sort("gsis_id", "week")
+    team_last = games.group_by("team").agg(pl.col("g").max().alias("team_last"))
+    per_player = (
+        seen.group_by("gsis_id")
+        .agg(
+            pl.col("g").last().alias("last_g"),
+            pl.col("g").diff().last().alias("last_gap"),
+            pl.col("week").last().alias("last_week"),
+            pl.col("week").shift(1).last().alias("prev_week"),
+            pl.col("team").last().alias("team"),
+        )
+        .join(team_last, on="team")
+        .with_columns((pl.col("team_last") - pl.col("last_g")).alias("missed"))
+    )
+    listed: dict[str, set[int]] = {}
+    reports = injuries.filter((pl.col("season") == season) & (pl.col("game_type") == "REG"))
+    for g, week in zip(reports["gsis_id"], reports["week"], strict=True):
+        listed.setdefault(g, set()).add(week)
+
+    def reported(gsis_id: str, low: int, high: int) -> bool:
+        return any(low <= w <= high for w in listed.get(gsis_id, ()))
+
+    missed: dict[str, tuple[int, bool]] = {}
+    after: dict[str, bool] = {}
+    for r in per_player.iter_rows(named=True):
+        g = r["gsis_id"]
+        if r["missed"] >= 1:
+            missed[g] = (int(r["missed"]), reported(g, r["last_week"] - 1, current_week - 1))
+        elif r["last_gap"] is not None and r["last_gap"] >= 2 and r["prev_week"] is not None:
+            after[g] = reported(g, r["prev_week"] - 1, r["last_week"] - 1)
+    latest = (
+        usage.sort("gsis_id", "season", "week")
+        .group_by("gsis_id")
+        .agg(pl.col("team").last(), pl.col("target_ewma").last(), pl.col("carry_ewma").last())
+    )
+    shares = {
+        r["gsis_id"]: (r["team"], float(r["target_ewma"]), float(r["carry_ewma"]))
+        for r in latest.iter_rows(named=True)
+    }
+    return Context(missed, after, shares)

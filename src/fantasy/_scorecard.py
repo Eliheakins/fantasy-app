@@ -16,9 +16,9 @@ import polars as pl
 
 from fantasy import store
 from fantasy._schemas import ENGINE_SCHEMAS
+from fantasy.scoring import score_stats
 from fantasy.sim.availability import kickoffs
-from fantasy.stages.backtest import ALL_TIERS, MIN_MEAN, TRAIN_END, size_tiers
-from fantasy.stages.sleeper_projections import score_stats
+from fantasy.sim.calibration import ALL_TIERS, MIN_MEAN, TRAIN_END, size_tiers
 
 MODELS = ("learned", "baseline", "sleeper")
 ALL = "ALL"

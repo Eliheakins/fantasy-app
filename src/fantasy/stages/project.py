@@ -13,13 +13,11 @@ receivers and tight ends only; kickers and defenses are projected in stages/stre
 Run: uv run python -m fantasy.stages.project
 """
 
-import json
-
 import polars as pl
 
 from fantasy import store
-from fantasy.scoring import expected_points_expr
-from fantasy.store import SKILL, week_index
+from fantasy.sim.expected import POSITIONS, expected_frame
+from fantasy.store import week_index
 
 HALF_LIFE = 4.0  # games
 SHRINK_K = 3.0  # games of prior weight
@@ -28,43 +26,7 @@ N_CAP = 10
 CONTEXT_EXPONENT = 0.25  # 0.5 over-reacts to the implied total; see docs/decisions.md
 FIRST_PROJECTED_SEASON = 2019  # the first season with a prior season to lean on
 LAST_WEEK = 17
-POSITIONS = SKILL
 GROUP = ["league_id", "gsis_id"]
-MAX_UNSCORED_SHARE = 0.05  # expected-points rows with no scored row (a position label differs)
-
-
-def expected_frame(
-    opp: pl.DataFrame, player_points: pl.DataFrame, leagues: pl.DataFrame
-) -> pl.DataFrame:
-    """One row per league and player-game: expected points and actual points."""
-    frames = []
-    for lg in leagues.iter_rows(named=True):
-        actual = player_points.filter(pl.col("league_id") == lg["league_id"]).select(
-            "gsis_id", "season", "week", "points"
-        )
-        scoring = json.loads(lg["scoring_settings"])
-        expected = (
-            opp.filter(pl.col("position").is_in(POSITIONS))
-            .select(
-                pl.col("player_id").alias("gsis_id"),
-                "season",
-                "week",
-                "position",
-                pl.col("posteam").alias("team"),
-                expected_points_expr(scoring).alias("exp_pts"),
-            )
-            .unique(subset=["gsis_id", "season", "week"], keep="first", maintain_order=True)
-        )
-        # an expected-points row with no scored row (nflverse labels the position differently in
-        # the two sources, e.g. a CB who plays WR) has no actual points: drop it, not score it 0
-        matched = expected.join(actual, on=["gsis_id", "season", "week"], how="inner")
-        dropped = expected.height - matched.height
-        if dropped:
-            print(f"expected_frame: league {lg['league_id']}: {dropped} unscored rows dropped")
-        if dropped > MAX_UNSCORED_SHARE * expected.height:
-            raise ValueError(f"{dropped} of {expected.height} expected-points rows have no points")
-        frames.append(matched.with_columns(pl.lit(lg["league_id"]).alias("league_id")))
-    return pl.concat(frames)
 
 
 def position_prior(exp: pl.DataFrame) -> pl.DataFrame:

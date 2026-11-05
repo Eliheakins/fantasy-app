@@ -21,7 +21,7 @@ import espn_calibration_check as espn  # noqa: E402
 
 from fantasy import store  # noqa: E402
 from fantasy.stages.calibration import run as run_2026  # noqa: E402
-from fantasy.stages.simulate import load_league_data  # noqa: E402
+from fantasy.sim.league_data import load_league_data  # noqa: E402
 from fantasy.stages.calibration import team_week_scores  # noqa: E402
 
 

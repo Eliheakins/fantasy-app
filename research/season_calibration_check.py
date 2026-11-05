@@ -53,7 +53,7 @@ from fantasy.sim.season import (  # noqa: E402
     team_scores,
 )
 from fantasy.stages import distributions as dist  # noqa: E402
-from fantasy.stages.simulate import tier_spreads  # noqa: E402
+from fantasy.sim.league_data import tier_spreads  # noqa: E402
 
 SEASONS = (2024, 2025)
 AS_OF = (4, 7, 10)

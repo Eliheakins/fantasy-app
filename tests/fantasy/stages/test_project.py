@@ -1,6 +1,7 @@
 import polars as pl
 import pytest
 
+from fantasy.sim import expected
 from fantasy.stages import project as p
 
 LEAGUE = "L1"
@@ -173,16 +174,16 @@ def _opp(players: list[str]) -> pl.DataFrame:
 
 
 def test_expected_points_with_no_scored_row_are_dropped_not_scored_as_zero(monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    monkeypatch.setattr(p, "expected_points_expr", lambda scoring: pl.lit(5.0))
+    monkeypatch.setattr(expected, "expected_points_expr", lambda scoring: pl.lit(5.0))
     opp = _opp(["A", "B"]).with_columns(position=pl.lit("WR"), posteam=pl.lit("KC"))
     points = pl.DataFrame(
         {"league_id": ["L1"], "gsis_id": ["A"], "season": [2025], "week": [1], "points": [9.0]}
     )
     leagues = pl.DataFrame({"league_id": ["L1"], "scoring_settings": ["{}"]})
-    monkeypatch.setattr(p, "MAX_UNSCORED_SHARE", 0.6)
+    monkeypatch.setattr(expected, "MAX_UNSCORED_SHARE", 0.6)
     out = p.expected_frame(opp, points, leagues)
     assert out["gsis_id"].to_list() == ["A"]
-    monkeypatch.setattr(p, "MAX_UNSCORED_SHARE", 0.1)
+    monkeypatch.setattr(expected, "MAX_UNSCORED_SHARE", 0.1)
     with pytest.raises(ValueError, match="no points"):
         p.expected_frame(opp, points, leagues)
 

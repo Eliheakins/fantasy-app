@@ -15,8 +15,9 @@ from typing import NamedTuple
 import polars as pl
 
 from fantasy import stat_line_table, store
+from fantasy.sim.calibration import calibrated
+from fantasy.sim.injuries import PRACTICE
 from fantasy.sim.scoring_scale import reference_league
-from fantasy.stages.distributions import calibrated
 from fantasy.store import SKILL
 
 HORIZON = 4
@@ -38,11 +39,6 @@ BODIES = (
     "Back",
     "Illness",
 )
-PRACTICE = {
-    "Did Not Participate In Practice": "DNP",
-    "Limited Participation in Practice": "Limited",
-    "Full Participation in Practice": "Full",
-}
 ANY = "any"
 OTHER = "Other"
 

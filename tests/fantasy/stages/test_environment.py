@@ -3,6 +3,7 @@ import polars as pl
 import pytest
 
 from fantasy import store
+from fantasy.sim import environment as sim_env
 from fantasy.sim.environment import Situation, apply_environment, effects_dict
 from fantasy.stages import environment as env
 
@@ -18,10 +19,10 @@ def _efficiency() -> pl.DataFrame:
 
 
 def test_ratings_start_neutral_and_rate_a_heavily_sacked_team_above_the_rest() -> None:
-    out = env.ratings(_efficiency())
+    out = sim_env.ratings(_efficiency())
     first = out.filter((pl.col("week") == 1) & (pl.col("team") == "SACK"))
     assert first["sack_rate"][0] == 0.0 and first["sack_rate_z"][0] == 0.0
-    latest = out.filter(pl.col("week") == env.LATEST)
+    latest = out.filter(pl.col("week") == sim_env.LATEST)
     z = dict(zip(latest["team"], latest["sack_rate_z"], strict=True))
     assert z["SACK"] > 0 > z["FINE"]
     assert len(latest) == 2  # one latest rating per team, to carry into the coming games
@@ -72,7 +73,7 @@ def test_live_cb_absent_expects_an_out_corner_to_miss_this_game() -> None:
         {"team": ["DEF1"] * 3, "season": [2025] * 3, "week": [8, 9, 10], "game_type": ["REG"] * 3}
     )
     live = injuries.filter(pl.col("report_status") == "Out").with_columns(pl.lit(8).alias("week"))
-    got = env.live_cb_absent(snaps, live, games, None, 2025, 8)
+    got = sim_env.live_cb_absent(snaps, live, games, None, 2025, 8)
     assert got == {("DEF1", 8): 1.0}  # without an injury model an Out corner misses this game only
 
 
@@ -196,5 +197,5 @@ def test_the_vectorized_name_matches_normalize_name() -> None:
         "AJ Brown",
         "Ray-Ray McCloud",
     ]
-    got = pl.DataFrame({"n": names}).select(env._name("n"))["nm"].to_list()
+    got = pl.DataFrame({"n": names}).select(sim_env.name_column("n"))["nm"].to_list()
     assert got == [normalize_name(n) for n in names]

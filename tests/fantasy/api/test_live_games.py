@@ -15,6 +15,7 @@ from test_data_api_characterization import NOW, _engine_store
 from test_simulate_load import LEAGUE, build_store
 
 from fantasy import _engine, _lineup, data_api
+from fantasy.sim import league_data as sim
 from fantasy.sim import moves
 from fantasy.sim.availability import (
     EASTERN,
@@ -23,7 +24,6 @@ from fantasy.sim.availability import (
     remaining_share,
 )
 from fantasy.sim.lineup import Player, lineup_slots, lineup_with_locks
-from fantasy.stages import simulate as sim
 
 KICKOFF = datetime(2026, 10, 25, 13, 0, tzinfo=EASTERN)
 N_SIMS = 2000

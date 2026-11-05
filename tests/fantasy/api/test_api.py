@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 from store_fixture import write_rows
 
-from fantasy import _engine, api, api_envelope, api_routes, data_api
+from fantasy import _engine, _live, api, api_envelope, api_routes, data_api
 from fantasy.api_jobs import Busy, JobRunner
 from fantasy.sources import sleeper
 
@@ -87,7 +87,7 @@ def test_data_version_follows_the_files_of_the_given_data_dir(tmp_path: Path) ->
 
 
 def count_builds(monkeypatch: pytest.MonkeyPatch) -> list[str]:
-    from fantasy.stages import simulate
+    from fantasy.sim import league_data as simulate
 
     calls: list[str] = []
     real = simulate.load_league_data
@@ -119,7 +119,7 @@ def test_refresh_calls_sleeper_then_clears_the_caches(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     calls = count_builds(monkeypatch)
-    monkeypatch.setattr(data_api, "refresh_live", lambda data_dir: 7)
+    monkeypatch.setattr(_live, "refresh_live", lambda data_dir: 7)
     body(client.get("/api/leagues/t/strength"))
     out = body(client.post("/api/live/refresh"))
     assert out["data"] == {"player_rows": 7}
@@ -582,7 +582,7 @@ def test_job_runner_caps_running_jobs_and_remembers_few_finished_ones() -> None:
 def test_concurrent_cache_misses_build_the_league_once(
     store_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from fantasy.stages import simulate
+    from fantasy.sim import league_data as simulate
 
     calls: list[int] = []
     real = simulate.load_league_data
@@ -623,7 +623,7 @@ def test_a_job_builds_its_league_under_the_version_in_its_key(
 def test_refresh_second_caller_gets_busy(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(data_api, "refresh_live", lambda data_dir: 1)
+    monkeypatch.setattr(_live, "refresh_live", lambda data_dir: 1)
     assert api_routes.REFRESH_LOCK.acquire(blocking=False)
     try:
         assert body(client.post("/api/live/refresh"))["error"]["code"] == "busy"
@@ -641,7 +641,7 @@ def test_refresh_failure_message_is_fixed_and_hides_the_detail(
     # fail inside the real Sleeper client so the route sees the exception it really raises
     monkeypatch.setattr(sleeper.httpx, "get", refused)
     monkeypatch.setattr(sleeper.time, "sleep", lambda _: None)
-    monkeypatch.setattr(data_api, "refresh_live", lambda data_dir: sleeper.fetch("/state/nfl"))
+    monkeypatch.setattr(_live, "refresh_live", lambda data_dir: sleeper.fetch("/state/nfl"))
     out = body(client.post("/api/live/refresh"))
     assert out["status"] == "error" and out["error"]["message"].startswith("Sleeper refresh failed")
     assert "secret" not in out["error"]["message"]

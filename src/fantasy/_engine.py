@@ -126,7 +126,7 @@ def _league_cached(league_key: str, version: str, data_dir: str) -> tuple[League
 @lru_cache(maxsize=LEAGUE_CACHE_SIZE)
 def _build_league(league_key: str, version: str, data_dir: str) -> tuple[LeagueData, int]:
     """Build the league from `data_dir`; `version` only keys the cache."""
-    from fantasy.stages.simulate import load_league_data  # heavy imports, only when asked
+    from fantasy.sim.league_data import load_league_data  # heavy imports, only when asked
 
     root = Path(data_dir)
     row = store.read_table("leagues", "raw", root).filter(pl.col("league_key") == league_key)

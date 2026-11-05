@@ -1,6 +1,6 @@
 import numpy as np, polars as pl
 from fantasy import store
-from fantasy.stages.distributions import calibrated
+from fantasy.sim.calibration import calibrated
 from fantasy.stages.crosswalk import normalize_name
 S="research/scratch"
 # per-rank CB availability

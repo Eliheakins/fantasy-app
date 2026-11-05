@@ -1,6 +1,6 @@
 import numpy as np, polars as pl
 from fantasy import store
-from fantasy.stages.distributions import calibrated
+from fantasy.sim.calibration import calibrated
 S="research/scratch"
 t=pl.read_parquet(f"{S}/team_game_epa.parquet").sort("posteam","season","week")
 K=4.0

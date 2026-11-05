@@ -49,7 +49,7 @@ def test_scale_and_divide_use_q_and_fail_on_a_missing_chance() -> None:
 def test_simulate_takes_this_seasons_games_from_the_current_week(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from fantasy.stages import simulate
+    from fantasy.sim import league_data as simulate
 
     table = pl.DataFrame(
         {

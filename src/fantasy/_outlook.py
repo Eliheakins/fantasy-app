@@ -145,7 +145,7 @@ def player_outlook(
     Only three drivers are modeled (see docs/decisions.md): a return from missed games,
     teammates who are out, and the gap between points and expected points.
     """
-    from fantasy.stages.project import expected_frame
+    from fantasy.sim.expected import expected_frame
 
     data, mine = _league(league_key, data_dir, team)
     lid = data.league_id

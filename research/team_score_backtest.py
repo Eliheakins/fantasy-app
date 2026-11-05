@@ -23,7 +23,7 @@ from fantasy import store
 from fantasy.sim.calibration import apply_curves
 from fantasy.sim.lineup import Player, auto_lineup, lineup_slots
 from fantasy.sim.odds import lineup_moments
-from fantasy.stages.simulate import tier_spreads
+from fantasy.sim.league_data import tier_spreads
 from fantasy.stages.distributions import (
     estimate_curves,
     estimate_marginals,

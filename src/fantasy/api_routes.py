@@ -12,9 +12,8 @@ import polars as pl
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi import Path as PathParam
 
+from fantasy import _live, data_api
 from fantasy import _view as view
-from fantasy import data_api
-from fantasy._engine import _clear_league_cache, data_version, pinned_version
 from fantasy.api_deps import Ctx, DataDir, RequestContext
 from fantasy.api_envelope import NO_DATA_MESSAGE, clean, fail, guarded, ok, rows, running
 from fantasy.api_jobs import Busy, JobKey, JobRunner
@@ -62,6 +61,7 @@ from fantasy.api_models import (
     WinNeedRow,
     WinProbabilityData,
 )
+from fantasy.data_api import clear_league_cache, data_version, pinned_version
 from fantasy.sources.sleeper import SleeperError
 
 log = logging.getLogger(__name__)
@@ -562,15 +562,13 @@ def refresh_live(runner: Runner, data_dir: DataDir) -> Any:
     if not REFRESH_LOCK.acquire(blocking=False):
         return fail("busy", BUSY_MESSAGE)
     try:
-        player_rows = data_api.refresh_live(data_dir)
-        data_api.record_live_tick(
-            data_dir=data_dir
-        )  # the league cache follows data_version, so it is fresh
+        player_rows = _live.refresh_live(data_dir)
+        _live.record_live_tick(data_dir=data_dir)  # the league cache follows data_version
     except (OSError, SleeperError):
         log.exception("live refresh failed")
         return fail("server", "Sleeper refresh failed. See the server log.")
     finally:
         REFRESH_LOCK.release()
-    _clear_league_cache()
+    clear_league_cache()
     runner.clear()
     return ok({"player_rows": player_rows})
