@@ -1,0 +1,222 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, useLocation } from "react-router-dom";
+
+import { LeagueProvider } from "@/lib/league";
+import { TeamProvider } from "@/lib/TeamProvider";
+import { useTeam } from "@/lib/teamContext";
+import { runStatQuery } from "@/stat/engine/statQuery";
+
+import { ExploreResultsCanvas } from "./ExploreResultsCanvas";
+import { LeagueFilterControl } from "./LeagueFilterControl";
+import { ManifestContext } from "./manifest";
+import { useExploreQueryExecution } from "./useExploreQueryExecution";
+
+vi.mock("@/stat/engine/statQuery", () => ({
+  runStatQuery: vi.fn(async () => ({ columns: ["player_id"], rows: [] })),
+}));
+vi.mock("@/stat/lib/dataSources", () => ({
+  seasonSources: () => [{ year: 2025, url: "mem://2025" }],
+  playerGameSource: () => null,
+}));
+vi.mock("@/stat/lib/players", () => ({ getPlayersByIds: async () => [] }));
+
+const ok = (data: unknown) => ({ status: "ok", data, error: null, started_at: null });
+const owner = (gsis_id: string, name: string, is_mine: boolean) => ({ gsis_id, owner: name, is_mine });
+const team = (roster_id: number, team_name: string, is_me: boolean) => ({
+  roster_id, team_name, is_me, wins: 1, losses: 0, ties: 0, points_for: 10, record: "1-0",
+});
+const MINE = [owner("00-A", "Mine", true), owner("00-B", "Rival", false)];
+const RIVAL_VIEW = [owner("00-A", "Mine", false), owner("00-B", "Rival", true)];
+
+function mockFetch(leagues: unknown[] = [{ league_key: "a", name: "A" }], unmatched = 0) {
+  const urls: string[] = [];
+  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    urls.push(url);
+    const [path = "", query = ""] = url.split("?");
+    const routes: Record<string, unknown> = {
+      "/api/leagues": leagues,
+      "/api/leagues/a/teams": [team(1, "Mine", true), team(2, "Rival", false)],
+      "/api/leagues/a/owners": { rows: query.includes("team=2") ? RIVAL_VIEW : MINE, unmatched },
+    };
+    return Response.json(ok(routes[path] ?? []));
+  }));
+  return urls;
+}
+
+function renderAt(entry: string, children: React.ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[entry]}>
+        <ManifestContext.Provider value={{ manifest: null, seasons: [2025] }}>
+          <LeagueProvider>
+            <TeamProvider>{children}</TeamProvider>
+          </LeagueProvider>
+        </ManifestContext.Provider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+}
+
+function Search() {
+  return <p data-testid="search">{useLocation().search}</p>;
+}
+
+const search = () => new URLSearchParams(screen.getByTestId("search").textContent ?? "");
+
+beforeEach(() => {
+  localStorage.clear();
+  vi.mocked(runStatQuery).mockClear();
+});
+afterEach(() => vi.unstubAllGlobals());
+
+describe("League filter control", () => {
+  it("is hidden when no league is loaded", async () => {
+    const urls = mockFetch([]);
+    renderAt("/explore?lg=fa", <LeagueFilterControl />);
+    await waitFor(() => expect(urls).toContain("/api/leagues"));
+
+    expect(screen.queryByRole("radiogroup", { name: "League" })).not.toBeInTheDocument();
+  });
+
+  it("is hidden for team rows", async () => {
+    mockFetch();
+    renderAt("/explore?who=teams", <LeagueFilterControl />);
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+
+    expect(screen.queryByRole("radiogroup", { name: "League" })).not.toBeInTheDocument();
+  });
+
+  it("warns when rostered players could not be matched", async () => {
+    mockFetch([{ league_key: "a", name: "A" }], 2);
+    renderAt("/explore", <LeagueFilterControl />);
+
+    expect(await screen.findByText(/2 rostered players could not be matched and may appear as free agents/)).toBeInTheDocument();
+  });
+
+  it("shows no warning when every rostered player matched", async () => {
+    const urls = mockFetch();
+    renderAt("/explore", <LeagueFilterControl />);
+    await screen.findByRole("radiogroup", { name: "League" });
+    await waitFor(() => expect(urls).toContain("/api/leagues/a/owners"));
+    expect(screen.queryByText(/could not be matched/)).not.toBeInTheDocument();
+  });
+
+  it("says the rosters are today's and writes lg to the URL", async () => {
+    mockFetch();
+    renderAt("/explore?s=rec_yards", <><LeagueFilterControl /><Search /></>);
+
+    await userEvent.click(await screen.findByRole("radio", { name: "Free agents now" }));
+
+    expect(search().get("lg")).toBe("fa");
+    expect(search().getAll("s")).toEqual(["rec_yards"]);
+    await userEvent.click(screen.getByRole("radio", { name: "All players" }));
+    expect(search().has("lg")).toBe(false);
+  });
+});
+
+function Run() {
+  const { setTeam } = useTeam();
+  const { result } = useExploreQueryExecution();
+  return (
+    <>
+      <button type="button" onClick={() => setTeam(2)}>view rival</button>
+      <Search />
+      <ul>{result?.rows.map((r) => <li key={String(r.player_id)}>{`row ${r.player_id}`}</li>)}</ul>
+    </>
+  );
+}
+
+const lastSet = () => vi.mocked(runStatQuery).mock.calls.at(-1)?.[0].playerSet;
+const RANKED = "/explore?league=a&s=rec_yards&o=rec_yards&n=5";
+
+describe("League filter in the query", () => {
+  it("restricts the engine to the roster set and recomputes it when the team changes", async () => {
+    mockFetch();
+    renderAt(`${RANKED}&lg=mine`, <Run />);
+
+    await waitFor(() => expect(lastSet()).toEqual({ ids: ["00-A"], exclude: false }));
+    await userEvent.click(screen.getByRole("button", { name: "view rival" }));
+
+    await waitFor(() => expect(lastSet()).toEqual({ ids: ["00-B"], exclude: false }));
+  });
+
+  it("never shows the previous team's rows after a team switch", async () => {
+    mockFetch();
+    vi.mocked(runStatQuery).mockImplementation(async (params) => ({
+      columns: ["player_id"],
+      rows: (params.playerSet?.ids ?? []).map((player_id) => ({ player_id })),
+    }));
+    renderAt(`${RANKED}&lg=mine`, <Run />);
+    await screen.findByText("row 00-A");
+
+    await userEvent.click(screen.getByRole("button", { name: "view rival" }));
+
+    expect(screen.queryByText("row 00-A")).not.toBeInTheDocument();
+    await screen.findByText("row 00-B");
+    expect(screen.queryByText("row 00-A")).not.toBeInTheDocument();
+    vi.mocked(runStatQuery).mockImplementation(async () => ({ columns: ["player_id"], rows: [] }));
+  });
+
+  it("drops lg from the URL when no league exists or the rows are teams", async () => {
+    mockFetch([]);
+    renderAt(`${RANKED}&lg=fa`, <Run />);
+    await waitFor(() => expect(search().has("lg")).toBe(false));
+  });
+
+  it("drops lg from the URL for team rows", async () => {
+    mockFetch();
+    renderAt("/explore?league=a&who=teams&s=rec_yards&lg=fa", <Run />);
+    await waitFor(() => expect(search().has("lg")).toBe(false));
+  });
+
+  it("excludes every rostered player for free agents, and sends no set for All players", async () => {
+    mockFetch();
+    renderAt(`${RANKED}&lg=fa`, <Run />);
+    await waitFor(() => expect(lastSet()).toEqual({ ids: ["00-A", "00-B"], exclude: true }));
+  });
+
+  it("ignores a bad lg value", async () => {
+    mockFetch();
+    renderAt(`${RANKED}&lg=nope`, <Run />);
+    await waitFor(() => expect(runStatQuery).toHaveBeenCalled());
+    expect(lastSet()).toBeNull();
+  });
+
+  it("does not run an unrestricted query while the rosters are loading", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/owners")) return new Promise<Response>(() => {});
+      return Response.json(ok(url.startsWith("/api/leagues/a") ? [team(1, "Mine", true)] : [{ league_key: "a", name: "A" }]));
+    }));
+    renderAt(`${RANKED}&lg=mine`, <Run />);
+    await new Promise((r) => setTimeout(r, 30));
+    expect(runStatQuery).not.toHaveBeenCalled();
+  });
+});
+
+describe("owner on result rows", () => {
+  const result = { columns: ["player_id", "m_rec_yards"], rows: [
+    { player_id: "00-A", m_rec_yards: 10 },
+    { player_id: "00-FA", m_rec_yards: 5 },
+  ] };
+  const names = [
+    { gsis_id: "00-A", full_name: "Ann", position: "WR", team: null, headshot_url: null },
+    { gsis_id: "00-FA", full_name: "Fay", position: "WR", team: null, headshot_url: null },
+  ];
+
+  it("shows the owning team for a rostered player and nothing for a free agent", async () => {
+    mockFetch();
+    renderAt(
+      "/explore?league=a&s=rec_yards&o=rec_yards&n=5",
+      <ExploreResultsCanvas result={result} error={null} details={null} running={false} pinnedPlayers={names} />,
+    );
+
+    const owner = await screen.findByText("Mine");
+    expect(owner).toHaveClass("text-muted");
+    expect(screen.getByText("Ann").closest("tr")!.textContent).toBe("Ann, owned by Mine10"); // separator for screen readers
+    const faRow = screen.getByText("Fay").closest("tr")!;
+    expect(faRow.textContent).toBe("Fay5");
+  });
+});

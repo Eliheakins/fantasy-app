@@ -1439,6 +1439,63 @@
         }
       }
     },
+    "/api/leagues/{league}/owners": {
+      "get": {
+        "summary": "Owners",
+        "operationId": "owners_api_leagues__league__owners_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_OwnersData_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/win-probability": {
       "get": {
         "summary": "Win Probability",
@@ -2190,6 +2247,59 @@
           "started_at"
         ],
         "title": "Envelope[DigestData]"
+      },
+      "Envelope_OwnersData_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OwnersData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[OwnersData]"
       },
       "Envelope_RefreshData_": {
         "properties": {
@@ -5299,6 +5409,52 @@
           "why"
         ],
         "title": "OutlookRow"
+      },
+      "OwnerRow": {
+        "properties": {
+          "gsis_id": {
+            "type": "string",
+            "title": "Gsis Id"
+          },
+          "owner": {
+            "type": "string",
+            "title": "Owner"
+          },
+          "is_mine": {
+            "type": "boolean",
+            "title": "Is Mine"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gsis_id",
+          "owner",
+          "is_mine"
+        ],
+        "title": "OwnerRow"
+      },
+      "OwnersData": {
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/OwnerRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "unmatched": {
+            "type": "integer",
+            "title": "Unmatched"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rows",
+          "unmatched"
+        ],
+        "title": "OwnersData"
       },
       "PartnerRow": {
         "properties": {

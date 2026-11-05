@@ -388,6 +388,38 @@ def test_row_routes_return_an_ok_envelope_with_the_expected_columns(
     assert columns(out["data"]) == ROWS[path]
 
 
+def test_owners_lists_every_rostered_player_and_follows_the_viewed_team(
+    client: TestClient,
+) -> None:
+    def owners(path: str) -> dict[str, tuple[str, bool]]:
+        data = body(client.get(path))["data"]["rows"]
+        return {r["gsis_id"]: (r["owner"], r["is_mine"]) for r in data}
+
+    first = body(client.get("/api/leagues/t/owners"))["data"]["rows"]
+    assert set(first[0]) == {"gsis_id", "owner", "is_mine"}
+    assert all(r["gsis_id"] for r in first)  # no null ids
+    mine = owners("/api/leagues/t/owners")
+    assert mine["G_QB"] == ("Mine", True)  # the real team name, not "You"
+    assert mine["G_OPP"] == ("Theirs", False)
+    assert "G_FA" not in mine  # a free agent has no owner, so no row
+    viewed = owners("/api/leagues/t/owners?team=2")
+    assert viewed["G_OPP"] == ("Theirs", True) and viewed["G_QB"] == ("Mine", False)
+
+
+def test_owners_counts_rostered_skill_players_without_an_nflverse_id(
+    client: TestClient,
+) -> None:
+    # the fixture's "nogsis" WR is rostered but has no crosswalk id; K and DEF are not counted
+    assert body(client.get("/api/leagues/t/owners"))["data"]["unmatched"] == 1
+
+
+def test_owners_errors_follow_the_sibling_routes(client: TestClient) -> None:
+    for path in ("/api/leagues/zzz/owners", "/api/leagues/t/owners?team=99"):
+        out = body(client.get(path))
+        assert out["status"] == "error" and out["data"] is None
+        assert out["error"]["code"] == "invalid"
+
+
 def test_free_scope_and_empty_results_are_ok_with_no_rows(client: TestClient) -> None:
     out = body(client.get("/api/leagues/t/player-weeks?gsis_id=nobody"))
     assert out == {"status": "ok", "data": [], "error": None, "started_at": None}

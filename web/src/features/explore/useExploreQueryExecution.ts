@@ -6,6 +6,9 @@ import { playerGameSource, seasonSources } from "@/stat/lib/dataSources";
 import { useFilterChipGroups } from "@/features/explore/filterChipGroups";
 import { useManifest } from "@/features/explore/manifest";
 import { createLatestRunner } from "@/stat/lib/latestRun";
+import { useLeague } from "@/lib/league";
+import { useTeam } from "@/lib/teamContext";
+import { playerSetFor, useLeagueOwners } from "@/features/explore/useLeagueOwners";
 import { usePinnedPlayers } from "@/features/explore/usePinnedPlayers";
 import { isLeagueQuery } from "@/stat/lib/queryUrl";
 import { useQueryState } from "@/features/explore/useQueryState";
@@ -15,7 +18,7 @@ import type { QueryResult } from "@/stat/types/workbench";
 
 /** Runs the query in the URL and keeps its result; only the latest run may set state. */
 export function useExploreQueryExecution() {
-  const { state, filterChipState } = useQueryState();
+  const { state, filterChipState, setRoster } = useQueryState();
   const { manifest } = useManifest();
   const chipGroups = useFilterChipGroups();
   const pinnedPlayers = usePinnedPlayers(state.players);
@@ -27,7 +30,6 @@ export function useExploreQueryExecution() {
   // Which query the result belongs to: after back/forward the URL changes before the run finishes,
   // and a result must never be shown (or described) as the answer to a different query.
   const [resultKey, setResultKey] = useState<string | null>(null);
-  const currentKey = useMemo(() => queryKey(state), [state]);
   const [error, setError] = useState<string | null>(null);
   const [details, setDetails] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
@@ -37,6 +39,25 @@ export function useExploreQueryExecution() {
   const league = isLeagueQuery(state);
   const forTeams = subject === "teams";
   // Whoever the rows are about is named, or the query ranks everyone.
+  const { leagues } = useLeague();
+  const { league: leagueKey, state: ownersState, byPlayer: owners } = useLeagueOwners();
+  // The League filter only applies to player rows, and only once a league is loaded.
+  const rosterFilter = !forTeams && leagueKey !== null ? state.roster : null;
+  const playerSet = useMemo(
+    () => (rosterFilter && owners ? playerSetFor(rosterFilter, [...owners.values()]) : null),
+    [rosterFilter, owners],
+  );
+  // The result belongs to the league, viewed team and loaded rosters it was computed for, too.
+  const { team } = useTeam();
+  const currentKey = useMemo(
+    () => `${queryKey(state)}|${leagueKey}|${team}|${playerSet ? "set" : "none"}`,
+    [state, leagueKey, team, playerSet],
+  );
+  // A filter that cannot apply (team rows, or no league at all) would be inert and could not be cleared.
+  const inert = state.roster !== null && (forTeams || (leagues.kind === "ready" && leagueKey === null));
+  useEffect(() => {
+    if (inert) setRoster(null);
+  }, [inert, setRoster]);
   const hasSubject = league || (forTeams ? teams.length > 0 : players.length > 0);
 
   const executeQuery = useCallback(async () => {
@@ -67,6 +88,17 @@ export function useExploreQueryExecution() {
       return;
     }
 
+    if (state.roster && !forTeams && leagues.kind === "loading") {
+      return; // the league list decides whether the filter applies at all
+    }
+    if (rosterFilter && !playerSet) {
+      // Never show unrestricted rows as the answer to a restricted query: wait for the league's rosters.
+      if (ownersState.kind === "error") {
+        invalid("The league's rosters did not load, so the League filter cannot apply. Try again or pick All players.");
+      }
+      return;
+    }
+
     setRunning(true);
     setDetails(describeQuery({ statIds: stats, granularity, filterChipState, chipGroups, minPlays }));
     let stale = false;
@@ -77,6 +109,7 @@ export function useExploreQueryExecution() {
             statIds: stats,
             filterChipState,
             gsisIds: league ? null : players,
+            playerSet,
             sources,
             playerGame,
             granularity,
@@ -123,6 +156,11 @@ export function useExploreQueryExecution() {
     filterChipState,
     chipGroups,
     granularity,
+    rosterFilter,
+    playerSet,
+    state.roster,
+    leagues.kind,
+    ownersState.kind,
     runLatest,
     currentKey,
   ]);

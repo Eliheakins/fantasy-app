@@ -4,6 +4,7 @@ import { MAX_PINNED_PLAYERS } from "@/stat/lib/queryUrl";
 
 import { AggregationSection } from "@/features/explore/AggregationSection";
 import { FilterChipsBar } from "@/features/explore/FilterChipsBar";
+import { LeagueFilterControl } from "@/features/explore/LeagueFilterControl";
 import { PinnedPlayersBar } from "@/features/explore/PinnedPlayersBar";
 import { StatDictionaryPanel } from "@/features/explore/StatDictionaryPanel";
 import { TeamPicker } from "@/features/explore/TeamPicker";
@@ -108,6 +109,7 @@ export function QueryBuilderSidebarScroll({
               Pin up to {MAX_PINNED_PLAYERS} players to compare
             </p>
             <PinnedPlayersBar />
+            <LeagueFilterControl />
           </>
         )}
       </section>

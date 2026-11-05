@@ -29,7 +29,7 @@ from fantasy._market import (
     trade_roster_changes,
     waivers,
 )
-from fantasy._outlook import live_score, player_outlook, schedule
+from fantasy._outlook import live_score, player_outlook, player_owners, rostered_unmatched, schedule
 from fantasy._schemas import ENGINE_SCHEMAS
 from fantasy._scoreboard import SCOREBOARD_SIMS, scoreboard_of
 from fantasy._scorecard import Scorecard, scorecard_of
@@ -61,6 +61,8 @@ __all__ = [
     "odds_history",
     "ideas_are_mine",
     "player_outlook",
+    "player_owners",
+    "rostered_unmatched",
     "player_vs_projection",
     "player_weeks",
     "position_strength",

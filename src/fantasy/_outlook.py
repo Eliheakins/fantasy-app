@@ -214,3 +214,41 @@ def player_outlook(league_key: str, scope: str = "mine") -> pl.DataFrame:
     return pl.DataFrame(rows, schema=OUTLOOK_SCHEMA).sort(
         "change", descending=True, nulls_last=True
     )
+
+
+def player_owners(league_key: str) -> pl.DataFrame:
+    """Every rostered player in a league with the team that owns him; free agents have no row.
+
+    is_mine marks the viewed team's players (my team, or the `?team=` one). Only players with an
+    nflverse id appear; `rostered_unmatched` counts the QB, RB, WR and TE who have none. K and
+    DEF are not in the stat data, so they are neither listed nor counted.
+    """
+    data, mine = _league(league_key)
+    r = data.rosters
+    return (
+        pl.DataFrame(
+            {
+                "gsis_id": r["gsis_id"],
+                "owner": [data.team_names.get(i, "Unknown team") for i in r["roster_id"]],
+                "is_mine": [i == mine for i in r["roster_id"]],
+            },
+            schema={"gsis_id": pl.String, "owner": pl.String, "is_mine": pl.Boolean},
+        )
+        .drop_nulls("gsis_id")
+        .unique("gsis_id", keep="first", maintain_order=True)
+    )
+
+
+def rostered_unmatched(league_key: str) -> int:
+    """Rostered skill players with no nflverse id: missing from `player_owners`, so a free-agent
+    filter would count them as free agents."""
+    data, _ = _league(league_key)
+    id_map = store.read_table("id_map", "derived").select("sleeper_id", "gsis_id")
+    players = store.read_table("sleeper_players", "raw").select("sleeper_id", "position")
+    rostered = store.read_table("rosters", "raw").filter(pl.col("league_id") == data.league_id)
+    return (
+        rostered.join(id_map, on="sleeper_id", how="left")
+        .join(players, on="sleeper_id", how="left")
+        .filter(pl.col("position").is_in(store.SKILL) & pl.col("gsis_id").is_null())["sleeper_id"]
+        .n_unique()
+    )

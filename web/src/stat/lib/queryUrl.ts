@@ -37,7 +37,12 @@ export interface QueryState {
   teams: string[];
   /** A team's own plays, or the plays against it. */
   side: Side;
+  /** Today's league roster status the player rows are restricted to; null is all players. */
+  roster: RosterFilter | null;
 }
+
+export type RosterFilter = "mine" | "rostered" | "fa";
+const ROSTER_FILTERS: readonly RosterFilter[] = ["mine", "rostered", "fa"];
 
 export interface QueryOrder {
   metric: string;
@@ -56,6 +61,7 @@ export const EMPTY_QUERY: QueryState = {
   subject: "players",
   teams: [],
   side: "offense",
+  roster: null,
 };
 
 const KEYS = {
@@ -70,6 +76,7 @@ const KEYS = {
   subject: "who",
   teams: "t",
   side: "side",
+  roster: "lg",
 } as const;
 const SPLITS: readonly Split[] = ["season", "week"];
 const GRANULARITIES: readonly GranularityMode[] = ["total", "per_game", "per_play"];
@@ -138,6 +145,7 @@ export function parseQuery(params: URLSearchParams, knownFilterIds?: ReadonlySet
     subject: params.get(KEYS.subject) === "teams" ? "teams" : "players",
     teams: unique(params.getAll(KEYS.teams).filter((id) => getTeamById(id))).slice(0, MAX_PINNED_TEAMS),
     side: params.get(KEYS.side) === "defense" ? "defense" : "offense",
+    roster: ROSTER_FILTERS.find((r) => r === params.get(KEYS.roster)) ?? null,
   };
 }
 
@@ -172,6 +180,9 @@ export function writeQuery(base: URLSearchParams, state: QueryState): URLSearchP
   if (state.side === "defense") {
     next.set(KEYS.side, "defense");
   }
+  if (state.roster) {
+    next.set(KEYS.roster, state.roster);
+  }
   return next;
 }
 
@@ -194,6 +205,7 @@ export function queryKey(state: QueryState): string {
     state.subject,
     state.teams,
     state.side,
+    state.roster,
   ]);
 }
 
@@ -247,6 +259,10 @@ export function setSubject(state: QueryState, subject: QueryState["subject"]): Q
 
 export function setSide(state: QueryState, side: Side): QueryState {
   return { ...state, side };
+}
+
+export function setRoster(state: QueryState, roster: RosterFilter | null): QueryState {
+  return { ...state, roster };
 }
 
 export function toggleTeam(state: QueryState, id: string): QueryState {

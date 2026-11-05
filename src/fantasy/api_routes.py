@@ -30,6 +30,7 @@ from fantasy.api_models import (
     MarketValueRow,
     OddsHistoryRow,
     OutlookRow,
+    OwnersData,
     PartnerRow,
     PlayerWeekRow,
     PowerRankingRow,
@@ -363,6 +364,17 @@ def outlook(
     league: str, scope: Literal["mine", "league", "free"] = "mine", team: Team = None
 ) -> Any:
     return guarded(as_team(team, lambda: rows(data_api.player_outlook(league, scope))))
+
+
+@router.get("/leagues/{league}/owners", response_model=Envelope[OwnersData])
+def owners(league: str, team: Team = None) -> Any:
+    def build() -> dict[str, Any]:
+        return {
+            "rows": rows(data_api.player_owners(league)),
+            "unmatched": data_api.rostered_unmatched(league),
+        }
+
+    return guarded(as_team(team, build))
 
 
 # --- simulations as jobs -----------------------------------------------------------------

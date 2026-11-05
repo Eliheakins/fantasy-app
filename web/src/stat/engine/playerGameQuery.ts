@@ -11,7 +11,7 @@ import type { QueryResult } from "@/stat/types/workbench";
 
 import type { ColumnSource, ColumnStore } from "./columns";
 import { columnsIn, compileRowExpression, parseExpression } from "./expression";
-import type { StatQueryParams } from "./statQuery";
+import type { PlayerSet, StatQueryParams } from "./statQuery";
 
 /**
  * Tier 1: one row per player per game with the official counting totals. It answers a counting stat
@@ -45,10 +45,14 @@ export function canServeFromPlayerGame(params: StatQueryParams): boolean {
   );
 }
 
-/** Who a query reports on: the named players, or everyone when none are named. */
-export const wantedPlayers = (gsisIds: string[] | null): ((id: string) => boolean) => {
+/** Who a query reports on: the named players (everyone when none are named), narrowed to the player set. */
+export const wantedPlayers = (
+  gsisIds: string[] | null,
+  playerSet?: PlayerSet | null,
+): ((id: string) => boolean) => {
   const named = gsisIds === null ? null : new Set(gsisIds);
-  return (id) => named === null || named.has(id);
+  const inSet = playerSet ? new Set(playerSet.ids) : null;
+  return (id) => (named === null || named.has(id)) && (!playerSet || inSet!.has(id) !== playerSet.exclude);
 };
 
 const numberAt = (column: ArrayLike<unknown>, row: number): number => Number(column[row]) || 0;
@@ -79,7 +83,7 @@ export async function runPlayerGameQuery(
   signal?.throwIfAborted();
 
   const keep = whereNode ? compileRowExpression(whereNode, table.cols) : null;
-  const wanted = wantedPlayers(params.gsisIds);
+  const wanted = wantedPlayers(params.gsisIds, params.playerSet);
   const ids = table.cols.gsis_id!;
   const keyOf = splitKeyer(table.cols, params.split);
   const rowsByGroup = new Map<string, { playerId: string; games: number[] }>();

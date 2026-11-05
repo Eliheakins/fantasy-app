@@ -11,6 +11,7 @@ import { formatMetricValueHeader, metricSelectAlias } from "@/stat/lib/queryBuil
 import { formatQueryValue } from "@/stat/lib/formatQueryValue";
 import type { NFLPlayer, QueryResult } from "@/stat/types/workbench";
 import { useQueryState } from "@/features/explore/useQueryState";
+import { useLeagueOwners } from "@/features/explore/useLeagueOwners";
 import { isLeagueQuery } from "@/stat/lib/queryUrl";
 
 export interface ExploreResultsCanvasProps {
@@ -62,6 +63,7 @@ export function ExploreResultsCanvas({
   }, [selectedStatIds, activeGranularity]);
 
   const forTeams = state.subject === "teams";
+  const { byPlayer: owners } = useLeagueOwners();
   const idColumn = forTeams ? "team_id" : "player_id";
 
   // Who each row is: a player's name, or a team's.
@@ -196,7 +198,16 @@ export function ExploreResultsCanvas({
                     const label = nameByGsis.get(pid) ?? pid;
                     return (
                       <tr key={`${pid}-${i}`} className="border-b border-border/80 last:border-0">
-                        <td className="px-3 py-2 font-medium text-text">{label}</td>
+                        <td className="px-3 py-2 font-medium text-text">
+                          {label}
+                          {/* The owner on every row is intended (issue #70); free agents have none. */}
+                          {!forTeams && owners?.get(pid) ? (
+                            <span className="ml-2 text-caption font-normal text-muted">
+                              <span className="sr-only">, owned by </span>
+                              {owners.get(pid)!.owner}
+                            </span>
+                          ) : null}
+                        </td>
                         {result.columns
                           .filter((col) => col !== idColumn)
                           .map((col) => (

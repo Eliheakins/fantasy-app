@@ -115,6 +115,21 @@ describe("runPlayerGameQuery", () => {
     expect(result.rows).toEqual([{ player_id: QB, m_pass_yards: 500 }]);
   });
 
+  it("leaves out players outside the player set before ranking", async () => {
+    const { store } = memoryStore();
+    const rows = async (exclude: string) =>
+      (
+        await runPlayerGameQuery(
+          params({ gsisIds: null, playerSet: { ids: [exclude], exclude: true } }),
+          TABLE,
+          store,
+        )
+      ).rows.map((r) => r.player_id);
+
+    expect(await rows(QB)).toEqual([]); // the RB has no passing yards, so nobody is left
+    expect(await rows(RB)).toEqual([QB]); // the other player stays
+  });
+
   it("includes every season and season type when no chip narrows them", async () => {
     const { store } = memoryStore();
 

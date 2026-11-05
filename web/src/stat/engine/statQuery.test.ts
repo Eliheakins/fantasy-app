@@ -341,6 +341,25 @@ describe("league queries, ordering and limits", () => {
     expect(ids(result)).toEqual([Q2]);
   });
 
+  it("ranks only inside a player set, so the top player outside it is not shown", async () => {
+    const { store: s } = store();
+    const order = { metric: "pass_yards", direction: "desc" } as const;
+
+    const inSet = await runStatQuery(league({ order, limit: 1, playerSet: { ids: [Q1], exclude: false } }), s);
+    const outOfSet = await runStatQuery(league({ order, limit: 1, playerSet: { ids: [Q2], exclude: true } }), s);
+
+    expect(ids(inSet)).toEqual([Q1]); // Q2 has more yards but is not in the set
+    expect(ids(outOfSet)).toEqual([Q1]);
+  });
+
+  it("narrows pinned players to the set", async () => {
+    const { store: s } = store();
+
+    const result = await runStatQuery(base({ gsisIds: [Q1, Q2], playerSet: { ids: [Q2], exclude: false } }), s);
+
+    expect(ids(result)).toEqual([Q2]);
+  });
+
   it("puts a player with no value last whichever way it sorts", async () => {
     const { store: s } = store();
 

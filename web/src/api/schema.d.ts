@@ -458,6 +458,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/owners": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Owners */
+        get: operations["owners_api_leagues__league__owners_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/win-probability": {
         parameters: {
             query?: never;
@@ -702,6 +719,18 @@ export interface components {
              */
             status: "ok" | "running" | "error";
             data: components["schemas"]["DigestData"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[OwnersData] */
+        Envelope_OwnersData_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["OwnersData"] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -1517,6 +1546,22 @@ export interface components {
             label: string;
             /** Why */
             why: string;
+        };
+        /** OwnerRow */
+        OwnerRow: {
+            /** Gsis Id */
+            gsis_id: string;
+            /** Owner */
+            owner: string;
+            /** Is Mine */
+            is_mine: boolean;
+        };
+        /** OwnersData */
+        OwnersData: {
+            /** Rows */
+            rows: components["schemas"]["OwnerRow"][];
+            /** Unmatched */
+            unmatched: number;
         };
         /** PartnerRow */
         PartnerRow: {
@@ -2843,6 +2888,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_OutlookRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    owners_api_leagues__league__owners_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_OwnersData_"];
                 };
             };
             /** @description Validation Error */

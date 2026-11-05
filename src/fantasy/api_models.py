@@ -265,6 +265,17 @@ class OutlookRow(Row):
     why: str
 
 
+class OwnerRow(Row):
+    gsis_id: str
+    owner: str
+    is_mine: bool
+
+
+class OwnersData(Row):
+    rows: list[OwnerRow]
+    unmatched: int
+
+
 class OptionRow(Row):
     option: str
     win_prob: float

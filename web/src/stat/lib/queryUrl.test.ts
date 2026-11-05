@@ -18,6 +18,7 @@ import {
   setGranularity,
   setMinPlays,
   setRanking,
+  setRoster,
   setSide,
   setSplit,
   setSubject,
@@ -44,6 +45,7 @@ const FULL: QueryState = {
   subject: "players",
   teams: [],
   side: "offense",
+  roster: "mine",
 };
 
 describe("serializeQuery and parseQuery", () => {
@@ -66,6 +68,27 @@ describe("serializeQuery and parseQuery", () => {
     expect(serializeQuery(EMPTY_QUERY).toString()).toBe("");
     expect(serializeQuery({ ...EMPTY_QUERY, granularity: "per_game" }).toString()).toBe("g=per_game");
     expect(serializeQuery({ ...EMPTY_QUERY, minPlays: 10 }).toString()).toBe("m=10");
+  });
+
+  it("writes the league filter as lg and reads it back", () => {
+    for (const roster of ["mine", "rostered", "fa"] as const) {
+      const text = serializeQuery({ ...EMPTY_QUERY, roster }).toString();
+      expect(text).toBe(`lg=${roster}`);
+      expect(parse(text).roster).toBe(roster);
+    }
+    expect(queryKey({ ...EMPTY_QUERY, roster: "fa" })).not.toBe(queryKey(EMPTY_QUERY));
+  });
+
+  it("ignores a bad lg value, and absent means all players", () => {
+    expect(parse("lg=everyone").roster).toBeNull();
+    expect(parse("lg=").roster).toBeNull();
+    expect(parse("").roster).toBeNull();
+  });
+
+  it("sets and clears the league filter without touching the rest", () => {
+    const withPin = pinPlayer(EMPTY_QUERY, "00-1");
+    expect(setRoster(withPin, "fa")).toEqual({ ...withPin, roster: "fa" });
+    expect(setRoster(setRoster(withPin, "fa"), null)).toEqual(withPin);
   });
 
   it("parses an empty or unrelated query string to the empty query", () => {

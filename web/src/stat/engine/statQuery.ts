@@ -35,11 +35,19 @@ export const GAME_SCOPE_GROUP_IDS = ["season", "season_type", "week", "location"
 const ROLE_COLUMNS = ["passer_player_id", "rusher_player_id", "receiver_player_id"] as const;
 const SUM_OF_COLUMN = /^SUM\((\w+)\)$/i;
 
+/** A set of players a query is restricted to (`exclude` false) or kept out of (`exclude` true), before ranking. */
+export interface PlayerSet {
+  ids: string[];
+  exclude: boolean;
+}
+
 export interface StatQueryParams {
   statIds: string[];
   filterChipState: Record<string, boolean>;
   /** The players to report on, or null for everyone with the stat (a league-wide query). */
   gsisIds: string[] | null;
+  /** Narrows the players (named or everyone) to a set, such as a league's free agents; ignored for teams. */
+  playerSet?: PlayerSet | null;
   /** The season files that hold these players; season chips narrow which of them are read. */
   sources: ColumnSource[];
   /** The tier-1 player-game table; counting stats come from it when no situational filter is on. */
@@ -236,7 +244,7 @@ async function runUnordered(params: StatQueryParams, store: ColumnStore, signal?
   const table = await store.table(sources, [...needed], signal);
   signal?.throwIfAborted();
 
-  const wanted = wantedPlayers(teams ? teams.ids : params.gsisIds);
+  const wanted = wantedPlayers(teams ? teams.ids : params.gsisIds, teams ? null : params.playerSet);
   const keyOf = splitKeyer(table.cols, params.split);
   const chip = chipNode ? compileRowExpression(chipNode, table.cols) : null;
   const scope = scopeNode ? compileRowExpression(scopeNode, table.cols) : null;
