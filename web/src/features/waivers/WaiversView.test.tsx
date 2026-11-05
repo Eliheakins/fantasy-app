@@ -32,10 +32,14 @@ describe("WaiversView", () => {
     expect(screen.getByText("Run the streaming stage to see this.")).toBeInTheDocument();
     expect(screen.getByText(/rank 2 of 12/)).toBeInTheDocument();
   });
+  it("links the name to the player page", () => {
+    render(<WaiversView {...base} />);
+    expect(screen.getAllByRole("link", { name: "Jane Doe" })[0]).toHaveAttribute("href", "/players/g1");
+  });
   it("selects a row", async () => {
     const onSelect = vi.fn();
     render(<WaiversView {...base} onSelect={onSelect} />);
-    await userEvent.click(screen.getAllByRole("button", { name: "Jane Doe" })[0]!);
+    await userEvent.click(screen.getAllByRole("button", { name: "Details for Jane Doe" })[0]!);
     expect(onSelect).toHaveBeenCalledWith("g1");
   });
   it("shows the chart data table for a selected row", () => {

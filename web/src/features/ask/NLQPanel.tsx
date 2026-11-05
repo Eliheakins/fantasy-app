@@ -1,3 +1,4 @@
+import { PlayerLink } from "@/components/PlayerLink";
 import { type KeyboardEvent, useMemo } from "react";
 import { Link } from "react-router-dom";
 
@@ -50,6 +51,7 @@ export function NLQPanel() {
   );
 
   const leagueName = useLeagueName();
+  const positionByGsis = useMemo(() => new Map(exec.namedPlayers.map((p) => [p.gsis_id, p.position ?? ""])), [exec.namedPlayers]);
   const answer = useMemo(() => {
     if (!showingAnswer || !exec.result || exec.result.rows.length === 0) {
       return null;
@@ -113,8 +115,12 @@ export function NLQPanel() {
             <section aria-label="Answer" className="space-y-1 border-t border-border pt-3">
               <p className="text-caption font-medium uppercase tracking-wide text-muted">{answer.context}</p>
               <ul className="space-y-1 text-body text-text">
-                {answer.lines.map((line) => (
-                  <li key={line}>{line}</li>
+                {answer.parts.map((p, i) => (
+                  <li key={answer.lines[i]}>
+                    {p.before}
+                    {p.gsisId ? <PlayerLink gsisId={p.gsisId} name={p.name} position={positionByGsis.get(p.gsisId) ?? ""} /> : p.name}
+                    {p.after}
+                  </li>
                 ))}
               </ul>
               {ask.path ? (

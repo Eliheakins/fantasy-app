@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 
 import { ApiBoundary } from "@/components/ApiBoundary";
+import { PlayerLink } from "@/components/PlayerLink";
 import { Callout } from "@/components/Callout";
 import { navSearch } from "@/components/layout/navLinks";
 import type { LineupRow } from "@/features/lineup/logic";
@@ -101,7 +102,7 @@ function Ranges({ found }: { found: Found[] }) {
     <ul className="space-y-1">
       {found.map((p) => (
         <li key={p.row.gsis_id} className="flex flex-wrap items-center gap-3 text-body">
-          <span className="w-40 text-text">{p.name}</span>
+          <span className="w-40 text-text"><PlayerLink gsisId={p.row.gsis_id} name={p.name} position={p.row.position} /></span>
           <span className="w-12 tabular-nums text-text">{formatNumber(p.row.projection)}</span>
           <RangeBar domain={domain} width={RANGE_WIDTH} p10={p.row.p10} p50={p.row.projection} p90={p.row.p90} />
         </li>

@@ -1,3 +1,4 @@
+import { PlayerLink } from "@/components/PlayerLink";
 import { useEffect, useMemo, useState } from "react";
 
 import { buildScatterPoints, StatScatterChart } from "@/features/explore/StatScatterChart";
@@ -79,6 +80,10 @@ export function ExploreResultsCanvas({
     }
     return m;
   }, [forTeams, pinnedPlayers, namedPlayers]);
+  const positionByGsis = useMemo(
+    () => new Map((namedPlayers ?? pinnedPlayers).map((p) => [p.gsis_id, p.position ?? ""])),
+    [pinnedPlayers, namedPlayers],
+  );
   const hasSubject = isLeagueQuery(state) || (forTeams ? state.teams.length > 0 : pinnedPlayers.length > 0);
 
   const scatterPoints = useMemo(() => {
@@ -206,7 +211,7 @@ export function ExploreResultsCanvas({
                     return (
                       <tr key={`${pid}-${i}`} className="border-b border-border/80 last:border-0">
                         <td className="px-3 py-2 font-medium text-text">
-                          {label}
+                          {forTeams ? label : <PlayerLink gsisId={pid || null} name={label} position={positionByGsis.get(pid) ?? ""} />}
                           {/* The owner on every row is intended (issue #70); free agents have none. */}
                           {!forTeams && owners?.get(pid) ? (
                             <span className="ml-2 text-caption font-normal text-muted">

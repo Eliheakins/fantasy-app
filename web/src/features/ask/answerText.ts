@@ -25,6 +25,8 @@ export interface Answer {
   context: string;
   /** One line per player, or per player and season or week when split. */
   lines: string[];
+  /** The same lines split around the name, so the name can be a link (gsisId is null for team rows). */
+  parts: { before: string; name: string; after: string; gsisId: string | null }[];
 }
 
 const NO_FILTERS_CONTEXT = "All loaded seasons";
@@ -62,18 +64,23 @@ export function buildAnswer({
   leagueName = null,
 }: AnswerInput): Answer {
   const labels = filterLabels(filterIds, chipGroups);
-  const lines = result.rows.map((row, rank) => {
+  const parts = result.rows.map((row, rank) => {
     const pid = String(row[idColumn] ?? "");
     const name = nameByGsis.get(pid) ?? pid;
     const when = [row.season, row.week === undefined ? undefined : `week ${String(row.week)}`].filter(
       (v) => v !== undefined,
     );
-    const who = when.length > 0 ? `${name}, ${when.join(" ")}` : name;
     const metrics = statIds.map((id) => {
       const header = formatMetricValueHeader(getStatById(id), granularity, leagueName);
       return `${header}: ${formatQueryValue(row[metricSelectAlias(id)])}`;
     });
-    return `${ranked ? `${rank + 1}. ` : ""}${who} — ${metrics.join(" · ")}`;
+    return {
+      before: ranked ? `${rank + 1}. ` : "",
+      name,
+      after: `${when.length > 0 ? `, ${when.join(" ")}` : ""} — ${metrics.join(" · ")}`,
+      gsisId: idColumn === "player_id" && pid ? pid : null,
+    };
   });
-  return { context: labels.length > 0 ? labels.join(", ") : NO_FILTERS_CONTEXT, lines };
+  const lines = parts.map((p) => `${p.before}${p.name}${p.after}`);
+  return { context: labels.length > 0 ? labels.join(", ") : NO_FILTERS_CONTEXT, lines, parts };
 }

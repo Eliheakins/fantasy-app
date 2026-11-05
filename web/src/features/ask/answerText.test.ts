@@ -35,6 +35,20 @@ describe("buildAnswer", () => {
     expect(answer.lines).toEqual(["Patrick Mahomes — Pass yards (total): 4183 · Pass TDs (total): 27"]);
   });
 
+  it("splits each line around the name so it can be a link", () => {
+    const answer = buildAnswer({
+      result: { columns: ["player_id", passYards], rows: [{ player_id: "m", [passYards]: 10 }] },
+      statIds: ["pass_yards"],
+      granularity: "total",
+      filterIds: [],
+      chipGroups: CHIP_GROUPS,
+      nameByGsis: NAMES,
+      ranked: true,
+    });
+    expect(answer.parts[0]).toMatchObject({ before: "1. ", name: NAMES.get("m"), gsisId: "m" });
+    expect(answer.lines[0]).toBe(`${answer.parts[0]!.before}${answer.parts[0]!.name}${answer.parts[0]!.after}`);
+  });
+
   it("prefixes non-season filters with their group and joins several", () => {
     const answer = buildAnswer({
       result: { columns: ["player_id", passYards], rows: [] },

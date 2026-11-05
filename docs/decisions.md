@@ -830,3 +830,9 @@ Two research agents surveyed the decision code (assumptions with file and line) 
 - **Phone.** Below 768 px the band keeps the team name and compact selects and the Ask field becomes an icon link to `/ask`; the five tabs are the bottom bar.
 - **Test setup.** `test/setup.ts` polyfills the pointer-capture and scroll APIs Radix Select needs in jsdom.
 
+
+## 2026-11-04: Player page replaces the side sheet (slice U1b)
+
+- **One home for a player.** `/players/:gsisId` (`pages/Player.tsx`) holds what the sheet showed: the name as h1, an eyebrow "Players · position · team", the owner line, this season's game log joined with league points by week, and Open in Explore. The side sheet (`PlayerSheet`, its Radix Dialog) is deleted; the body moved to `features/players/PlayerGameLog.tsx` and `useGameLog.ts`. Position and team now come from the player list (`usePlayer`), so the page needs only the id. An unknown id shows "Player not found" with a link to Players; load errors use `ApiBoundary`. No projections on the page yet (U7 adds the full anatomy).
+- **Every name links there.** `PlayerLink` is a router link to `/players/:gsisId` carrying `league`, `team` and `week` (`navSearch`). No id, K and DEF stay plain text (no game log to show).
+- **Routing.** `/players/find` is declared before the param route and also static routes rank above params in React Router, so Explore still wins; the Players tab stays active on both.

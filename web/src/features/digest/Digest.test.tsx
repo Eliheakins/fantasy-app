@@ -55,7 +55,7 @@ describe("Digest page", () => {
   it("lists the players to watch with every reason, and says so when no one is flagged", () => {
     respond(ready(base));
     const { unmount } = render(<Digest />);
-    expect(screen.getByRole("button", { name: "Hampton, open stats" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Hampton" })).toBeInTheDocument();
     expect(screen.getByText(/snap share 54% before, 38% in the last 3 games; market value down 67%/)).toBeInTheDocument();
     unmount();
     respond(ready({ ...base, watch: [] }));

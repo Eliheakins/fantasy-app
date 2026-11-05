@@ -12,6 +12,12 @@ export function pageTitle(pathname: string): string {
   return NAV_ITEMS.find((n) => n.path === path)?.title ?? EXTRA_TITLES[path] ?? NOT_FOUND_TITLE;
 }
 
+/** `/players/:gsisId` (not `/players/find`): the page sets its own title once the player's name is known. */
+const isPlayerPage = (pathname: string): boolean => /^\/players\/[^/]+$/.test(pathname) && pageTitle(pathname) === NOT_FOUND_TITLE;
+
+/** "Jaxon Smith-Njigba · Fantasy". */
+export const playerDocumentTitle = (name: string): string => `${name} · ${SITE}`;
+
 /** "Lineup · Fantasy", with the viewed team inserted when it is not mine. */
 export function documentTitle(pathname: string, viewedTeam: string | null): string {
   return [pageTitle(pathname), viewedTeam, SITE].filter(Boolean).join(" · ");
@@ -23,7 +29,7 @@ export function useRouteAnnounce(viewedTeam: string | null): void {
   const { pathname } = useLocation();
   const first = useRef(true);
   useEffect(() => {
-    document.title = documentTitle(pathname, viewedTeam);
+    if (!isPlayerPage(pathname)) document.title = documentTitle(pathname, viewedTeam);
   }, [pathname, viewedTeam]);
   useEffect(() => {
     if (first.current) {

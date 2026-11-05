@@ -9,6 +9,7 @@ vi.mock("@/pages/DevViz", async () => ({ default: (await import("@/test/stubPage
 vi.mock("@/pages/Explore", async () => ({ default: (await import("@/test/stubPage")).stubPage("Explore") }));
 vi.mock("@/pages/Lineup", async () => ({ default: (await import("@/test/stubPage")).stubPage("Lineup") }));
 vi.mock("@/pages/Moves", async () => ({ default: (await import("@/test/stubPage")).stubPage("Moves") }));
+vi.mock("@/pages/Player", async () => ({ default: (await import("@/test/stubPage")).stubPage("Player") }));
 vi.mock("@/pages/Players", async () => ({ default: (await import("@/test/stubPage")).stubPage("Players") }));
 vi.mock("@/pages/Scorecard", async () => ({ default: (await import("@/test/stubPage")).stubPage("Model") }));
 vi.mock("@/pages/Season", async () => ({ default: (await import("@/test/stubPage")).stubPage("Season") }));
@@ -64,6 +65,22 @@ describe("route config", () => {
   it("mounts /players/find on Explore, not Players", async () => {
     open("/players/find?s=rec_yards");
     expect(await screen.findByTestId("page")).toHaveTextContent("Explore /players/find?s=rec_yards");
+  });
+
+  it("mounts /players/:gsisId on the player page and keeps the Players tab active there and on /players/find", async () => {
+    for (const [path, name] of [["/players/00-0012345?league=a", "Player"], ["/players/find", "Explore"]] as const) {
+      const router = createMemoryRouter(routes, { initialEntries: [path] });
+      const view = render(
+        <QueryClientProvider client={new QueryClient()}>
+          <LeagueProvider>
+            <RouterProvider router={router} />
+          </LeagueProvider>
+        </QueryClientProvider>,
+      );
+      expect(await screen.findByTestId("page")).toHaveTextContent(`${name} ${path.split("?")[0]}`);
+      expect(screen.getAllByRole("link", { name: "Players" }).some((l) => l.getAttribute("aria-current") === "page")).toBe(true);
+      view.unmount();
+    }
   });
 
   it("mounts each tab and the non-tab routes", async () => {

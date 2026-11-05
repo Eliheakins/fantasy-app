@@ -26,13 +26,17 @@ function columns(selected: string | null, onSelect: (id: string) => void): Colum
       role: "primary",
       render: (r) => (
         <>
-          <button type="button" className={BTN} aria-pressed={selected === r.gsis_id} onClick={() => onSelect(r.gsis_id)}>
-            {r.full_name}
-          </button>{" "}
+          <PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} />{" "}
           <span className="text-caption font-normal text-muted">{r.position}</span>{" "}
-          <span className="text-caption font-normal">
-            <PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} text="stats" />
-          </span>
+          <button
+            type="button"
+            className={BTN}
+            aria-label={`Details for ${r.full_name}`}
+            aria-pressed={selected === r.gsis_id}
+            onClick={() => onSelect(r.gsis_id)}
+          >
+            Details
+          </button>
         </>
       ),
     },
