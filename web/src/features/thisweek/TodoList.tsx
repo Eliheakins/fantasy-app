@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom";
 import { Delta, NOISE_PERCENT } from "@/viz";
-import type { Todo } from "./todos";
+import type { Effect, Todo } from "./todos";
 import { dayLabel } from "./weekLogic";
 
-export function EffectText({ todo }: { todo: Todo }) {
+export function EffectText({ todo }: { todo: { effect: Effect } }) {
   const { playoffPoints, points } = todo.effect;
   if (playoffPoints === null && points === null) return null;
   return (

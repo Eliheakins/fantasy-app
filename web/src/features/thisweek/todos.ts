@@ -21,7 +21,7 @@ export type Todo = {
 };
 
 /** A stored add under this (0.5 playoff points) is inside the noise; same bar as the Do this now action. */
-const MIN_PLAYOFF_GAIN = 0.005;
+export const MIN_PLAYOFF_GAIN = 0.005;
 const PERCENT = 100;
 
 /** 0: has a playoff-odds effect, 1: only fantasy points, 2: no number. Units are never converted. */
@@ -30,7 +30,7 @@ function tier(e: Effect): number {
   return e.points !== null ? 1 : 2;
 }
 
-function compareEffect(a: Todo, b: Todo): number {
+function compareEffect(a: { effect: Effect }, b: { effect: Effect }): number {
   const ta = tier(a.effect);
   const tb = tier(b.effect);
   if (ta !== tb) return ta - tb;
@@ -40,7 +40,7 @@ function compareEffect(a: Todo, b: Todo): number {
 }
 
 /** Biggest effect first. Array.sort is stable, so ties keep their order; the input is not changed. */
-export const rankTodos = (todos: readonly Todo[]): Todo[] => [...todos].sort(compareEffect);
+export const rankTodos = <T extends { effect: Effect }>(todos: readonly T[]): T[] => [...todos].sort(compareEffect);
 
 /** What expires first goes first (no deadline last); within one day, the effect ranking. */
 export function orderByDeadline(todos: readonly Todo[]): Todo[] {
