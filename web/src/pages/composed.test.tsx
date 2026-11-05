@@ -23,7 +23,7 @@ describe("composed pages", () => {
   it.each([
     ["What should I do this week?", ThisWeek],
     ["Season", Season],
-    ["Players", Players],
+    ["Your players", Players],
   ])("%s has exactly one h1", (title, Page) => {
     render(<MemoryRouter><Page /></MemoryRouter>);
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);

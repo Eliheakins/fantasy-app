@@ -44,10 +44,10 @@ export function QueryBuilderPanel() {
   return (
     <>
       <PageHeader
-        title="Explore"
+        title="Find players"
         subtitle={
           <>
-            Pin players, pick metrics, and filter context; results update below.
+            Find players by any stat: pin players or search by name, pick metrics and filter the context; results update below.
             {freshness ? ` Data through ${freshness}.` : ""}
           </>
         }
@@ -56,7 +56,7 @@ export function QueryBuilderPanel() {
       <div className="lg:grid lg:grid-cols-[360px_1fr] lg:items-start lg:gap-6">
         <aside
           aria-label="Query builder"
-          className="hidden lg:border-r lg:border-line lg:pr-4 flex-col lg:sticky lg:top-4 lg:flex lg:max-h-[calc(100dvh-2rem)]"
+          className="hidden lg:border-r lg:border-line lg:pr-4 flex-col lg:sticky lg:top-[calc(var(--chrome-h)+1rem)] lg:flex lg:max-h-[calc(100dvh-var(--chrome-h)-2rem)]"
         >
           <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto pb-4">
             <QueryBuilderSidebarScroll {...sidebarScrollProps} />

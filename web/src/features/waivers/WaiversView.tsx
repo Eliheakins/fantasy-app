@@ -46,7 +46,7 @@ export function WaiversView({ adds, strength, def, kickers, weeks, selected, onS
             ) : (
               <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start xl:gap-6">
                 <AddsTable rows={rows} selected={selected} onSelect={onSelect} />
-                <div ref={chartRef} className="mt-4 xl:sticky xl:top-16 xl:mt-0">
+                <div ref={chartRef} className="mt-4 xl:sticky xl:top-[calc(var(--chrome-h)+1rem)] xl:mt-0">
                   {selected === null ? (
                     <p className="hidden text-caption text-muted xl:block">{CHART_HINT}</p>
                   ) : (

@@ -46,6 +46,8 @@
   --lf-warning-edge: #f3dfae;
   --page-pad: 24px;
   --row-y: 8px;
+  /* height of the sticky header (team row and tabs) from 768 px up; other sticky parts sit below it */
+  --chrome-h: 108px;
 }
 
 /* Small screens: tighten the page padding so tables stay readable. */
@@ -54,6 +56,7 @@
     --page-pad: 12px;
     --fs-h1: 30px;
     --lh-h1: 36px;
+    --chrome-h: 0px;
   }
 }
 
