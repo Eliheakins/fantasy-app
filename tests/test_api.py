@@ -555,7 +555,12 @@ def test_trade_find_is_a_job(client: TestClient, monkeypatch: pytest.MonkeyPatch
 
 def test_openapi_snapshot_matches_the_app() -> None:
     committed = json.loads((ROOT / "web" / "openapi.json").read_text())
-    assert committed == json.loads(json.dumps(api.create_app().openapi()))
+    live = json.loads(json.dumps(api.create_app().openapi()))
+    assert committed == live, (
+        "web/openapi.json is stale: regenerate with "
+        "`uv run python -m fantasy.api --openapi > web/openapi.json`, "
+        "then `cd web && npm run types`"
+    )
     assert all(p.startswith("/api/") or p == "/api" for p in committed["paths"])
 
 
