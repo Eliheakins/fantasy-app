@@ -3,12 +3,13 @@
 
 /* Design tokens (docs/spec/dashboard.md rules survive every theme: semantic colour only for change
    and warnings, ranges grey, contrast measured in CONTRAST.md).
-   The app is dark graphite with one cool accent. .theme-light / .theme-dark exist only so /dev/viz
-   can show both side by side. */
+   Look F (light): page #FBFBF8, ink #13201A, Forest band #123D2C. The graphite names (--page, --surface, --text,
+   --accent ...) keep their names for now and point at look F values in :root; slice U2 restyles every component
+   and deletes the graphite set. .theme-light / .theme-dark exist only so /dev/viz can show both side by side. */
 
 :root {
   --font-body: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-display: var(--font-body);
+  --font-display: Newsreader, Georgia, "Times New Roman", serif;
   --fs-display: 28px;
   --lh-display: 36px;
   --fs-title: 24px;
@@ -25,8 +26,60 @@
   --th-size: var(--fs-caption);
 }
 
-/* Graphite: soft surfaces lifted by elevation, one cool accent. */
-:root,
+/* Look F tokens (docs/spec/dashboard.md "Look F"). */
+:root {
+  color-scheme: light;
+  --lf-page: #fbfbf8;
+  --lf-panel: #edf3ee;
+  --lf-panel-line: #d6e3da;
+  --lf-page-line: #e4e8e3;
+  --lf-ink: #13201a;
+  --lf-label: #2e3a33;
+  --lf-muted: #56635c;
+  --lf-faint: #6b776f;
+  --lf-forest: #123d2c;
+  --lf-accent: #1f5a43;
+  --lf-chrome-label: #9cc7b2;
+  --lf-chrome-text: #e6f0ea;
+  --lf-better: #157a3d;
+  --lf-worse: #b4261a;
+  --lf-noise: #56635c;
+  --lf-warning: #6b4200;
+  --lf-warning-bg: #fff4db;
+  --lf-warning-edge: #f3dfae;
+}
+
+/* Graphite names, now carrying look F values; the set below is the old dark theme, kept for /dev/viz only. */
+:root {
+  --page: var(--lf-page);
+  --surface: var(--lf-panel);
+  --border: var(--lf-panel-line);
+  --text: var(--lf-ink);
+  --text-muted: var(--lf-muted);
+  --mark-muted: var(--lf-noise);
+  --accent: var(--lf-accent);
+  --accent-fg: #ffffff;
+  --positive: var(--lf-better);
+  --negative: var(--lf-worse);
+  --warning: var(--lf-warning);
+  --warning-bg: var(--lf-warning-bg);
+  --range: #8a958e;
+  --tick: var(--lf-ink);
+  --focus: var(--lf-accent);
+  --nav-active-bg: var(--lf-panel);
+  --radius: 12px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
+  --border-width: 1px;
+  --card-border: var(--lf-panel-line);
+  --shadow-card: none;
+  --card-pad: 20px;
+  --page-pad: 24px;
+  --row-y: 8px;
+  --nav-edge: 0 0 0 transparent;
+}
+
+/* Graphite (dark), only inside .theme-dark in the /dev/viz gallery. */
 .theme-dark {
   color-scheme: dark;
   --page: #131417;
@@ -219,25 +272,15 @@ tbody tr {
   border-color: color-mix(in srgb, var(--border) 70%, transparent);
 }
 
-/* Nav rail and tab bar */
-nav[aria-label="Main"].hidden {
-  width: var(--rail-w);
-  border-right-color: var(--card-border);
-  background: color-mix(in srgb, var(--page) 70%, black);
-}
+/* Tabs */
 nav a {
-  border-radius: var(--radius-md);
   transition: background-color 120ms, color 120ms;
-}
-nav[aria-label="Main"].hidden a[aria-current="page"] {
-  background: var(--nav-active-bg);
-  box-shadow: var(--nav-edge);
 }
 nav[aria-label="Main tabs"] {
   border-top-color: var(--card-border);
   padding-bottom: env(safe-area-inset-bottom);
 }
-/* Phone tab bar: eight tabs in ~49 px each, so a smaller label; the active tab gets a bar and a fill. */
+/* Phone tab bar: five tabs, a small label; the active tab gets a bar on top. */
 .tab-label {
   font-size: 11px;
   line-height: 14px;
@@ -246,8 +289,7 @@ nav[aria-label="Main tabs"] a {
   border-radius: 0;
 }
 nav[aria-label="Main tabs"] a[aria-current="page"] {
-  background: var(--nav-active-bg);
-  box-shadow: inset 0 3px 0 var(--accent);
+  box-shadow: inset 0 3px 0 var(--lf-forest);
 }
 .tab-bar-offset {
   padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
@@ -257,8 +299,13 @@ nav[aria-label="Main tabs"] a[aria-current="page"] {
     padding-bottom: 0;
   }
 }
-header {
-  border-bottom-color: var(--card-border);
+/* On the Forest band the focus ring is white: #1F5A43 would vanish against #123D2C. */
+/* Programmatic focus on a tabindex=-1 target (the page h1, main) moves screen readers without drawing a box. */
+[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+.on-chrome *:focus-visible {
+  outline-color: #ffffff;
 }
 
 /* Disabled controls read as unavailable, not washed out: flat, muted text at 4.5:1 or better on the surface. */

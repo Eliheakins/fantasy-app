@@ -8,7 +8,7 @@ const link = (position: string, gsisId: string | null = "00-0033873", search = "
 describe("statLink", () => {
   it("opens a WR's weekly receiving log for the season", () => {
     expect(link("WR")).toBe(
-      "/explore?p=00-0033873&s=rec_receptions&s=rec_yards&f=season-2026&f=stype-reg&by=week&g=total",
+      "/players/find?p=00-0033873&s=rec_receptions&s=rec_yards&f=season-2026&f=stype-reg&by=week&g=total",
     );
   });
   it("uses the receiving set for a TE", () => {
@@ -30,7 +30,7 @@ describe("statLink", () => {
   });
   it("keeps the viewed league and team, and nothing else from the current URL", () => {
     const url = new URL(link("QB", "00-1", "?league=a&team=2&q=old&s=rush_yards") ?? "", "http://x");
-    expect(url.pathname).toBe("/explore");
+    expect(url.pathname).toBe("/players/find");
     expect([url.searchParams.get("league"), url.searchParams.get("team")]).toEqual(["a", "2"]);
     expect(url.searchParams.getAll("s")).toEqual(["pass_yards", "pass_tds"]);
     expect(url.searchParams.has("q")).toBe(false);

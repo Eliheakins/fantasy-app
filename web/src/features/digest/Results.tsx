@@ -111,9 +111,9 @@ function Change({ fraction }: { fraction: number | null }) {
 const ODDS_COLUMNS: Column<OddsChangeRow>[] = [
   { label: "Team", role: "primary", render: (r) => (r.is_me ? `${r.team_name} (you)` : r.team_name) },
   { label: "Playoff odds", numeric: true, render: (r) => formatPercent(r.p_playoffs) },
-  { label: "Change (% pts)", numeric: true, render: (r) => <Change fraction={r.d_playoffs} /> },
+  { label: "Playoff change (% pts)", numeric: true, render: (r) => <Change fraction={r.d_playoffs} /> },
   { label: "Title odds", numeric: true, render: (r) => formatPercent(r.p_title) },
-  { label: "Change (% pts)", numeric: true, render: (r) => <Change fraction={r.d_title} /> },
+  { label: "Title change (% pts)", numeric: true, render: (r) => <Change fraction={r.d_title} /> },
 ];
 
 export function OddsChange({ rows, mineLabel }: { rows: readonly OddsChangeRow[]; mineLabel: boolean }) {

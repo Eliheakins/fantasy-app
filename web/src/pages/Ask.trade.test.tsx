@@ -86,7 +86,7 @@ describe("Ask trade", () => {
     expect(init.method).toBe("POST");
     expect(init.headers["X-Requested-With"]).toBe("fantasy-app");
     expect(JSON.parse(init.body)).toEqual({ partner_roster_id: 7, give_ids: ["kelce"], get_ids: ["kittle"] });
-    expect(screen.getByRole("link", { name: /Trades page/ })).toHaveAttribute("href", "/trades?league=a&team=2");
+    expect(screen.getByRole("link", { name: /Trades page/ })).toHaveAttribute("href", "/moves?league=a&team=2&view=trades");
     expect(callsTo("/nlq/intent")).toHaveLength(0);
   });
 
@@ -101,7 +101,7 @@ describe("Ask trade", () => {
     renderAsk("/ask?league=a&team=2&q=trade+Kelce+for+Kittle+and+Hill");
 
     expect(await screen.findByText(/different teams/)).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: /Trades page/ })[0]).toHaveAttribute("href", "/trades?league=a&team=2");
+    expect(screen.getAllByRole("link", { name: /Trades page/ })[0]).toHaveAttribute("href", "/moves?league=a&team=2&view=trades");
     expect(callsTo("/trades/evaluate")).toHaveLength(0);
   });
 

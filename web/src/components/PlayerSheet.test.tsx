@@ -143,7 +143,7 @@ describe("PlayerSheet", () => {
     const { user, dialog } = await open();
     const link = within(dialog).getByRole("link", { name: /open in explore/i });
     const href = new URL(link.getAttribute("href") ?? "", "http://x");
-    expect(href.pathname).toBe("/explore");
+    expect(href.pathname).toBe("/players/find");
     expect(href.searchParams.get("p")).toBe("00-1");
     expect(href.searchParams.get("league")).toBe("a");
     expect(href.searchParams.get("team")).toBe("2");

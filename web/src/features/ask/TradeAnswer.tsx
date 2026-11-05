@@ -24,7 +24,9 @@ interface Props extends Pick<TradeOutcome, "give" | "get"> {
 export function TradeAnswer(props: Props) {
   const owners = useLeagueApi<Owners>("owners");
   const { pathname, search } = useLocation();
-  const tradesLink = `/trades${navSearch("/trades", search, pathname)}`;
+  const params = new URLSearchParams(navSearch("/moves", search, pathname));
+  params.set("view", "trades");
+  const tradesLink = `/moves?${params.toString()}`;
   return (
     <section aria-label="Trade" className="space-y-3 border-t border-border pt-3">
       <ApiBoundary state={owners}>

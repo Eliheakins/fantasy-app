@@ -159,7 +159,7 @@ export function NLQPanel() {
           <p className="text-caption text-muted">
             Want to adjust it?{" "}
             <Link
-              to={{ pathname: "/explore", search: serializeQuery(state).toString() }}
+              to={{ pathname: "/players/find", search: serializeQuery(state).toString() }}
               className="font-medium text-text underline-offset-2 hover:underline"
             >
               Open this query in Explore

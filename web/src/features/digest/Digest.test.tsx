@@ -2,7 +2,7 @@ import { type RenderResult, render as rtlRender, screen } from "@testing-library
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import type { ApiState } from "@/api/envelope";
-import Digest from "@/pages/Digest";
+import { DigestView as Digest } from "./DigestView";
 import type { DigestData } from "./types";
 
 /** Player names link to Explore, which needs a router. */
@@ -43,7 +43,6 @@ describe("Digest page", () => {
   it("shows the result, the signed projection miss, a null projection and 'no earlier run'", () => {
     respond(ready(base));
     render(<Digest />);
-    expect(screen.getByRole("heading", { level: 1, name: "Weekly digest" })).toBeInTheDocument();
     expect(screen.getByText(/Week 6: Won 137.8 to 76.4 against Eggplant/)).toBeInTheDocument();
     expect(screen.getByText("+9.3 ▲")).toBeInTheDocument();
     expect(screen.getAllByText("no projection").length).toBeGreaterThan(0);

@@ -12,6 +12,20 @@ describe("PageHeader", () => {
   });
 });
 
+describe("PageHeader eyebrow and answer", () => {
+  it("shows the eyebrow above the h1 and the answer sentence below it", () => {
+    render(<PageHeader title="Moves" eyebrow="Moves · Week 9 · Colgate" answer={<>Add Cook for <b>+1.2</b></>} />);
+    expect(screen.getByText("Moves · Week 9 · Colgate")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Moves" })).toBeInTheDocument();
+    expect(screen.getByText(/Add Cook for/)).toBeInTheDocument();
+  });
+
+  it("renders neither without props", () => {
+    const { container } = render(<PageHeader title="Moves" />);
+    expect(container.querySelectorAll("p")).toHaveLength(0);
+  });
+});
+
 describe("Section", () => {
   it("labels the region by its h2 and folds the method note", () => {
     render(<Section title="Adds" caption="Best pickups" howCalculated="Method text">body</Section>);

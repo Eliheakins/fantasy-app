@@ -24,7 +24,7 @@ export function QueryBuilderPanel() {
   const { search } = useLocation();
   const freshness = dataThrough(manifest);
 
-  // The Explore nav link returns here with the same query after a visit to another page.
+  // The Find players link returns here with the same query after a visit to another page.
   useEffect(() => rememberExplore(search), [search]);
 
   const sidebarScrollProps = {

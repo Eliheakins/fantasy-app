@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { TopBar } from "./TopBar";
@@ -36,8 +36,8 @@ function renderBar(entry: string) {
 }
 
 describe("TopBar Ask box", () => {
-  it("opens /ask?q= keeping league and team, dropping other page keys", async () => {
-    renderBar("/lineup?league=a&team=2&week=3");
+  it("opens /ask?q= keeping league, team and week, dropping other page keys", async () => {
+    renderBar("/lineup?league=a&team=2&week=3&view=x");
 
     await userEvent.type(screen.getByRole("textbox", { name: "Ask a question" }), "start Kelce or Kittle{Enter}");
 
@@ -46,7 +46,8 @@ describe("TopBar Ask box", () => {
     expect(where.searchParams.get("q")).toBe("start Kelce or Kittle");
     expect(where.searchParams.get("league")).toBe("a");
     expect(where.searchParams.get("team")).toBe("2");
-    expect(where.searchParams.has("week")).toBe(false);
+    expect(where.searchParams.get("week")).toBe("3");
+    expect(where.searchParams.has("view")).toBe(false);
   });
 
   it("does nothing for an empty question", async () => {
@@ -57,14 +58,33 @@ describe("TopBar Ask box", () => {
     expect(screen.getByTestId("where").textContent).toBe("/lineup?league=a");
   });
 
-  it("has an icon button that shows the input on phones, and the input keeps its label", async () => {
-    renderBar("/home");
-    const button = screen.getByRole("button", { name: "Show the ask box" });
+  it("has an Ask icon link to /ask for phones, carrying league, team and week", () => {
+    renderBar("/lineup?league=a&team=2&week=3&view=x");
 
-    expect(button).toHaveAttribute("aria-expanded", "false");
-    await userEvent.click(button);
+    expect(screen.getByRole("link", { name: "Ask" })).toHaveAttribute("href", "/ask?league=a&team=2&week=3");
+  });
+});
 
-    expect(button).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("textbox", { name: "Ask a question" })).toBeInTheDocument();
+describe("TopBar week select", () => {
+  it("writes ?week= when a week is chosen", async () => {
+    renderBar("/lineup?league=a");
+
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Choose week" })).toBeEnabled());
+    await userEvent.click(screen.getByRole("combobox", { name: "Choose week" }));
+    await userEvent.click(await screen.findByRole("option", { name: "Week 7" }));
+
+    expect(new URLSearchParams(screen.getByTestId("where").textContent?.split("?")[1]).get("week")).toBe("7");
+  });
+
+  it.each(["/lineup", "/season"])("is enabled on %s", async (path) => {
+    renderBar(`${path}?league=a`);
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Choose week" })).toBeEnabled());
+  });
+
+  it.each(["/", "/moves", "/players", "/ask"])("is disabled on %s with a hint that it shows the current week", async (path) => {
+    renderBar(`${path}?league=a`);
+    const select = screen.getByRole("combobox", { name: "Choose week" });
+    expect(select).toBeDisabled();
+    expect(select).toHaveAttribute("title", "This page shows the current week");
   });
 });

@@ -36,7 +36,7 @@ function describe(query: LoggedQuery, chipGroups: FilterChipGroup[]): string {
 const reopenSearch = (entry: AskLogEntry, current: URLSearchParams): string | null => {
   if (entry.outcome.kind === "start_sit" || entry.outcome.kind === "trade") {
     const params = new URLSearchParams({ q: entry.question });
-    for (const key of ["league", "team"]) {
+    for (const key of ["league", "team", "week"]) {
       const value = current.get(key);
       if (value !== null) params.set(key, value);
     }
@@ -48,7 +48,7 @@ const reopenSearch = (entry: AskLogEntry, current: URLSearchParams): string | nu
   const query = entry.corrected ?? entry.outcome.query;
   const params = serializeQuery({ ...EMPTY_QUERY, ...query });
   params.set("q", entry.question);
-  for (const key of ["league", "team"]) {
+  for (const key of ["league", "team", "week"]) {
     const value = current.get(key);
     if (value !== null) params.set(key, value);
   }

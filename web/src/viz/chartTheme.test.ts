@@ -23,12 +23,12 @@ function contrast(a: string, b: string): number {
 }
 
 describe("chart theme", () => {
-  it("tick colour is the muted text token and meets 4.5:1 on the dark page and surface", () => {
+  it("tick colour is the muted text token and meets 4.5:1 on the look F page and panel", () => {
     expect(TICK_COLOR).toBe("var(--text-muted)");
-    const dark = css.slice(css.indexOf(":root,\n.theme-dark"), css.indexOf("/* Small screens"));
-    const muted = token(dark, "--text-muted");
-    expect(contrast(muted, token(dark, "--page"))).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(muted, token(dark, "--surface"))).toBeGreaterThanOrEqual(4.5);
+    const look = css.slice(css.indexOf("/* Look F tokens"), css.indexOf("/* Graphite names"));
+    const muted = token(look, "--lf-muted");
+    expect(contrast(muted, token(look, "--lf-page"))).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(muted, token(look, "--lf-panel"))).toBeGreaterThanOrEqual(4.5);
   });
 
   it("axis caption carries its text in the muted tick colour", () => {

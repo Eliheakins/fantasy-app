@@ -3,8 +3,8 @@ import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import type { ApiState } from "@/api/envelope";
-import Outlook from "@/pages/Outlook";
-import Players from "@/pages/Players";
+import { OutlookView as Outlook } from "./OutlookView";
+import { PlayersView as Players } from "@/features/players/PlayersView";
 import { HISTORY_WAIT_MESSAGE } from "./logic";
 
 /** Player names link to Explore, which needs a router. */

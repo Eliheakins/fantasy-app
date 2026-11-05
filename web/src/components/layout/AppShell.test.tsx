@@ -1,14 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AppShell } from "./AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { rememberExplore } from "@/features/explore/routeMemory";
 import { LeagueProvider } from "@/lib/league";
-import { MORE_ITEMS, NAV_GROUPS, NAV_ITEMS, TAB_ITEMS } from "@/nav";
+import { NAV_ITEMS } from "@/nav";
 
-const EXPLORE_QUERY = "p=00-0033873&s=rec_yards&f=season-2026&g=total&m=50&o=rec_yards&n=10&by=week&who=teams&t=KC&side=defense";
+const FIVE = ["This week", "Lineup", "Moves", "Season", "Players"];
 
 beforeEach(() => {
   const status = { freshness: [], missing_layers: [], simulation_behind_inputs: null, live_refresh: { enabled: false, active: false, last_ok_at: null } };
@@ -19,6 +18,7 @@ beforeEach(() => {
     ),
   );
   window.localStorage.clear();
+  rememberExplore("");
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -39,123 +39,67 @@ function renderAt(entry: string) {
   );
 }
 
-const rail = () => within(screen.getByRole("navigation", { name: "Main" }));
+const desktop = () => within(screen.getByRole("navigation", { name: "Main" }));
 const tabs = () => within(screen.getByRole("navigation", { name: "Main tabs" }));
 const search = (link: HTMLElement) => new URL(link.getAttribute("href") ?? "", "http://x").searchParams;
 
-describe("nav links", () => {
-  it("carry only league and team from an Explore URL", () => {
-    rememberExplore("");
-    renderAt(`/explore?league=a&team=2&${EXPLORE_QUERY}`);
+describe("tabs", () => {
+  it("are the five pages in order, on the top row and the phone bottom bar", () => {
+    renderAt("/");
 
-    const links = [...rail().getAllByRole("link"), ...tabs().getAllByRole("link")].filter((l) => l.textContent?.trim() !== "Explore");
-    expect(links.length).toBeGreaterThan(NAV_ITEMS.length);
+    expect(NAV_ITEMS.map((i) => i.label)).toEqual(FIVE);
+    expect(desktop().getAllByRole("link").map((l) => l.textContent?.trim())).toEqual(FIVE);
+    expect(tabs().getAllByRole("link").map((l) => l.textContent?.trim())).toEqual(FIVE);
+  });
+
+  it("have no More button or sheet", () => {
+    renderAt("/");
+
+    expect(screen.queryByRole("button", { name: "More" })).toBeNull();
+  });
+
+  it("mark the current page", () => {
+    renderAt("/moves?view=trades");
+
+    expect(desktop().getByRole("link", { name: "Moves" })).toHaveAttribute("aria-current", "page");
+    expect(tabs().getByRole("link", { name: "Moves" })).toHaveAttribute("aria-current", "page");
+    expect(desktop().getByRole("link", { name: "This week" })).not.toHaveAttribute("aria-current");
+  });
+});
+
+describe("nav links", () => {
+  it("carry only league, team and week from a page with other params", () => {
+    renderAt("/moves?league=a&team=2&week=6&view=trades&p=x&q=y");
+
+    const links = [...desktop().getAllByRole("link"), ...tabs().getAllByRole("link")];
+    expect(links).toHaveLength(10);
     for (const link of links) {
-      expect([...search(link).keys()].sort()).toEqual(["league", "team"]);
+      expect([...search(link).keys()].sort()).toEqual(["league", "team", "week"]);
+      expect(search(link).get("week")).toBe("6");
       expect(search(link).get("team")).toBe("2");
     }
   });
 
-  it("send the Explore link to the current query while on Explore", () => {
-    rememberExplore("?s=rec_yards");
-    renderAt("/explore?league=a&team=2&s=rush_yards&t=KC");
+  it("carry nothing when the URL has no shared params", () => {
+    renderAt("/season");
 
-    const query = search(rail().getByRole("link", { name: "Explore" }));
-
-    expect(query.getAll("s")).toEqual(["rush_yards"]);
-    expect(query.get("t")).toBe("KC");
-    expect(query.get("team")).toBe("2");
+    expect(desktop().getByRole("link", { name: "Lineup" })).toHaveAttribute("href", "/lineup");
   });
 
-  it("send the Explore link to the last Explore query, with the current league and team", () => {
-    rememberExplore(`?league=old&team=9&${EXPLORE_QUERY}`);
-    renderAt("/lineup?league=a&team=2");
+  it("keep league, team and week from an Explore URL on /players/find", () => {
+    renderAt("/players/find?league=a&team=2&week=3&p=00-0033873&s=rec_yards");
 
-    const query = search(rail().getByRole("link", { name: "Explore" }));
-
-    expect(query.get("league")).toBe("a");
-    expect(query.get("team")).toBe("2");
-    expect(query.get("s")).toBe("rec_yards");
-    expect(query.get("t")).toBe("KC");
-    expect(query.get("p")).toBe("00-0033873");
+    expect(desktop().getByRole("link", { name: "Players" })).toHaveAttribute("href", "/players?league=a&team=2&week=3");
   });
 });
 
-describe("Ask nav entry", () => {
-  it("sits in the Research group after Explore, and in the More sheet on phones", async () => {
-    renderAt("/lineup?league=a&team=2");
+describe("footer", () => {
+  it("links to the model scorecard keeping league, team and week", () => {
+    renderAt("/lineup?league=a&team=2&week=6&view=x");
 
-    const research = within(rail().getByRole("list", { name: "Research" }));
-    expect(research.getAllByRole("link").map((l) => l.textContent?.trim())).toEqual(["Players", "Explore", "Ask", "Model"]);
-    expect(tabs().queryByRole("link", { name: "Ask" })).toBeNull();
-    await userEvent.click(tabs().getByRole("button", { name: "More" }));
-    expect(within(screen.getByRole("dialog")).getByRole("link", { name: "Ask" })).toBeInTheDocument();
-  });
-
-  it("links carry only league and team from an Ask URL, and the Ask link drops the question", () => {
-    renderAt("/ask?league=a&team=2&q=Mahomes+yards&p=00-1&s=pass_yards&f=season-2025");
-
-    const links = [...rail().getAllByRole("link"), ...tabs().getAllByRole("link")].filter((l) => l.textContent?.trim() !== "Explore");
-    for (const link of links) {
-      expect([...search(link).keys()].sort()).toEqual(["league", "team"]);
-    }
-    expect(rail().getByRole("link", { name: "Ask" })).toHaveAttribute("href", "/ask?league=a&team=2");
-  });
-});
-
-describe("rail", () => {
-  it("shows the three group labels and every entry under its group", () => {
-    renderAt("/");
-
-    for (const group of NAV_GROUPS) {
-      const list = rail().getByRole("list", { name: group });
-      const expected = NAV_ITEMS.filter((i) => i.group === group).map((i) => i.label);
-      expect(within(list).getAllByRole("link").map((l) => l.textContent?.trim())).toEqual(expected);
-    }
-    expect(NAV_GROUPS).toEqual(["Decide", "Season", "Research"]);
-  });
-});
-
-describe("phone tab bar", () => {
-  it("has the four tabs and More", () => {
-    renderAt("/");
-    expect(tabs().getAllByRole("link").map((l) => l.textContent?.trim())).toEqual(["Home", "Lineup", "Waivers", "Trades"]);
-    expect(tabs().getByRole("button", { name: "More" })).toBeInTheDocument();
-  });
-
-  it("opens a More sheet with exactly the entries that have no tab, and closes on Esc", async () => {
-    renderAt("/lineup?league=a&team=2");
-    await userEvent.click(tabs().getByRole("button", { name: "More" }));
-
-    const sheet = screen.getByRole("dialog", { name: "More" });
-    const links = within(sheet).getAllByRole("link");
-    expect(links.map((l) => l.textContent?.trim())).toEqual(MORE_ITEMS.map((i) => i.label));
-    expect(TAB_ITEMS.length + MORE_ITEMS.length).toBe(NAV_ITEMS.length);
-    expect(links.every((l) => search(l).get("team") === "2")).toBe(true);
-
-    await userEvent.keyboard("{Escape}");
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  });
-
-  it("closes the sheet after choosing a page and leaves focus on the new page's heading", async () => {
-    renderAt("/");
-    await userEvent.click(tabs().getByRole("button", { name: "More" }));
-    await userEvent.click(within(screen.getByRole("dialog")).getByRole("link", { name: "Explore" }));
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "page" }));
-  });
-
-  it("closes the sheet when the location changes another way", async () => {
-    renderAt("/");
-    await userEvent.click(tabs().getByRole("button", { name: "More" }));
-    // Back/forward and links outside the sheet change the location while it is open (the page behind is aria-hidden).
-    fireEvent.click(document.querySelector<HTMLElement>('nav[aria-label="Main"] a[href^="/lineup"]')!);
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-  });
-
-  it("wraps the sheet links in a labelled nav", async () => {
-    renderAt("/");
-    await userEvent.click(tabs().getByRole("button", { name: "More" }));
-    expect(within(screen.getByRole("dialog")).getByRole("navigation", { name: "More pages" })).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: "Model scorecard" });
+    expect(new URL(link.getAttribute("href") ?? "", "http://x").pathname).toBe("/model");
+    expect([...search(link).keys()].sort()).toEqual(["league", "team", "week"]);
+    expect(screen.getByText(/Data from Sleeper and nflverse/)).toBeInTheDocument();
   });
 });

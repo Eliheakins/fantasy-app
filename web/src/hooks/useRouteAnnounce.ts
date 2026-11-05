@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { PAGE_HEADING_ID } from "@/components/PageHeader";
-import { NAV_ITEMS } from "@/nav";
+import { EXTRA_TITLES, NAV_ITEMS } from "@/nav";
 
 const SITE = "Fantasy";
 const NOT_FOUND_TITLE = "Page not found";
@@ -9,9 +9,7 @@ const NOT_FOUND_TITLE = "Page not found";
 /** The page name for a path: the nav entry's title, else "Page not found". */
 export function pageTitle(pathname: string): string {
   const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
-  const item = NAV_ITEMS.find((n) => n.path === path);
-  if (!item) return NOT_FOUND_TITLE;
-  return item.title;
+  return NAV_ITEMS.find((n) => n.path === path)?.title ?? EXTRA_TITLES[path] ?? NOT_FOUND_TITLE;
 }
 
 /** "Lineup · Fantasy", with the viewed team inserted when it is not mine. */

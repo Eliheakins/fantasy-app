@@ -1,16 +1,15 @@
-import { PageHeader } from "@/components/PageHeader";
 import { ApiBoundary } from "@/components/ApiBoundary";
-import { LeagueCard } from "@/features/home/LeagueCard";
-import { useHomeLeagues } from "@/features/home/hooks";
-import { asViewedTeam } from "@/features/home/logic";
+import { LeagueCard } from "./LeagueCard";
+import { useHomeLeagues } from "./hooks";
+import { asViewedTeam } from "./logic";
 import { useTeam } from "@/lib/teamContext";
 
-export default function Home() {
+/** One card per league (the viewed team's league only while viewing another team). */
+export function HomeLeagues() {
   const leagues = useHomeLeagues();
   const { team, league, viewed } = useTeam();
   return (
     <div>
-      <PageHeader title="Home" />
       <ApiBoundary state={leagues}>
         {(all) => {
           // roster ids belong to one league: while viewing a team, show only its league

@@ -1,15 +1,15 @@
-import { PageHeader } from "@/components/PageHeader";
 import { useState } from "react";
+import { PageHeader } from "@/components/PageHeader";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { RadioGroup } from "@/components/RadioGroup";
 import { useLeague, useLeagueApi } from "@/lib/league";
+import { usePageEyebrow, useWeek } from "@/lib/week";
 import { Delta, formatNumber, formatPercent } from "@/viz";
 import { Comparison } from "@/features/lineup/Comparison";
 import { PlayerTable } from "@/features/lineup/PlayerTables";
 import {
   CAVEAT_BASE,
   CAVEAT_UNKNOWN,
-  LAST_WEEK,
   NO_SWAP_TEXT,
   OBJECTIVES,
   type LineupRow,
@@ -22,8 +22,6 @@ import {
   sleeperKnown,
   splitLineup,
 } from "@/features/lineup/logic";
-
-const WEEKS = Array.from({ length: LAST_WEEK }, (_, i) => i + 1);
 
 function Metric({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -94,32 +92,14 @@ export function LineupView({ base, odds, week }: { base: LineupRow[]; odds: WinP
 }
 
 export default function Lineup() {
-  const { league, leagues } = useLeague();
-  // Keyed by league so a week picked in one league does not carry to the other.
-  const [picked, setPicked] = useState<{ league: string | null; week: number } | null>(null);
-  const current = leagues.kind === "ready" ? leagues.data.find((l) => l.league_key === league)?.current_week : null;
-  const week = (picked?.league === league ? picked.week : null) ?? current ?? 1;
+  const { league } = useLeague();
+  const { week } = useWeek();
+  const eyebrow = usePageEyebrow("Lineup", true);
   const lineup = useLeagueApi<LineupRow[]>(`lineup?week=${week}`);
   const odds = useLeagueApi<WinProbability>(`win-probability?week=${week}`);
   return (
     <div key={league}>
-      <PageHeader
-        title="Lineup"
-        actions={
-        <label className="flex items-center gap-2 text-body">
-          Week
-          <select
-            value={week}
-            onChange={(e) => setPicked({ league, week: Number(e.target.value) })}
-            className="min-h-[44px] rounded-md border border-border bg-transparent px-2"
-          >
-            {WEEKS.map((w) => (
-              <option key={w} value={w}>{w}</option>
-            ))}
-          </select>
-        </label>
-        }
-      />
+      <PageHeader title="Lineup" eyebrow={eyebrow} />
       <ApiBoundary state={lineup}>
         {(base) => (
           <>

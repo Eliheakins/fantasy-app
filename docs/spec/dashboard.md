@@ -1,6 +1,17 @@
 # Dashboard design spec (v1, 2026-10-23)
 
-> Status (2026-10-25): superseded. The Streamlit dashboard was removed (issue #66, commit 0cd914c). The React UI in `web/` (pages listed in `web/src/nav.ts`) replaces it. The Streamlit-specific sections below are design history.
+> Status (2026-10-25): superseded. The Streamlit dashboard was removed (issue #66, commit 0cd914c). The React UI in `web/` (tabs listed in `web/src/nav.ts`, other routes in `web/src/routes.tsx`) replaces it. The Streamlit-specific sections below are design history.
+
+## Current IA and look (slice U1a, 2026-11-04)
+
+The React UI follows this; sections 1 and 2 below are the original design and still hold for content, with the page names mapped here.
+
+- **Five tabs**, top row from 768 px up and a bottom bar on phones (no More sheet): This week `/` (league cards, then the digest sections), Lineup `/lineup`, Moves `/moves` (free agents and trades behind `?view=fa|trades`, default fa), Season `/season` (outlook, scores, league), Players `/players`.
+- **Not tabs:** `/ask` (top-bar Ask field; History is a tab inside it), `/model` (footer "Model scorecard"), `/players/find` (the Explore query builder). Old paths redirect keeping the whole query: `/waivers`, `/trades` to `/moves?view=`, `/outlook`, `/scoreboard`, `/league` to `/season`, `/digest` to `/`, `/scorecard` to `/model`, `/explore` to `/players/find`.
+- **Query params.** Nav links carry only `league`, `team` and `week`. `?week=` is global (default: the league's current week; the week select in the band writes it). Pages read it through `useWeek()`.
+- **Top bar G1.** Forest band `#123D2C`: team name in Newsreader with "Updated ..." under it, league, team and week selects, the Ask field. Second row: the five tabs on the page background, active tab ink at weight 600 with a 2px `#123D2C` underline. Content is max 1200 px wide and centred. On phones the band keeps the team name and compact selects and the Ask field becomes an icon link to `/ask`.
+- **Look F (light only).** Page `#FBFBF8`, panel `#EDF3EE`, lines `#D6E3DA` (panel) and `#E4E8E3` (page), ink `#13201A`, muted `#56635C`, focus `#1F5A43`, better `#157A3D`, worse `#B4261A`, within noise `#56635C` with "~", warning `#6B4200` on `#FFF4DB`. Newsreader for headings and the team name, Inter with tabular figures for the rest, both bundled with `@fontsource` (the app works offline). Tokens are in `web/src/index.css` (`--lf-*`); the old graphite names point at them until slice U2 restyles the components.
+- **Page anatomy.** `PageHeader` takes an eyebrow (muted caps: page, week, context), the h1, and an optional answer sentence. Composed pages have one h1; the inner sections are h2. `Confidence` (clear at 70% or more of paired simulations, lean 55 to 70%, toss-up below) and `Delta` (sign, arrow, colour, "~" inside the noise band) live in `web/src/viz`.
 
 Scope: the local dashboard for Colgate (1.0 PPR, superflex) and YinzBurgh (0.5 PPR). Decisions in `decisions.md` and epics in `one-pager.md` are taken as given. Bar: well thought out, rough execution. This spec is a design, not a build plan with dates.
 

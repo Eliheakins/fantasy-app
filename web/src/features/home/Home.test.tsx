@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import Home from "@/pages/Home";
+import { HomeLeagues as Home } from "./HomeLeagues";
 
 const ok = (data: unknown) => ({ status: "ok", data, error: null, started_at: null });
 const league = {

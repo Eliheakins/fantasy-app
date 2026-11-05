@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ApiState } from "@/api/envelope";
-import League from "@/pages/League";
+import { LeagueView as League } from "./LeagueView";
 
 let responder: (path: string) => ApiState<unknown>;
 vi.mock("@/lib/league", () => ({

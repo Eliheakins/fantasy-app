@@ -1,4 +1,3 @@
-import { PageHeader } from "@/components/PageHeader";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Evaluator } from "@/features/trades/Evaluator";
 import { FindTradesSection } from "@/features/trades/FindTrades";
@@ -8,6 +7,7 @@ import { useApi } from "@/hooks/useApi";
 import { useLeague } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
 
+/** Mounted under Moves (view=trades). */
 export default function Trades() {
   const { league } = useLeague();
   const { team } = useTeam();
@@ -17,7 +17,6 @@ export default function Trades() {
   const mine = useApi<Asset[]>(base && `${base}/trade-assets`);
   return (
     <div>
-      <PageHeader title="Trades" />
       {league !== null && (
         <>
           <StrengthSection />

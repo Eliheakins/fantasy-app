@@ -16,7 +16,7 @@ export function statIdsFor(position: string): readonly string[] | null {
 type StatLinkArgs = { gsisId: string | null; position: string; season: number; search?: string };
 
 /**
- * The in-app Explore link for a player's weekly game log, keeping the league and team of `search` (the
+ * The in-app Find players (Explore) link for a player's weekly game log, keeping the league, team and week of `search` (the
  * current URL's query); null where there is nothing to open (no id, K, DEF).
  */
 export function statLink({ gsisId, position, season, search = "" }: StatLinkArgs): string | null {
@@ -31,11 +31,11 @@ export function statLink({ gsisId, position, season, search = "" }: StatLinkArgs
     ["g", "total"],
   ]);
   const current = new URLSearchParams(search);
-  for (const shared of ["league", "team"]) {
+  for (const shared of ["league", "team", "week"]) {
     const value = current.get(shared);
     if (value !== null) query.set(shared, value);
   }
-  return `/explore?${query.toString()}`;
+  return `/players/find?${query.toString()}`;
 }
 
 /** The latest NFL season with games: the calendar year from September on, the year before until then. */
