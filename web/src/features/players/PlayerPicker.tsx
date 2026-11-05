@@ -24,16 +24,20 @@ export function PlayerPicker({ onPick, exclude }: Props) {
     queryFn: async () => searchPlayers(await getPlayers(manifest.data ?? null), query),
   });
   const options = (found.data ?? []).filter((p) => !exclude.includes(p.gsis_id));
+  const searching = query.length >= MIN_QUERY;
+  const status = !searching ? "" : found.isFetching ? "Searching…" : found.error ? "" : options.length === 0 ? "No players match." : `${options.length} ${options.length === 1 ? "player" : "players"} found.`;
   return (
     <div className="space-y-1">
+      <label className="block text-body font-semibold" htmlFor="compare-search">Add a player</label>
       <input
+        id="compare-search"
         type="search"
-        aria-label="Add a player"
-        placeholder="Add a player"
+        placeholder="Type at least two letters of a name"
         value={text}
         onChange={(e) => setText(e.target.value)}
         className="min-h-[44px] w-full max-w-sm rounded-full border border-panel-line bg-panel px-4 text-body"
       />
+      <p role="status" className="text-caption text-muted">{status}</p>
       {found.error && <p className="text-body text-warning">The player search failed: {found.error.message}</p>}
       {options.length > 0 && (
         <ul className="max-w-sm">

@@ -1822,7 +1822,11 @@ export interface components {
             /** Position */
             position: string | null;
             /** Week */
-            week: number;
+            week: number | null;
+            /** Result Week */
+            result_week: number | null;
+            /** Result Points */
+            result_points: number | null;
             /** Projection */
             projection: number | null;
             /** P10 */
@@ -1837,6 +1841,8 @@ export interface components {
             injury: string | null;
             /** Injury Note */
             injury_note: string | null;
+            /** Is Out */
+            is_out: boolean;
             /** Ros Points */
             ros_points: number | null;
             /** Replacement Name */

@@ -1600,6 +1600,8 @@
             "required": true,
             "schema": {
               "type": "string",
+              "maxLength": 20,
+              "pattern": "^[A-Za-z0-9_-]+$",
               "title": "Gsis Id"
             }
           },
@@ -6309,8 +6311,37 @@
             "title": "Position"
           },
           "week": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Week"
+          },
+          "result_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Week"
+          },
+          "result_points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Points"
           },
           "projection": {
             "anyOf": [
@@ -6388,6 +6419,10 @@
               }
             ],
             "title": "Injury Note"
+          },
+          "is_out": {
+            "type": "boolean",
+            "title": "Is Out"
           },
           "ros_points": {
             "anyOf": [
@@ -6470,6 +6505,8 @@
           "full_name",
           "position",
           "week",
+          "result_week",
+          "result_points",
           "projection",
           "p10",
           "median",
@@ -6477,6 +6514,7 @@
           "chance_to_play",
           "injury",
           "injury_note",
+          "is_out",
           "ros_points",
           "replacement_name",
           "replacement_points",

@@ -11,6 +11,7 @@ from typing import Annotated, Any, Literal
 import httpx
 import polars as pl
 from fastapi import APIRouter, Depends, Query, Request
+from fastapi import Path as PathParam
 
 from fantasy import _view as view
 from fantasy import data_api, store
@@ -70,6 +71,7 @@ MAX_TRADE_EVALUATIONS = 2
 TRADE_SLOTS = threading.BoundedSemaphore(MAX_TRADE_EVALUATIONS)
 REFRESH_LOCK = threading.Lock()
 MAX_IDS_LENGTH = 4000
+MAX_ID_LENGTH = 20  # nflverse ids are 10 characters (00-0012345)
 IDEA_STAMPS = frozenset({"league_id", "created_at", "as_of_week"})  # in `ideas`, not per row
 Team = Annotated[
     int | None, Query(description="Roster id to view as; omitted means my team (Sleeper is_me)")
@@ -399,7 +401,11 @@ def player_points(
 
 
 @router.get("/leagues/{league}/players/{gsis_id}/profile", response_model=Envelope[PlayerProfile])
-def player_profile(league: str, gsis_id: str, team: Team = None) -> Any:
+def player_profile(
+    league: str,
+    gsis_id: Annotated[str, PathParam(max_length=MAX_ID_LENGTH, pattern=r"^[A-Za-z0-9_-]+$")],
+    team: Team = None,
+) -> Any:
     return guarded(as_team(team, lambda: data_api.player_profile(league, gsis_id)))
 
 

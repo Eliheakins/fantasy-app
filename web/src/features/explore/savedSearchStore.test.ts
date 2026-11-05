@@ -39,4 +39,18 @@ describe("saved searches", () => {
     expect(readSaved()).toEqual([]);
     expect(writeSaved([{ name: "A", query: "s=x" }])).toBe(false);
   });
+
+  it("drops the Ask question from a saved query", () => {
+    expect(addSaved([], "A", "?q=who+is+best&s=x")[0]?.query).toBe("s=x");
+  });
+
+  it("caps the count, the name and the query length, and ignores oversize stored entries", () => {
+    const fifty = Array.from({ length: 50 }, (_, i) => ({ name: `n${i}`, query: "s=x" }));
+    expect(addSaved(fifty, "extra", "?s=x")).toHaveLength(50);
+    expect(addSaved(fifty, "n3", "?s=y")).toHaveLength(50); // replacing one is fine
+    expect(addSaved([], "x".repeat(61), "?s=x")).toEqual([]);
+    expect(addSaved([], "A", `?s=${"x".repeat(2001)}`)).toEqual([]);
+    window.localStorage.setItem("fantasy.savedSearches", JSON.stringify([{ name: "x".repeat(61), query: "s=x" }, { name: "ok", query: "s=x" }]));
+    expect(readSaved()).toEqual([{ name: "ok", query: "s=x" }]);
+  });
 });

@@ -30,7 +30,7 @@ const ready = <T,>(data: T): ApiState<T> => ({ kind: "ready", data }) as ApiStat
 const failed = { kind: "error", error: { message: "boom", code: null }, retry: () => {} } as ApiState<never>;
 
 const profile = {
-  gsis_id: "00-1", full_name: "Ja'Marr Chase", position: "WR", week: 5, projection: 18, p10: 6, median: 17.5, p90: 31, chance_to_play: 1,
+  gsis_id: "00-1", full_name: "Ja'Marr Chase", position: "WR", week: 5, result_week: null, result_points: null, is_out: false, projection: 18, p10: 6, median: 17.5, p90: 31, chance_to_play: 1,
   injury: null, injury_note: null, ros_points: 90, replacement_name: "Free Guy", replacement_points: 60, ros_over_replacement: 30,
   outlook_label: null, why: null, role_weeks: [],
 };

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { addSaved, queryWithoutShell, readSaved, removeSaved, savedHref, writeSaved } from "./savedSearchStore";
+import { addSaved, MAX_NAME_LENGTH, MAX_SAVED, queryWithoutShell, readSaved, removeSaved, savedHref, writeSaved } from "./savedSearchStore";
 
 /** Name the query in the URL, keep it in this browser, run it again or delete it. */
 export function SavedSearches() {
@@ -8,6 +8,7 @@ export function SavedSearches() {
   const [saved, setSaved] = useState(readSaved);
   const [name, setName] = useState("");
   const [kept, setKept] = useState(true);
+  const full = saved.length >= MAX_SAVED && !saved.some((x) => x.name === name.trim());
   const empty = queryWithoutShell(search) === "";
 
   const update = (next: typeof saved) => {
@@ -27,14 +28,13 @@ export function SavedSearches() {
             setName("");
           }}
         >
-          <label className="text-body">
-            <span className="sr-only">Name this search</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name this search" aria-label="Name this search" className="min-h-[44px] rounded-full border border-panel-line bg-panel px-4 text-body" />
-          </label>
-          <button type="submit" disabled={empty || !name.trim()} className="min-h-[44px] rounded-full border border-panel-line bg-panel px-4 text-body disabled:opacity-50">
+          <label htmlFor="saved-search-name" className="text-body">Name this search</label>
+          <input id="saved-search-name" value={name} maxLength={MAX_NAME_LENGTH} onChange={(e) => setName(e.target.value)} className="min-h-[44px] rounded-full border border-panel-line bg-panel px-4 text-body" />
+          <button type="submit" disabled={empty || !name.trim() || full} className="min-h-[44px] rounded-full border border-panel-line bg-panel px-4 text-body disabled:opacity-50">
             Save search
           </button>
         </form>
+        {full && <p className="text-caption text-muted">You can keep {MAX_SAVED} searches. Delete one to save another.</p>}
         {empty && <p className="text-caption text-muted">Pick players or stats first; the current query is empty.</p>}
         {!kept && <p role="status" className="text-caption text-warning">This browser blocked storage, so the search could not be stored and will be gone after you leave.</p>}
         <ul>

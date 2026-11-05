@@ -7,17 +7,41 @@ type RoleWeek = components["schemas"]["RoleWeek"];
 export const MAX_COMPARE = 3;
 const SHARED_KEYS = ["league", "team", "week"];
 
-/** The one sentence under the h1: the next game's median and range, else rest of season over replacement. */
+const pts = (n: number | null | undefined) => formatNumber(n);
+const OUT = (p: PlayerProfile) => (p.is_out ? " He is out, so this is what he is worth if he returns." : "");
+
+/** "Week 8: 17.3 points, final." when the player's game this week is over. */
+export function resultSentence(p: PlayerProfile): string | null {
+  return p.result_points != null && p.result_week != null ? `Week ${p.result_week}: ${pts(p.result_points)} points, final.` : null;
+}
+
+/** The one sentence under the h1: the result if final, the next game's median and range, else rest of season over replacement. */
 export function answerSentence(p: PlayerProfile): string | null {
-  if (p.median != null && p.p10 != null && p.p90 != null) {
-    const range = `Median ${formatNumber(p.median)} points in week ${p.week}, likely between ${formatNumber(p.p10)} and ${formatNumber(p.p90)}.`;
-    return p.chance_to_play != null && p.chance_to_play < 1 ? `${range} ${formatPercent(p.chance_to_play)} to play.` : range;
+  const result = resultSentence(p);
+  if (p.median != null && p.p10 != null && p.p90 != null && p.week != null) {
+    const range = `Median ${pts(p.median)} points in week ${p.week}, likely between ${pts(p.p10)} and ${pts(p.p90)}.`;
+    const chance = p.chance_to_play != null && p.chance_to_play < 1 ? ` ${formatPercent(p.chance_to_play)} to play.` : "";
+    return [result, range + chance].filter(Boolean).join(" ");
   }
+  if (result) return result;
   if (p.ros_over_replacement != null && p.replacement_name) {
     const gap = p.ros_over_replacement;
-    return `${gap >= 0 ? "+" : ""}${formatNumber(gap)} points ${gap >= 0 ? "over" : "against"} ${p.replacement_name} for the rest of the season.`;
+    return `${gap >= 0 ? "+" : ""}${pts(gap)} points ${gap >= 0 ? "over" : "against"} ${p.replacement_name} for the rest of the season.${OUT(p)}`;
   }
   return null;
+}
+
+/** Role stats that mean something for a position: no target share for a QB, no snap share for K or DEF. */
+export function roleKeysFor(position: string | null): ("snap_share" | "target_share")[] {
+  if (position === "K" || position === "DEF") return [];
+  return position === "QB" ? ["snap_share"] : ["snap_share", "target_share"];
+}
+
+/** Market change over 30 days: the value then must be positive, else the field is not a usable comparison. */
+export function marketChange(value: number, trend: number | null): { change: number; percent: number } | null {
+  if (trend == null) return null;
+  const then = value - trend;
+  return then > 0 ? { change: trend, percent: trend / then } : null;
 }
 
 /** One role stat by week as percentages, skipping weeks without it. */

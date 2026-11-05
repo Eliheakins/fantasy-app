@@ -1,14 +1,20 @@
 import { formatNumber } from "./format";
 
-type SparklineProps = { values: readonly number[]; width?: number; height?: number };
+type SparklineProps = {
+  values: readonly number[];
+  width?: number;
+  height?: number;
+  /** Names the line and prefixes its values for assistive tech; default "Form". */
+  label?: string;
+};
 
 const PAD = 2;
 
 /** Last-N form line. Needs two points; fewer renders a dash with the same text equivalent. */
-export function Sparkline({ values: raw, width = 80, height = 20 }: SparklineProps) {
+export function Sparkline({ values: raw, width = 80, height = 20, label: name = "Form" }: SparklineProps) {
   const values = raw.filter(Number.isFinite);
   const label = values.length
-    ? `Form: ${values.map((v) => formatNumber(v)).join(", ")}`
+    ? `${name}: ${values.map((v) => formatNumber(v)).join(", ")}`
     : "No recent games";
   if (values.length < 2) {
     return (

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { navSearch } from "@/components/layout/navLinks";
 import { PageHeader } from "@/components/PageHeader";
@@ -12,19 +13,25 @@ function Column({ gsisId, onRemove }: { gsisId: string; onRemove: () => void }) 
   const { pathname, search } = useLocation();
   const player = usePlayer(gsisId);
   const info = player.kind === "ready" ? player.data : null;
-  const name = info?.full_name ?? gsisId;
+  const unknown = player.kind === "ready" && info === null;
+  const name = unknown ? "Player not found" : (info?.full_name ?? gsisId);
   return (
     <div role="group" aria-label={name} className="min-w-0 space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <Link to={{ pathname: `/players/${encodeURIComponent(gsisId)}`, search: navSearch("/players/:gsisId", search, pathname) }} className="inline-flex min-h-[44px] items-center text-heading font-semibold underline">
-          {name}
-        </Link>
+        <h2 className="text-heading font-semibold">
+          {unknown ? name : (
+            <Link to={{ pathname: `/players/${encodeURIComponent(gsisId)}`, search: navSearch("/players/:gsisId", search, pathname) }} className="inline-flex min-h-[44px] items-center underline">
+              {name}
+            </Link>
+          )}
+        </h2>
         <button type="button" aria-label={`Remove ${name}`} onClick={onRemove} className="min-h-[44px] px-3 text-body text-muted underline">
           Remove
         </button>
       </div>
+      {unknown && <p className="text-body text-muted">No player in the stat data has the id {gsisId}.</p>}
       {info && <p className="text-caption uppercase tracking-wide text-muted">{[info.position, info.team].filter(Boolean).join(" · ")}</p>}
-      <PlayerSections gsisId={gsisId} />
+      {info && <PlayerSections gsisId={gsisId} level={3} name={name} />}
     </div>
   );
 }
@@ -33,13 +40,22 @@ function Column({ gsisId, onRemove }: { gsisId: string; onRemove: () => void }) 
 export default function PlayersCompare() {
   const [params, setParams] = useSearchParams();
   const ids = parseCompareIds(params);
-  const setIds = (next: string[]) =>
-    setParams((prev) => {
-      const out = new URLSearchParams(prev);
-      out.delete("p");
-      next.forEach((id) => out.append("p", id));
-      return out;
-    });
+  const setIds = (next: string[], replace = false) =>
+    setParams(
+      (prev) => {
+        const out = new URLSearchParams(prev);
+        out.delete("p");
+        next.forEach((id) => out.append("p", id));
+        return out;
+      },
+      { replace },
+    );
+  // A hand-edited URL with repeats, blanks or more than three ids is rewritten to what the page shows.
+  const raw = params.getAll("p").join("\n");
+  useEffect(() => {
+    if (raw !== "" && raw !== ids.join("\n")) setIds(ids, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [raw]);
   return (
     <div className="space-y-6">
       <PageHeader

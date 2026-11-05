@@ -269,7 +269,9 @@ class PlayerProfile(Row):
     gsis_id: str
     full_name: str | None
     position: str | None
-    week: int
+    week: int | None  # the week the range is for: this week, or the next with a projection
+    result_week: int | None  # this week, when the player's game is already final
+    result_points: float | None
     projection: float | None
     p10: float | None
     median: float | None
@@ -277,6 +279,7 @@ class PlayerProfile(Row):
     chance_to_play: float | None
     injury: str | None
     injury_note: str | None
+    is_out: bool
     ros_points: float | None
     replacement_name: str | None
     replacement_points: float | None

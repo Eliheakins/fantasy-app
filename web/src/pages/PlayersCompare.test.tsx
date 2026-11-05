@@ -20,7 +20,7 @@ const PEOPLE = [
   { gsis_id: "d", full_name: "Dee Delta", position: "QB", team: "DAL", headshot_url: null },
 ];
 const profileOf = (id: string) => ({
-  gsis_id: id, full_name: id, position: "WR", week: 9, projection: 10, p10: 4, median: 10, p90: 20, chance_to_play: 1, injury: null, injury_note: null,
+  gsis_id: id, full_name: id, position: "WR", week: 9, result_week: null, result_points: null, is_out: false, projection: 10, p10: 4, median: 10, p90: 20, chance_to_play: 1, injury: null, injury_note: null,
   ros_points: 50, replacement_name: "Free Guy", replacement_points: 40, ros_over_replacement: 10, outlook_label: null, why: null, role_weeks: [],
 });
 const ready = <T,>(data: T): ApiState<T> => ({ kind: "ready", data }) as ApiState<T>;
@@ -57,8 +57,8 @@ describe("Players compare", () => {
     const columns = screen.getAllByRole("group");
     expect(columns.map((c) => c.getAttribute("aria-label"))).toEqual(["Ann Alpha", "Bob Beta"]);
     for (const col of columns) {
-      expect(within(col).getByRole("heading", { level: 2, name: "Next game" })).toBeInTheDocument();
-      expect(within(col).getByRole("heading", { level: 2, name: "Rest of season" })).toBeInTheDocument();
+      expect(within(col).getByRole("heading", { level: 3, name: "Next game" })).toBeInTheDocument();
+      expect(within(col).getByRole("heading", { level: 3, name: "Rest of season" })).toBeInTheDocument();
     }
     const grid = columns[0]!.parentElement!;
     expect(grid.className).toMatch(/grid-cols-1/);
@@ -88,10 +88,45 @@ describe("Players compare", () => {
   it("adds a player from the search and stops offering search at three players", async () => {
     const user = userEvent.setup();
     const router = renderAt("/players/compare?league=a&p=a&p=b");
-    await user.type(screen.getByRole("searchbox", { name: "Add a player" }), "Cy");
+    await user.type(screen.getByLabelText("Add a player"), "Cy");
     await user.click(await screen.findByRole("button", { name: /Cy Gamma/ }));
     expect(router.state.location.search).toBe("?league=a&p=a&p=b&p=c");
     expect(await screen.findAllByRole("group")).toHaveLength(3);
-    expect(screen.queryByRole("searchbox", { name: "Add a player" })).toBeNull();
+    expect(screen.queryByLabelText("Add a player")).toBeNull();
+  });
+
+  it("rewrites duplicate, blank and extra ids in the URL with replace", async () => {
+    const router = renderAt("/players/compare?league=a&p=a&p=a&p=&p=b&p=c&p=d");
+    await screen.findByRole("group", { name: "Cy Gamma" });
+    expect(router.state.location.search).toBe("?league=a&p=a&p=b&p=c");
+    expect(screen.getAllByRole("group")).toHaveLength(3);
+    expect(router.state.historyAction).toBe("REPLACE");
+  });
+
+  it("shows an unknown id as Player not found with Remove, and makes no profile request for it", async () => {
+    const router = renderAt("/players/compare?p=a&p=zzz");
+    const column = await screen.findByRole("group", { name: "Player not found" });
+    expect(within(column).getByText(/zzz/)).toBeInTheDocument();
+    expect(vi.mocked(useApi).mock.calls.some(([path]) => String(path).includes("/zzz/"))).toBe(false);
+    await userEvent.setup().click(within(column).getByRole("button", { name: "Remove Player not found" }));
+    expect(router.state.location.search).toBe("?p=a");
+  });
+
+  it("has one h1, each player an h2 and their sections h3", async () => {
+    renderAt("/players/compare?p=a&p=b");
+    await screen.findByRole("group", { name: "Bob Beta" });
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(["Ann Alpha", "Bob Beta"]);
+    expect(screen.getAllByRole("heading", { level: 3 }).length).toBe(10);
+  });
+
+  it("tells the search result count and when nothing matches", async () => {
+    const user = userEvent.setup();
+    renderAt("/players/compare?p=a");
+    await user.type(screen.getByLabelText("Add a player"), "Cy");
+    expect(await screen.findByText("1 player found.")).toBeInTheDocument();
+    vi.mocked(getPlayers).mockResolvedValue([] as never);
+    await user.type(screen.getByLabelText("Add a player"), "x");
+    expect(await screen.findByText("No players match.")).toBeInTheDocument();
   });
 });

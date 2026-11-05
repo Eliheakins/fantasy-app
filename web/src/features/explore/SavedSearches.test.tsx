@@ -50,4 +50,18 @@ describe("SavedSearches", () => {
     expect(screen.getByRole("link", { name: "Temp" })).toBeInTheDocument();
     expect(screen.getByText(/could not be stored/i)).toBeInTheDocument();
   });
+
+  it("renders with a corrupt stored value as an empty list", () => {
+    window.localStorage.setItem("fantasy.savedSearches", "{oops");
+    renderAt("/players/find?s=x");
+    expect(screen.getByText("Saved searches (0)")).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Name this search")).toHaveLength(1);
+  });
+
+  it("stops at 50 searches and says so", () => {
+    window.localStorage.setItem("fantasy.savedSearches", JSON.stringify(Array.from({ length: 50 }, (_, i) => ({ name: `n${i}`, query: "s=x" }))));
+    renderAt("/players/find?s=y");
+    expect(screen.getByRole("button", { name: "Save search" })).toBeDisabled();
+    expect(screen.getByText(/keep 50 searches/)).toBeInTheDocument();
+  });
 });

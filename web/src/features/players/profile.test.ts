@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { answerSentence, compareHref, parseCompareIds, type PlayerProfile, roleSeries, withPlayer, withoutPlayer } from "./profile";
+import { answerSentence, compareHref, marketChange, roleKeysFor, parseCompareIds, type PlayerProfile, roleSeries, withPlayer, withoutPlayer } from "./profile";
 
 const base: PlayerProfile = {
-  gsis_id: "a", full_name: "A", position: "WR", week: 9, projection: 11, p10: 4, median: 12, p90: 21, chance_to_play: 1,
+  gsis_id: "a", full_name: "A", position: "WR", week: 9, result_week: null, result_points: null, is_out: false, projection: 11, p10: 4, median: 12, p90: 21, chance_to_play: 1,
   injury: null, injury_note: null, ros_points: 80, replacement_name: "Free Guy", replacement_points: 62.5,
   ros_over_replacement: 17.5, outlook_label: null, why: null, role_weeks: [],
 };
@@ -20,6 +20,27 @@ describe("answerSentence", () => {
   });
   it("is null with nothing to say", () => {
     expect(answerSentence({ ...base, median: null, ros_over_replacement: null })).toBeNull();
+  });
+});
+
+describe("final games, out players, role and market rules", () => {
+  it("leads with the final result and adds the next week's range", () => {
+    expect(answerSentence({ ...base, result_week: 8, result_points: 17.3, week: 9 })).toBe("Week 8: 17.3 points, final. Median 12.0 points in week 9, likely between 4.0 and 21.0.");
+    expect(answerSentence({ ...base, result_week: 8, result_points: 17.3, week: null, median: null, p10: null, p90: null })).toBe("Week 8: 17.3 points, final.");
+  });
+  it("says an out player's rest of season value is if he returns", () => {
+    expect(answerSentence({ ...base, median: null, is_out: true })).toMatch(/He is out/);
+  });
+  it("hides target share for a QB and both shares for K and DEF", () => {
+    expect(roleKeysFor("QB")).toEqual(["snap_share"]);
+    expect(roleKeysFor("WR")).toEqual(["snap_share", "target_share"]);
+    expect(roleKeysFor("K")).toEqual([]);
+    expect(roleKeysFor("DEF")).toEqual([]);
+  });
+  it("gives a market change only when the value 30 days ago was positive", () => {
+    expect(marketChange(600, 620)).toBeNull();
+    expect(marketChange(600, null)).toBeNull();
+    expect(marketChange(600, -150)?.percent).toBeCloseTo(-0.2);
   });
 });
 
