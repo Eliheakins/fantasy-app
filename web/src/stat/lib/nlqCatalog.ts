@@ -22,7 +22,7 @@ export interface IntentCatalog {
 /** The ids the model may choose from; sent with every ask so the backend never owns a second copy. */
 export function buildIntentCatalog(seasons: readonly number[]): IntentCatalog {
   return {
-    stats: STAT_DEFINITIONS.map((s) => ({
+    stats: STAT_DEFINITIONS.filter((s) => !s.hidden).map((s) => ({
       id: s.id,
       label: s.label,
       category: s.category,

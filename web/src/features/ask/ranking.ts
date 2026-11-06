@@ -147,7 +147,9 @@ export function leaderboardFor(
   }
   const minimum = readMinimum(tokens);
   const stat = getStatById(metric);
-  if (minimum && (scope.teams || stat?.source === "league" || stat?.playerRole !== minimum.role || stat.teamOnly)) {
+  // A derived stat's floor is its volume, which counts one role's plays when it is a single stat.
+  const counted = stat?.source === "derived" ? getStatById(stat.volume ?? "") : stat;
+  if (minimum && (scope.teams || counted?.source !== "pbp" || counted.playerRole !== minimum.role || counted.teamOnly)) {
     return { reason: `The minimum counts a ${minimum.role}'s plays, which ${stat?.label ?? metric} does not.` };
   }
   const floor = scope.weekly ? WEEKLY_LEADERBOARD_MIN_PLAYS : LEADERBOARD_MIN_PLAYS;

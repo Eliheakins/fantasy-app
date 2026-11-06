@@ -86,6 +86,32 @@ describe("team stats over every play", () => {
     expect(value(rows, "team_id", "BUF", "team_epa")).toBeCloseTo(0.1);
   });
 
+  it("counts a defense's takeaways: interceptions and lost fumbles on the plays against it", async () => {
+    const plays = [
+      { ...at, ...kc, ...FLAGS, play_type: "pass", passer_player_id: Q, interception: 1, fumble_lost: 0 },
+      { ...at, ...kc, ...FLAGS, play_type: "run", rusher_player_id: R, interception: 0, fumble_lost: 1 },
+      { ...at, ...kc, ...FLAGS, play_type: "run", rusher_player_id: R, interception: 0, fumble_lost: 0 },
+    ];
+    const small = new ColumnStore(async (_s, column) => plays.map((p) => (p as Record<string, unknown>)[column] ?? null));
+    const { rows } = await runStatQuery(
+      query({ statIds: ["team_takeaways"], granularity: "total", teams: { ids: ["BUF"], side: "defense" } }),
+      small,
+    );
+
+    expect(value(rows, "team_id", "BUF", "team_takeaways")).toBe(2);
+  });
+
+  it("counts 20-yard runs as a total, per game and per carry, like any SUM", async () => {
+    const runs = [25, 3, 40].map((yards, k) => ({ ...at, game_id: `g${k}`, ...kc, play_type: "run", rusher_player_id: R, yards_gained: yards }));
+    const small = new ColumnStore(async (_s, column) => runs.map((p) => (p as Record<string, unknown>)[column] ?? null));
+    const get = async (granularity: "total" | "per_game" | "per_play") =>
+      value((await runStatQuery(query({ statIds: ["rush_explosive_runs"], gsisIds: [R], granularity }), small)).rows, "player_id", R, "rush_explosive_runs");
+
+    expect(await get("total")).toBe(2);
+    expect(await get("per_game")).toBeCloseTo(2 / 3);
+    expect(await get("per_play")).toBeCloseTo(2 / 3);
+  });
+
   it("refuses a team-only stat for players", async () => {
     await expect(runStatQuery(query({ statIds: ["team_epa"], gsisIds: [Q] }), store)).rejects.toThrow(/team stat/);
   });

@@ -16,6 +16,7 @@ import type { QueryResult } from "@/stat/types/workbench";
 
 import type { ColumnSource, ColumnStore } from "./columns";
 import { isLeagueStat, leaguePointsProblem, runLeaguePointsQuery, type LeaguePointsRow } from "./leaguePointsQuery";
+import { isDerivedStat, runDerivedStats } from "./derivedQuery";
 import { latestGames } from "./lastGames";
 import { canServeFromPlayerGame, runPlayerGameQuery, wantedPlayers } from "./playerGameQuery";
 import {
@@ -34,8 +35,7 @@ import {
  */
 export const GAME_SCOPE_GROUP_IDS = ["season", "season_type", "week", "week_number", "location"] as const;
 
-const ROLE_COLUMNS = ["passer_player_id", "rusher_player_id", "receiver_player_id"] as const;
-const SUM_OF_COLUMN = /^SUM\((\w+)\)$/i;
+export const ROLE_COLUMNS = ["passer_player_id", "rusher_player_id", "receiver_player_id"] as const;
 
 /** A set of players a query is restricted to (`exclude` false) or kept out of (`exclude` true), before ranking. */
 export interface PlayerSet {
@@ -74,27 +74,30 @@ export interface StatQueryParams {
   lastGames?: number | null;
 }
 
-const TEAM_COLUMN: Readonly<Record<Side, string>> = { offense: "posteam", defense: "defteam" };
+export const TEAM_COLUMN: Readonly<Record<Side, string>> = { offense: "posteam", defense: "defteam" };
 
 type Metric = (rows: ArrayLike<number>, games: number) => Value;
 
+/** The argument of a counting stat written as one SUM(...) of a row expression, or null for any other stat. */
+export function summedExpression(stat: StatDefinition): Node | null {
+  if (stat.rate_only || stat.source !== "pbp") {
+    return null;
+  }
+  const node = parseExpression(stat.base_sql);
+  return node.kind === "call" && node.fn === "SUM" && node.args.length === 1 ? node.args[0]! : null;
+}
+
 /** Per game is a total over the games played; every other granularity is a plain aggregate. */
 function usesGameCount(stat: StatDefinition, granularity: GranularityMode): boolean {
-  return (
-    !stat.rate_only &&
-    SUM_OF_COLUMN.test(stat.base_sql.trim()) &&
-    effectiveGranularity(stat, granularity) === "per_game"
-  );
+  return summedExpression(stat) !== null && effectiveGranularity(stat, granularity) === "per_game";
 }
 
 function metricNodes(stat: StatDefinition, granularity: GranularityMode): Node {
-  const sumColumn = stat.rate_only ? null : SUM_OF_COLUMN.exec(stat.base_sql.trim());
-  if (!sumColumn) {
-    return parseExpression(stat.base_sql);
-  }
-  return parseExpression(
-    effectiveGranularity(stat, granularity) === "per_play" ? `AVG(${sumColumn[1]})` : stat.base_sql,
-  );
+  const summed = summedExpression(stat);
+  // Per play, a SUM is the mean of the same expression per row.
+  return summed && effectiveGranularity(stat, granularity) === "per_play"
+    ? { kind: "call", fn: "AVG", args: [summed] }
+    : parseExpression(stat.base_sql);
 }
 
 function compileMetric(stat: StatDefinition, granularity: GranularityMode, cols: Columns): Metric {
@@ -108,7 +111,7 @@ function compileMetric(stat: StatDefinition, granularity: GranularityMode, cols:
   };
 }
 
-function seasonsSelectedByChips(params: StatQueryParams): Set<number> {
+export function seasonsSelectedByChips(params: StatQueryParams): Set<number> {
   const years = new Set<number>();
   const group = params.chipGroups.find((g) => g.id === "season");
   for (const option of group?.options ?? []) {
@@ -189,7 +192,7 @@ export async function runStatQuery(
 async function runUnordered(params: StatQueryParams, store: ColumnStore, signal?: AbortSignal): Promise<QueryResult> {
   const leagueIds = params.statIds.filter(isLeagueStat);
   if (leagueIds.length === 0) {
-    return runPlayStats(params, store, signal);
+    return runPlayAndDerived(params, store, signal);
   }
   const problem = leaguePointsProblem(params);
   if (problem) {
@@ -200,7 +203,7 @@ async function runUnordered(params: StatQueryParams, store: ColumnStore, signal?
   if (playIds.length === 0) {
     return league;
   }
-  const plays = await runPlayStats({ ...params, statIds: playIds }, store, signal);
+  const plays = await runPlayAndDerived({ ...params, statIds: playIds }, store, signal);
   // The play rows are the base (a left join): minimum plays and role already cut them, and a player
   // with points but no play rows must not pad the table.
   const rowKey = (r: Record<string, unknown>) =>
@@ -209,6 +212,24 @@ async function runUnordered(params: StatQueryParams, store: ColumnStore, signal?
   const kept = { ...league, rows: league.rows.filter((r) => base.has(rowKey(r))) };
   const merged = mergeStatQueryResults([plays, kept], params.statIds, params.split, params.teams ? "team_id" : "player_id");
   return { ...merged, notices: [...(plays.notices ?? []), ...(kept.notices ?? [])] };
+}
+
+/** Play stats and derived stats (formulas over play and league stats), each answered on its own, then joined. */
+async function runPlayAndDerived(params: StatQueryParams, store: ColumnStore, signal?: AbortSignal): Promise<QueryResult> {
+  const derivedIds = params.statIds.filter(isDerivedStat);
+  if (derivedIds.length === 0) {
+    return runPlayStats(params, store, signal);
+  }
+  const derived = await runDerivedStats({ ...params, statIds: derivedIds }, store, signal, (parts) =>
+    runUnordered(parts, store, signal),
+  );
+  const plainIds = params.statIds.filter((id) => !isDerivedStat(id));
+  if (plainIds.length === 0) {
+    return derived;
+  }
+  const plays = await runPlayStats({ ...params, statIds: plainIds }, store, signal);
+  const merged = mergeStatQueryResults([plays, derived], params.statIds, params.split, params.teams ? "team_id" : "player_id");
+  return { ...merged, notices: [...(plays.notices ?? []), ...(derived.notices ?? [])] };
 }
 
 async function runPlayStats(params: StatQueryParams, store: ColumnStore, signal?: AbortSignal): Promise<QueryResult> {

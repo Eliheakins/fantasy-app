@@ -160,9 +160,9 @@ describe("generic words need a clear role", () => {
     );
   });
 
-  it("do not guess when the named stats disagree, or when a receiver asks for touchdowns", () => {
+  it("do not guess when the named stats disagree; a receiver's touchdowns are receiving touchdowns", () => {
     expect(parse("Patrick Mahomes passing yards and rushing touchdowns and yards in 2023").status).not.toBe("resolved");
-    expect(parse("Travis Kelce receiving yards and touchdowns in 2023").status).toBe("ambiguous");
+    expect(resolved("Travis Kelce receiving yards and touchdowns in 2023").stat_ids).toEqual(["rec_yards", "rec_tds"]);
   });
 
   it("reads 'yards' as receiving yards for a receiver", () => {
@@ -332,7 +332,7 @@ describe("parseRules hands over what it does not fully understand", () => {
   it("lists the words it did not understand, for whoever answers next", () => {
     expect(parse("Patrick Mahomes net yards per attempt in 2023")).toMatchObject({
       status: "ambiguous",
-      unrecognized: ["net", "per", "attempt"],
+      unrecognized: ["net"],
     });
   });
 

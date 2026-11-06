@@ -125,11 +125,11 @@ export const MAIN_ROLE: Readonly<Record<string, PlayerRole>> = {
   TE: "receiver",
 };
 
-/** The stat a bare "yards" or "touchdowns" means for each role; a receiver has no touchdown stat. */
+/** The stat a bare "yards" or "touchdowns" means for each role. */
 const GENERIC_STAT: Readonly<Record<PlayerRole, Readonly<Record<"yards" | "touchdowns", string | null>>>> = {
   passer: { yards: "pass_yards", touchdowns: "pass_tds" },
   rusher: { yards: "rush_yards", touchdowns: "rush_tds" },
-  receiver: { yards: "rec_yards", touchdowns: null },
+  receiver: { yards: "rec_yards", touchdowns: "rec_tds" },
 };
 
 const ROLE_BY_CATEGORY: Readonly<Record<string, PlayerRole>> = {
@@ -158,7 +158,7 @@ const LEADERBOARD_WORDS = new Set([
 const NAMED_COMPARE_WORDS = new Set(["who", "had", "has", "more", "better", "or"]);
 /** Words that make a question about teams, and that pick the side of the ball. */
 const TEAM_WORDS = new Set(["team", "teams"]);
-const DEFENSE_WORDS = new Set(["allowed", "allow", "allows", "against", "defense", "defenses", "defensive"]);
+const DEFENSE_WORDS = new Set(["allowed", "allow", "allows", "against", "forced", "defense", "defenses", "defensive"]);
 const OFFENSE_WORDS = new Set(["offense", "offenses", "offensive"]);
 /** "allowed by the Chiefs", "which team": read as filler only in a team question. */
 const TEAM_FILLER = new Set(["by", "which"]);
@@ -246,7 +246,7 @@ function buildPhrases(chipIds: ReadonlySet<string>): Phrase[] {
   const owners = new Map<string, string>();
   const conflicted = new Set<string>();
 
-  for (const stat of STAT_DEFINITIONS) {
+  for (const stat of STAT_DEFINITIONS.filter((s) => !s.hidden)) {
     for (const text of [...stat.aliases, stat.label]) {
       const words = wordsOf(text);
       const key = words.join(" ");
@@ -521,7 +521,7 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
   );
   if (generic.length > 0) {
     // "passing yards and touchdowns": the named stat settles the role. Otherwise only a receiver's
-    // "yards" has one reading, since quarterbacks and backs both run and throw or catch.
+    // "yards" and "touchdowns" have one reading, since quarterbacks and backs both run and throw or catch.
     const named = unique([
       ...statAt.flatMap((s) => ROLE_BY_CATEGORY[getStatById(s.id)?.category ?? ""] ?? []),
       ...(threw ? (["passer"] as const) : []),
@@ -534,8 +534,8 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
       const isTotal = tokens[at - 1] === "total";
       const id = role
         ? GENERIC_STAT[role][word]
-        : fallback === "receiver" && word === "yards" && !isTotal
-          ? GENERIC_STAT.receiver.yards
+        : fallback === "receiver" && !isTotal
+          ? GENERIC_STAT.receiver[word]
           : null;
       if (!id) {
         return ambiguous(`"${word}" could mean passing, rushing or receiving here.`);
@@ -556,7 +556,7 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
   const statRoles = unique(
     statIds.flatMap((id) => {
       const stat = getStatById(id);
-      return stat && stat.source !== "league" ? [stat.playerRole] : [];
+      return stat && stat.source === "pbp" ? [stat.playerRole] : [];
     }),
   );
   if (sortedMatches.length > 1) {

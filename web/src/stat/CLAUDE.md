@@ -16,6 +16,13 @@ The stat code in the browser. The engine runs queries on Parquet shards from `/a
 - `team_only` stats (`team_epa`, `team_success`) count every pass and run play by `posteam` or `defteam`, whoever had the ball; their role is a placeholder and a player query on them throws.
 - `family` groups the versions of one stat; the first in `metrics.json` is the default. `familyMember` and `familyDefault` in `config/statDictionary.ts` pick among them (Ask's `settleStats`).
 
+## Derived stats
+
+- `source: "derived"` metrics have a `formula` over other metrics' totals instead of play SQL (`engine/derivedQuery.ts`, joined in `runPlayAndDerived`). In a formula, a metric id is that stat's total for the row (0 when the player has none of its plays), `team__<id>` the team's total of a counting stat in the games the player played (for the team he played for in each, under the same chips), and `games` his games played. A derived count per game divides by `games`; a derived rate is used as written, and its `volume` formula is what the minimum plays compares against.
+- Scrimmage yards, touches, total TDs, fumbles lost, passer rating, standard/half/full PPR points and the shares (target, air yards, WOPR, opportunity) are derived. Shares are refused for teams.
+- `hidden` metrics are formula parts only: not in the picker (`getStatsByCategory`), the model catalog or the rules.
+- A counting stat written as one `SUM(<row expression>)` gets per game and per play (`summedExpression`).
+
 ## Weeks and last N games
 
 - The `week_number` chips (`wk-1` to `wk-22`) pick single weeks; several make a range. They are a game-scope group, and the player-game table and league points answer them. They are left out of the model catalog (`CODE_READ_GROUP_IDS`): Ask reads weeks in code.

@@ -43,10 +43,18 @@ class MetricDefinition(BaseModel):
     id: str = Field(..., pattern=r"^[a-z][a-z0-9_]*$")
     label: str = Field(..., min_length=1)
     category: str
-    source: Literal["pbp", "league"] = Field(
+    source: Literal["pbp", "league", "derived"] = Field(
         "pbp",
-        description="'league': points under the picked league's scoring; no play SQL or role",
+        description="'league': points under the picked league's scoring; no play SQL or role. "
+        "'derived': a formula over other metrics' totals",
     )
+    formula: str = Field(
+        "", description="Derived only: arithmetic over metric ids, team__<id> and games"
+    )
+    volume: str | None = Field(
+        None, description="Derived only: the formula the minimum plays cut compares against"
+    )
+    hidden: bool = Field(False, description="A part of a derived metric, not offered on its own")
     player_role: PlayerRole | None = None
     play_type: PlayType | None = None
     base_sql: str = Field(
@@ -85,10 +93,16 @@ class MetricDefinition(BaseModel):
 
     @model_validator(mode="after")
     def _source_decides_which_fields_apply(self) -> MetricDefinition:
-        if self.source == "league":
+        if self.source != "derived" and (self.formula or self.volume):
+            raise ValueError(f"{self.id!r} has a formula but is not a derived metric")
+        if self.source in ("league", "derived"):
             extras = (self.base_sql, self.play_filter, self.player_game_column)
             if any(extras) or self.player_role or self.play_type:
-                raise ValueError(f"{self.id!r} is a league metric: no play SQL, role or filter")
+                raise ValueError(
+                    f"{self.id!r} is a {self.source} metric: no play SQL, role or filter"
+                )
+            if self.source == "derived" and not self.formula:
+                raise ValueError(f"{self.id!r} is a derived metric and needs a formula")
         elif not (self.base_sql and self.player_role and self.play_type):
             raise ValueError(f"{self.id!r} needs base_sql, player_role and play_type")
         return self

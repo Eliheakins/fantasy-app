@@ -55,6 +55,12 @@ export interface StatDefinition {
   teamOnly?: boolean;
   /** Stats answering one question for different roles; the first in the file is the default. */
   family?: string;
+  /** A derived stat's arithmetic over other stats' totals, `team__<id>` and `games`. */
+  formula?: string;
+  /** A derived stat's volume formula, compared with the minimum plays. */
+  volume?: string;
+  /** A part of a derived stat only: not offered in the picker, the catalog or the rules. */
+  hidden?: boolean;
 }
 
 const file = parseMetricsFile(rawMetrics);
@@ -78,6 +84,9 @@ function toStat(m: MetricDefinitionData): StatDefinition {
     aliases: m.aliases,
     teamOnly: m.team_only || undefined,
     family: m.family ?? undefined,
+    formula: m.formula || undefined,
+    volume: m.volume ?? undefined,
+    hidden: m.hidden || undefined,
   };
 }
 
@@ -96,7 +105,7 @@ export function getStatById(id: string | null): StatDefinition | undefined {
 }
 
 export function getStatsByCategory(category: StatCategory): StatDefinition[] {
-  return STAT_DEFINITIONS.filter((s) => s.category === category);
+  return STAT_DEFINITIONS.filter((s) => s.category === category && !s.hidden);
 }
 
 export function playerColumnForRole(role: PlayerRole): "passer_player_id" | "rusher_player_id" | "receiver_player_id" {

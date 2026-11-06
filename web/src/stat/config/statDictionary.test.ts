@@ -42,8 +42,8 @@ describe("stat dictionary", () => {
     expect(getStatsByCategory("passing").every((s) => s.category === "passing")).toBe(true);
   });
 
-  it("gives every stat at least one alias", () => {
-    expect(STAT_DEFINITIONS.filter((s) => s.aliases.length === 0)).toEqual([]);
+  it("gives every stat a person can ask for at least one alias", () => {
+    expect(STAT_DEFINITIONS.filter((s) => s.aliases.length === 0 && !s.hidden)).toEqual([]);
   });
 
   it("names the play-by-play column for each role", () => {

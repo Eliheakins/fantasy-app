@@ -7,8 +7,8 @@ export function effectiveGranularity(stat: StatDefinition | undefined, requested
   if (stat?.rate_only) {
     return "per_play";
   }
-  // A weekly points total has no plays to divide by.
-  return stat?.source === "league" && requested === "per_play" ? "per_game" : requested;
+  // A weekly points total, or a total that adds stats of several roles, has no plays to divide by.
+  return stat && stat.source !== "pbp" && requested === "per_play" ? "per_game" : requested;
 }
 
 /** Safe column alias for a stat id in a result row. */
@@ -175,6 +175,9 @@ export function describeStat(stat: StatDefinition | undefined): string {
   if (stat.source === "league") {
     return "points under the selected league's scoring · weekly regular-season rows";
   }
+  if (stat.source === "derived") {
+    return `${stat.formula ?? ""} · from other stats' totals`;
+  }
   const role = stat.playerRole;
   const pt = stat.playType === "all" ? "all plays" : stat.playType;
   const sqlPreview = stat.base_sql.length > 72 ? `${stat.base_sql.slice(0, 72)}…` : stat.base_sql;
@@ -201,6 +204,9 @@ export function describeQuery(params: {
     }
     if (stat.source === "league") {
       return [`${stat.label} (${effectiveGranularity(stat, params.granularity)}): the selected league's weekly points`];
+    }
+    if (stat.source === "derived") {
+      return [`${stat.label} (${effectiveGranularity(stat, params.granularity)}): ${stat.formula ?? ""}`];
     }
     const rows = [
       `${stat.playerRole} ${stat.playType === "all" ? "plays" : `${stat.playType} plays`}`,

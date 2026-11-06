@@ -46,13 +46,14 @@ describe("rules parser against the eval questions", () => {
 
     // cases.json: 43/43 answerable correct (40/40 before the league points stat), 0 wrong.
     expect([of("cases", "correct", answerable("cases")), answerable("cases").length, of("cases", "wrong")]).toEqual([43, 43, 0]);
-    // heldout.json: 27/27 answerable correct (one more deferred on purpose), 0 wrong, 1 trap refused, 6 handed to the model
+    // heldout.json: 28/28 answerable correct (one more deferred on purpose), 0 wrong, 1 trap refused, 5 handed to the model
     // (25/25 and 7 before the interception count made "Justin Herbert interceptions in 2021" answerable; 26/26 before
-    // the model could rank, which made the "Who led the league" case answerable rather than a model trap).
+    // the model could rank, which made the "Who led the league" case answerable rather than a model trap; 27/27 and 6
+    // before yards per reception made "Travis Kelce yards per catch" answerable).
     const held = rows.filter((r) => r.set === "heldout");
-    expect([of("heldout", "correct", answerable("heldout")), answerable("heldout").length, of("heldout", "wrong")]).toEqual([27, 27, 0]);
+    expect([of("heldout", "correct", answerable("heldout")), answerable("heldout").length, of("heldout", "wrong")]).toEqual([28, 28, 0]);
     expect(held.filter((r) => r.case.unsupported && r.result.status === "unsupported").length).toBe(1);
-    expect(of("heldout", "deferred")).toBe(6);
+    expect(of("heldout", "deferred")).toBe(5);
     expect(rows.filter((r) => r.set === "corrections" && r.verdict === "wrong")).toEqual([]);
   });
 

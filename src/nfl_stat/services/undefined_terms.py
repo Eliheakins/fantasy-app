@@ -28,12 +28,9 @@ _TERMS: tuple[tuple[re.Pattern[str], str], ...] = tuple(
             "Broken tackles and yards before contact are not in the play-by-play data.",
         ),
         (r"\bdrop rate\b|\bdropped passes\b", "Drops are not in the play-by-play data."),
-        (r"\bwopr\b", "WOPR (weighted opportunity rating) is not defined yet."),
-        (r"\bracr\b", "RACR (receiver air conversion ratio) is not defined yet."),
         (
-            r"\bppr\b|\bstandard scoring\b",
-            "Only your league's own scoring is defined; standard, "
-            "half and full PPR points are not.",
+            r"\bnet yards per (pass )?attempt\b|\bny/a\b",
+            "Net yards per attempt (NY/A) is not defined; ANY/A and Y/A are.",
         ),
         (
             r"\bproject(ed|ion|ions)\b",

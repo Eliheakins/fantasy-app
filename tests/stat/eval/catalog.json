@@ -175,6 +175,17 @@
       ]
     },
     {
+      "id": "rush_explosive_runs",
+      "label": "Explosive runs",
+      "category": "rushing",
+      "aliases": [
+        "explosive runs",
+        "20 yard runs",
+        "runs of 20 yards",
+        "big runs"
+      ]
+    },
+    {
       "id": "rush_yards",
       "label": "Rush yards",
       "category": "rushing",
@@ -342,12 +353,12 @@
     },
     {
       "id": "ngs_p_rating",
-      "label": "Passer rating",
+      "label": "NGS passer rating",
       "category": "ngs_passing",
       "aliases": [
-        "passer rating",
-        "qb rating",
-        "next gen passer rating"
+        "ngs passer rating",
+        "next gen passer rating",
+        "next gen stats passer rating"
       ]
     },
     {
@@ -522,6 +533,267 @@
         "offensive success rate",
         "defensive success rate"
       ]
+    },
+    {
+      "id": "rec_tgt",
+      "label": "Targets",
+      "category": "receiving",
+      "aliases": [
+        "targets",
+        "times targeted"
+      ]
+    },
+    {
+      "id": "rec_tds",
+      "label": "Rec TDs",
+      "category": "receiving",
+      "aliases": [
+        "receiving touchdowns",
+        "receiving tds",
+        "rec tds",
+        "touchdown catches",
+        "td catches"
+      ]
+    },
+    {
+      "id": "pass_att",
+      "label": "Pass attempts",
+      "category": "passing",
+      "aliases": [
+        "pass attempts",
+        "passing attempts",
+        "attempts"
+      ]
+    },
+    {
+      "id": "pass_cmp",
+      "label": "Completions",
+      "category": "passing",
+      "aliases": [
+        "completions",
+        "completed passes"
+      ]
+    },
+    {
+      "id": "pass_sacks",
+      "label": "Sacks taken",
+      "category": "passing",
+      "aliases": [
+        "sacks taken",
+        "times sacked",
+        "sacks"
+      ]
+    },
+    {
+      "id": "pass_ypa",
+      "label": "Y/A",
+      "category": "passing",
+      "aliases": [
+        "yards per attempt",
+        "y/a",
+        "yards per pass attempt",
+        "yards per pass"
+      ]
+    },
+    {
+      "id": "pacr",
+      "label": "PACR",
+      "category": "passing",
+      "aliases": [
+        "pacr",
+        "passing air conversion ratio"
+      ]
+    },
+    {
+      "id": "rec_ypr",
+      "label": "Yds/rec",
+      "category": "receiving",
+      "aliases": [
+        "yards per reception",
+        "yards per catch",
+        "ypr",
+        "yards per rec"
+      ]
+    },
+    {
+      "id": "rec_ypt",
+      "label": "Yds/target",
+      "category": "receiving",
+      "aliases": [
+        "yards per target",
+        "ypt"
+      ]
+    },
+    {
+      "id": "rec_air_yards",
+      "label": "Air yards",
+      "category": "receiving",
+      "aliases": [
+        "air yards",
+        "receiving air yards",
+        "intended air yards on targets"
+      ]
+    },
+    {
+      "id": "rec_yac_per_rec",
+      "label": "YAC/rec",
+      "category": "receiving",
+      "aliases": [
+        "yac per reception",
+        "yards after catch per reception",
+        "yac per catch"
+      ]
+    },
+    {
+      "id": "racr",
+      "label": "RACR",
+      "category": "receiving",
+      "aliases": [
+        "racr",
+        "receiver air conversion ratio"
+      ]
+    },
+    {
+      "id": "team_takeaways",
+      "label": "Turnovers",
+      "category": "team",
+      "aliases": [
+        "turnovers",
+        "takeaways",
+        "turnovers forced",
+        "giveaways"
+      ]
+    },
+    {
+      "id": "scrim_yds",
+      "label": "Scrimmage yards",
+      "category": "scrimmage",
+      "aliases": [
+        "scrimmage yards",
+        "yards from scrimmage",
+        "total scrimmage yards",
+        "rushing and receiving yards"
+      ]
+    },
+    {
+      "id": "touches",
+      "label": "Touches",
+      "category": "scrimmage",
+      "aliases": [
+        "touches"
+      ]
+    },
+    {
+      "id": "yds_per_touch",
+      "label": "Yds/touch",
+      "category": "scrimmage",
+      "aliases": [
+        "yards per touch"
+      ]
+    },
+    {
+      "id": "total_tds",
+      "label": "Total TDs",
+      "category": "scrimmage",
+      "aliases": [
+        "total touchdowns",
+        "total tds",
+        "scrimmage touchdowns",
+        "touchdowns scored"
+      ]
+    },
+    {
+      "id": "fumbles_lost",
+      "label": "Fumbles lost",
+      "category": "scrimmage",
+      "aliases": [
+        "fumbles lost",
+        "fumbles",
+        "lost fumbles"
+      ]
+    },
+    {
+      "id": "tgt_share",
+      "label": "Target share",
+      "category": "receiving",
+      "aliases": [
+        "target share",
+        "share of targets",
+        "target %"
+      ]
+    },
+    {
+      "id": "air_share",
+      "label": "Air yards share",
+      "category": "receiving",
+      "aliases": [
+        "air yards share",
+        "share of air yards",
+        "air yard share"
+      ]
+    },
+    {
+      "id": "wopr",
+      "label": "WOPR",
+      "category": "receiving",
+      "aliases": [
+        "wopr",
+        "weighted opportunity rating"
+      ]
+    },
+    {
+      "id": "opp_share",
+      "label": "Opportunity share",
+      "category": "rushing",
+      "aliases": [
+        "opportunity share",
+        "opportunities share",
+        "share of opportunities"
+      ]
+    },
+    {
+      "id": "pass_rating",
+      "label": "Passer rating",
+      "category": "passing",
+      "aliases": [
+        "passer rating",
+        "qb rating",
+        "quarterback rating",
+        "nfl passer rating"
+      ]
+    },
+    {
+      "id": "fp_std",
+      "label": "Fantasy pts (standard)",
+      "category": "fantasy",
+      "aliases": [
+        "standard fantasy points",
+        "standard points",
+        "non ppr points",
+        "non-ppr points"
+      ]
+    },
+    {
+      "id": "fp_half",
+      "label": "Fantasy pts (half PPR)",
+      "category": "fantasy",
+      "aliases": [
+        "half ppr points",
+        "half ppr",
+        "half point ppr",
+        "half-ppr points"
+      ]
+    },
+    {
+      "id": "fp_ppr",
+      "label": "Fantasy pts (PPR)",
+      "category": "fantasy",
+      "aliases": [
+        "ppr points",
+        "ppr fantasy points",
+        "full ppr points",
+        "ppr"
+      ]
     }
   ],
   "filters": [
@@ -613,6 +885,16 @@
     {
       "id": "field-redzone",
       "label": "Red zone",
+      "group": "Field position"
+    },
+    {
+      "id": "yl-inside10",
+      "label": "Inside the 10",
+      "group": "Field position"
+    },
+    {
+      "id": "yl-inside5",
+      "label": "Inside the 5 (goal line)",
       "group": "Field position"
     },
     {

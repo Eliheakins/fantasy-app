@@ -85,7 +85,11 @@ const GROUP_TEMPLATES: FilterChipGroup[] = [
     id: "field",
     label: "Field position",
     combine: "or",
-    options: [{ id: "field-redzone", label: "Red zone", predicate: "yardline_100 <= 20" }],
+    options: [
+      { id: "field-redzone", label: "Red zone", predicate: "yardline_100 <= 20" },
+      { id: "yl-inside10", label: "Inside the 10", predicate: "yardline_100 <= 10" },
+      { id: "yl-inside5", label: "Inside the 5 (goal line)", predicate: "yardline_100 <= 5" },
+    ],
   },
   {
     id: "red_zone_flag",
@@ -238,6 +242,8 @@ export const CHIP_PHRASES: Readonly<Record<string, readonly string[]>> = {
   "loc-home": ["at home", "home games", "home game", "home"],
   "loc-away": ["on the road", "road games", "road game", "away games", "away game", "away from home", "away"],
   "field-redzone": ["red zone", "redzone", "inside the 20"],
+  "yl-inside10": ["inside the 10", "inside the ten", "inside 10"],
+  "yl-inside5": ["inside the 5", "inside the five", "inside 5", "goal line", "goalline"],
   "gtg-yes": ["goal to go"],
   "stype-reg": ["regular season"],
   "stype-post": ["playoffs", "playoff", "postseason", "post season"],
