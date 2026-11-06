@@ -5,12 +5,23 @@ Ask answers an NFL question in plain language. `pages/Ask.tsx` has an Ask tab an
 ## Entry and dispatch
 
 - `components/layout/AskBox.tsx` in `TopBar` (input from md up, an icon button that reveals it on phones) navigates to `/ask?q=`, keeping only `league` and `team`. `useAsk` answers a `q` in the URL on arrival, when the URL holds no query.
-- `paths/dispatch.ts` gives the question to each path in order. The first whose `read` matches answers: `startSitPath`, then `tradePath`, then `rulesPath`, then `modelPath`. The model is last, because it takes whatever the others leave. `isStale` stops a slow answer from replacing one the user has moved past.
+- `paths/dispatch.ts` gives the question to each path in order. The first whose `read` matches answers: `startSitPath`, then `tradePath`, then `routePath`, then `rulesPath`, then `modelPath`. The model is last, because it takes whatever the others leave. `isStale` stops a slow answer from replacing one the user has moved past.
 - `rulesPath` takes a no-player question only when the rules fully read it (a ranking or a team question) or refuse it with certainty. Otherwise the model reads it, and `showModelRanking` makes a leaderboard when the words ask for a ranking or the model set `ranking`; with neither, it names no one and is refused.
+
+## Fantasy routes
+
+- `fantasyRoute.ts` / `paths/routePath.ts` (after trades, before the stat paths, rules only): waivers, pick-ups and drops link to Moves (free agents); one player's injury, projection, rest of season or outlook to his player page; projections with no player, byes and this week's opponent to Lineup; strength of schedule is said to be missing. `RouteAnswer.tsx` shows the link (keeping `league` and `team`). The model is never asked, so no league data reaches it. Logged as a message.
+
+## Opponents, contrasts and stat lines
+
+- `opponents.ts` reads a team after "against", "vs", "versus" or "facing" as an `opp-` chip, next to a player or another team. With no player and only that team, the team stays the subject ("passing yards against the Chiefs" is the Chiefs' defense). Opponents are cut from the model's text (`modelText`) and added back in `timeOf`.
+- "2023 vs 2024" splits by season and "home vs away" by `location`; other contrasts are refused. "X stats" / "stat line" gives the position's usual counts (`STAT_LINES` in `ruleParser.ts`).
 
 ## Rankings
 
 - `ranking.ts` reads a ranking the same way on both paths: direction (`better`, flipped for a defense), "top N", "min N carries/targets/attempts" (the unit must be the ranked stat's role), "in a single game" (split by week). Default floor: 100 plays for a rate, per-game or fewest-first ranking, 10 for a weekly one, none for most-first totals and teams.
+- `readWho` reads position nouns (QB, RB, WR, TE in their usual words), "rookie" and role nouns ("rushers"). Position and rookie become `QueryState.position` / `rookie`; a generic stat settles to the position's own; a role noun must agree with the ranked stat or picks its family member.
+- `ruleEval.ts`: a case's `rules_reads` is what the rules must read where the model alone must refuse (opponents are read in code before the model is asked).
 
 ## Names
 
@@ -19,7 +30,7 @@ Ask answers an NFL question in plain language. `pages/Ask.tsx` has an Ask tab an
 ## Rules parser
 
 - `ruleParser.ts` is always tried first. It answers what it can, even with the intent endpoint down or no model server.
-- `ruleParser.eval.test.ts` is the rules eval (`eval:rules` is gone). It pins the recorded numbers: cases 43/43 answerable correct and 0 wrong (40/40 before `league_pts`); heldout 26/26 correct, 0 wrong, 1 trap refused, 6 handed to the model. It reads `tests/stat/eval/`.
+- `ruleParser.eval.test.ts` is the rules eval (`eval:rules` is gone). It pins the recorded numbers: cases 43/43 answerable correct and 0 wrong (40/40 before `league_pts`); heldout 28/28 correct, 0 wrong, 1 trap refused, the opponent trap read by the rules (`rules_reads`), 4 handed to the model (25/25 and 7 before the 2026-11-06 expansion relabelled four cases; see `docs/decisions.md`). It reads `tests/stat/eval/`.
 - A league stat has no position. The rules parser and `useAsk` ignore it when settling roles.
 
 ## Time words and the default season

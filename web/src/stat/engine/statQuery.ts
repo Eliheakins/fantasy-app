@@ -18,6 +18,7 @@ import type { ColumnSource, ColumnStore } from "./columns";
 import { isLeagueStat, leaguePointsProblem, runLeaguePointsQuery, type LeaguePointsRow } from "./leaguePointsQuery";
 import { isDerivedStat, runDerivedStats } from "./derivedQuery";
 import { latestGames } from "./lastGames";
+import { narrowPlayerSet, playersFitting } from "./playerFilters";
 import { canServeFromPlayerGame, runPlayerGameQuery, wantedPlayers } from "./playerGameQuery";
 import {
   columnsIn,
@@ -33,7 +34,7 @@ import {
  * Chip groups that describe the game rather than a play. Per-game stats divide by the games a
  * player appeared in within this scope, so "3rd down, per game" still counts every game played.
  */
-export const GAME_SCOPE_GROUP_IDS = ["season", "season_type", "week", "week_number", "location"] as const;
+export const GAME_SCOPE_GROUP_IDS = ["season", "season_type", "week", "week_number", "opponent", "location"] as const;
 
 export const ROLE_COLUMNS = ["passer_player_id", "rusher_player_id", "receiver_player_id"] as const;
 
@@ -72,6 +73,12 @@ export interface StatQueryParams {
   teams?: { ids: string[] | null; side: Side } | null;
   /** Only each player's (or team's) latest N games within the season and week chips; null for all. */
   lastGames?: number | null;
+  /** Only players at this position (QB, RB, WR, TE); null for all. Ignored for teams. */
+  position?: string | null;
+  /** Only players in their rookie season (the one season chip on, else the latest season). Ignored for teams. */
+  rookie?: boolean;
+  /** The player index (`player_index.parquet`), needed by the position and rookie filters. */
+  playerIndex?: ColumnSource | null;
 }
 
 export const TEAM_COLUMN: Readonly<Record<Side, string>> = { offense: "posteam", defense: "defteam" };
@@ -184,7 +191,11 @@ export async function runStatQuery(
   store: ColumnStore,
   signal?: AbortSignal,
 ): Promise<QueryResult> {
-  const result = await runUnordered(params, store, signal);
+  const chipYears = [...seasonsSelectedByChips(params)];
+  const rookieSeason = chipYears.length === 1 ? chipYears[0]! : Math.max(...params.sources.map((s) => s.year));
+  const fits = params.teams ? null : await playersFitting(params, rookieSeason, store, signal);
+  const narrowed = fits ? { ...params, playerSet: narrowPlayerSet(params.playerSet, fits) } : params;
+  const result = await runUnordered(narrowed, store, signal);
   return orderAndLimit(result, params.order ?? null, params.limit ?? null);
 }
 

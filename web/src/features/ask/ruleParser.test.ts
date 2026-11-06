@@ -194,8 +194,8 @@ describe("parseRules does not misread joins and contrasts", () => {
     expect(parse("Joe Burrow passing yards in 2000").status).toBe("unsupported");
   });
 
-  it("does not merge a contrast into one query: home vs away, regular season vs playoffs", () => {
-    expect(parse("Travis Kelce receiving yards at home vs away in 2023").status).toBe("ambiguous");
+  it("does not merge a contrast into one query: regular season vs playoffs, first half vs second half", () => {
+    expect(parse("Travis Kelce receiving yards in the first half vs the second half in 2023").status).toBe("ambiguous");
     expect(parse("Patrick Mahomes passing yards in the regular season vs the playoffs in 2023").status).toBe(
       "ambiguous",
     );
@@ -227,9 +227,7 @@ describe("parseRules regressions found in review", () => {
     handedOver("Patrick Mahomes passing yards in 2022-23");
   });
 
-  it("does not merge a comparison of seasons, filters or groups into one union query", () => {
-    handedOver("Patrick Mahomes passing yards 2022 vs 2023");
-    handedOver("Patrick Mahomes passing yards 2023 versus 2022");
+  it("does not merge a comparison of filters or groups into one union query (seasons split instead)", () => {
     handedOver("Patrick Mahomes passing yards early season vs late season in 2023");
     handedOver("Patrick Mahomes passing yards first quarter vs fourth quarter in 2023");
     handedOver("Patrick Mahomes passing yards third down vs fourth down in 2023");
@@ -319,9 +317,8 @@ describe("parseRules hands over what it does not fully understand", () => {
     expect(JSON.stringify(result)).toContain("net");
   });
 
-  it("defers on opponent, leaderboard and unknown-filter wording", () => {
+  it("defers on unknown-filter and combined-yards wording", () => {
     for (const question of [
-      "Patrick Mahomes passing yards against the Chiefs in 2023",
       "Josh Allen passing yards in the last two minutes of games in 2023",
       "Lamar Jackson total yards in 2023",
     ]) {
@@ -564,7 +561,7 @@ describe("team questions", () => {
   });
 
   it("hands over a question that names a player and a team", () => {
-    expect(parse("Patrick Mahomes passing yards against the Chiefs in 2023").status).not.toBe("resolved");
+    expect(parse("Patrick Mahomes Chiefs passing yards in 2023").status).not.toBe("resolved");
   });
 
   it("hands over a question that asks for offense and defense at once", () => {

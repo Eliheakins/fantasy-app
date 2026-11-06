@@ -10,7 +10,7 @@ Explore is the Find players page. `/explore` redirects here (`lib/redirects.tsx`
 
 ## URL keys
 
-- The query lives in the URL under these keys (`web/src/stat/lib/queryUrl.ts`): `p` players, `s` stats, `f` filters, `g` granularity, `m` min plays, `o` order, `n` limit, `by` split, `who` subject, `t` teams, `side`, `lg` league filter, `last` last N games (set by Ask; no Explore control, shown in the query details).
+- The query lives in the URL under these keys (`web/src/stat/lib/queryUrl.ts`): `p` players, `s` stats, `f` filters, `g` granularity, `m` min plays, `o` order, `n` limit, `by` split, `who` subject, `t` teams, `side`, `lg` league filter, `last` last N games, `pos` position and `rookie` (set by Ask; no Explore control, shown in the query details). `by` is `season`, `week` or `location` (home and away).
 - Explore's keys never go on other links. `useQueryState` keeps `league` and `team` when it writes.
 
 ## League filter (`lg`)

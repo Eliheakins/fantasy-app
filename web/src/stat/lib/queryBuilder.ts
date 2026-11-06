@@ -42,7 +42,7 @@ export function groupStatsByRows(statIds: string[]): StatDefinition[][] {
 
 /** The columns a split adds to each result row; a week split keeps the season too. */
 export function splitColumns(split: Split | null | undefined): string[] {
-  return split === "week" ? ["season", "week"] : split === "season" ? ["season"] : [];
+  return split === "week" ? ["season", "week"] : split === "season" ? ["season"] : split === "location" ? ["posteam_type"] : [];
 }
 
 /** The key a play or game row is grouped under: the player, plus its season and week when split. */
@@ -125,7 +125,8 @@ export function mergeStatQueryResults(
   rows.sort((a, b) => {
     // A split reads in time order: season, then week, then the first stat within each.
     for (const c of groupColumns) {
-      const byTime = Number(a[c]) - Number(b[c]);
+      const [x, y] = [a[c], b[c]];
+      const byTime = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
       if (byTime !== 0) {
         return byTime;
       }
@@ -196,6 +197,8 @@ export function describeQuery(params: {
   chipGroups: FilterChipGroup[];
   minPlays: number;
   lastGames?: number | null;
+  position?: string | null;
+  rookie?: boolean;
 }): string {
   const lines = params.statIds.flatMap((id) => {
     const stat = getStatById(id);
@@ -223,6 +226,9 @@ export function describeQuery(params: {
   }
   if (params.lastGames) {
     lines.push(`Only each player's latest ${params.lastGames} game(s) within those filters`);
+  }
+  if (params.position || params.rookie) {
+    lines.push(`Only ${[params.rookie ? "rookies" : null, params.position ? `${params.position}s` : null].filter(Boolean).join(", ")}`);
   }
   return lines.join("\n");
 }

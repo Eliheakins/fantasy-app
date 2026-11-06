@@ -38,7 +38,8 @@ function tierOneStats(params: StatQueryParams): StatDefinition[] | null {
 
 /** True when the table can answer the whole query: counting stats, any granularity, no situational chip. */
 export function canServeFromPlayerGame(params: StatQueryParams): boolean {
-  if (!params.playerGame || !tierOneStats(params)) {
+  // The table has no home or away column to split by.
+  if (!params.playerGame || !tierOneStats(params) || params.split === "location") {
     return false;
   }
   return !params.chipGroups.some(

@@ -23,6 +23,12 @@ The stat code in the browser. The engine runs queries on Parquet shards from `/a
 - `hidden` metrics are formula parts only: not in the picker (`getStatsByCategory`), the model catalog or the rules.
 - A counting stat written as one `SUM(<row expression>)` gets per game and per play (`summedExpression`).
 
+## Opponents, home and away, positions
+
+- The `opponent` chips (`opp-XXX`, `defteam = 'XXX'`) are a game-scope group, read in code by Ask and left out of the model catalog (`CODE_READ_GROUP_IDS`).
+- Split `location` gives one row per player at home and away (`posteam_type`); the player-game table has no such column, so it runs on the play-by-play.
+- `StatQueryParams.position` and `rookie` narrow players through the player index (`playerIndex`, `engine/playerFilters.ts`): a rookie in season S has latest season minus years of experience equal to S (S is the one season chip on, else the latest season). They narrow `playerSet` and ignore teams.
+
 ## Weeks and last N games
 
 - The `week_number` chips (`wk-1` to `wk-22`) pick single weeks; several make a range. They are a game-scope group, and the player-game table and league points answer them. They are left out of the model catalog (`CODE_READ_GROUP_IDS`): Ask reads weeks in code.

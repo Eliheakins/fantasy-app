@@ -23,6 +23,11 @@ export interface EvalCase {
   unsupported?: boolean;
   /** "defer": the rules parser must hand this one over rather than guess. "leaderboard": it must read it as a league ranking of `stats` and `filters`. */
   rules?: "defer" | "leaderboard";
+  /**
+   * What the rules must read where the model alone must refuse: Ask reads some words in code before the
+   * model is asked (opponents), so the model, sent the raw question in its eval, has no filter for them.
+   */
+  rules_reads?: { stats: string[]; filters: string[] };
   trap?: string;
 }
 
@@ -39,9 +44,13 @@ export function judge(c: EvalCase, result: RuleResult): Verdict {
     return "deferred";
   }
   if (result.status === "unsupported") {
-    return c.unsupported ? "correct" : "wrong";
+    return c.unsupported && !c.rules_reads ? "correct" : "wrong";
   }
   const { intent } = result;
+  if (c.rules_reads) {
+    const reads = sameSet(intent.stat_ids, c.rules_reads.stats) && sameSet(intent.filter_ids, c.rules_reads.filters);
+    return reads ? "correct" : "wrong";
+  }
   if (c.rules === "leaderboard") {
     const reads =
       result.leaderboard && sameSet(intent.stat_ids, c.stats ?? []) && sameSet(intent.filter_ids, c.filters ?? []);

@@ -19,7 +19,7 @@ const loggedQuerySchema = z.object({
   order: z.object({ metric: z.string(), direction: z.enum(["asc", "desc"]) }).nullable(),
   limit: z.number().int().nullable(),
   // Logs written before splits existed have no split.
-  split: z.enum(["season", "week"]).nullable().default(null),
+  split: z.enum(["season", "week", "location"]).nullable().default(null),
   subject: z.enum(["players", "teams"]).default("players"),
   teams: z.array(z.string()).default([]),
   side: z.enum(["offense", "defense"]).default("offense"),

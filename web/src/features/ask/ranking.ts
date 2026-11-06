@@ -2,15 +2,70 @@
  * How a ranking is read, the same on the rules and model paths: which end comes first, how many rows,
  * the play floor a player needs to qualify ("min 100 carries"), and "in a single game".
  */
-import { getStatById, type PlayerRole } from "@/stat/config/statDictionary";
-import type { QueryOrder } from "@/stat/lib/queryUrl";
+import { familyMember, getStatById, type PlayerRole } from "@/stat/config/statDictionary";
+import type { Position, QueryOrder } from "@/stat/lib/queryUrl";
 import type { GranularityMode } from "@/stat/types/queryBuilder";
 
-/** A league-wide ranking: the stat to order by, how many rows to keep, and the plays a player needs to qualify. */
+/** A league-wide ranking: the stat to order by, how many rows to keep, the plays a player needs to qualify, and who may be listed. */
 export interface Leaderboard {
   order: QueryOrder;
   limit: number;
   minPlays: number;
+  position?: Position | null;
+  rookie?: boolean;
+}
+
+/** Position nouns ("quarterbacks", "tight end") and the position they name. Two-word ones are matched first. */
+const POSITION_WORDS: readonly [string[], Position][] = [
+  [["running", "backs"], "RB"],
+  [["running", "back"], "RB"],
+  [["wide", "receivers"], "WR"],
+  [["wide", "receiver"], "WR"],
+  [["tight", "ends"], "TE"],
+  [["tight", "end"], "TE"],
+  ...(["qb", "qbs", "quarterback", "quarterbacks"].map((w) => [[w], "QB"]) as [string[], Position][]),
+  ...(["rb", "rbs"].map((w) => [[w], "RB"]) as [string[], Position][]),
+  ...(["wr", "wrs"].map((w) => [[w], "WR"]) as [string[], Position][]),
+  ...(["te", "tes"].map((w) => [[w], "TE"]) as [string[], Position][]),
+];
+/** Role nouns: a hint that must agree with the ranked stat's role ("top 5 rushers in yards per carry"). */
+const ROLE_NOUNS: Readonly<Record<string, PlayerRole>> = {
+  rusher: "rusher",
+  rushers: "rusher",
+  passer: "passer",
+  passers: "passer",
+  receiver: "receiver",
+  receivers: "receiver",
+};
+
+/** Who a ranking may list: a position, rookies, a role noun, and the words that say so. */
+export function readWho(tokens: readonly string[]): {
+  position: Position | null;
+  rookie: boolean;
+  role: PlayerRole | null;
+  at: number[];
+  reason?: string;
+} {
+  const at: number[] = [];
+  const positions = new Set<Position>();
+  for (const [words, position] of POSITION_WORDS) {
+    for (let i = 0; i + words.length <= tokens.length; i++) {
+      if (words.every((w, k) => tokens[i + k] === w && !at.includes(i + k))) {
+        positions.add(position);
+        words.forEach((_, k) => at.push(i + k));
+      }
+    }
+  }
+  const rookieAt = tokens.flatMap((t, i) => (t === "rookie" || t === "rookies" ? [i] : []));
+  const roleAt = tokens.flatMap((t, i) => (ROLE_NOUNS[t] && !at.includes(i) ? [i] : []));
+  const roles = new Set(roleAt.map((i) => ROLE_NOUNS[tokens[i]!]!));
+  return {
+    position: positions.size === 1 ? [...positions][0]! : null,
+    rookie: rookieAt.length > 0,
+    role: roles.size === 1 ? [...roles][0]! : null,
+    at: [...at, ...rookieAt, ...roleAt],
+    ...(positions.size > 1 || roles.size > 1 ? { reason: "It names more than one position." } : {}),
+  };
 }
 
 /** Words that set which end of a ranking comes first. "best" and "worst" depend on the stat (see `better`). */
@@ -152,8 +207,27 @@ export function leaderboardFor(
   if (minimum && (scope.teams || counted?.source !== "pbp" || counted.playerRole !== minimum.role || counted.teamOnly)) {
     return { reason: `The minimum counts a ${minimum.role}'s plays, which ${stat?.label ?? metric} does not.` };
   }
+  const who = readWho(tokens);
+  if (who.reason) {
+    return { reason: who.reason };
+  }
+  // "rushers by EPA" means the rushers' own EPA; a stat with no such member must already count that role.
+  const ranked = who.role && stat?.family ? familyMember(metric, who.role) : metric;
+  const rankedStat = getStatById(ranked);
+  if (who.role && (scope.teams || rankedStat?.source !== "pbp" || rankedStat.playerRole !== who.role)) {
+    return { reason: `It asks for ${who.role}s, which ${stat?.label ?? metric} does not count.` };
+  }
+  if (scope.teams && (who.position || who.rookie)) {
+    return { reason: "A team ranking cannot be narrowed to a position or to rookies." };
+  }
   const floor = scope.weekly ? WEEKLY_LEADERBOARD_MIN_PLAYS : LEADERBOARD_MIN_PLAYS;
   const needsFloor = granularity !== "total" || direction === "asc";
   const minPlays = minimum ? minimum.min : scope.teams || !needsFloor ? 0 : floor;
-  return { order: { metric, direction }, limit: limit?.limit ?? DEFAULT_LEADERBOARD_LIMIT, minPlays };
+  return {
+    order: { metric: ranked, direction },
+    limit: limit?.limit ?? DEFAULT_LEADERBOARD_LIMIT,
+    minPlays,
+    position: who.position,
+    rookie: who.rookie,
+  };
 }

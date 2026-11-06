@@ -6,6 +6,7 @@ import type { PlayerDictionaryRow } from "@/stat/lib/schemas/players";
 import type { Side, Split } from "@/stat/types/queryBuilder";
 import type { AnswerPath } from "../interpretQuestion";
 import { withDefaultSeasonType } from "../intentFilters";
+import { readOpponents } from "../opponents";
 import { leaderboardFor } from "../ranking";
 import { tokenize } from "../resolvePlayers";
 import { asksRanking, type Leaderboard, splitAsked, teamsAsked } from "../ruleParser";
@@ -33,9 +34,13 @@ export function timeOf(
   asked: string,
   scope: TimeScope,
   split: Split | null,
+  playerNamed = false,
 ): { filters: string[]; lastGames: number | null; notes: string[] } {
   const time = readTime(asked, scope);
-  const merged = withTime(filters, time);
+  // Opponents are read in code too; "home vs away" is a split, so its two chips are not filters.
+  const merged = [...new Set([...withTime(filters, time), ...readOpponents(asked, playerNamed).filters])].filter(
+    (f) => !(split === "location" && f.startsWith("loc-")),
+  );
   const notes = [...time.notes];
   const first = Math.min(...scope.seasons);
   const current = Math.max(...scope.seasons);
@@ -70,7 +75,7 @@ export function showIntent(
     return;
   }
   const split = splitOf(asked);
-  const time = timeOf(intent.filter_ids, asked, scope, split);
+  const time = timeOf(intent.filter_ids, asked, scope, split, true);
   const next: QueryState = {
     ...EMPTY_QUERY,
     players: ids,
@@ -125,7 +130,8 @@ export function showModelRanking(
     actions.fail(asked, path, board.reason);
     return;
   }
-  showRules(intent, board, team ?? undefined, asked, actions, scope, path, unrecognized);
+  const rankedIntent = { ...intent, stat_ids: [...new Set([board.order.metric, ...intent.stat_ids.slice(1)])] };
+  showRules(rankedIntent, board, team ?? undefined, asked, actions, scope, path, unrecognized);
 }
 
 /** Answers a league ranking or a team question with no player to match (read by the rules, or by the model). */
@@ -139,7 +145,10 @@ export function showRules(
   path: AnswerPath = "rules",
   unrecognized: string[] = [],
 ): void {
-  const subject = team ? ({ kind: "team" } as const) : ({ kind: "players", positions: [] } as const);
+  // A ranking of one position reads generic stats as that position's own ("top running backs by EPA").
+  const subject = team
+    ? ({ kind: "team" } as const)
+    : ({ kind: "players", positions: board?.position ? [board.position] : [] } as const);
   const stats = settleStats(intent.stat_ids, subject);
   if (team && stats.some(isLeagueStat)) {
     actions.fail(asked, path, "League points are for players, not teams.");
@@ -161,6 +170,8 @@ export function showRules(
     limit: board?.limit ?? null,
     split,
     lastGames: time.lastGames,
+    position: board?.position ?? null,
+    rookie: board?.rookie ?? false,
   };
   actions.answer(next, asked, path, unrecognized, time.notes);
 }

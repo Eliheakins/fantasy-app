@@ -29,7 +29,7 @@
   {"q": "Patrick Mahomes touchdowns in 2023", "stats": ["pass_tds"], "filters": ["season-2023"], "granularity": "total", "rules": "defer", "trap": "a quarterback's touchdowns could be passing or rushing"},
   {"q": "Patrick Mahomes net yards per attempt in 2023", "unsupported": true, "trap": "no such stat; 'yards' alone would silently answer passing yards"},
   {"q": "Travis Kelce yards per catch in 2023", "stats": ["rec_ypr"], "filters": ["season-2023"], "granularity": null, "note": "relabelled 2026-11-06 when yards per reception (rec_ypr) was added; it was a trap while no such stat existed"},
-  {"q": "Patrick Mahomes passing yards against the Chiefs in 2023", "unsupported": true, "trap": "opponent filters do not exist"},
+  {"q": "Patrick Mahomes passing yards against the Chiefs in 2023", "unsupported": true, "rules_reads": {"stats": ["pass_yards"], "filters": ["season-2023", "opp-KC"]}, "trap": "the model has no opponent filter, so it must refuse; since 2026-11-06 Ask reads opponents in code (opp-KC) before asking the model, so the rules answer it"},
   {"q": "Joe Burrow passing yards in 2019", "unsupported": true, "trap": "season outside the data"},
   {"q": "Josh Allen passing yards in the last two minutes of games in 2023", "unsupported": true, "trap": "no two-minute filter"},
   {"q": "Lamar Jackson total yards in 2023", "unsupported": true, "trap": "no combined passing-plus-rushing stat"},

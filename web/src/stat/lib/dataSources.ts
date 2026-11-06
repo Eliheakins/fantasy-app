@@ -21,3 +21,8 @@ export function seasonSources(manifest: Manifest | null): ColumnSource[] {
 export function playerGameSource(manifest: Manifest | null): ColumnSource | null {
   return manifest?.player_game ? { year: 0, url: shardUrl(manifest, manifest.player_game.path) } : null;
 }
+
+/** The player index (position, latest season, years of experience), for the position and rookie filters. */
+export function playerIndexSource(manifest: Manifest | null): ColumnSource | null {
+  return manifest?.player_index ? { year: 0, url: shardUrl(manifest, manifest.player_index.path) } : null;
+}

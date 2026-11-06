@@ -1,4 +1,5 @@
 /** Situational filter chips (WHERE); predicates reference unqualified column names. */
+import { TEAMS } from "./teams";
 
 export interface FilterChipOption {
   id: string;
@@ -21,7 +22,7 @@ export const MAX_WEEK = 22;
  * Chip groups Ask reads in code (weeks, opponents) rather than through the model: numbers and team
  * names are read reliably by rules, and listing them would add dozens of questions to every model call.
  */
-export const CODE_READ_GROUP_IDS: ReadonlySet<string> = new Set(["week_number"]);
+export const CODE_READ_GROUP_IDS: ReadonlySet<string> = new Set(["week_number", "opponent"]);
 
 const GROUP_TEMPLATES: FilterChipGroup[] = [
   {
@@ -70,6 +71,13 @@ const GROUP_TEMPLATES: FilterChipGroup[] = [
     description: "Single weeks; several make a range",
     combine: "or",
     options: Array.from({ length: MAX_WEEK }, (_, k) => ({ id: `wk-${k + 1}`, label: `Week ${k + 1}`, predicate: `week = ${k + 1}` })),
+  },
+  {
+    id: "opponent",
+    label: "Opponent",
+    description: "The defense a player's (or team's offense's) plays came against",
+    combine: "or",
+    options: TEAMS.map((t) => ({ id: `opp-${t.id}`, label: `vs ${t.nickname}`, predicate: `defteam = '${t.id}'` })),
   },
   {
     id: "location",

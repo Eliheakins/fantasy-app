@@ -18,7 +18,9 @@ import {
   readLimit,
   readMinimum,
   readSingleGame,
+  readWho,
 } from "./ranking";
+import { readOpponents } from "./opponents";
 import { findTeams } from "./resolveTeams";
 import { readTime } from "./timeWords";
 
@@ -138,6 +140,17 @@ const ROLE_BY_CATEGORY: Readonly<Record<string, PlayerRole>> = {
   receiving: "receiver",
 };
 
+/** Words that ask for a player's stat line rather than one stat. */
+const STAT_LINE_WORDS = new Set(["stats", "stat", "line", "statline", "numbers", "statistics"]);
+/** The counting stats a stat line shows for each position (at most five, all totals). */
+const STAT_LINES: Readonly<Record<string, readonly string[]>> = {
+  QB: ["pass_yards", "pass_tds", "pass_int", "rush_yards", "rush_tds"],
+  RB: ["rush_att", "rush_yards", "rush_tds", "rec_receptions", "rec_yards"],
+  FB: ["rush_att", "rush_yards", "rush_tds", "rec_receptions", "rec_yards"],
+  WR: ["rec_tgt", "rec_receptions", "rec_yards", "rec_tds"],
+  TE: ["rec_tgt", "rec_receptions", "rec_yards", "rec_tds"],
+};
+
 /** A verb that settles which role a bare "yards" or "touchdowns" belongs to. */
 const THROW_WORDS = new Set(["throw", "throws", "threw", "thrown"]);
 
@@ -158,6 +171,8 @@ const LEADERBOARD_WORDS = new Set([
 const NAMED_COMPARE_WORDS = new Set(["who", "had", "has", "more", "better", "or"]);
 /** Words that make a question about teams, and that pick the side of the ball. */
 const TEAM_WORDS = new Set(["team", "teams"]);
+/** "which defense", "best offenses": a side of the ball names a team question when no player is named ("allowed" alone does not). */
+const UNIT_NOUNS = new Set(["defense", "defenses", "offense", "offenses"]);
 const DEFENSE_WORDS = new Set(["allowed", "allow", "allows", "against", "forced", "defense", "defenses", "defensive"]);
 const OFFENSE_WORDS = new Set(["offense", "offenses", "offensive"]);
 /** "allowed by the Chiefs", "which team": read as filler only in a team question. */
@@ -177,6 +192,9 @@ const SPLIT_UNITS = new Map<string, Split>([
   ["game", "week"],
   ["games", "week"],
 ]);
+
+/** Words that set two cases side by side ("home vs away", "2023 vs 2024"). */
+const CONTRAST_JOINS = new Set(["vs", "versus", "and", "or"]);
 
 /** Which split the words ask for, and where they are; "season by season" counts like "by season". */
 function findSplit(tokens: readonly string[]): { split: Split | "both" | null; at: number[] } {
@@ -201,6 +219,21 @@ function findSplit(tokens: readonly string[]): { split: Split | "both" | null; a
     asked.add("week");
     at.push(...single);
   }
+  // Two cases side by side: "2023 vs 2024" splits by season, "home vs away" by home and away.
+  tokens.forEach((token, i) => {
+    if (!CONTRAST_JOINS.has(token)) {
+      return;
+    }
+    const [before, after] = [tokens[i - 1] ?? "", tokens[i + 1] ?? ""];
+    const sides = new Set([before, after, tokens[i + 2] ?? ""]);
+    if (YEAR.test(before) && YEAR.test(after) && token !== "and") {
+      asked.add("season");
+      at.push(i);
+    } else if (before === "home" && (sides.has("away") || sides.has("road"))) {
+      asked.add("location");
+      at.push(i);
+    }
+  });
   return { split: asked.size > 1 ? "both" : ([...asked][0] ?? null), at };
 }
 
@@ -213,13 +246,13 @@ export const splitAsked = (question: string): Split | "both" | null => findSplit
  */
 export function teamsAsked(question: string): { ids: string[]; side: Side } | null {
   const tokens = wordsOf(question);
-  const named = findTeams(tokens);
-  // "allowed" alone does not make a team question ("most yards allowed" could be anything); "defense" does.
-  const unitNouns = new Set(["defense", "defenses", "offense", "offenses"]);
-  if (named.length === 0 && !tokens.some((t) => TEAM_WORDS.has(t) || unitNouns.has(t))) {
+  const opponentWords = new Set(readOpponents(question, false).used);
+  const named = findTeams(tokens).filter((t) => !opponentWords.has(t.start));
+  if (named.length === 0 && !tokens.some((t) => TEAM_WORDS.has(t) || UNIT_NOUNS.has(t))) {
     return null;
   }
-  return { ids: unique(named.map((t) => t.id)), side: tokens.some((t) => DEFENSE_WORDS.has(t)) ? "defense" : "offense" };
+  const defense = tokens.some((t, at) => DEFENSE_WORDS.has(t) && !opponentWords.has(at));
+  return { ids: unique(named.map((t) => t.id)), side: defense ? "defense" : "offense" };
 }
 
 /** True when the question uses a word that asks for a ranking ("most", "top", "leads"). */
@@ -313,11 +346,15 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
   const tokensForCue = wordsOf(question);
   // A team name inside a player's name ("Keaton Bills") is part of the player, not a team.
   const inPlayer = (at: number) => matches.some((m) => at >= m.start && at < m.start + tokenize(m.phrase).length);
-  const teams = findTeams(tokensForCue).filter((t) => !inPlayer(t.start));
-  const asksTeams = teams.length > 0 || (matches.length === 0 && tokensForCue.some((t) => TEAM_WORDS.has(t)));
+  // "against the Cowboys" names an opponent (a chip), not the team the question is about.
+  const opponents = readOpponents(question, matches.length > 0);
+  const opponentWords = new Set(opponents.used);
+  const teams = findTeams(tokensForCue).filter((t) => !inPlayer(t.start) && !opponentWords.has(t.start));
+  const asksTeams =
+    teams.length > 0 || (matches.length === 0 && tokensForCue.some((t) => TEAM_WORDS.has(t) || UNIT_NOUNS.has(t)));
   if (teams.length > 0 && matches.length > 0) {
-    // "Mahomes against the Chiefs" is an opponent filter, which the data cannot apply. The team words
-    // are listed as unread, so a model answer that ignores them says so.
+    // A player and a team that is not an opponent: which one the question is about is unclear. The
+    // team words are listed as unread, so a model answer that ignores them says so.
     const inTeam = (at: number) => teams.some((t) => at >= t.start && at < t.start + t.length);
     const unread = tokensForCue.filter((t, at) => inTeam(at) || DEFENSE_WORDS.has(t) || OFFENSE_WORDS.has(t));
     return ambiguous("It names a player and a team; ask about one of them.", unique(unread));
@@ -352,9 +389,12 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
       used[i] = true;
     }
   }
+  for (const at of opponents.used) {
+    used[at] = true;
+  }
   let side: Side = "offense";
   if (asksTeams) {
-    const defense = tokens.some((t) => DEFENSE_WORDS.has(t));
+    const defense = tokens.some((t, at) => DEFENSE_WORDS.has(t) && !opponentWords.has(at));
     if (defense && tokens.some((t) => OFFENSE_WORDS.has(t))) {
       return ambiguous("It asks for a team's offense and defense at once.");
     }
@@ -390,8 +430,8 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
     if (limit && "reason" in limit) {
       return ambiguous(limit.reason);
     }
-    // "min 100 carries": the floor's words are read here; leaderboardFor checks its unit.
-    for (const at of [...(limit ? [limit.at] : []), ...(readMinimum(tokens)?.at ?? [])]) {
+    // "min 100 carries", "tight ends", "rookies": read here; leaderboardFor checks they fit the stat.
+    for (const at of [...(limit ? [limit.at] : []), ...(readMinimum(tokens)?.at ?? []), ...readWho(tokens).at]) {
       used[at] = true;
     }
   }
@@ -500,6 +540,17 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
     });
   }
 
+  // "Tyreek Hill 2023 stats": a stat line, the usual stats for the player's position.
+  let statLine = false;
+  if (sortedMatches.length === 1 && found.every((f) => f.piece.kind !== "stat") && generic.length === 0) {
+    tokens.forEach((token, at) => {
+      if (!used[at] && STAT_LINE_WORDS.has(token)) {
+        used[at] = true;
+        statLine = true;
+      }
+    });
+  }
+
   const leftover = tokens.filter((token, at) => !used[at] && !FILLER.has(token));
   if (leftover.length > 0) {
     const unrecognized = unique(leftover);
@@ -544,6 +595,13 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
     }
   }
 
+  if (statLine) {
+    const positions = unique(candidatePositions(sortedMatches[0]!).flatMap((p) => (STAT_LINES[p] ? [p] : [])));
+    if (positions.length !== 1) {
+      return ambiguous("A stat line needs one position, and this name has several or none.");
+    }
+    statAt.push(...STAT_LINES[positions[0]!]!.map((id, k) => ({ at: tokens.length + k, id })));
+  }
   const statIds = unique(statAt.sort((a, b) => a.at - b.at).map((s) => s.id));
   if (statIds.length === 0) {
     return { status: "unknown", reason: "No stat I know was named." };
@@ -596,14 +654,21 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
       }
     }
   }
-  if ([...namedByGroup.values()].some((ids) => ids.size > 1)) {
-    return ambiguous("It sets two cases side by side (like home and away), which one query can't split.");
+  // "home vs away" is a split by home and away, so its two chips are the split, not filters.
+  const splitByLocation = split.split === "location";
+  if ([...namedByGroup].some(([group, ids]) => ids.size > 1 && !(splitByLocation && group === "location"))) {
+    return ambiguous("It sets two cases side by side (like first and second half), which one query can't split.");
   }
 
   const filterAt: { at: number; id: string }[] = [
-    ...found.flatMap((f) => (f.piece.kind === "chips" ? f.piece.ids.map((id) => ({ at: f.at, id })) : [])),
+    ...found.flatMap((f) =>
+      f.piece.kind === "chips"
+        ? f.piece.ids.filter((id) => !(splitByLocation && id.startsWith("loc-"))).map((id) => ({ at: f.at, id }))
+        : [],
+    ),
     ...years.map((y) => ({ at: y.at, id: `season-${y.year}` })),
     ...time.filters.map((id) => ({ at: time.used[0] ?? 0, id })),
+    ...opponents.filters.map((id) => ({ at: opponents.used[0] ?? 0, id })),
   ];
 
   const intent: QueryIntent = {
@@ -629,5 +694,7 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
   if ("reason" in leaderboard) {
     return ambiguous(leaderboard.reason);
   }
-  return { status: "resolved", intent, leaderboard, ...team };
+  // "rushers by EPA" ranks the rushers' own EPA: the ranked stat takes the first stat's place.
+  const ranked = { ...intent, stat_ids: unique([leaderboard.order.metric, ...statIds.slice(1)]) };
+  return { status: "resolved", intent: ranked, leaderboard, ...team };
 }

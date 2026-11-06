@@ -19,6 +19,7 @@ import { buildAnswer } from "./answerText";
 import { InterpretationChips } from "./InterpretationChips";
 import { PlayerChips, PlayerChoices } from "./NlqPlayerPickers";
 import { StartSitAnswer } from "./StartSitAnswer";
+import { RouteAnswer } from "./RouteAnswer";
 import { TradeAnswer } from "./TradeAnswer";
 import { useAsk } from "./useAsk";
 
@@ -70,6 +71,8 @@ export function NLQPanel() {
       idColumn: state.subject === "teams" ? "team_id" : "player_id",
       leagueName,
       lastGames: state.lastGames,
+      position: state.position,
+      rookie: state.rookie,
     });
   }, [showingAnswer, exec.result, exec.namedPlayers, state, chipGroups, leagueName]);
 
@@ -155,6 +158,8 @@ export function NLQPanel() {
           {ask.trade && ask.phase === "idle" ? (
             <TradeAnswer give={ask.trade.give} get={ask.trade.get} names={ask.trade.names} positions={ask.trade.positions} />
           ) : null}
+
+          {ask.route && ask.phase === "idle" ? <RouteAnswer route={ask.route} /> : null}
 
           {showingAnswer ? <InterpretationChips /> : null}
       </section>
