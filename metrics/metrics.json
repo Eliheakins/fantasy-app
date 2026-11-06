@@ -32,6 +32,10 @@
     {
       "id": "fantasy",
       "label": "Fantasy"
+    },
+    {
+      "id": "team",
+      "label": "Team"
     }
   ],
   "metrics": [
@@ -128,7 +132,7 @@
     },
     {
       "id": "pass_p2s",
-      "label": "P2S%",
+      "label": "Hit-to-sack %",
       "category": "passing",
       "player_role": "passer",
       "play_type": "pass",
@@ -136,30 +140,32 @@
       "rate_only": true,
       "better": "lower",
       "percent_format": true,
-      "help": "Pressure-to-sack rate: sacks divided by QB hits. High values mean hits often become sacks; undefined if SUM(qb_hit) is 0.",
+      "help": "Sacks divided by QB hits, as a percentage. QB hits stand in for pressures, which the play-by-play does not record.",
       "aliases": [
-        "pressure to sack",
-        "p2s",
-        "pressure-to-sack rate"
+        "hit to sack",
+        "hit to sack rate",
+        "hit-to-sack rate",
+        "hit-to-sack"
       ],
       "reference_values": []
     },
     {
       "id": "pass_adot",
-      "label": "ADOT",
+      "label": "Pass ADOT",
       "category": "passing",
       "player_role": "passer",
       "play_type": "pass",
       "base_sql": "AVG(air_yards)",
       "rate_only": true,
-      "help": "Average depth of target (air yards): mean air yards on pass attempts in the filter. Does not measure completed depth only.",
+      "help": "Average air yards per pass thrown, for the passer.",
       "aliases": [
         "adot",
         "average depth of target",
         "average depth of throw",
         "air yards per attempt"
       ],
-      "reference_values": []
+      "reference_values": [],
+      "family": "adot"
     },
     {
       "id": "pass_yards",
@@ -333,8 +339,7 @@
         "interception rate",
         "int rate",
         "interception percentage",
-        "interceptions",
-        "picks"
+        "int %"
       ],
       "reference_values": [
         {
@@ -619,14 +624,14 @@
     },
     {
       "id": "eff_epa",
-      "label": "EPA/Play",
+      "label": "Pass EPA/play",
       "category": "efficiency",
       "player_role": "passer",
       "play_type": "pass",
       "base_sql": "AVG(epa)",
       "rate_only": true,
       "better": "higher",
-      "help": "Expected Points Added: average EPA per pass play for the passer. Positive means the offense gained more expected points than before the play.",
+      "help": "Expected points added per dropback (pass plays, sacks included, scrambles not), for the passer. For a rusher, receiver or team, Ask uses the matching EPA stat.",
       "aliases": [
         "epa",
         "epa per play",
@@ -634,11 +639,12 @@
         "epa/play",
         "epa per dropback"
       ],
-      "reference_values": []
+      "reference_values": [],
+      "family": "epa"
     },
     {
       "id": "eff_success",
-      "label": "Success rate",
+      "label": "Pass success rate",
       "category": "efficiency",
       "player_role": "passer",
       "play_type": "pass",
@@ -646,13 +652,14 @@
       "rate_only": true,
       "better": "higher",
       "percent_format": true,
-      "help": "Share of pass plays classified as successful (nflverse success flag), scaled to 0–100%. Typically gains that meet down-and-distance expectations.",
+      "help": "Share of the passer's dropbacks with positive EPA. For a rusher, receiver or team, Ask uses the matching success rate.",
       "aliases": [
         "success rate",
         "success percentage",
         "successful play rate"
       ],
-      "reference_values": []
+      "reference_values": [],
+      "family": "success"
     },
     {
       "id": "eff_cpoe",
@@ -967,6 +974,227 @@
         "fantasy score",
         "my league points"
       ]
+    },
+    {
+      "id": "rush_att",
+      "label": "Carries",
+      "category": "rushing",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "SUM(1)",
+      "rate_only": false,
+      "better": "higher",
+      "player_game_column": "carries",
+      "help": "Rushing attempts (run plays with the player as the rusher, scrambles included, kneels not).",
+      "aliases": [
+        "carries",
+        "rush attempts",
+        "rushing attempts",
+        "rushes",
+        "attempts on the ground"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0032764",
+          "player": "Derrick Henry",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 325,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "pass_int",
+      "label": "Interceptions",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(interception)",
+      "rate_only": false,
+      "better": "lower",
+      "player_game_column": "passing_interceptions",
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "help": "Interceptions thrown.",
+      "aliases": [
+        "interceptions",
+        "interceptions thrown",
+        "picks",
+        "ints",
+        "picks thrown"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 11,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "rush_epa",
+      "label": "Rush EPA/carry",
+      "category": "rushing",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "AVG(epa)",
+      "rate_only": true,
+      "better": "higher",
+      "family": "epa",
+      "help": "Expected points added per carry.",
+      "aliases": [
+        "rushing epa",
+        "rush epa",
+        "epa per carry",
+        "epa per rush",
+        "rushing epa per play"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0032764",
+          "player": "Derrick Henry",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 0.1249,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals (rushing_epa / carries)"
+        }
+      ]
+    },
+    {
+      "id": "rush_success",
+      "label": "Rush success rate",
+      "category": "rushing",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "AVG(success) * 100",
+      "rate_only": true,
+      "better": "higher",
+      "percent_format": true,
+      "family": "success",
+      "help": "Share of carries with positive EPA.",
+      "aliases": [
+        "rushing success rate",
+        "rush success rate",
+        "success rate on runs"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "rec_epa",
+      "label": "Rec EPA/target",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "AVG(epa)",
+      "rate_only": true,
+      "better": "higher",
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "family": "epa",
+      "help": "Expected points added per target.",
+      "aliases": [
+        "receiving epa",
+        "rec epa",
+        "epa per target",
+        "receiving epa per target"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0036358",
+          "player": "CeeDee Lamb",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 0.1302,
+          "tolerance": 0.01,
+          "source": "nflverse player stats (player_game.parquet), regular season totals (receiving_epa / targets)"
+        }
+      ]
+    },
+    {
+      "id": "rec_success",
+      "label": "Rec success rate",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "AVG(success) * 100",
+      "rate_only": true,
+      "better": "higher",
+      "percent_format": true,
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "family": "success",
+      "help": "Share of targets with positive EPA.",
+      "aliases": [
+        "receiving success rate",
+        "rec success rate",
+        "success rate per target"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "rec_adot",
+      "label": "Rec ADOT",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "AVG(air_yards)",
+      "rate_only": true,
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "family": "adot",
+      "help": "Average depth of target: air yards per target for the receiver.",
+      "aliases": [
+        "receiving adot",
+        "receiver adot",
+        "average target depth",
+        "target depth"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "team_epa",
+      "label": "Team EPA/play",
+      "category": "team",
+      "player_role": "passer",
+      "play_type": "all",
+      "base_sql": "AVG(epa)",
+      "rate_only": true,
+      "better": "higher",
+      "play_filter": "play_type = 'pass' OR play_type = 'run'",
+      "team_only": true,
+      "family": "epa",
+      "help": "Expected points added per play over every pass and run play (sacks and scrambles included), for a team's offense, or allowed by its defense.",
+      "aliases": [
+        "team epa",
+        "team epa per play",
+        "offensive epa per play",
+        "defensive epa per play"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "team_success",
+      "label": "Team success rate",
+      "category": "team",
+      "player_role": "passer",
+      "play_type": "all",
+      "base_sql": "AVG(success) * 100",
+      "rate_only": true,
+      "better": "higher",
+      "percent_format": true,
+      "play_filter": "play_type = 'pass' OR play_type = 'run'",
+      "team_only": true,
+      "family": "success",
+      "help": "Share of a team's pass and run plays with positive EPA (for a defense, allowed).",
+      "aliases": [
+        "team success rate",
+        "offensive success rate",
+        "defensive success rate"
+      ],
+      "reference_values": []
     }
   ]
 }

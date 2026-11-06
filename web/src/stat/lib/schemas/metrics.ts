@@ -46,6 +46,10 @@ const metricSchema = z.object({
   percent_format: z.boolean().default(false),
   play_filter: z.string().min(1).nullable().default(null),
   player_game_column: z.string().min(1).nullable().default(null),
+  /** Only a team has this stat (it counts every play, whoever had the ball); a player query is refused. */
+  team_only: z.boolean().default(false),
+  /** Stats that answer one question for different roles ("EPA"); Ask picks the one that fits the subject. */
+  family: z.string().min(1).nullable().default(null),
   description: z.string().nullish(),
   help: z.string().nullish(),
   aliases: z.array(aliasSchema).max(MAX_ALIASES).default([]),

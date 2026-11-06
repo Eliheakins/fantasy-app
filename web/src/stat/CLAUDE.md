@@ -10,6 +10,12 @@ The stat code in the browser. The engine runs queries on Parquet shards from `/a
 - `react/` (the kernel): `manifest.tsx` (`ManifestProvider`, `useManifest`), `useQueryState.ts` (keeps `league` and `team` when it writes), `filterChipGroups.ts`, `routeMemory.ts` (the last Explore query without `league` and `team`), `useLeaguePoints.ts`.
 - Base URLs are fixed at `/api/stat` and `/api/stat/data`. The manifest's seasons are passed in as arguments. There is no store.
 
+## Roles, families and team stats
+
+- A play stat counts the plays of one role (`player_role`: passer, rusher or receiver) and play type. Efficiency is role-aware: `eff_*` and `pass_adot` are the passer's, `rush_epa`/`rush_success` the rusher's carries, `rec_epa`/`rec_success`/`rec_adot` the receiver's targets.
+- `team_only` stats (`team_epa`, `team_success`) count every pass and run play by `posteam` or `defteam`, whoever had the ball; their role is a placeholder and a player query on them throws.
+- `family` groups the versions of one stat; the first in `metrics.json` is the default. `familyMember` and `familyDefault` in `config/statDictionary.ts` pick among them (Ask's `settleStats`).
+
 ## Engine tests
 
 Engine tests that read shards (`referenceValues`, `parquetColumns`) skip until `make stat-data` has built `data/stat/`.

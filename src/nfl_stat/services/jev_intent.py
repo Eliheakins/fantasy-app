@@ -25,6 +25,7 @@ from nfl_stat.schemas.nlq import (
     UnsupportedOutcome,
 )
 from nfl_stat.services.nlq_intent import IntentError, validate_intent
+from nfl_stat.services.undefined_terms import undefined_term
 
 JEV_URL = "https://api.typesafe.ai/v1/systemone"
 THRESHOLD = 0.5  # fixed before the #71 runs
@@ -278,6 +279,9 @@ async def translate_with_jev(
     current_season: int | None = None,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> IntentOutcome:
+    reason = undefined_term(req.question)
+    if reason:  # refused in code: Jev would map the term to a near stat
+        return _unsupported(reason)
     answers = await call_jev(
         build_jev_request(req, model=model), api_key=api_key, timeout=timeout, transport=transport
     )

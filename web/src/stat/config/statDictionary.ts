@@ -51,6 +51,10 @@ export interface StatDefinition {
   playFilter?: string;
   /** Lowercase phrases people use for this stat; shown to the model and used for matching. */
   aliases: string[];
+  /** Only a team has this stat: it counts every play, so the role is a placeholder and a player query is refused. */
+  teamOnly?: boolean;
+  /** Stats answering one question for different roles; the first in the file is the default. */
+  family?: string;
 }
 
 const file = parseMetricsFile(rawMetrics);
@@ -72,6 +76,8 @@ function toStat(m: MetricDefinitionData): StatDefinition {
     playFilter: m.play_filter ?? undefined,
     playerGameColumn: m.player_game_column ?? undefined,
     aliases: m.aliases,
+    teamOnly: m.team_only || undefined,
+    family: m.family ?? undefined,
   };
 }
 
@@ -103,3 +109,26 @@ export function playerColumnForRole(role: PlayerRole): "passer_player_id" | "rus
       return "receiver_player_id";
   }
 }
+
+/**
+ * The member of a stat's family for a role, or for a team. A stat with no family, or a family with no
+ * member for that role, is returned unchanged.
+ */
+export function familyMember(id: string, role: PlayerRole | "team"): string {
+  const stat = getStatById(id);
+  if (!stat?.family) {
+    return id;
+  }
+  const member = STAT_DEFINITIONS.find(
+    (s) => s.family === stat.family && (role === "team" ? s.teamOnly : !s.teamOnly && s.playerRole === role),
+  );
+  return member?.id ?? id;
+}
+
+/** The first stat of a stat's family, the one generic words ("EPA", "success rate") point at; itself when it has none. */
+export function familyDefault(id: string): string {
+  const family = getStatById(id)?.family;
+  return family === undefined ? id : (STAT_DEFINITIONS.find((s) => s.family === family)?.id ?? id);
+}
+
+export const isFamilyDefault = (id: string): boolean => getStatById(id)?.family !== undefined && familyDefault(id) === id;

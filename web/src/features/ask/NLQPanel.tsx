@@ -83,8 +83,9 @@ export function NLQPanel() {
     <div className="space-y-4">
       <section className="space-y-4" aria-label="Ask a question">
           <p className="measure text-caption text-muted">
-            Names are matched in your browser. Built-in rules read what they can; a local model reads the rest. The
-            numbers are computed in your browser from play-by-play data.
+            Names are matched in your browser. Built-in rules read what they can; the hosted model (Jev) reads the
+            rest, with a local model as the fallback. The model sees only the question. The numbers are computed in
+            your browser from play-by-play data.
           </p>
 
           <Textarea
@@ -129,7 +130,7 @@ export function NLQPanel() {
                     ? "Read by the built-in rules."
                     : ask.path === "saved"
                       ? "Using the fix you made to this question earlier."
-                      : "Read by the local model."}
+                      : "Read by the model (the hosted Jev, or the local model when Jev is unavailable)."}
                 </p>
               ) : null}
               {ask.unrecognized.length > 0 ? (

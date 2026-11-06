@@ -6,6 +6,7 @@ import type { Side, Split } from "@/stat/types/queryBuilder";
 import type { AnswerPath } from "../interpretQuestion";
 import { withDefaultSeasonType } from "../intentFilters";
 import { type Leaderboard, splitAsked } from "../ruleParser";
+import { settleStats } from "../settleStats";
 import type { AskActions } from "./types";
 
 /** "by season" and "each game" split the answer, whichever path read the rest of the question. */
@@ -24,7 +25,8 @@ export function showIntent(
   actions: AskActions,
 ): void {
   const ids = [...new Set(players.map((p) => p.gsis_id))].slice(0, MAX_PINNED_PLAYERS);
-  const blocked = unsupportedReasons(specFromIntent(intent, ids));
+  const stats = settleStats(intent.stat_ids, { kind: "players", positions: players.map((p) => p.position) });
+  const blocked = unsupportedReasons(specFromIntent({ ...intent, stat_ids: stats }, ids));
   if (blocked.length > 0) {
     actions.fail(asked, path, blocked.join(" "));
     return;
@@ -32,7 +34,7 @@ export function showIntent(
   const next: QueryState = {
     ...EMPTY_QUERY,
     players: ids,
-    stats: intent.stat_ids,
+    stats,
     filters: withDefaultSeasonType(intent.filter_ids),
     granularity: intent.granularity,
     minPlays: 0,
@@ -51,16 +53,19 @@ export function showRules(
   asked: string,
   actions: AskActions,
 ): void {
+  const subject = team ? ({ kind: "team" } as const) : ({ kind: "players", positions: [] } as const);
+  const stats = settleStats(intent.stat_ids, subject);
+  const order = board ? { ...board.order, metric: settleStats([board.order.metric], subject)[0]! } : null;
   const next: QueryState = {
     ...EMPTY_QUERY,
     subject: team ? "teams" : "players",
     teams: team?.ids ?? [],
     side: team?.side ?? "offense",
-    stats: intent.stat_ids,
+    stats,
     filters: withDefaultSeasonType(intent.filter_ids),
     granularity: intent.granularity,
     minPlays: board?.minPlays ?? 0,
-    order: board?.order ?? null,
+    order,
     limit: board?.limit ?? null,
     split: splitOf(asked),
   };

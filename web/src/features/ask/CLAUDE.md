@@ -14,8 +14,13 @@ Ask answers an NFL question in plain language. `pages/Ask.tsx` has an Ask tab an
 ## Rules parser
 
 - `ruleParser.ts` is always tried first. It answers what it can, even with the intent endpoint down or no model server.
-- `ruleParser.eval.test.ts` is the rules eval (`eval:rules` is gone). It pins the recorded numbers: cases 43/43 answerable correct and 0 wrong (40/40 before `league_pts`); heldout 25/25 correct, 0 wrong, 1 trap refused, 7 handed to the model. It reads `tests/stat/eval/`.
+- `ruleParser.eval.test.ts` is the rules eval (`eval:rules` is gone). It pins the recorded numbers: cases 43/43 answerable correct and 0 wrong (40/40 before `league_pts`); heldout 26/26 correct, 0 wrong, 1 trap refused, 6 handed to the model. It reads `tests/stat/eval/`.
 - A league stat has no position. The rules parser and `useAsk` ignore it when settling roles.
+
+## Settling a stat to the subject
+
+- `settleStats.ts` runs on every answer (`paths/queryStates.ts`), after the rules or the model. Generic words ("EPA", "success rate", "ADOT") name the first stat of a metric `family`, the passer's. A team gets the family's team stat; a player whose position has one main role (`MAIN_ROLE`: RB rusher, WR and TE receiver) gets that role's stat. A quarterback, players of mixed roles, and a stat named by role ("rushing EPA") are left as asked.
+- Defense rankings flip `better` ("best defense" ranks the least allowed first).
 
 ## Model step
 

@@ -253,9 +253,9 @@ describe("parseRules regressions found in review", () => {
     );
   });
 
-  it("does not answer a count question with a rate: 'interceptions' and 'picks'", () => {
-    handedOver("Patrick Mahomes interceptions in 2023");
-    handedOver("How many picks did Patrick Mahomes throw in 2023");
+  it("reads 'interceptions' and 'picks' as the count, not the rate", () => {
+    expect(resolved("Patrick Mahomes interceptions in 2023").stat_ids).toEqual(["pass_int"]);
+    expect(resolved("Patrick Mahomes interception rate in 2023").stat_ids).toEqual(["int_rate"]);
   });
 
   it("does not read a bare 'sack', 'catch' or 'comp' as a percentage alias", () => {

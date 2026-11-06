@@ -24,7 +24,7 @@ describe("buildIntentCatalog", () => {
   it("gives the model each stat's aliases so it can match how people phrase things", () => {
     const { stats } = buildIntentCatalog(FIXTURE_SEASONS);
 
-    expect(stats.find((s) => s.id === "int_rate")?.aliases).toContain("picks");
+    expect(stats.find((s) => s.id === "pass_int")?.aliases).toContain("picks");
     expect(stats.filter((s) => s.aliases.length === 0)).toEqual([]);
   });
 

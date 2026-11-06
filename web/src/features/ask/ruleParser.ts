@@ -40,8 +40,7 @@ export type RuleResult =
 type Piece =
   | { kind: "stat"; id: string }
   | { kind: "chips"; ids: readonly string[] }
-  | { kind: "granularity"; value: GranularityMode }
-  | { kind: "ambiguous"; reason: string };
+  | { kind: "granularity"; value: GranularityMode };
 
 interface Phrase {
   words: string[];
@@ -92,12 +91,6 @@ const FILLER = new Set([
  */
 const COMPARE_WORDS = new Set(["vs", "versus", "compare"]);
 
-/** Wordings the stat list maps to a rate where the question asks for a count. */
-const COUNT_WORDS = new Map<string, string>([
-  ["interceptions", "There is no interception count, only a rate."],
-  ["picks", "There is no interception count, only a rate."],
-]);
-
 const GENERIC_WORDS: Readonly<Record<string, "yards" | "touchdowns">> = {
   yards: "yards",
   yard: "yards",
@@ -117,8 +110,8 @@ const ROLES_BY_POSITION: Readonly<Record<string, readonly PlayerRole[]>> = {
   TE: ["receiver"],
 };
 
-/** The one role a position is mainly known for, used to read a bare "yards". */
-const MAIN_ROLE: Readonly<Record<string, PlayerRole>> = {
+/** The one role a position is mainly known for, used to read a bare "yards" and to pick a stat family's member. */
+export const MAIN_ROLE: Readonly<Record<string, PlayerRole>> = {
   QB: "passer",
   RB: "rusher",
   FB: "rusher",
@@ -251,8 +244,7 @@ function buildPhrases(chipIds: ReadonlySet<string>): Phrase[] {
       }
       if (owner === undefined) {
         owners.set(key, stat.id);
-        const reason = COUNT_WORDS.get(key);
-        phrases.push({ words, piece: reason ? { kind: "ambiguous", reason } : { kind: "stat", id: stat.id } });
+        phrases.push({ words, piece: { kind: "stat", id: stat.id } });
       }
     }
   }
@@ -411,10 +403,6 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
     }
   }
 
-  const unsure = found.find((f) => f.piece.kind === "ambiguous");
-  if (unsure && unsure.piece.kind === "ambiguous") {
-    return ambiguous(unsure.piece.reason);
-  }
   // "first half of the season" is not the first half of a game.
   const partOfSomething = found.find(
     (f) =>
@@ -606,7 +594,7 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
     return { status: "resolved", intent, ...team };
   }
   const metric = statIds[0]!;
-  const direction = rankDirection(tokens, metric);
+  const direction = rankDirection(tokens, metric, asksTeams && side === "defense");
   if (typeof direction !== "string") {
     return ambiguous(direction.reason);
   }
@@ -625,9 +613,17 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
   };
 }
 
-/** Highest first unless the question asks otherwise; asking both ways, or "best" of a neutral stat, is unclear. */
-function rankDirection(tokens: readonly string[], metric: string): "asc" | "desc" | { reason: string } {
-  const better = getStatById(metric)?.better;
+/**
+ * Highest first unless the question asks otherwise; asking both ways, or "best" of a neutral stat, is
+ * unclear. `allowed` ranks defenses, where what is allowed is better the other way round.
+ */
+export function rankDirection(
+  tokens: readonly string[],
+  metric: string,
+  allowed = false,
+): "asc" | "desc" | { reason: string } {
+  const stated = getStatById(metric)?.better;
+  const better = stated && allowed ? (stated === "higher" ? "lower" : "higher") : stated;
   const asked = new Set<"asc" | "desc">();
   for (const token of tokens) {
     const cue = RANK_DIRECTION.get(token);

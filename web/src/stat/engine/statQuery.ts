@@ -218,6 +218,10 @@ async function runPlayStats(params: StatQueryParams, store: ColumnStore, signal?
   if (groups.length === 0) {
     throw new Error("Select at least one stat.");
   }
+  const teamStat = groups.flat().find((s) => s.teamOnly);
+  if (!teams && teamStat) {
+    throw new Error(`${teamStat.label} is a team stat: ask about a team, not a player.`);
+  }
   if (teams && groups.flat().some((s) => s.category.startsWith("ngs_"))) {
     throw new Error("Next Gen Stats are per-player weekly values, so a team has no total for them.");
   }
@@ -297,7 +301,8 @@ async function runPlayStats(params: StatQueryParams, store: ColumnStore, signal?
     const rowsByGroup = new Map<string, { pid: string; rows: number[] }>();
     for (let i = 0; i < table.rowCount; i++) {
       const pid = ids[i];
-      if (typeof pid !== "string" || !wanted(pid) || typeof roleIds[i] !== "string") {
+      // A team-only stat counts every play of its type, whoever had the ball.
+      if (typeof pid !== "string" || !wanted(pid) || (!first.teamOnly && typeof roleIds[i] !== "string")) {
         continue;
       }
       if (playTypes && playTypes[i] !== first.playType) {

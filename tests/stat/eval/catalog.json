@@ -22,17 +22,18 @@
     },
     {
       "id": "pass_p2s",
-      "label": "P2S%",
+      "label": "Hit-to-sack %",
       "category": "passing",
       "aliases": [
-        "pressure to sack",
-        "p2s",
-        "pressure-to-sack rate"
+        "hit to sack",
+        "hit to sack rate",
+        "hit-to-sack rate",
+        "hit-to-sack"
       ]
     },
     {
       "id": "pass_adot",
-      "label": "ADOT",
+      "label": "Pass ADOT",
       "category": "passing",
       "aliases": [
         "adot",
@@ -87,8 +88,7 @@
         "interception rate",
         "int rate",
         "interception percentage",
-        "interceptions",
-        "picks"
+        "int %"
       ]
     },
     {
@@ -213,7 +213,7 @@
     },
     {
       "id": "eff_epa",
-      "label": "EPA/Play",
+      "label": "Pass EPA/play",
       "category": "efficiency",
       "aliases": [
         "epa",
@@ -225,7 +225,7 @@
     },
     {
       "id": "eff_success",
-      "label": "Success rate",
+      "label": "Pass success rate",
       "category": "efficiency",
       "aliases": [
         "success rate",
@@ -422,6 +422,105 @@
         "league pts",
         "fantasy score",
         "my league points"
+      ]
+    },
+    {
+      "id": "rush_att",
+      "label": "Carries",
+      "category": "rushing",
+      "aliases": [
+        "carries",
+        "rush attempts",
+        "rushing attempts",
+        "rushes",
+        "attempts on the ground"
+      ]
+    },
+    {
+      "id": "pass_int",
+      "label": "Interceptions",
+      "category": "passing",
+      "aliases": [
+        "interceptions",
+        "interceptions thrown",
+        "picks",
+        "ints",
+        "picks thrown"
+      ]
+    },
+    {
+      "id": "rush_epa",
+      "label": "Rush EPA/carry",
+      "category": "rushing",
+      "aliases": [
+        "rushing epa",
+        "rush epa",
+        "epa per carry",
+        "epa per rush",
+        "rushing epa per play"
+      ]
+    },
+    {
+      "id": "rush_success",
+      "label": "Rush success rate",
+      "category": "rushing",
+      "aliases": [
+        "rushing success rate",
+        "rush success rate",
+        "success rate on runs"
+      ]
+    },
+    {
+      "id": "rec_epa",
+      "label": "Rec EPA/target",
+      "category": "receiving",
+      "aliases": [
+        "receiving epa",
+        "rec epa",
+        "epa per target",
+        "receiving epa per target"
+      ]
+    },
+    {
+      "id": "rec_success",
+      "label": "Rec success rate",
+      "category": "receiving",
+      "aliases": [
+        "receiving success rate",
+        "rec success rate",
+        "success rate per target"
+      ]
+    },
+    {
+      "id": "rec_adot",
+      "label": "Rec ADOT",
+      "category": "receiving",
+      "aliases": [
+        "receiving adot",
+        "receiver adot",
+        "average target depth",
+        "target depth"
+      ]
+    },
+    {
+      "id": "team_epa",
+      "label": "Team EPA/play",
+      "category": "team",
+      "aliases": [
+        "team epa",
+        "team epa per play",
+        "offensive epa per play",
+        "defensive epa per play"
+      ]
+    },
+    {
+      "id": "team_success",
+      "label": "Team success rate",
+      "category": "team",
+      "aliases": [
+        "team success rate",
+        "offensive success rate",
+        "defensive success rate"
       ]
     }
   ],

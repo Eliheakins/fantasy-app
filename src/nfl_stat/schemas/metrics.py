@@ -67,6 +67,14 @@ class MetricDefinition(BaseModel):
         min_length=1,
         description="Column of player_game.parquet holding this counting stat's official total",
     )
+    team_only: bool = Field(
+        False, description="Only a team has this stat (every play, whoever had the ball)"
+    )
+    family: str | None = Field(
+        None,
+        min_length=1,
+        description="Stats answering one question for different roles; Ask picks the one that fits",
+    )
     description: str | None = None
     help: str | None = None
     # Same limits as the catalog sent to the model, so a valid file never makes /nlq/intent 422.
