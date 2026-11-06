@@ -37,7 +37,7 @@ export function useExploreQueryExecution() {
   const [running, setRunning] = useState(false);
   const runLatest = useRef(createLatestRunner()).current;
 
-  const { players, stats, granularity, minPlays, order, limit, split, subject, teams, side } = state;
+  const { players, stats, granularity, minPlays, order, limit, split, subject, teams, side, lastGames } = state;
   const league = isLeagueQuery(state);
   const forTeams = subject === "teams";
   // Whoever the rows are about is named, or the query ranks everyone.
@@ -124,7 +124,9 @@ export function useExploreQueryExecution() {
     }
 
     setRunning(true);
-    setDetails(describeQuery({ statIds: stats, granularity, filterChipState, chipGroups, minPlays }));
+    setDetails(
+      describeQuery({ statIds: stats, granularity, filterChipState, chipGroups, minPlays, lastGames }),
+    );
     let stale = false;
     try {
       const outcome = await runLatest((signal) =>
@@ -143,6 +145,7 @@ export function useExploreQueryExecution() {
             limit,
             split,
             teams: forTeams ? { ids: league ? null : teams, side } : null,
+            lastGames,
             chipGroups,
           },
           browserColumnStore,
@@ -183,6 +186,7 @@ export function useExploreQueryExecution() {
     side,
     order,
     limit,
+    lastGames,
     split,
     sources,
     playerGame,

@@ -12,6 +12,7 @@ import type { GranularityMode, Side, Split } from "@/stat/types/queryBuilder";
 
 import { NAME_SUFFIXES, type PlayerMatch, tokenize } from "./resolvePlayers";
 import { findTeams } from "./resolveTeams";
+import { readTime } from "./timeWords";
 
 export interface RuleContext {
   /** Players already found in the question (their words are not part of the stat wording). */
@@ -19,6 +20,8 @@ export interface RuleContext {
   /** Seasons the data has. */
   seasons: readonly number[];
   chipGroups: readonly FilterChipGroup[];
+  /** The latest week each season reaches, for "last week" and "since week 5". */
+  maxWeeks?: Readonly<Record<number, number>>;
 }
 
 /** A league-wide ranking: the stat to order by, how many rows to keep, and the plays a player needs to qualify. */
@@ -414,6 +417,15 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
     return ambiguous("It names part of a game followed by 'of', which is not a part of a game.");
   }
 
+  // "this season", "week 3", "since week 5", "last 3 games": read after the chip phrases ("week 13 or later").
+  const time = readTime(question, { seasons, maxWeeks: context.maxWeeks }, new Set(used.flatMap((u, at) => (u ? [at] : []))));
+  if (time.problem) {
+    return { status: "unsupported", reason: time.problem };
+  }
+  for (const at of time.used) {
+    used[at] = true;
+  }
+
   const years: { at: number; year: number }[] = [];
   let missingYear: { at: number; year: number } | undefined;
   tokens.forEach((token, at) => {
@@ -576,6 +588,7 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
   const filterAt: { at: number; id: string }[] = [
     ...found.flatMap((f) => (f.piece.kind === "chips" ? f.piece.ids.map((id) => ({ at: f.at, id })) : [])),
     ...years.map((y) => ({ at: y.at, id: `season-${y.year}` })),
+    ...time.filters.map((id) => ({ at: time.used[0] ?? 0, id })),
   ];
 
   const intent: QueryIntent = {

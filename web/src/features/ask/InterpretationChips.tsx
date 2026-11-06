@@ -6,6 +6,8 @@ import { useFilterChipGroups } from "@/stat/react/filterChipGroups";
 import { useQueryState } from "@/stat/react/useQueryState";
 import type { GranularityMode } from "@/stat/types/queryBuilder";
 
+import { scopeLabels } from "./answerText";
+
 const GRANULARITY_LABELS: Record<GranularityMode, string> = {
   total: "Total",
   per_game: "Per game",
@@ -62,6 +64,11 @@ export function InterpretationChips() {
           >
             {filterLabels.get(id) ?? id} <span aria-hidden>×</span>
           </button>
+        ))}
+        {scopeLabels(state).map((label) => (
+          <span key={label} className={chipClass}>
+            {label}
+          </span>
         ))}
       </div>
       <ToggleGroup

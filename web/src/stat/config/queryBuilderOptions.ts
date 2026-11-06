@@ -14,6 +14,15 @@ export interface FilterChipGroup {
   options: FilterChipOption[];
 }
 
+/** The last week a season can have, playoffs included (22 since 2021). */
+export const MAX_WEEK = 22;
+
+/**
+ * Chip groups Ask reads in code (weeks, opponents) rather than through the model: numbers and team
+ * names are read reliably by rules, and listing them would add dozens of questions to every model call.
+ */
+export const CODE_READ_GROUP_IDS: ReadonlySet<string> = new Set(["week_number"]);
+
 const GROUP_TEMPLATES: FilterChipGroup[] = [
   {
     id: "down",
@@ -54,6 +63,13 @@ const GROUP_TEMPLATES: FilterChipGroup[] = [
       { id: "week-mid", label: "Mid (7–12)", predicate: "week >= 7 AND week <= 12" },
       { id: "week-late", label: "Late (≥13)", predicate: "week >= 13" },
     ],
+  },
+  {
+    id: "week_number",
+    label: "Week number",
+    description: "Single weeks; several make a range",
+    combine: "or",
+    options: Array.from({ length: MAX_WEEK }, (_, k) => ({ id: `wk-${k + 1}`, label: `Week ${k + 1}`, predicate: `week = ${k + 1}` })),
   },
   {
     id: "location",

@@ -14,11 +14,16 @@ export const rulesPath: AskPath<RuleResult> = {
   read: (input) => {
     const matches = matchesFor(input);
     if (matches.length > 0) return null;
-    return parseRules(input.question, { matches, seasons: input.seasons, chipGroups: input.chipGroups });
+    return parseRules(input.question, {
+      matches,
+      seasons: input.seasons,
+      chipGroups: input.chipGroups,
+      maxWeeks: input.maxWeeks,
+    });
   },
-  answer: (read, { question }, actions) => {
+  answer: (read, { question, seasons, maxWeeks }, actions) => {
     if (read.status === "resolved" && (read.leaderboard || read.team)) {
-      showRules(read.intent, read.leaderboard, read.team, question, actions);
+      showRules(read.intent, read.leaderboard, read.team, question, actions, { seasons, maxWeeks });
       return;
     }
     // With no player, "ambiguous" is a ranking question the rules could not finish: say why.

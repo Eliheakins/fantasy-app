@@ -17,6 +17,11 @@ Ask answers an NFL question in plain language. `pages/Ask.tsx` has an Ask tab an
 - `ruleParser.eval.test.ts` is the rules eval (`eval:rules` is gone). It pins the recorded numbers: cases 43/43 answerable correct and 0 wrong (40/40 before `league_pts`); heldout 26/26 correct, 0 wrong, 1 trap refused, 6 handed to the model. It reads `tests/stat/eval/`.
 - A league stat has no position. The rules parser and `useAsk` ignore it when settling roles.
 
+## Time words and the default season
+
+- `timeWords.ts` reads relative time in code: this/last season, two seasons ago, week N, week ranges, since week N, this/last week (the latest week in the manifest), last N games, career. The rules mark the words read; the model is sent the question without them (`readTime(...).rest`), and `withTime` puts the code's reading in place of the model's.
+- `paths/queryStates.ts` `timeOf` builds the answer's time: the code-read filters, `lastGames`, and the current season when none is named, with a note (`AskActions.answer` takes `notes`, shown under the answer). Career, a split by season, and only-rare situations (playoffs, wind, cold) keep every season.
+
 ## Settling a stat to the subject
 
 - `settleStats.ts` runs on every answer (`paths/queryStates.ts`), after the rules or the model. Generic words ("EPA", "success rate", "ADOT") name the first stat of a metric `family`, the passer's. A team gets the family's team stat; a player whose position has one main role (`MAIN_ROLE`: RB rusher, WR and TE receiver) gets that role's stat. A quarterback, players of mixed roles, and a stat named by role ("rushing EPA") are left as asked.

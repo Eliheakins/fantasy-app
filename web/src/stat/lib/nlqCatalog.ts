@@ -1,5 +1,5 @@
 import { STAT_DEFINITIONS } from "@/stat/config/statDictionary";
-import { buildFilterChipGroups } from "@/stat/config/queryBuilderOptions";
+import { buildFilterChipGroups, CODE_READ_GROUP_IDS } from "@/stat/config/queryBuilderOptions";
 
 export interface IntentCatalogStat {
   id: string;
@@ -28,6 +28,9 @@ export function buildIntentCatalog(seasons: readonly number[]): IntentCatalog {
       category: s.category,
       aliases: s.aliases,
     })),
-    filters: buildFilterChipGroups(seasons).flatMap((g) => g.options.map((o) => ({ id: o.id, label: o.label, group: g.label }))),
+    // Weeks and opponents are read in code (CODE_READ_GROUP_IDS), so the model never sees them.
+    filters: buildFilterChipGroups(seasons)
+      .filter((g) => !CODE_READ_GROUP_IDS.has(g.id))
+      .flatMap((g) => g.options.map((o) => ({ id: o.id, label: o.label, group: g.label }))),
   };
 }

@@ -18,6 +18,8 @@ export interface AnswerInput {
   idColumn?: "player_id" | "team_id";
   /** The selected league's name, shown on league stats; null leaves the label generic. */
   leagueName?: string | null;
+  /** Each player's latest N games only. */
+  lastGames?: number | null;
 }
 
 export interface Answer {
@@ -30,6 +32,11 @@ export interface Answer {
 }
 
 const NO_FILTERS_CONTEXT = "All loaded seasons";
+
+/** Parts of a query that are not chips: the last N games (and later who the rows may be). */
+export function scopeLabels(scope: { lastGames: number | null }): string[] {
+  return scope.lastGames ? [scope.lastGames === 1 ? "Last game" : `Last ${scope.lastGames} games`] : [];
+}
 
 /** Seasons first (they scope everything else), then the other filters in chip-group order. */
 function filterLabels(filterIds: string[], chipGroups: FilterChipGroup[]): string[] {
@@ -62,8 +69,9 @@ export function buildAnswer({
   ranked = false,
   idColumn = "player_id",
   leagueName = null,
+  lastGames = null,
 }: AnswerInput): Answer {
-  const labels = filterLabels(filterIds, chipGroups);
+  const labels = [...filterLabels(filterIds, chipGroups), ...scopeLabels({ lastGames })];
   const parts = result.rows.map((row, rank) => {
     const pid = String(row[idColumn] ?? "");
     const name = nameByGsis.get(pid) ?? pid;

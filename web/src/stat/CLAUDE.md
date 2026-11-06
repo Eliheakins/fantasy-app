@@ -16,6 +16,11 @@ The stat code in the browser. The engine runs queries on Parquet shards from `/a
 - `team_only` stats (`team_epa`, `team_success`) count every pass and run play by `posteam` or `defteam`, whoever had the ball; their role is a placeholder and a player query on them throws.
 - `family` groups the versions of one stat; the first in `metrics.json` is the default. `familyMember` and `familyDefault` in `config/statDictionary.ts` pick among them (Ask's `settleStats`).
 
+## Weeks and last N games
+
+- The `week_number` chips (`wk-1` to `wk-22`) pick single weeks; several make a range. They are a game-scope group, and the player-game table and league points answer them. They are left out of the model catalog (`CODE_READ_GROUP_IDS`): Ask reads weeks in code.
+- `StatQueryParams.lastGames` (URL `last`) keeps each player's or team's latest N games by season then week, within the season, season-type and week chips (`engine/lastGames.ts`), on all three paths.
+
 ## Engine tests
 
 Engine tests that read shards (`referenceValues`, `parquetColumns`) skip until `make stat-data` has built `data/stat/`.

@@ -11,6 +11,7 @@ import type { QueryResult } from "@/stat/types/workbench";
 
 import type { ColumnSource, ColumnStore } from "./columns";
 import { columnsIn, compileRowExpression, parseExpression } from "./expression";
+import { latestGames } from "./lastGames";
 import type { PlayerSet, StatQueryParams } from "./statQuery";
 
 /**
@@ -19,7 +20,7 @@ import type { PlayerSet, StatQueryParams } from "./statQuery";
  */
 
 /** Chip groups the table can answer: it knows each game's season, season type and week. */
-const PLAYER_GAME_GROUP_IDS = new Set(["season", "season_type", "week"]);
+const PLAYER_GAME_GROUP_IDS = new Set(["season", "season_type", "week", "week_number"]);
 
 /** The column that counts a role's plays, for the minimum-plays cut and for games played. */
 const VOLUME_COLUMN: Readonly<Record<PlayerRole, string>> = {
@@ -74,7 +75,13 @@ export async function runPlayerGameQuery(
   }
 
   const groupColumns = splitColumns(params.split);
-  const needed = new Set(["gsis_id", ...groupColumns, ...(whereNode ? columnsIn(whereNode) : [])]);
+  const lastN = params.lastGames ?? null;
+  const needed = new Set([
+    "gsis_id",
+    ...groupColumns,
+    ...(whereNode ? columnsIn(whereNode) : []),
+    ...(lastN ? ["season", "week"] : []),
+  ]);
   for (const [role, roleStats] of byRole) {
     needed.add(VOLUME_COLUMN[role]);
     roleStats.forEach((s) => needed.add(s.playerGameColumn!));
@@ -86,10 +93,19 @@ export async function runPlayerGameQuery(
   const wanted = wantedPlayers(params.gsisIds, params.playerSet);
   const ids = table.cols.gsis_id!;
   const keyOf = splitKeyer(table.cols, params.split);
+  const inScope = (i: number): boolean => typeof ids[i] === "string" && wanted(ids[i] as string) && (!keep || keep(i) === true);
+  // One row per player and game, so a row index stands for its game.
+  const last = lastN
+    ? latestGames(lastN, (addGame) => {
+        for (let i = 0; i < table.rowCount; i++) {
+          if (inScope(i)) addGame(ids[i] as string, i, Number(table.cols.season![i]), Number(table.cols.week![i]));
+        }
+      })
+    : null;
   const rowsByGroup = new Map<string, { playerId: string; games: number[] }>();
   for (let i = 0; i < table.rowCount; i++) {
     const id = ids[i];
-    if (typeof id === "string" && wanted(id) && (!keep || keep(i) === true)) {
+    if (typeof id === "string" && inScope(i) && (!last || last.get(id)?.has(i))) {
       const key = keyOf(id, i);
       const group = rowsByGroup.get(key) ?? { playerId: id, games: [] };
       group.games.push(i);

@@ -39,6 +39,8 @@ export interface QueryState {
   side: Side;
   /** Today's league roster status the player rows are restricted to; null is all players. */
   roster: RosterFilter | null;
+  /** Only each player's (or team's) latest N games within the season and week filters; null for all. */
+  lastGames: number | null;
 }
 
 export type RosterFilter = "mine" | "rostered" | "fa";
@@ -62,6 +64,7 @@ export const EMPTY_QUERY: QueryState = {
   teams: [],
   side: "offense",
   roster: null,
+  lastGames: null,
 };
 
 const KEYS = {
@@ -77,7 +80,10 @@ const KEYS = {
   teams: "t",
   side: "side",
   roster: "lg",
+  lastGames: "last",
 } as const;
+/** "Last N games" reaches back at most a season. */
+export const MAX_LAST_GAMES = 17;
 const SPLITS: readonly Split[] = ["season", "week"];
 const GRANULARITIES: readonly GranularityMode[] = ["total", "per_game", "per_play"];
 const PLAYER_ID = /^[\w-]{1,24}$/;
@@ -146,7 +152,13 @@ export function parseQuery(params: URLSearchParams, knownFilterIds?: ReadonlySet
     teams: unique(params.getAll(KEYS.teams).filter((id) => getTeamById(id))).slice(0, MAX_PINNED_TEAMS),
     side: params.get(KEYS.side) === "defense" ? "defense" : "offense",
     roster: ROSTER_FILTERS.find((r) => r === params.get(KEYS.roster)) ?? null,
+    lastGames: parseLastGames(params.get(KEYS.lastGames)),
   };
+}
+
+function parseLastGames(value: string | null): number | null {
+  const n = Number(value);
+  return value !== null && /^\d+$/.test(value) && n >= 1 && n <= MAX_LAST_GAMES ? n : null;
 }
 
 /** `base` with its query parameters replaced by `state`; other parameters (like `q`) are kept. */
@@ -183,6 +195,9 @@ export function writeQuery(base: URLSearchParams, state: QueryState): URLSearchP
   if (state.roster) {
     next.set(KEYS.roster, state.roster);
   }
+  if (state.lastGames !== null) {
+    next.set(KEYS.lastGames, String(state.lastGames));
+  }
   return next;
 }
 
@@ -206,6 +221,7 @@ export function queryKey(state: QueryState): string {
     state.teams,
     state.side,
     state.roster,
+    state.lastGames,
   ]);
 }
 

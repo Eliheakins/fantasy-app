@@ -16,6 +16,7 @@ import type { QueryResult } from "@/stat/types/workbench";
 
 import type { ColumnSource, ColumnStore } from "./columns";
 import { isLeagueStat, leaguePointsProblem, runLeaguePointsQuery, type LeaguePointsRow } from "./leaguePointsQuery";
+import { latestGames } from "./lastGames";
 import { canServeFromPlayerGame, runPlayerGameQuery, wantedPlayers } from "./playerGameQuery";
 import {
   columnsIn,
@@ -31,7 +32,7 @@ import {
  * Chip groups that describe the game rather than a play. Per-game stats divide by the games a
  * player appeared in within this scope, so "3rd down, per game" still counts every game played.
  */
-export const GAME_SCOPE_GROUP_IDS = ["season", "season_type", "week", "location"] as const;
+export const GAME_SCOPE_GROUP_IDS = ["season", "season_type", "week", "week_number", "location"] as const;
 
 const ROLE_COLUMNS = ["passer_player_id", "rusher_player_id", "receiver_player_id"] as const;
 const SUM_OF_COLUMN = /^SUM\((\w+)\)$/i;
@@ -69,6 +70,8 @@ export interface StatQueryParams {
   split?: Split | null;
   /** Report on teams instead of players: these teams (null for all) on offense or defense. */
   teams?: { ids: string[] | null; side: Side } | null;
+  /** Only each player's (or team's) latest N games within the season and week chips; null for all. */
+  lastGames?: number | null;
 }
 
 const TEAM_COLUMN: Readonly<Record<Side, string>> = { offense: "posteam", defense: "defteam" };
@@ -145,6 +148,7 @@ function gamesPlayed(
   scope: ((row: number) => Value) | null,
   keyOf: (playerId: string, row: number) => string,
   idColumns: readonly string[],
+  last: Map<string, Set<unknown>> | null,
 ): Map<string, number> {
   const games = new Map<string, Set<unknown>>();
   const gameId = cols.game_id!;
@@ -154,7 +158,7 @@ function gamesPlayed(
     }
     for (const role of idColumns) {
       const pid = cols[role]![i];
-      if (typeof pid === "string" && wanted(pid)) {
+      if (typeof pid === "string" && wanted(pid) && (!last || last.get(pid)?.has(gameId[i]))) {
         const key = keyOf(pid, i);
         let set = games.get(key);
         if (!set) {
@@ -236,9 +240,10 @@ async function runPlayStats(params: StatQueryParams, store: ColumnStore, signal?
     return { columns, rows: [] };
   }
 
+  const lastN = params.lastGames ?? null;
   const needGames = groups.some((g) => g.some((s) => usesGameCount(s, params.granularity)));
   const chipNode = parseOptional(buildFilterWhereSql(params.filterChipState, { groups: params.chipGroups }));
-  const scopeNode = needGames
+  const scopeNode = needGames || lastN
     ? parseOptional(
         buildFilterWhereSql(params.filterChipState, { groups: params.chipGroups, groupIds: GAME_SCOPE_GROUP_IDS }),
       )
@@ -270,11 +275,14 @@ async function runPlayStats(params: StatQueryParams, store: ColumnStore, signal?
   if (teamColumn) {
     add([teamColumn]);
   }
-  if (needGames) {
+  if (needGames || lastN) {
     add(["game_id", ...(teamColumn ? [teamColumn] : ROLE_COLUMNS)]);
     if (scopeNode) {
       add(columnsIn(scopeNode));
     }
+  }
+  if (lastN) {
+    add(["season", "week"]);
   }
 
   const table = await store.table(sources, [...needed], signal);
@@ -284,8 +292,23 @@ async function runPlayStats(params: StatQueryParams, store: ColumnStore, signal?
   const keyOf = splitKeyer(table.cols, params.split);
   const chip = chipNode ? compileRowExpression(chipNode, table.cols) : null;
   const scope = scopeNode ? compileRowExpression(scopeNode, table.cols) : null;
+  const idColumns = teamColumn ? [teamColumn] : ROLE_COLUMNS;
+  // A player's games are those he had a play in (any role); a team's, those it played.
+  const last = lastN
+    ? latestGames(lastN, (addGame) => {
+        const { game_id: gameIds, season, week } = table.cols;
+        for (let i = 0; i < table.rowCount; i++) {
+          if (scope && scope(i) !== true) continue;
+          for (const column of idColumns) {
+            const pid = table.cols[column]![i];
+            if (typeof pid === "string" && wanted(pid)) addGame(pid, gameIds![i], Number(season![i]), Number(week![i]));
+          }
+        }
+      })
+    : null;
+  const gameIdAt = last ? table.cols.game_id! : null;
   const games = needGames
-    ? gamesPlayed(table.cols, table.rowCount, wanted, scope, keyOf, teamColumn ? [teamColumn] : ROLE_COLUMNS)
+    ? gamesPlayed(table.cols, table.rowCount, wanted, scope, keyOf, idColumns, last)
     : new Map<string, number>();
   const minPlays = Math.floor(params.minPlays);
 
@@ -312,6 +335,9 @@ async function runPlayStats(params: StatQueryParams, store: ColumnStore, signal?
         continue;
       }
       if (chip && chip(i) !== true) {
+        continue;
+      }
+      if (last && !last.get(pid)?.has(gameIdAt![i])) {
         continue;
       }
       const key = keyOf(pid, i);

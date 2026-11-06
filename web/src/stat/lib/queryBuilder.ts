@@ -192,6 +192,7 @@ export function describeQuery(params: {
   filterChipState: Record<string, boolean>;
   chipGroups: FilterChipGroup[];
   minPlays: number;
+  lastGames?: number | null;
 }): string {
   const lines = params.statIds.flatMap((id) => {
     const stat = getStatById(id);
@@ -213,6 +214,9 @@ export function describeQuery(params: {
   lines.push(where ? `Filters: ${where}` : "Filters: none");
   if (params.minPlays > 0) {
     lines.push(`Minimum rows per player: ${Math.floor(params.minPlays)}`);
+  }
+  if (params.lastGames) {
+    lines.push(`Only each player's latest ${params.lastGames} game(s) within those filters`);
   }
   return lines.join("\n");
 }

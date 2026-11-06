@@ -45,7 +45,7 @@ async function interpret(input: AskInput, matches: PlayerMatch[]): Promise<Inter
     }
     return outcome;
   };
-  return interpretQuestion({ question, matches, seasons, chipGroups, askModel });
+  return interpretQuestion({ question, matches, seasons, chipGroups, maxWeeks: input.maxWeeks, askModel });
 }
 
 /** The catch-all: any question that names a player and no other path took. */
@@ -71,10 +71,13 @@ export const modelPath: AskPath<Interpretation> = {
         unsure.push({ ...match, candidates: narrowByRoles(match.candidates, roles) });
       }
     }
+    const scope = { seasons: input.seasons, maxWeeks: input.maxWeeks };
     if (unsure.length > 0) {
-      actions.choose(sure, unsure, (players, asked) => showIntent(players, intent, asked, path, unrecognized, actions));
+      actions.choose(sure, unsure, (players, asked) =>
+        showIntent(players, intent, asked, path, unrecognized, actions, scope),
+      );
       return;
     }
-    showIntent(sure, intent, question, path, unrecognized, actions);
+    showIntent(sure, intent, question, path, unrecognized, actions, scope);
   },
 };

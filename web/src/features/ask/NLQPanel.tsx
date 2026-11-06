@@ -69,6 +69,7 @@ export function NLQPanel() {
       ranked: isLeagueQuery(state),
       idColumn: state.subject === "teams" ? "team_id" : "player_id",
       leagueName,
+      lastGames: state.lastGames,
     });
   }, [showingAnswer, exec.result, exec.namedPlayers, state, chipGroups, leagueName]);
 
@@ -133,6 +134,11 @@ export function NLQPanel() {
                       : "Read by the model (the hosted Jev, or the local model when Jev is unavailable)."}
                 </p>
               ) : null}
+              {ask.notes.map((note) => (
+                <p key={note} className="text-caption text-muted">
+                  {note}
+                </p>
+              ))}
               {ask.unrecognized.length > 0 ? (
                 <p className="text-caption text-warning">
                   The built-in rules did not recognise: {ask.unrecognized.join(", ")}. Check that this answers what you
