@@ -38,6 +38,7 @@ describe("Season header", () => {
     responder = by({ "season-odds": odds, digest: { odds_change: [{ is_me: true, d_playoffs: 0.05 }] } });
     view(<SeasonHeader eyebrow="Season" />);
     expect(screen.getByRole("heading", { level: 1, name: "68% to make the playoffs" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "68%" })).toHaveAccessibleDescription(/what drives this/);
     expect(screen.getByText(/\+5\.0/)).toBeInTheDocument();
     expect(screen.getByText(/pp since the last week/)).toBeInTheDocument();
     expect(screen.getByText(/A bye is/).textContent).toMatch(/A bye is 18%, what drives this and the title 10%, what drives this\./);

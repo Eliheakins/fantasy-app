@@ -1,5 +1,5 @@
 import { Popover } from "radix-ui";
-import { type ComponentProps, type ReactNode, useRef } from "react";
+import { type ComponentProps, type ReactNode, useId, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Delta } from "./Delta";
 
@@ -16,16 +16,22 @@ type ExplainProps = {
   about?: string;
   /** Row-level trigger: a 44px tall target instead of an inline one. */
   row?: boolean;
+  /** Inside a heading: the "what drives this" hint becomes a description, not part of the heading's name. */
+  inHeading?: boolean;
 };
 
 /** A key number that explains itself on click or Enter: what drives it, from data already on the page. Esc closes and focus returns to the number. */
-export function Explain({ why, children, about, row = false }: ExplainProps) {
+export function Explain({ why, children, about, row = false, inHeading = false }: ExplainProps) {
   const trigger = useRef<HTMLButtonElement>(null);
+  const hintId = useId();
+  const hint = `${about ? `, ${about}` : ""}, what drives this`;
   return (
     <Popover.Root>
-      <Popover.Trigger ref={trigger} className={cn("rounded text-left underline decoration-dotted underline-offset-4", row ? ROW : INLINE, FOCUS)}>
+      {/* in a heading the hint is a description, so the heading's name stays its visible text */}
+      {inHeading && <span id={hintId} hidden>{hint}</span>}
+      <Popover.Trigger ref={trigger} aria-describedby={inHeading ? hintId : undefined} className={cn("rounded text-left underline decoration-dotted underline-offset-4", row ? ROW : INLINE, FOCUS)}>
         {children}
-        <span className="sr-only">{about ? `, ${about}` : ""}, what drives this</span>
+        {!inHeading && <span className="sr-only">{hint}</span>}
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content

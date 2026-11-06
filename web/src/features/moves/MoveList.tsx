@@ -15,11 +15,7 @@ function MoveNotes({ move }: { move: Move }) {
   return (
     <div className="flex flex-wrap items-center gap-x-2 text-caption text-muted">
       {move.detail && <span>{move.detail}</span>}
-      {move.likelyGone && (
-        <span className="rounded border border-warning-edge px-1.5 py-0.5 text-ink">
-          Likely gone: {move.trendingAdds?.toLocaleString("en-US")} Sleeper adds
-        </span>
-      )}
+      {move.trendingAdds != null && <span>Trending: {move.trendingAdds.toLocaleString("en-US")} adds across Sleeper</span>}
     </div>
   );
 }

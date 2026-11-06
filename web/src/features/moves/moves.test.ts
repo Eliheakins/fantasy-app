@@ -1,5 +1,5 @@
 import type { components } from "@/api/schema";
-import { LIKELY_GONE_ADDS, filterMoves, isLikelyGone, moveHeadline, rankMoves, tradeMoves, waiverMoves, worthMove } from "./moves";
+import { filterMoves, moveHeadline, rankMoves, tradeMoves, waiverMoves, worthMove } from "./moves";
 
 type Waiver = components["schemas"]["WaiverRow"];
 type Idea = components["schemas"]["MoveIdeaRow"];
@@ -30,15 +30,10 @@ describe("waiverMoves", () => {
   });
 });
 
-describe("urgency", () => {
-  it("flags adds at or above the threshold only", () => {
-    expect(isLikelyGone(LIKELY_GONE_ADDS)).toBe(true);
-    expect(isLikelyGone(LIKELY_GONE_ADDS - 1)).toBe(false);
-    expect(isLikelyGone(null)).toBe(false);
-  });
-  it("carries the flag on the move", () => {
-    const [hot, cold] = waiverMoves([waiver("Hot", { trending_adds: 200000 }), waiver("Cold", { trending_adds: 100 })]).map(must);
-    expect([must(hot).likelyGone, must(cold).likelyGone]).toEqual([true, false]);
+describe("trending adds", () => {
+  it("carries Sleeper's count on the move, or null without one", () => {
+    const [hot, quiet] = waiverMoves([waiver("Hot", { trending_adds: 200000 }), waiver("Quiet")]).map(must);
+    expect([must(hot).trendingAdds, must(quiet).trendingAdds]).toEqual([200000, null]);
   });
 });
 

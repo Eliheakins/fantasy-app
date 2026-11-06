@@ -22,7 +22,12 @@ export function SeasonHeader({ eyebrow }: { eyebrow: string }) {
   const change = changeRow?.d_playoffs;
   const header = mine ? (
     <PageHeader
-      title={`${who.name ? `${who.name}: ` : ""}${formatPercent(mine.p_playoffs)} to make the playoffs`}
+      title={
+        <>
+          {who.name ? `${who.name}: ` : ""}
+          <Explain why={SIM_WHY} inHeading>{formatPercent(mine.p_playoffs)}</Explain> to make the playoffs
+        </>
+      }
       eyebrow={eyebrow}
       answer={
         <>

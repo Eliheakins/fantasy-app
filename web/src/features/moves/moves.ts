@@ -5,12 +5,6 @@ import { MIN_PLAYOFF_GAIN, rankTodos, type Effect } from "@/features/thisweek/to
 type Waiver = components["schemas"]["WaiverRow"];
 type Idea = components["schemas"]["MoveIdeaRow"];
 
-/**
- * Sleeper trending adds (users who added the player in the latest pull) at or above this read "likely gone".
- * The pull is the top 50 players league-wide: its adds run 17,000 to 684,000 with a median of 38,000 and a
- * third quartile of 75,000, so 75,000 marks the busiest quarter of an already busy list. See docs/decisions.md.
- */
-export const LIKELY_GONE_ADDS = 75_000;
 const PERCENT = 100;
 const NONE_WORTH_IT = "No move is worth it this week";
 
@@ -24,13 +18,11 @@ export type Move = {
   why?: EffectWhy;
   /** The player an add picks up, for a link to his page; null for a trade. */
   player: { gsisId: string; name: string; position: string } | null;
-  likelyGone: boolean;
+  /** Sleeper trending adds across all Sleeper leagues; shown as a count, not a chance of losing the claim. */
   trendingAdds: number | null;
   /** The player an add drops. Points are net of the drop: the response holds no separate cost for him. */
   drop: { name: string; netPoints: number | null } | null;
 };
-
-export const isLikelyGone = (trendingAdds: number | null): boolean => trendingAdds !== null && trendingAdds >= LIKELY_GONE_ADDS;
 
 const toPoints = (fraction: number | null): number | null => (fraction === null ? null : fraction * PERCENT);
 
@@ -43,7 +35,6 @@ export const waiverMoves = (rows: readonly Waiver[]): Move[] =>
     effect: { playoffPoints: toPoints(w.playoff_delta), points: w.delta_points },
     why: waiverWhy(w.full_name, w.drop_name),
     player: { gsisId: w.gsis_id, name: w.full_name, position: w.position },
-    likelyGone: isLikelyGone(w.trending_adds),
     trendingAdds: w.trending_adds,
     drop: { name: w.drop_name, netPoints: w.delta_points },
   }));
@@ -59,7 +50,6 @@ export const tradeMoves = (rows: readonly Idea[]): Move[] =>
       effect: { playoffPoints: toPoints(r.playoff_delta), points: r.delta_points },
       why: tradeWhy(r.give, r.get),
       player: null,
-      likelyGone: false,
       trendingAdds: null,
       drop: null,
     }));

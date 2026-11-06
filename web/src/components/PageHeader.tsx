@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 export const PAGE_HEADING_ID = "page-heading";
 
 type Props = {
-  title: string;
+  /** Text, or text with an inline Explain for the page's key number. */
+  title: ReactNode;
   /** Forest-toned caps line above the h1: "page · week · context". */
   eyebrow?: string;
   /** One sentence under the h1 with the key number and its effect. */

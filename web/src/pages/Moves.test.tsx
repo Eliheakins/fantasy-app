@@ -52,10 +52,11 @@ describe("Moves page", () => {
     expect(within(items[1]!).getAllByRole("button", { name: /what drives this/ }).length).toBeGreaterThan(0);
   });
 
-  it("shows the drop with its points net of the drop, and 'Likely gone' for busy adds", () => {
+  it("shows the drop with its points net of the drop, and the trending count as a number", () => {
     renderAt("/moves");
     const small = screen.getByText(/Small/).closest("li") as HTMLElement;
-    expect(small).toHaveTextContent("Likely gone");
+    expect(small).toHaveTextContent(/Trending: [\d,]+ adds across Sleeper/);
+    expect(small).not.toHaveTextContent("Likely gone");
     expect(small).toHaveTextContent("Bernard");
     expect(small).toHaveTextContent("~0.1"); // a playoff change under the worth bar reads as noise, not a signed number
         expect(screen.getByText(/Coleman/).closest("li")).not.toHaveTextContent("Likely gone");
