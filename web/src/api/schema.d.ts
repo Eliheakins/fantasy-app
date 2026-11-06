@@ -1988,6 +1988,12 @@ export interface components {
              * @enum {string}
              */
             granularity: "total" | "per_game" | "per_play";
+            /**
+             * Ranking
+             * @description The question asks who leads or ranks first; the client orders the rows
+             * @default false
+             */
+            ranking: boolean;
         };
         /** QueryOutcome */
         QueryOutcome: {

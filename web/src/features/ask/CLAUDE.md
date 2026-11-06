@@ -5,7 +5,12 @@ Ask answers an NFL question in plain language. `pages/Ask.tsx` has an Ask tab an
 ## Entry and dispatch
 
 - `components/layout/AskBox.tsx` in `TopBar` (input from md up, an icon button that reveals it on phones) navigates to `/ask?q=`, keeping only `league` and `team`. `useAsk` answers a `q` in the URL on arrival, when the URL holds no query.
-- `paths/dispatch.ts` gives the question to each path in order. The first whose `read` matches answers: `startSitPath`, then `tradePath`, then `rulesPath`, then `modelPath`. The model is last, because it takes whatever names a player. `isStale` stops a slow answer from replacing one the user has moved past.
+- `paths/dispatch.ts` gives the question to each path in order. The first whose `read` matches answers: `startSitPath`, then `tradePath`, then `rulesPath`, then `modelPath`. The model is last, because it takes whatever the others leave. `isStale` stops a slow answer from replacing one the user has moved past.
+- `rulesPath` takes a no-player question only when the rules fully read it (a ranking or a team question) or refuse it with certainty. Otherwise the model reads it, and `showModelRanking` makes a leaderboard when the words ask for a ranking or the model set `ranking`; with neither, it names no one and is refused.
+
+## Rankings
+
+- `ranking.ts` reads a ranking the same way on both paths: direction (`better`, flipped for a defense), "top N", "min N carries/targets/attempts" (the unit must be the ranked stat's role), "in a single game" (split by week). Default floor: 100 plays for a rate, per-game or fewest-first ranking, 10 for a weekly one, none for most-first totals and teams.
 
 ## Names
 

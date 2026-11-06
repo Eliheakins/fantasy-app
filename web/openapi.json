@@ -7000,6 +7000,12 @@
             ],
             "title": "Granularity",
             "default": "total"
+          },
+          "ranking": {
+            "type": "boolean",
+            "title": "Ranking",
+            "description": "The question asks who leads or ranks first; the client orders the rows",
+            "default": false
           }
         },
         "type": "object",

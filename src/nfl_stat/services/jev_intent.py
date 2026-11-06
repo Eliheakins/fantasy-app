@@ -92,8 +92,8 @@ FIXED_QUESTIONS: dict[str, Any] = {
     },
     "leaderboard": {
         "type": "noul",
-        "instructions": "Does the question ask which player leads or ranks first, without naming "
-        "the player it is about?",
+        "instructions": "Does the question ask which player or team leads or ranks highest or "
+        "lowest, without naming the player or team it is about?",
     },
 }
 
@@ -160,8 +160,9 @@ def to_outcome(
     years = _YEAR.findall(req.question)
     if any(f"season-{y}" not in season_ids for y in years):
         return _unsupported("That season is not in the data.")
-    if _noul(answers, "leaderboard") > THRESHOLD:
-        return _unsupported("Rankings without a named player are not something I can read here.")
+    # A ranking is a query; the client orders and cuts the rows (it refused before step 3 of the
+    # 2026-11-06 Ask expansion).
+    ranking = _noul(answers, "leaderboard") > THRESHOLD
     stat_p = {s.id: _noul(answers, f"stat__{s.id}") for s in req.stats}
     picked = [i for i, p in sorted(stat_p.items(), key=lambda kv: -kv[1]) if p > THRESHOLD]
     if not picked:
@@ -188,6 +189,7 @@ def to_outcome(
             "stat_ids": picked[:MAX_INTENT_STATS],
             "filter_ids": filters,
             "granularity": granularity,
+            "ranking": ranking,
         },
         stat_ids={s.id for s in req.stats},
         filter_ids={f.id for f in req.filters},

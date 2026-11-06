@@ -6,11 +6,19 @@
  */
 import { CHIP_COMBO_PHRASES, CHIP_PHRASES, type FilterChipGroup } from "@/stat/config/queryBuilderOptions";
 import { getStatById, type PlayerRole, STAT_DEFINITIONS } from "@/stat/config/statDictionary";
-import { MAX_SELECTED_STATS, type QueryOrder } from "@/stat/lib/queryUrl";
+import { MAX_SELECTED_STATS } from "@/stat/lib/queryUrl";
 import type { QueryIntent } from "@/stat/lib/schemas/nlqIntent";
 import type { GranularityMode, Side, Split } from "@/stat/types/queryBuilder";
 
 import { NAME_SUFFIXES, type PlayerMatch, tokenize } from "./resolvePlayers";
+import {
+  type Leaderboard,
+  LEADERBOARD_CUES,
+  leaderboardFor,
+  readLimit,
+  readMinimum,
+  readSingleGame,
+} from "./ranking";
 import { findTeams } from "./resolveTeams";
 import { readTime } from "./timeWords";
 
@@ -24,12 +32,7 @@ export interface RuleContext {
   maxWeeks?: Readonly<Record<number, number>>;
 }
 
-/** A league-wide ranking: the stat to order by, how many rows to keep, and the plays a player needs to qualify. */
-export interface Leaderboard {
-  order: QueryOrder;
-  limit: number;
-  minPlays: number;
-}
+export type { Leaderboard };
 
 export type RuleResult =
   /** `team`: the question is about teams (none named means a ranking of all 32). */
@@ -138,33 +141,25 @@ const ROLE_BY_CATEGORY: Readonly<Record<string, PlayerRole>> = {
 /** A verb that settles which role a bare "yards" or "touchdowns" belongs to. */
 const THROW_WORDS = new Set(["throw", "throws", "threw", "thrown"]);
 
-/** Words that set which end of a ranking comes first. "best" and "worst" depend on the stat (see `better`). */
-const RANK_DIRECTION = new Map<string, "desc" | "asc" | "best" | "worst">([
-  ["most", "desc"],
-  ["highest", "desc"],
-  ["fewest", "asc"],
-  ["least", "asc"],
-  ["lowest", "asc"],
-  ["bottom", "asc"],
-  ["best", "best"],
-  ["worst", "worst"],
-]);
-/** Words that ask for a ranking. Without one of these, a question with no player is not a leaderboard. */
-const LEADERBOARD_CUES = new Set([
-  "led",
-  "leader",
-  "leaders",
-  "leading",
-  "top",
-  "leaderboard",
-  ...RANK_DIRECTION.keys(),
-]);
 /** Words a leaderboard question uses around its stat; read as filler only when no player is named. */
-const LEADERBOARD_WORDS = new Set([...LEADERBOARD_CUES, "who", "league", "nfl", "lead"]);
+const LEADERBOARD_WORDS = new Set([
+  ...LEADERBOARD_CUES,
+  "who",
+  "league",
+  "nfl",
+  "by",
+  "with",
+  "among",
+  "qualified",
+  "players",
+  "in",
+]);
+/** "Who had more rushing yards, Henry or Barkley": between or before two names these only set them side by side. */
+const NAMED_COMPARE_WORDS = new Set(["who", "had", "has", "more", "better", "or"]);
 /** Words that make a question about teams, and that pick the side of the ball. */
 const TEAM_WORDS = new Set(["team", "teams"]);
-const DEFENSE_WORDS = new Set(["allowed", "allow", "allows", "against", "defense", "defensive"]);
-const OFFENSE_WORDS = new Set(["offense", "offensive"]);
+const DEFENSE_WORDS = new Set(["allowed", "allow", "allows", "against", "defense", "defenses", "defensive"]);
+const OFFENSE_WORDS = new Set(["offense", "offenses", "offensive"]);
 /** "allowed by the Chiefs", "which team": read as filler only in a team question. */
 const TEAM_FILLER = new Set(["by", "which"]);
 
@@ -172,8 +167,6 @@ const TEAM_FILLER = new Set(["by", "which"]);
 const SPLIT_LEADS = new Set(["by", "each", "every", "per"]);
 /** "per game" is a granularity, so "per" only splits by season. */
 const PER_SPLITS = new Set(["season", "seasons", "year", "years"]);
-/** A weekly ranking needs a game's worth of plays to qualify, not a season's. */
-const WEEKLY_LEADERBOARD_MIN_PLAYS = 10;
 const SPLIT_UNITS = new Map<string, Split>([
   ["season", "season"],
   ["seasons", "season"],
@@ -202,16 +195,35 @@ function findSplit(tokens: readonly string[]): { split: Split | "both" | null; a
       }
     }
   });
+  // "most passing yards in a single game" ranks single games: a split by week.
+  const single = readSingleGame(tokens);
+  if (single) {
+    asked.add("week");
+    at.push(...single);
+  }
   return { split: asked.size > 1 ? "both" : ([...asked][0] ?? null), at };
 }
 
 /** The split a question asks for, whichever path reads the rest of it; "both" means it asks for two. */
 export const splitAsked = (question: string): Split | "both" | null => findSplit(wordsOf(question)).split;
 
-const DEFAULT_LEADERBOARD_LIMIT = 10;
-const MAX_LEADERBOARD_LIMIT = 100;
-/** A rate or per-game ranking needs a floor of plays, or a player with one play tops it. */
-const LEADERBOARD_MIN_PLAYS = 100;
+/**
+ * For a question that names no player: the teams it is about and the side of the ball, or null when it
+ * is not about teams. "which team", "defense" and a team name make it a team question.
+ */
+export function teamsAsked(question: string): { ids: string[]; side: Side } | null {
+  const tokens = wordsOf(question);
+  const named = findTeams(tokens);
+  // "allowed" alone does not make a team question ("most yards allowed" could be anything); "defense" does.
+  const unitNouns = new Set(["defense", "defenses", "offense", "offenses"]);
+  if (named.length === 0 && !tokens.some((t) => TEAM_WORDS.has(t) || unitNouns.has(t))) {
+    return null;
+  }
+  return { ids: unique(named.map((t) => t.id)), side: tokens.some((t) => DEFENSE_WORDS.has(t)) ? "defense" : "offense" };
+}
+
+/** True when the question uses a word that asks for a ranking ("most", "top", "leads"). */
+export const asksRanking = (question: string): boolean => wordsOf(question).some((t) => LEADERBOARD_CUES.has(t));
 
 const YEAR = /^(19|20)\d\d$/;
 /** 2020-2023, 2022\u201323, 2021/22: a span of seasons, which would otherwise read as two separate years. */
@@ -365,19 +377,22 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
       used[at] = true;
     }
   });
+  // "Who had more rushing yards, Henry or Barkley": an "or" between two names sets them side by side.
+  if (matches.length > 1 && tokens.some((t, at) => t === "or" && isName[at - 1] && isName[at + 1])) {
+    tokens.forEach((token, at) => {
+      used[at] ||= NAMED_COMPARE_WORDS.has(token) && (token !== "or" || Boolean(isName[at - 1] && isName[at + 1]));
+    });
+  }
 
-  let limit = DEFAULT_LEADERBOARD_LIMIT;
   if (isLeaderboard) {
     // "top 5", "fewest 5": the number after a ranking word is the limit, not a stat or a season.
-    const top = tokens.findIndex(
-      (t, at) => (t === "top" || RANK_DIRECTION.has(t)) && /^\d+$/.test(tokens[at + 1] ?? ""),
-    );
-    if (top >= 0 && /^\d+$/.test(tokens[top + 1] ?? "")) {
-      limit = Number(tokens[top + 1]);
-      used[top + 1] = true;
-      if (limit < 1 || limit > MAX_LEADERBOARD_LIMIT) {
-        return ambiguous(`A leaderboard shows 1 to ${MAX_LEADERBOARD_LIMIT} rows.`);
-      }
+    const limit = readLimit(tokens);
+    if (limit && "reason" in limit) {
+      return ambiguous(limit.reason);
+    }
+    // "min 100 carries": the floor's words are read here; leaderboardFor checks its unit.
+    for (const at of [...(limit ? [limit.at] : []), ...(readMinimum(tokens)?.at ?? [])]) {
+      used[at] = true;
     }
   }
 
@@ -606,53 +621,13 @@ export function parseRules(question: string, context: RuleContext): RuleResult {
   if (!isLeaderboard) {
     return { status: "resolved", intent, ...team };
   }
-  const metric = statIds[0]!;
-  const direction = rankDirection(tokens, metric, asksTeams && side === "defense");
-  if (typeof direction !== "string") {
-    return ambiguous(direction.reason);
+  const leaderboard = leaderboardFor(tokens, statIds[0]!, intent.granularity, {
+    teams: asksTeams,
+    defense: side === "defense",
+    weekly: split.split === "week",
+  });
+  if ("reason" in leaderboard) {
+    return ambiguous(leaderboard.reason);
   }
-  // The floor keeps a one-play player off the top; a team always has hundreds of plays.
-  const minPlays =
-    intent.granularity === "total" || asksTeams
-      ? 0
-      : split.split === "week"
-        ? WEEKLY_LEADERBOARD_MIN_PLAYS
-        : LEADERBOARD_MIN_PLAYS;
-  return {
-    status: "resolved",
-    intent,
-    leaderboard: { order: { metric, direction }, limit, minPlays },
-    ...team,
-  };
-}
-
-/**
- * Highest first unless the question asks otherwise; asking both ways, or "best" of a neutral stat, is
- * unclear. `allowed` ranks defenses, where what is allowed is better the other way round.
- */
-export function rankDirection(
-  tokens: readonly string[],
-  metric: string,
-  allowed = false,
-): "asc" | "desc" | { reason: string } {
-  const stated = getStatById(metric)?.better;
-  const better = stated && allowed ? (stated === "higher" ? "lower" : "higher") : stated;
-  const asked = new Set<"asc" | "desc">();
-  for (const token of tokens) {
-    const cue = RANK_DIRECTION.get(token);
-    if (cue === "desc" || cue === "asc") {
-      asked.add(cue);
-    } else if (cue) {
-      if (!better) {
-        return {
-          reason: `"${token}" has no clear meaning for ${getStatById(metric)?.label ?? metric}; ask for the highest or lowest.`,
-        };
-      }
-      asked.add((cue === "best") === (better === "higher") ? "desc" : "asc");
-    }
-  }
-  if (asked.size > 1) {
-    return { reason: "It asks for both the highest and the lowest." };
-  }
-  return [...asked][0] ?? "desc";
+  return { status: "resolved", intent, leaderboard, ...team };
 }

@@ -46,6 +46,9 @@ class QueryIntent(BaseModel):
     stat_ids: list[str] = Field(..., min_length=1)
     filter_ids: list[str] = Field(default_factory=list)
     granularity: Granularity = "total"
+    ranking: bool = Field(
+        False, description="The question asks who leads or ranks first; the client orders the rows"
+    )
 
 
 class QueryOutcome(BaseModel):

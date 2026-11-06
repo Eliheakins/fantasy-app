@@ -1,3 +1,4 @@
+import { isLeagueStat } from "@/stat/engine/leaguePointsQuery";
 import { EMPTY_QUERY, MAX_PINNED_PLAYERS, type QueryState } from "@/stat/lib/queryUrl";
 import { type QueryIntent } from "@/stat/lib/nlqApi";
 import { specFromIntent, unsupportedReasons } from "@/stat/lib/querySpec";
@@ -5,7 +6,9 @@ import type { PlayerDictionaryRow } from "@/stat/lib/schemas/players";
 import type { Side, Split } from "@/stat/types/queryBuilder";
 import type { AnswerPath } from "../interpretQuestion";
 import { withDefaultSeasonType } from "../intentFilters";
-import { type Leaderboard, splitAsked } from "../ruleParser";
+import { leaderboardFor } from "../ranking";
+import { tokenize } from "../resolvePlayers";
+import { asksRanking, type Leaderboard, splitAsked, teamsAsked } from "../ruleParser";
 import { settleStats } from "../settleStats";
 import { readTime, type TimeScope, withTime } from "../timeWords";
 import type { AskActions } from "./types";
@@ -83,7 +86,49 @@ export function showIntent(
   actions.answer(next, asked, path, unrecognized, time.notes);
 }
 
-/** Answers a league ranking or a team question the rules read with no player to match, so no model call. */
+export const NO_PLAYER_MESSAGE =
+  "I couldn't find a player or team in that question. Name a player by last or full name, like " +
+  "“Mahomes passing yards 2023”, a team, like “Chiefs passing yards 2023”, or ask for a leaderboard like " +
+  "“who led the league in passing yards in 2023”.";
+
+/**
+ * The model's reading of a question that names no player. It is a ranking when the words ask for one
+ * ("most", "top", "leads") or the model read one, ordered by its first stat as the rules would; a team
+ * named or "which team" makes it about teams. Anything else names no one, and is refused.
+ */
+export function showModelRanking(
+  intent: QueryIntent,
+  asked: string,
+  path: AnswerPath,
+  unrecognized: string[],
+  actions: AskActions,
+  scope: TimeScope,
+): void {
+  const team = teamsAsked(asked);
+  const ranked = asksRanking(asked) || intent.ranking === true;
+  if (team && team.ids.length > 0) {
+    showRules(intent, undefined, team, asked, actions, scope, path, unrecognized);
+    return;
+  }
+  if (!ranked) {
+    actions.fail(asked, path, NO_PLAYER_MESSAGE);
+    return;
+  }
+  const subject = team ? ({ kind: "team" } as const) : ({ kind: "players", positions: [] } as const);
+  const metric = settleStats([intent.stat_ids[0]!], subject)[0]!;
+  const board = leaderboardFor(tokenize(asked.replace(/%/g, " percent ")), metric, intent.granularity, {
+    teams: team !== null,
+    defense: team?.side === "defense",
+    weekly: splitOf(asked) === "week",
+  });
+  if ("reason" in board) {
+    actions.fail(asked, path, board.reason);
+    return;
+  }
+  showRules(intent, board, team ?? undefined, asked, actions, scope, path, unrecognized);
+}
+
+/** Answers a league ranking or a team question with no player to match (read by the rules, or by the model). */
 export function showRules(
   intent: QueryIntent,
   board: Leaderboard | undefined,
@@ -91,9 +136,15 @@ export function showRules(
   asked: string,
   actions: AskActions,
   scope: TimeScope,
+  path: AnswerPath = "rules",
+  unrecognized: string[] = [],
 ): void {
   const subject = team ? ({ kind: "team" } as const) : ({ kind: "players", positions: [] } as const);
   const stats = settleStats(intent.stat_ids, subject);
+  if (team && stats.some(isLeagueStat)) {
+    actions.fail(asked, path, "League points are for players, not teams.");
+    return;
+  }
   const order = board ? { ...board.order, metric: settleStats([board.order.metric], subject)[0]! } : null;
   const split = splitOf(asked);
   const time = timeOf(intent.filter_ids, asked, scope, split);
@@ -111,5 +162,5 @@ export function showRules(
     split,
     lastGames: time.lastGames,
   };
-  actions.answer(next, asked, "rules", [], time.notes);
+  actions.answer(next, asked, path, unrecognized, time.notes);
 }

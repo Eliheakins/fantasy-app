@@ -7,7 +7,7 @@ import { cacheKey, catalogSignature, lookupIntent, readIntentCache, storeIntent 
 import { type Interpretation, interpretQuestion } from "../interpretQuestion";
 import { narrowByRoles, type PlayerMatch, pickCandidate } from "../resolvePlayers";
 import { matchesFor } from "./matches";
-import { showIntent } from "./queryStates";
+import { showIntent, showModelRanking } from "./queryStates";
 import type { AskInput, AskPath } from "./types";
 
 /** The cache key for a question under the catalog as it is now. */
@@ -48,7 +48,7 @@ async function interpret(input: AskInput, matches: PlayerMatch[]): Promise<Inter
   return interpretQuestion({ question, matches, seasons, chipGroups, maxWeeks: input.maxWeeks, askModel });
 }
 
-/** The catch-all: any question that names a player and no other path took. */
+/** The catch-all: a question no other path took; with no player named it can only be a ranking. */
 export const modelPath: AskPath<Interpretation> = {
   id: "model",
   read: (input) => interpret(input, matchesFor(input)),
@@ -60,6 +60,11 @@ export const modelPath: AskPath<Interpretation> = {
     }
     const { intent, path } = interpretation;
     const unrecognized = interpretation.unrecognized ?? [];
+    const scope = { seasons: input.seasons, maxWeeks: input.maxWeeks };
+    if (matchesFor(input).length === 0) {
+      showModelRanking(intent, question, path, unrecognized, actions, scope);
+      return;
+    }
     const roles = rolesOf(intent);
     const sure: PlayerDictionaryRow[] = [];
     const unsure: PlayerMatch[] = [];
@@ -71,7 +76,6 @@ export const modelPath: AskPath<Interpretation> = {
         unsure.push({ ...match, candidates: narrowByRoles(match.candidates, roles) });
       }
     }
-    const scope = { seasons: input.seasons, maxWeeks: input.maxWeeks };
     if (unsure.length > 0) {
       actions.choose(sure, unsure, (players, asked) =>
         showIntent(players, intent, asked, path, unrecognized, actions, scope),

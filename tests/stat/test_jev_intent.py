@@ -159,22 +159,30 @@ def test_filters_and_granularity_above_the_threshold_are_used():
     [
         ("Mahomes salary in 2023", _answers()),
         (
-            "Who led the league in passing yards in 2023",
-            _answers({"pass_yards": 0.9}, leaderboard=0.8),
-        ),
-        (
             "Mahomes passing yards against the Chiefs in 2023",
             _answers({"pass_yards": 0.9}, has_condition=0.9),
         ),
         ("Mahomes passing yards in 2019", _answers({"pass_yards": 0.99})),
     ],
-    ids=["no stat", "leaderboard", "condition with no filter", "season outside the data"],
+    ids=["no stat", "condition with no filter", "season outside the data"],
 )
 def test_questions_the_catalog_cannot_answer_are_unsupported(question: str, answers: dict):
     outcome = _outcome(question, answers)
 
     assert isinstance(outcome, UnsupportedOutcome)
     assert outcome.reason
+
+
+def test_a_ranking_is_a_query_that_says_it_ranks():
+    ranked = _outcome(
+        "Who led the league in passing yards in 2023",
+        _answers({"pass_yards": 0.9}, leaderboard=0.8),
+    )
+    plain = _outcome("Mahomes passing yards in 2023", _answers({"pass_yards": 0.9}))
+
+    assert isinstance(ranked, QueryOutcome) and ranked.intent.ranking is True
+    assert ranked.intent.stat_ids == ["pass_yards"]
+    assert isinstance(plain, QueryOutcome) and plain.intent.ranking is False
 
 
 def test_a_relative_season_is_turned_into_a_year_from_the_current_season():
