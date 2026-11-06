@@ -2,10 +2,12 @@
 
 DEF points come from nflverse team stats under each league's scoring: sacks, interceptions,
 fumble recoveries, forced fumbles, safeties, blocks, defensive and special-teams TDs, plus the
-points-allowed and yards-allowed tiers. Points allowed exclude touchdowns the opponent's defense
-and special teams scored. This matches Sleeper exactly in most team-weeks (52 of 60 for Colgate,
-41 of 60 for YinzBurgh, weeks 1 to 6); the rest differ by a point or two, likely special-teams
-recoveries that team stats do not carry.
+points-allowed and yards-allowed tiers. Play-by-play adds what team stats lack (team stats'
+`def_tds` are interception returns only): fumble-return TDs, sack yards (yards allowed are net of
+them), special-teams takeaways (scored at the special-teams rates) and defensive two-point returns.
+Points allowed exclude only touchdowns the opponent's defense scored. This matches Sleeper exactly
+in 92 of 94 (Colgate) and 88 of 89 (YinzBurgh) rostered DEF team-weeks of 2026 weeks 1 to 8
+(`research/def_scoring_check.py`).
 
 Projection = recent form shrunk toward the league average, plus a slope on the game's implied
 total (opponent's for DEF, own team's for K, fit on 2018 onward) and a dome adjustment for K.
@@ -24,6 +26,7 @@ from fantasy import store
 from fantasy.sim.blend import blend
 from fantasy.stages import streaming_model as sm
 from fantasy.stages.crosswalk import TEAM_MAP
+from nfl_stat.pipeline.pbp_source import read_pbp
 
 HALF_LIFE = 4.0  # games
 SHRINK_K = 3.0  # pseudo-games of league average
@@ -32,6 +35,14 @@ SCORED_FROM = 2018
 BACKTEST_FROM = 2024
 MIN_CONTEXT_ROWS = 50  # fewer rows than this and the context fit is skipped
 KINDS = ("DEF", "K")
+PBP_COLUMNS = [
+    "season", "week", "season_type", "posteam", "defteam", "special_teams_play", "sack",
+    "yards_gained", "touchdown", "fumble", "interception", "td_team", "fumbled_1_team",
+    "fumble_recovery_1_team", "forced_fumble_player_1_team", "defensive_two_point_conv",
+]  # fmt: skip
+DEFENSE_FACTS = (
+    "sack_yards", "fumble_return_tds", "st_fumble_recoveries", "st_fumbles_forced", "def_2pt",
+)  # fmt: skip
 
 
 def tier_terms(scoring: dict[str, float], prefix: str) -> list[tuple[int, int, float]]:
@@ -62,18 +73,92 @@ def tier_expr(column: str, terms: list[tuple[int, int, float]]) -> pl.Expr:
     return expr
 
 
-def defense_points_frame(
-    team_stats: pl.DataFrame, team_games: pl.DataFrame, scoring: dict[str, float], league_id: str
+def _team_count(
+    plays: pl.DataFrame, team: str, fact: str, when: pl.Expr, value: pl.Expr | None = None
 ) -> pl.DataFrame:
-    """One row per team-game with the DEF points a Sleeper defense would score."""
-    stats = team_stats.filter(pl.col("season_type") == "REG")
+    """Long rows (team, season, week, fact, value) for the matching plays, credited to the
+    `team` column; `value` defaults to 1 per play."""
+    return plays.filter(when).select(
+        pl.col(team).alias("team"),
+        "season",
+        "week",
+        pl.lit(fact).alias("fact"),
+        value=pl.lit(1.0) if value is None else value.cast(pl.Float64),
+    )
+
+
+def defense_play_facts(pbp: pl.DataFrame) -> pl.DataFrame:
+    """Per regular-season (team, season, week), from play-by-play, the DEF facts nflverse team
+    stats lack: the team's own sack yards lost (as an offense), fumble-return touchdowns, its
+    special-teams takeaways and forced fumbles, and defensive two-point returns."""
+    flags = ("special_teams_play", "touchdown", "fumble", "sack", "interception")
+    plays = pbp.filter(pl.col("season_type") == "REG").with_columns(
+        pl.col(c).fill_null(0) for c in flags
+    )
+    special = pl.col("special_teams_play") == 1
+    recovered_by = pl.col("fumble_recovery_1_team")
+    takeaway = recovered_by.is_not_null() & (pl.col("fumbled_1_team") != recovered_by)
+    fumble_return_td = (
+        (pl.col("touchdown") == 1)
+        & (pl.col("fumble") == 1)
+        & (pl.col("interception") == 0)
+        & ~special
+        & (pl.col("td_team") != pl.col("posteam"))
+        & (pl.col("td_team") == recovered_by)
+    )
+    forced_by = "forced_fumble_player_1_team"
+    long = pl.concat(
+        [
+            _team_count(
+                plays,
+                "posteam",
+                "sack_yards",
+                pl.col("sack") == 1,
+                pl.col("yards_gained").fill_null(0),
+            ),
+            _team_count(plays, "td_team", "fumble_return_tds", fumble_return_td),
+            _team_count(
+                plays, "fumble_recovery_1_team", "st_fumble_recoveries", special & takeaway
+            ),
+            _team_count(
+                plays, forced_by, "st_fumbles_forced", special & pl.col(forced_by).is_not_null()
+            ),
+            _team_count(plays, "defteam", "def_2pt", pl.col("defensive_two_point_conv") == 1),
+        ]
+    )
+    return (
+        long.group_by("team", "season", "week")
+        .agg(pl.col("value").filter(pl.col("fact") == f).sum().alias(f) for f in DEFENSE_FACTS)
+        .with_columns(pl.col("season").cast(pl.Int64), pl.col("week").cast(pl.Int64))
+    )
+
+
+def load_play_facts(seasons: range) -> pl.DataFrame:
+    """`defense_play_facts` for each season's play-by-play (downloaded if stale)."""
+    return pl.concat([defense_play_facts(read_pbp(s, PBP_COLUMNS)) for s in seasons])
+
+
+def defense_points_frame(
+    team_stats: pl.DataFrame,
+    team_games: pl.DataFrame,
+    scoring: dict[str, float],
+    league_id: str,
+    facts: pl.DataFrame,
+) -> pl.DataFrame:
+    """One row per team-game with the DEF points a Sleeper defense would score. `facts` is
+    `defense_play_facts`; a team-game missing from it counts as all zeros."""
+    stats = (
+        team_stats.filter(pl.col("season_type") == "REG")
+        .join(facts, on=["team", "season", "week"], how="left")
+        .with_columns(pl.col(f).fill_null(0.0) for f in DEFENSE_FACTS)
+    )
     opponent = stats.select(
         pl.col("team").alias("opponent_team"),
         "season",
         "week",
-        yards_allowed=pl.col("passing_yards") + pl.col("rushing_yards"),
-        opp_def_tds=pl.col("def_tds"),
-        opp_st_tds=pl.col("special_teams_tds"),
+        # Sleeper's yards allowed are net of the yards the offense lost on sacks
+        yards_allowed=pl.col("passing_yards") + pl.col("rushing_yards") + pl.col("sack_yards"),
+        opp_def_tds=pl.col("def_tds") + pl.col("fumble_return_tds"),
     )
     games = team_games.select(
         "season", "week", "team", "points_against", "team_implied", "opp_implied", "roof"
@@ -87,19 +172,23 @@ def defense_points_frame(
     lost = stats.height - joined.height
     if lost:
         print(f"streaming: league {league_id}: {lost} DEF team-games lost to team code mismatches")
-    rows = played.with_columns(
-        allowed=pl.col("points_against") - 6 * pl.col("opp_def_tds") - 6 * pl.col("opp_st_tds")
-    )
+    # return and blocked-kick TDs stay in points allowed; only the other defense's TDs come out
+    rows = played.with_columns(allowed=pl.col("points_against") - 6 * pl.col("opp_def_tds"))
+    st_recoveries, st_forced = pl.col("st_fumble_recoveries"), pl.col("st_fumbles_forced")
     plays = (
         pl.col("def_sacks") * scoring.get("sack", 0.0)
         + pl.col("def_interceptions") * scoring.get("int", 0.0)
-        + pl.col("fumble_recovery_opp") * scoring.get("fum_rec", 0.0)
-        + pl.col("def_fumbles_forced") * scoring.get("ff", 0.0)
+        # team stats count special-teams takeaways and forced fumbles with the defense's
+        + (pl.col("fumble_recovery_opp") - st_recoveries).clip(0) * scoring.get("fum_rec", 0.0)
+        + st_recoveries * scoring.get("def_st_fum_rec", 0.0)
+        + (pl.col("def_fumbles_forced") - st_forced).clip(0) * scoring.get("ff", 0.0)
+        + st_forced * scoring.get("def_st_ff", 0.0)
         + pl.col("def_safeties") * scoring.get("safe", 0.0)
         + (pl.col("def_fg_blocks") + pl.col("def_pat_blocks") + pl.col("def_punt_blocks"))
         * scoring.get("blk_kick", 0.0)
-        + pl.col("def_tds") * scoring.get("def_td", 0.0)
+        + (pl.col("def_tds") + pl.col("fumble_return_tds")) * scoring.get("def_td", 0.0)
         + pl.col("special_teams_tds") * scoring.get("def_st_td", 0.0)
+        + pl.col("def_2pt") * scoring.get("def_2pt", 0.0)
     )
     return rows.select(
         pl.lit(league_id).alias("league_id"),
@@ -266,11 +355,13 @@ def run() -> dict[str, tuple[float, float]]:
         coded,
     )
     player_stats = store.read_table("nfl_player_stats", "raw")
+    last_season = int(stats["season"].max())  # type: ignore[arg-type]
+    facts = load_play_facts(range(SCORED_FROM, last_season + 1))
     defense_frames, projections, report = [], [], {}
     for lg in leagues.iter_rows(named=True):
         lid, current = lg["league_id"], int(lg["current_week"])
         scoring = json.loads(lg["scoring_settings"])
-        points = defense_points_frame(stats, games, scoring, lid).filter(
+        points = defense_points_frame(stats, games, scoring, lid, facts).filter(
             pl.col("season") >= SCORED_FROM
         )
         defense_frames.append(points)

@@ -129,6 +129,11 @@ def tables(monkeypatch: pytest.MonkeyPatch) -> dict[str, pl.DataFrame]:
 
     monkeypatch.setattr(store, "read_table", read_table)
     monkeypatch.setattr(store, "write_table", write_table)
+    no_facts = pl.DataFrame(
+        schema={"team": pl.String, "season": pl.Int64, "week": pl.Int64}
+        | dict.fromkeys(streaming.DEFENSE_FACTS, pl.Float64)
+    )
+    monkeypatch.setattr(streaming, "load_play_facts", lambda seasons: no_facts)
     return written
 
 
