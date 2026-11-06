@@ -14,6 +14,10 @@
       "label": "Receiving"
     },
     {
+      "id": "scrimmage",
+      "label": "Scrimmage"
+    },
+    {
       "id": "efficiency",
       "label": "Efficiency (analytics)"
     },
@@ -32,6 +36,10 @@
     {
       "id": "fantasy",
       "label": "Fantasy"
+    },
+    {
+      "id": "team",
+      "label": "Team"
     }
   ],
   "metrics": [
@@ -128,7 +136,7 @@
     },
     {
       "id": "pass_p2s",
-      "label": "P2S%",
+      "label": "Hit-to-sack %",
       "category": "passing",
       "player_role": "passer",
       "play_type": "pass",
@@ -136,30 +144,32 @@
       "rate_only": true,
       "better": "lower",
       "percent_format": true,
-      "help": "Pressure-to-sack rate: sacks divided by QB hits. High values mean hits often become sacks; undefined if SUM(qb_hit) is 0.",
+      "help": "Sacks divided by QB hits, as a percentage. QB hits stand in for pressures, which the play-by-play does not record.",
       "aliases": [
-        "pressure to sack",
-        "p2s",
-        "pressure-to-sack rate"
+        "hit to sack",
+        "hit to sack rate",
+        "hit-to-sack rate",
+        "hit-to-sack"
       ],
       "reference_values": []
     },
     {
       "id": "pass_adot",
-      "label": "ADOT",
+      "label": "Pass ADOT",
       "category": "passing",
       "player_role": "passer",
       "play_type": "pass",
       "base_sql": "AVG(air_yards)",
       "rate_only": true,
-      "help": "Average depth of target (air yards): mean air yards on pass attempts in the filter. Does not measure completed depth only.",
+      "help": "Average air yards per pass thrown, for the passer.",
       "aliases": [
         "adot",
         "average depth of target",
         "average depth of throw",
         "air yards per attempt"
       ],
-      "reference_values": []
+      "reference_values": [],
+      "family": "adot"
     },
     {
       "id": "pass_yards",
@@ -333,8 +343,7 @@
         "interception rate",
         "int rate",
         "interception percentage",
-        "interceptions",
-        "picks"
+        "int %"
       ],
       "reference_values": [
         {
@@ -530,6 +539,24 @@
       "reference_values": []
     },
     {
+      "id": "rush_explosive_runs",
+      "label": "Explosive runs",
+      "category": "rushing",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "SUM(CASE WHEN yards_gained >= 20 THEN 1 ELSE 0 END)",
+      "rate_only": false,
+      "better": "higher",
+      "help": "Runs of 20 yards or more (the explosive rate's threshold).",
+      "aliases": [
+        "explosive runs",
+        "20 yard runs",
+        "runs of 20 yards",
+        "big runs"
+      ],
+      "reference_values": []
+    },
+    {
       "id": "rush_yards",
       "label": "Rush yards",
       "category": "rushing",
@@ -619,14 +646,14 @@
     },
     {
       "id": "eff_epa",
-      "label": "EPA/Play",
+      "label": "Pass EPA/play",
       "category": "efficiency",
       "player_role": "passer",
       "play_type": "pass",
       "base_sql": "AVG(epa)",
       "rate_only": true,
       "better": "higher",
-      "help": "Expected Points Added: average EPA per pass play for the passer. Positive means the offense gained more expected points than before the play.",
+      "help": "Expected points added per dropback (pass plays, sacks included, scrambles not), for the passer. For a rusher, receiver or team, Ask uses the matching EPA stat.",
       "aliases": [
         "epa",
         "epa per play",
@@ -634,11 +661,12 @@
         "epa/play",
         "epa per dropback"
       ],
-      "reference_values": []
+      "reference_values": [],
+      "family": "epa"
     },
     {
       "id": "eff_success",
-      "label": "Success rate",
+      "label": "Pass success rate",
       "category": "efficiency",
       "player_role": "passer",
       "play_type": "pass",
@@ -646,13 +674,14 @@
       "rate_only": true,
       "better": "higher",
       "percent_format": true,
-      "help": "Share of pass plays classified as successful (nflverse success flag), scaled to 0–100%. Typically gains that meet down-and-distance expectations.",
+      "help": "Share of the passer's dropbacks with positive EPA. For a rusher, receiver or team, Ask uses the matching success rate.",
       "aliases": [
         "success rate",
         "success percentage",
         "successful play rate"
       ],
-      "reference_values": []
+      "reference_values": [],
+      "family": "success"
     },
     {
       "id": "eff_cpoe",
@@ -838,7 +867,7 @@
     },
     {
       "id": "ngs_p_rating",
-      "label": "Passer rating",
+      "label": "NGS passer rating",
       "category": "ngs_passing",
       "player_role": "passer",
       "play_type": "pass",
@@ -847,9 +876,9 @@
       "better": "higher",
       "help": "NGS weekly passer rating for the QB, averaged across pass plays (same value within a week until play-level NGS differs).",
       "aliases": [
-        "passer rating",
-        "qb rating",
-        "next gen passer rating"
+        "ngs passer rating",
+        "next gen passer rating",
+        "next gen stats passer rating"
       ],
       "reference_values": []
     },
@@ -966,6 +995,969 @@
         "league pts",
         "fantasy score",
         "my league points"
+      ]
+    },
+    {
+      "id": "rush_att",
+      "label": "Carries",
+      "category": "rushing",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "SUM(1)",
+      "rate_only": false,
+      "better": "higher",
+      "player_game_column": "carries",
+      "help": "Rushing attempts (run plays with the player as the rusher, scrambles included, kneels not).",
+      "aliases": [
+        "carries",
+        "rush attempts",
+        "rushing attempts",
+        "rushes",
+        "attempts on the ground"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0032764",
+          "player": "Derrick Henry",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 325,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "pass_int",
+      "label": "Interceptions",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(interception)",
+      "rate_only": false,
+      "better": "lower",
+      "player_game_column": "passing_interceptions",
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "help": "Interceptions thrown.",
+      "aliases": [
+        "interceptions",
+        "interceptions thrown",
+        "picks",
+        "ints",
+        "picks thrown"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 11,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "rush_epa",
+      "label": "Rush EPA/carry",
+      "category": "rushing",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "AVG(epa)",
+      "rate_only": true,
+      "better": "higher",
+      "family": "epa",
+      "help": "Expected points added per carry.",
+      "aliases": [
+        "rushing epa",
+        "rush epa",
+        "epa per carry",
+        "epa per rush",
+        "rushing epa per play"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0032764",
+          "player": "Derrick Henry",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 0.1249,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals (rushing_epa / carries)"
+        }
+      ]
+    },
+    {
+      "id": "rush_success",
+      "label": "Rush success rate",
+      "category": "rushing",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "AVG(success) * 100",
+      "rate_only": true,
+      "better": "higher",
+      "percent_format": true,
+      "family": "success",
+      "help": "Share of carries with positive EPA.",
+      "aliases": [
+        "rushing success rate",
+        "rush success rate",
+        "success rate on runs"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "rec_epa",
+      "label": "Rec EPA/target",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "AVG(epa)",
+      "rate_only": true,
+      "better": "higher",
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "family": "epa",
+      "help": "Expected points added per target.",
+      "aliases": [
+        "receiving epa",
+        "rec epa",
+        "epa per target",
+        "receiving epa per target"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0036358",
+          "player": "CeeDee Lamb",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 0.1302,
+          "tolerance": 0.01,
+          "source": "nflverse player stats (player_game.parquet), regular season totals (receiving_epa / targets)"
+        }
+      ]
+    },
+    {
+      "id": "rec_success",
+      "label": "Rec success rate",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "AVG(success) * 100",
+      "rate_only": true,
+      "better": "higher",
+      "percent_format": true,
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "family": "success",
+      "help": "Share of targets with positive EPA.",
+      "aliases": [
+        "receiving success rate",
+        "rec success rate",
+        "success rate per target"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "rec_adot",
+      "label": "Rec ADOT",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "AVG(air_yards)",
+      "rate_only": true,
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "family": "adot",
+      "help": "Average depth of target: air yards per target for the receiver.",
+      "aliases": [
+        "receiving adot",
+        "receiver adot",
+        "average target depth",
+        "target depth"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "team_epa",
+      "label": "Team EPA/play",
+      "category": "team",
+      "player_role": "passer",
+      "play_type": "all",
+      "base_sql": "AVG(epa)",
+      "rate_only": true,
+      "better": "higher",
+      "play_filter": "play_type = 'pass' OR play_type = 'run'",
+      "team_only": true,
+      "family": "epa",
+      "help": "Expected points added per play over every pass and run play (sacks and scrambles included), for a team's offense, or allowed by its defense.",
+      "aliases": [
+        "team epa",
+        "team epa per play",
+        "offensive epa per play",
+        "defensive epa per play"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "team_success",
+      "label": "Team success rate",
+      "category": "team",
+      "player_role": "passer",
+      "play_type": "all",
+      "base_sql": "AVG(success) * 100",
+      "rate_only": true,
+      "better": "higher",
+      "percent_format": true,
+      "play_filter": "play_type = 'pass' OR play_type = 'run'",
+      "team_only": true,
+      "family": "success",
+      "help": "Share of a team's pass and run plays with positive EPA (for a defense, allowed).",
+      "aliases": [
+        "team success rate",
+        "offensive success rate",
+        "defensive success rate"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "rec_tgt",
+      "label": "Targets",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "SUM(1)",
+      "rate_only": false,
+      "better": "higher",
+      "player_game_column": "targets",
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "help": "Passes thrown to the player (completions, incompletions and interceptions).",
+      "aliases": [
+        "targets",
+        "times targeted"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0036900",
+          "player": "Ja'Marr Chase",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 175,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "rec_tds",
+      "label": "Rec TDs",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "SUM(pass_touchdown)",
+      "rate_only": false,
+      "better": "higher",
+      "player_game_column": "receiving_tds",
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "help": "Touchdown catches.",
+      "aliases": [
+        "receiving touchdowns",
+        "receiving tds",
+        "rec tds",
+        "touchdown catches",
+        "td catches"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0036900",
+          "player": "Ja'Marr Chase",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 17,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "pass_att",
+      "label": "Pass attempts",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(1)",
+      "rate_only": false,
+      "better": "higher",
+      "player_game_column": "attempts",
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "help": "Passes thrown (sacks are not attempts).",
+      "aliases": [
+        "pass attempts",
+        "passing attempts",
+        "attempts"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 597,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "pass_cmp",
+      "label": "Completions",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(complete_pass)",
+      "rate_only": false,
+      "better": "higher",
+      "player_game_column": "completions",
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "help": "Completed passes.",
+      "aliases": [
+        "completions",
+        "completed passes"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 401,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "pass_sacks",
+      "label": "Sacks taken",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(sack)",
+      "rate_only": false,
+      "better": "lower",
+      "player_game_column": "sacks_suffered",
+      "help": "Times the passer was sacked. For a defense, the sacks it made.",
+      "aliases": [
+        "sacks taken",
+        "times sacked",
+        "sacks"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 27,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "pass_ypa",
+      "label": "Y/A",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(yards_gained) / NULLIF(COUNT(*), 0)",
+      "rate_only": true,
+      "better": "higher",
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "help": "Passing yards per attempt (sacks left out).",
+      "aliases": [
+        "yards per attempt",
+        "y/a",
+        "yards per pass attempt",
+        "yards per pass"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 7.0067,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals (passing_yards / attempts)"
+        }
+      ]
+    },
+    {
+      "id": "pacr",
+      "label": "PACR",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(yards_gained) / NULLIF(SUM(air_yards), 0)",
+      "rate_only": true,
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "help": "Passing yards per air yard thrown (air yards on every attempt).",
+      "aliases": [
+        "pacr",
+        "passing air conversion ratio"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "rec_ypr",
+      "label": "Yds/rec",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "SUM(yards_gained) / NULLIF(SUM(complete_pass), 0)",
+      "rate_only": true,
+      "better": "higher",
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "help": "Receiving yards per catch.",
+      "aliases": [
+        "yards per reception",
+        "yards per catch",
+        "ypr",
+        "yards per rec"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0036900",
+          "player": "Ja'Marr Chase",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 13.449,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals (receiving_yards / receptions)"
+        }
+      ]
+    },
+    {
+      "id": "rec_ypt",
+      "label": "Yds/target",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "SUM(yards_gained) / NULLIF(COUNT(*), 0)",
+      "rate_only": true,
+      "better": "higher",
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "help": "Receiving yards per target.",
+      "aliases": [
+        "yards per target",
+        "ypt"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0036900",
+          "player": "Ja'Marr Chase",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 9.76,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals (receiving_yards / targets)"
+        }
+      ]
+    },
+    {
+      "id": "rec_air_yards",
+      "label": "Air yards",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "SUM(air_yards)",
+      "rate_only": false,
+      "better": "higher",
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "help": "Air yards of every pass thrown to the player (targets).",
+      "aliases": [
+        "air yards",
+        "receiving air yards",
+        "intended air yards on targets"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0036900",
+          "player": "Ja'Marr Chase",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 1526,
+          "tolerance": 0.0,
+          "source": "nflverse play-by-play (data/raw/pbp/2024.parquet), targets"
+        }
+      ]
+    },
+    {
+      "id": "rec_yac_per_rec",
+      "label": "YAC/rec",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "SUM(yards_after_catch) / NULLIF(SUM(complete_pass), 0)",
+      "rate_only": true,
+      "better": "higher",
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "help": "Yards after the catch per catch.",
+      "aliases": [
+        "yac per reception",
+        "yards after catch per reception",
+        "yac per catch"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0036900",
+          "player": "Ja'Marr Chase",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 6.1969,
+          "tolerance": 0.01,
+          "source": "nflverse player stats (player_game.parquet), regular season totals (receiving_yards_after_catch / receptions)"
+        }
+      ]
+    },
+    {
+      "id": "racr",
+      "label": "RACR",
+      "category": "receiving",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "SUM(yards_gained) / NULLIF(SUM(air_yards), 0)",
+      "rate_only": true,
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "help": "Receiving yards per air yard of the player's targets.",
+      "aliases": [
+        "racr",
+        "receiver air conversion ratio"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0036900",
+          "player": "Ja'Marr Chase",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 1.1193,
+          "tolerance": 0.005,
+          "source": "nflverse player stats receiving yards / pbp air yards"
+        }
+      ]
+    },
+    {
+      "id": "pass_air_yards",
+      "label": "Pass air yards",
+      "category": "passing",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(air_yards)",
+      "rate_only": false,
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "hidden": true,
+      "help": "Part of air yards share and WOPR: air yards of every attempt, thrown away or not.",
+      "aliases": [],
+      "reference_values": []
+    },
+    {
+      "id": "fum_rush",
+      "label": "Fumbles lost on carries",
+      "category": "scrimmage",
+      "player_role": "rusher",
+      "play_type": "run",
+      "base_sql": "SUM(fumble_lost)",
+      "rate_only": false,
+      "better": "lower",
+      "hidden": true,
+      "help": "Part of fumbles lost.",
+      "aliases": [],
+      "reference_values": []
+    },
+    {
+      "id": "fum_rec",
+      "label": "Fumbles lost on targets",
+      "category": "scrimmage",
+      "player_role": "receiver",
+      "play_type": "pass",
+      "base_sql": "SUM(fumble_lost)",
+      "rate_only": false,
+      "better": "lower",
+      "play_filter": "complete_pass = 1 OR incomplete_pass = 1 OR interception = 1",
+      "hidden": true,
+      "help": "Part of fumbles lost.",
+      "aliases": [],
+      "reference_values": []
+    },
+    {
+      "id": "fum_sack",
+      "label": "Fumbles lost on sacks",
+      "category": "scrimmage",
+      "player_role": "passer",
+      "play_type": "pass",
+      "base_sql": "SUM(fumble_lost)",
+      "rate_only": false,
+      "better": "lower",
+      "play_filter": "sack = 1",
+      "hidden": true,
+      "help": "Part of fumbles lost.",
+      "aliases": [],
+      "reference_values": []
+    },
+    {
+      "id": "team_takeaways",
+      "label": "Turnovers",
+      "category": "team",
+      "player_role": "passer",
+      "play_type": "all",
+      "base_sql": "SUM(interception + fumble_lost)",
+      "rate_only": false,
+      "play_filter": "play_type = 'pass' OR play_type = 'run'",
+      "team_only": true,
+      "help": "Interceptions plus fumbles lost on a team's pass and run plays: its giveaways on offense, its takeaways on defense.",
+      "aliases": [
+        "turnovers",
+        "takeaways",
+        "turnovers forced",
+        "giveaways"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "scrim_yds",
+      "label": "Scrimmage yards",
+      "category": "scrimmage",
+      "source": "derived",
+      "formula": "rush_yards + rec_yards",
+      "rate_only": false,
+      "better": "higher",
+      "help": "Rushing plus receiving yards.",
+      "aliases": [
+        "scrimmage yards",
+        "yards from scrimmage",
+        "total scrimmage yards",
+        "rushing and receiving yards"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0032764",
+          "player": "Derrick Henry",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 2114,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "touches",
+      "label": "Touches",
+      "category": "scrimmage",
+      "source": "derived",
+      "formula": "rush_att + rec_receptions",
+      "rate_only": false,
+      "better": "higher",
+      "help": "Carries plus catches.",
+      "aliases": [
+        "touches"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0032764",
+          "player": "Derrick Henry",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 344,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "yds_per_touch",
+      "label": "Yds/touch",
+      "category": "scrimmage",
+      "source": "derived",
+      "formula": "(rush_yards + rec_yards) / NULLIF(rush_att + rec_receptions, 0)",
+      "volume": "rush_att + rec_receptions",
+      "rate_only": true,
+      "better": "higher",
+      "help": "Scrimmage yards per carry or catch.",
+      "aliases": [
+        "yards per touch"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0032764",
+          "player": "Derrick Henry",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 6.1453,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "total_tds",
+      "label": "Total TDs",
+      "category": "scrimmage",
+      "source": "derived",
+      "formula": "rush_tds + rec_tds",
+      "rate_only": false,
+      "better": "higher",
+      "help": "Rushing plus receiving touchdowns (passing touchdowns are the passer's own stat).",
+      "aliases": [
+        "total touchdowns",
+        "total tds",
+        "scrimmage touchdowns",
+        "touchdowns scored"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0032764",
+          "player": "Derrick Henry",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 18,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals"
+        }
+      ]
+    },
+    {
+      "id": "fumbles_lost",
+      "label": "Fumbles lost",
+      "category": "scrimmage",
+      "source": "derived",
+      "formula": "fum_rush + fum_rec + fum_sack",
+      "rate_only": false,
+      "better": "lower",
+      "help": "Fumbles lost on the player's carries, targets and sacks (play-by-play, so a fumble by someone else on the same play counts too; rare).",
+      "aliases": [
+        "fumbles lost",
+        "fumbles",
+        "lost fumbles"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0034857",
+          "player": "Josh Allen",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 4,
+          "tolerance": 0.0,
+          "source": "nflverse weekly player stats (data/raw/nfl_player_stats.parquet), regular season"
+        }
+      ]
+    },
+    {
+      "id": "tgt_share",
+      "label": "Target share",
+      "category": "receiving",
+      "source": "derived",
+      "formula": "rec_tgt / NULLIF(team__rec_tgt, 0) * 100",
+      "volume": "rec_tgt",
+      "rate_only": true,
+      "better": "higher",
+      "percent_format": true,
+      "help": "The player's targets over his team's targets in the games he played.",
+      "aliases": [
+        "target share",
+        "share of targets",
+        "target %"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0036900",
+          "player": "Ja'Marr Chase",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 27.866,
+          "tolerance": 0.005,
+          "source": "nflverse weekly player stats (data/raw/nfl_player_stats.parquet), regular season (targets / team targets from target_share)"
+        }
+      ]
+    },
+    {
+      "id": "air_share",
+      "label": "Air yards share",
+      "category": "receiving",
+      "source": "derived",
+      "formula": "rec_air_yards / NULLIF(team__pass_air_yards, 0) * 100",
+      "volume": "rec_tgt",
+      "rate_only": true,
+      "better": "higher",
+      "percent_format": true,
+      "help": "The player's air yards over his team's air yards on every attempt, in the games he played.",
+      "aliases": [
+        "air yards share",
+        "share of air yards",
+        "air yard share"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0036900",
+          "player": "Ja'Marr Chase",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 33.073,
+          "tolerance": 0.01,
+          "source": "nflverse weekly player stats (data/raw/nfl_player_stats.parquet), regular season (air_yards_share, weighted by week)"
+        }
+      ]
+    },
+    {
+      "id": "wopr",
+      "label": "WOPR",
+      "category": "receiving",
+      "source": "derived",
+      "formula": "1.5 * rec_tgt / NULLIF(team__rec_tgt, 0) + 0.7 * rec_air_yards / NULLIF(team__pass_air_yards, 0)",
+      "volume": "rec_tgt",
+      "rate_only": true,
+      "better": "higher",
+      "help": "Weighted opportunity rating: 1.5 x target share + 0.7 x air yards share (as fractions).",
+      "aliases": [
+        "wopr",
+        "weighted opportunity rating"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0036900",
+          "player": "Ja'Marr Chase",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 0.6495,
+          "tolerance": 0.01,
+          "source": "nflverse weekly player stats (data/raw/nfl_player_stats.parquet), regular season (1.5 x 0.27866 + 0.7 x 0.33073)"
+        }
+      ]
+    },
+    {
+      "id": "opp_share",
+      "label": "Opportunity share",
+      "category": "rushing",
+      "source": "derived",
+      "formula": "(rush_att + rec_tgt) / NULLIF(team__rush_att + team__rec_tgt, 0) * 100",
+      "volume": "rush_att + rec_tgt",
+      "rate_only": true,
+      "better": "higher",
+      "percent_format": true,
+      "help": "Carries plus targets over the team's carries plus targets in the games the player played.",
+      "aliases": [
+        "opportunity share",
+        "opportunities share",
+        "share of opportunities"
+      ],
+      "reference_values": []
+    },
+    {
+      "id": "pass_rating",
+      "label": "Passer rating",
+      "category": "passing",
+      "source": "derived",
+      "formula": "(CASE WHEN (pass_cmp / NULLIF(pass_att, 0) - 0.3) * 5 < 0 THEN 0 WHEN (pass_cmp / NULLIF(pass_att, 0) - 0.3) * 5 > 2.375 THEN 2.375 ELSE (pass_cmp / NULLIF(pass_att, 0) - 0.3) * 5 END + CASE WHEN (pass_yards / NULLIF(pass_att, 0) - 3) * 0.25 < 0 THEN 0 WHEN (pass_yards / NULLIF(pass_att, 0) - 3) * 0.25 > 2.375 THEN 2.375 ELSE (pass_yards / NULLIF(pass_att, 0) - 3) * 0.25 END + CASE WHEN pass_tds / NULLIF(pass_att, 0) * 20 < 0 THEN 0 WHEN pass_tds / NULLIF(pass_att, 0) * 20 > 2.375 THEN 2.375 ELSE pass_tds / NULLIF(pass_att, 0) * 20 END + CASE WHEN 2.375 - pass_int / NULLIF(pass_att, 0) * 25 < 0 THEN 0 WHEN 2.375 - pass_int / NULLIF(pass_att, 0) * 25 > 2.375 THEN 2.375 ELSE 2.375 - pass_int / NULLIF(pass_att, 0) * 25 END) / 6 * 100",
+      "volume": "pass_att",
+      "rate_only": true,
+      "better": "higher",
+      "help": "The NFL passer rating from attempts, completions, yards, touchdowns and interceptions (each part held between 0 and 2.375).",
+      "aliases": [
+        "passer rating",
+        "qb rating",
+        "quarterback rating",
+        "nfl passer rating"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0033873",
+          "player": "Patrick Mahomes",
+          "season": 2023,
+          "season_type": "REG",
+          "value": 92.56,
+          "tolerance": 0.005,
+          "source": "nflverse player stats (player_game.parquet), regular season totals (NFL formula; 92.6 published)"
+        }
+      ]
+    },
+    {
+      "id": "fp_std",
+      "label": "Fantasy pts (standard)",
+      "category": "fantasy",
+      "source": "derived",
+      "formula": "0.04 * pass_yards + 4 * pass_tds - 2 * pass_int + 0.1 * (rush_yards + rec_yards) + 6 * (rush_tds + rec_tds) - 2 * (fum_rush + fum_rec + fum_sack)",
+      "rate_only": false,
+      "better": "higher",
+      "help": "Fantasy points under standard scoring: 0.04 a passing yard, 4 a passing TD, -2 an interception, 0.1 a rushing or receiving yard, 6 a rushing or receiving TD, 0 a reception, -2 a fumble lost. Two-point conversions are not counted (not in the stat data).",
+      "aliases": [
+        "standard fantasy points",
+        "standard points",
+        "non ppr points",
+        "non-ppr points"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0032764",
+          "player": "Derrick Henry",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 317.4,
+          "tolerance": 0.005,
+          "source": "nflverse weekly player stats (data/raw/nfl_player_stats.parquet), regular season"
+        }
+      ]
+    },
+    {
+      "id": "fp_half",
+      "label": "Fantasy pts (half PPR)",
+      "category": "fantasy",
+      "source": "derived",
+      "formula": "0.04 * pass_yards + 4 * pass_tds - 2 * pass_int + 0.1 * (rush_yards + rec_yards) + 6 * (rush_tds + rec_tds) - 2 * (fum_rush + fum_rec + fum_sack) + 0.5 * rec_receptions",
+      "rate_only": false,
+      "better": "higher",
+      "help": "Fantasy points under half PPR scoring: 0.04 a passing yard, 4 a passing TD, -2 an interception, 0.1 a rushing or receiving yard, 6 a rushing or receiving TD, 0.5 a reception, -2 a fumble lost. Two-point conversions are not counted (not in the stat data).",
+      "aliases": [
+        "half ppr points",
+        "half ppr",
+        "half point ppr",
+        "half-ppr points"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0032764",
+          "player": "Derrick Henry",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 326.9,
+          "tolerance": 0.005,
+          "source": "nflverse weekly player stats (data/raw/nfl_player_stats.parquet), regular season (mean of standard and PPR)"
+        }
+      ]
+    },
+    {
+      "id": "fp_ppr",
+      "label": "Fantasy pts (PPR)",
+      "category": "fantasy",
+      "source": "derived",
+      "formula": "0.04 * pass_yards + 4 * pass_tds - 2 * pass_int + 0.1 * (rush_yards + rec_yards) + 6 * (rush_tds + rec_tds) - 2 * (fum_rush + fum_rec + fum_sack) + rec_receptions",
+      "rate_only": false,
+      "better": "higher",
+      "help": "Fantasy points under full PPR scoring: 0.04 a passing yard, 4 a passing TD, -2 an interception, 0.1 a rushing or receiving yard, 6 a rushing or receiving TD, 1 a reception, -2 a fumble lost. Two-point conversions are not counted (not in the stat data).",
+      "aliases": [
+        "ppr points",
+        "ppr fantasy points",
+        "full ppr points",
+        "ppr"
+      ],
+      "reference_values": [
+        {
+          "gsis_id": "00-0036900",
+          "player": "Ja'Marr Chase",
+          "season": 2024,
+          "season_type": "REG",
+          "value": 403.0,
+          "tolerance": 0.005,
+          "source": "nflverse weekly player stats (data/raw/nfl_player_stats.parquet), regular season"
+        }
       ]
     }
   ]

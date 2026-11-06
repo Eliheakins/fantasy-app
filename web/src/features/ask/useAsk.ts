@@ -16,6 +16,7 @@ import { forgetCorrection, storeIntent } from "./intentCache";
 import { dispatchAsk } from "./paths/dispatch";
 import { keyFor } from "./paths/modelPath";
 import type { AskActions, Resume, StartSitShown, TradeShown } from "./paths/types";
+import type { FantasyRoute } from "./fantasyRoute";
 import type { PlayerMatch } from "./resolvePlayers";
 
 export type { StartSitShown, TradeShown };
@@ -57,6 +58,7 @@ export function useAsk() {
   const [choices, setChoices] = useState<PlayerMatch[]>([]);
   const [startSit, setStartSit] = useState<StartSitShown | null>(null);
   const [trade, setTrade] = useState<TradeShown | null>(null);
+  const [route, setRoute] = useState<FantasyRoute | null>(null);
   const [, setParams] = useSearchParams();
   // The question a start/sit or trade answer belongs to, and how the pending namesake choice finishes.
   const startSitFor = useRef<string | null>(null);
@@ -65,6 +67,7 @@ export function useAsk() {
     question: string;
     path: AnswerPath;
     unrecognized: string[];
+    notes: string[];
     entryId: string;
     /** The query as first answered, to tell when the user changed it. */
     answeredKey: string;
@@ -94,6 +97,7 @@ export function useAsk() {
     if (startSitFor.current !== urlQuestion) {
       setStartSit(null);
       setTrade(null);
+      setRoute(null);
     }
     setPhase("idle");
   }, [urlQuestion]);
@@ -105,14 +109,14 @@ export function useAsk() {
   }, []);
 
   const answer = useCallback<AskActions["answer"]>(
-    (next, asked, path, unrecognized) => {
+    (next, asked, path, unrecognized, notes) => {
       // The URL can drop or clamp parts of a query, so compare edits against what is actually shown.
       const shown = parseQuery(
         writeQuery(new URLSearchParams(), next),
         new Set(getAllFilterChipIds(chipGroups)),
       );
       const entryId = logAsk({ question: asked, path, outcome: { kind: "answered", query: loggedFrom(shown) } });
-      setAnsweredBy({ question: asked, path, unrecognized, entryId, answeredKey: editKey(shown) });
+      setAnsweredBy({ question: asked, path, unrecognized, notes, entryId, answeredKey: editKey(shown) });
       showQuery(next, asked);
       // The same question can be asked twice, which leaves the URL's question unchanged.
       setPhase("idle");
@@ -154,6 +158,15 @@ export function useAsk() {
     [keepQuestion],
   );
 
+  const showRoute = useCallback<AskActions["showRoute"]>(
+    (shown, asked) => {
+      logAsk({ question: asked, path: "rules", outcome: { kind: "message", text: shown.text } });
+      setRoute(shown);
+      keepQuestion(asked);
+    },
+    [keepQuestion],
+  );
+
   const choose = useCallback<AskActions["choose"]>((sure, unsure, finish) => {
     resume.current = finish;
     setResolved(sure);
@@ -162,14 +175,15 @@ export function useAsk() {
   }, []);
 
   // Paths and namesake choices outlive this render, so they call through to the latest handlers.
-  const latest = useRef<AskActions>({ fail, answer, showStartSit, showTrade, choose });
-  latest.current = { fail, answer, showStartSit, showTrade, choose };
+  const latest = useRef<AskActions>({ fail, answer, showStartSit, showTrade, showRoute, choose });
+  latest.current = { fail, answer, showStartSit, showTrade, showRoute, choose };
   const actions = useMemo<AskActions>(
     () => ({
       fail: (...a) => latest.current.fail(...a),
       answer: (...a) => latest.current.answer(...a),
       showStartSit: (...a) => latest.current.showStartSit(...a),
       showTrade: (...a) => latest.current.showTrade(...a),
+      showRoute: (...a) => latest.current.showRoute(...a),
       choose: (...a) => latest.current.choose(...a),
     }),
     [],
@@ -191,6 +205,7 @@ export function useAsk() {
     setChoices([]);
     setStartSit(null);
     setTrade(null);
+    setRoute(null);
     startSitFor.current = null;
     resume.current = null;
 
@@ -200,7 +215,14 @@ export function useAsk() {
       if (isStale()) {
         return;
       }
-      await dispatchAsk({ question: trimmed, dictionary, seasons, chipGroups, signal: controller.signal }, actions, isStale);
+      const maxWeeks = Object.fromEntries(
+        (manifest?.seasons ?? []).flatMap((s) => (s.max_week === null ? [] : [[s.season, s.max_week]])),
+      );
+      await dispatchAsk(
+        { question: trimmed, dictionary, seasons, maxWeeks, chipGroups, signal: controller.signal },
+        actions,
+        isStale,
+      );
     } catch (e) {
       if (!isStale()) {
         fail(trimmed, "none", e instanceof Error ? e.message : String(e));
@@ -289,7 +311,9 @@ export function useAsk() {
     hasResult,
     startSit,
     trade,
+    route,
     path: current?.path ?? null,
     unrecognized: current?.unrecognized ?? [],
+    notes: current?.notes ?? [],
   };
 }

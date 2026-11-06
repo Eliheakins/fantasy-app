@@ -7,8 +7,8 @@ export function effectiveGranularity(stat: StatDefinition | undefined, requested
   if (stat?.rate_only) {
     return "per_play";
   }
-  // A weekly points total has no plays to divide by.
-  return stat?.source === "league" && requested === "per_play" ? "per_game" : requested;
+  // A weekly points total, or a total that adds stats of several roles, has no plays to divide by.
+  return stat && stat.source !== "pbp" && requested === "per_play" ? "per_game" : requested;
 }
 
 /** Safe column alias for a stat id in a result row. */
@@ -42,7 +42,7 @@ export function groupStatsByRows(statIds: string[]): StatDefinition[][] {
 
 /** The columns a split adds to each result row; a week split keeps the season too. */
 export function splitColumns(split: Split | null | undefined): string[] {
-  return split === "week" ? ["season", "week"] : split === "season" ? ["season"] : [];
+  return split === "week" ? ["season", "week"] : split === "season" ? ["season"] : split === "location" ? ["posteam_type"] : [];
 }
 
 /** The key a play or game row is grouped under: the player, plus its season and week when split. */
@@ -125,7 +125,8 @@ export function mergeStatQueryResults(
   rows.sort((a, b) => {
     // A split reads in time order: season, then week, then the first stat within each.
     for (const c of groupColumns) {
-      const byTime = Number(a[c]) - Number(b[c]);
+      const [x, y] = [a[c], b[c]];
+      const byTime = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
       if (byTime !== 0) {
         return byTime;
       }
@@ -175,6 +176,9 @@ export function describeStat(stat: StatDefinition | undefined): string {
   if (stat.source === "league") {
     return "points under the selected league's scoring · weekly regular-season rows";
   }
+  if (stat.source === "derived") {
+    return `${stat.formula ?? ""} · from other stats' totals`;
+  }
   const role = stat.playerRole;
   const pt = stat.playType === "all" ? "all plays" : stat.playType;
   const sqlPreview = stat.base_sql.length > 72 ? `${stat.base_sql.slice(0, 72)}…` : stat.base_sql;
@@ -192,6 +196,9 @@ export function describeQuery(params: {
   filterChipState: Record<string, boolean>;
   chipGroups: FilterChipGroup[];
   minPlays: number;
+  lastGames?: number | null;
+  position?: string | null;
+  rookie?: boolean;
 }): string {
   const lines = params.statIds.flatMap((id) => {
     const stat = getStatById(id);
@@ -200,6 +207,9 @@ export function describeQuery(params: {
     }
     if (stat.source === "league") {
       return [`${stat.label} (${effectiveGranularity(stat, params.granularity)}): the selected league's weekly points`];
+    }
+    if (stat.source === "derived") {
+      return [`${stat.label} (${effectiveGranularity(stat, params.granularity)}): ${stat.formula ?? ""}`];
     }
     const rows = [
       `${stat.playerRole} ${stat.playType === "all" ? "plays" : `${stat.playType} plays`}`,
@@ -213,6 +223,12 @@ export function describeQuery(params: {
   lines.push(where ? `Filters: ${where}` : "Filters: none");
   if (params.minPlays > 0) {
     lines.push(`Minimum rows per player: ${Math.floor(params.minPlays)}`);
+  }
+  if (params.lastGames) {
+    lines.push(`Only each player's latest ${params.lastGames} game(s) within those filters`);
+  }
+  if (params.position || params.rookie) {
+    lines.push(`Only ${[params.rookie ? "rookies" : null, params.position ? `${params.position}s` : null].filter(Boolean).join(", ")}`);
   }
   return lines.join("\n");
 }

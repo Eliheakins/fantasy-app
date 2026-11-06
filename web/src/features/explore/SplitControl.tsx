@@ -3,7 +3,7 @@ import { useQueryState } from "@/stat/react/useQueryState";
 
 const NO_SPLIT = "none";
 
-/** One row per player, or per player and season, or per player and week. */
+/** One row per player, or per player and season, week, or home and away. */
 export function SplitControl() {
   const { state, setSplit } = useQueryState();
 
@@ -11,7 +11,7 @@ export function SplitControl() {
     <div className="space-y-1">
       <h3 className="text-caption font-semibold uppercase tracking-wide text-focus">Split by</h3>
       <p className="mt-0.5 text-caption text-muted">
-        One row per player, or one per season or week. With a ranking, it ranks single seasons or games.
+        One row per player, or one per season, week, or home and away. With a ranking, it ranks single seasons or games.
       </p>
       <ToggleGroup
         type="single"
@@ -19,7 +19,7 @@ export function SplitControl() {
         onValueChange={(value) => {
           if (value === NO_SPLIT) {
             setSplit(null);
-          } else if (value === "season" || value === "week") {
+          } else if (value === "season" || value === "week" || value === "location") {
             setSplit(value);
           }
         }}
@@ -34,6 +34,9 @@ export function SplitControl() {
         </ToggleGroupItem>
         <ToggleGroupItem value="week" className="rounded-md">
           Week
+        </ToggleGroupItem>
+        <ToggleGroupItem value="location" className="rounded-md">
+          Home/away
         </ToggleGroupItem>
       </ToggleGroup>
     </div>

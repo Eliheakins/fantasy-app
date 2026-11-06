@@ -11,6 +11,7 @@ import {
 import type { QueryResult } from "@/stat/types/workbench";
 
 import { compileRowExpression, parseExpression } from "./expression";
+import { latestGames } from "./lastGames";
 import type { StatQueryParams } from "./statQuery";
 import { wantedPlayers } from "./playerGameQuery";
 
@@ -23,7 +24,7 @@ export interface LeaguePointsRow {
 }
 
 /** Chip groups a weekly points row can answer: it knows its season, season type (always regular) and week. */
-const GAME_LEVEL_GROUP_IDS = ["season", "season_type", "week"] as const;
+const GAME_LEVEL_GROUP_IDS = ["season", "season_type", "week", "week_number"] as const;
 
 export const isLeagueStat = (id: string): boolean => getStatById(id)?.source === "league";
 
@@ -85,10 +86,19 @@ export function runLeaguePointsQuery(params: StatQueryParams, statIds: string[])
   const wanted = wantedPlayers(params.gsisIds, params.playerSet);
   const keyOf = splitKeyer(cols, params.split);
 
+  const inScope = (i: number): boolean => wanted(cols.gsis_id[i]!) && (!keep || keep(i) === true);
+  // One row per player and week, so a row index stands for its game.
+  const last = params.lastGames
+    ? latestGames(params.lastGames, (addGame) => {
+        for (let i = 0; i < points.length; i++) {
+          if (inScope(i)) addGame(cols.gsis_id[i]!, i, cols.season[i]!, cols.week[i]!);
+        }
+      })
+    : null;
   const groups = new Map<string, { playerId: string; rows: number[] }>();
   for (let i = 0; i < points.length; i++) {
     const id = cols.gsis_id[i]!;
-    if (wanted(id) && (!keep || keep(i) === true)) {
+    if (inScope(i) && (!last || last.get(id)?.has(i))) {
       const key = keyOf(id, i);
       const group = groups.get(key) ?? { playerId: id, rows: [] };
       group.rows.push(i);

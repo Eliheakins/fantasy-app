@@ -5,6 +5,7 @@ import type { AnswerPath } from "../interpretQuestion";
 import type { PlayerMatch } from "../resolvePlayers";
 import type { StartSitOutcome } from "../startSit";
 import type { TradeOutcome } from "../tradeAsk";
+import type { FantasyRoute } from "../fantasyRoute";
 
 /** A start/sit answer on screen: the two players and their names. */
 export type StartSitShown = StartSitOutcome & { names: Record<string, string> };
@@ -17,6 +18,8 @@ export type AskInput = {
   question: string;
   dictionary: PlayerDictionaryRow[];
   seasons: number[];
+  /** The latest week each season reaches (the manifest's `max_week`). */
+  maxWeeks?: Readonly<Record<number, number>>;
   chipGroups: FilterChipGroup[];
   /** Cancels the model request when the ask goes stale. */
   signal: AbortSignal;
@@ -29,10 +32,12 @@ export type Resume = (players: PlayerDictionaryRow[], asked: string) => void;
 export type AskActions = {
   /** Shows a message instead of an answer, and keeps it in the log. */
   fail: (asked: string, path: AnswerPath | "none", text: string) => void;
-  /** Logs the answer and shows it by navigating to its URL. */
-  answer: (next: QueryState, asked: string, path: AnswerPath, unrecognized: string[]) => void;
+  /** Logs the answer and shows it by navigating to its URL; `notes` say how a relative or missing time was read. */
+  answer: (next: QueryState, asked: string, path: AnswerPath, unrecognized: string[], notes: string[]) => void;
   showStartSit: (shown: StartSitShown, asked: string) => void;
   showTrade: (shown: TradeShown, asked: string) => void;
+  /** A fantasy question answered by a link to the page that has it (or a message when none does). */
+  showRoute: (route: FantasyRoute, asked: string) => void;
   /** Asks the user to pick among namesakes; `resume` runs with all the players once none is left. */
   choose: (sure: PlayerDictionaryRow[], unsure: PlayerMatch[], resume: Resume) => void;
 };
@@ -43,7 +48,7 @@ export type AskActions = {
  * one file and one entry in `ASK_PATHS`.
  */
 export type AskPath<M = unknown> = {
-  id: "start_sit" | "trade" | "rules" | "model";
+  id: "start_sit" | "trade" | "route" | "rules" | "model";
   read: (input: AskInput) => M | null | Promise<M | null>;
   answer: (match: M, input: AskInput, actions: AskActions) => void;
 };

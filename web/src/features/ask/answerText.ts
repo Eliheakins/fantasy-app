@@ -18,6 +18,10 @@ export interface AnswerInput {
   idColumn?: "player_id" | "team_id";
   /** The selected league's name, shown on league stats; null leaves the label generic. */
   leagueName?: string | null;
+  /** Each player's latest N games only; a ranking's position and rookie filters. */
+  lastGames?: number | null;
+  position?: string | null;
+  rookie?: boolean;
 }
 
 export interface Answer {
@@ -30,6 +34,15 @@ export interface Answer {
 }
 
 const NO_FILTERS_CONTEXT = "All loaded seasons";
+
+/** Parts of a query that are not chips: the last N games, and who a ranking may list. */
+export function scopeLabels(scope: { lastGames: number | null; position?: string | null; rookie?: boolean }): string[] {
+  return [
+    ...(scope.lastGames ? [scope.lastGames === 1 ? "Last game" : `Last ${scope.lastGames} games`] : []),
+    ...(scope.position ? [`${scope.position}s only`] : []),
+    ...(scope.rookie ? ["Rookies only"] : []),
+  ];
+}
 
 /** Seasons first (they scope everything else), then the other filters in chip-group order. */
 function filterLabels(filterIds: string[], chipGroups: FilterChipGroup[]): string[] {
@@ -62,14 +75,19 @@ export function buildAnswer({
   ranked = false,
   idColumn = "player_id",
   leagueName = null,
+  lastGames = null,
+  position = null,
+  rookie = false,
 }: AnswerInput): Answer {
-  const labels = filterLabels(filterIds, chipGroups);
+  const labels = [...filterLabels(filterIds, chipGroups), ...scopeLabels({ lastGames, position, rookie })];
   const parts = result.rows.map((row, rank) => {
     const pid = String(row[idColumn] ?? "");
     const name = nameByGsis.get(pid) ?? pid;
-    const when = [row.season, row.week === undefined ? undefined : `week ${String(row.week)}`].filter(
-      (v) => v !== undefined,
-    );
+    const when = [
+      row.season,
+      row.week === undefined ? undefined : `week ${String(row.week)}`,
+      row.posteam_type === undefined ? undefined : String(row.posteam_type),
+    ].filter((v) => v !== undefined);
     const metrics = statIds.map((id) => {
       const header = formatMetricValueHeader(getStatById(id), granularity, leagueName);
       return `${header}: ${formatQueryValue(row[metricSelectAlias(id)])}`;

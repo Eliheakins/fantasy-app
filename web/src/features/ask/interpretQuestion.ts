@@ -3,6 +3,19 @@ import type { IntentOutcome, QueryIntent } from "@/stat/lib/schemas/nlqIntent";
 
 import type { PlayerMatch } from "./resolvePlayers";
 import { parseRules } from "./ruleParser";
+import { readOpponents } from "./opponents";
+import { tokenize } from "./resolvePlayers";
+import { readTime, type TimeScope } from "./timeWords";
+
+/** The question without the words code reads itself (time, opponents); the question as asked when there are none. */
+export function modelText(question: string, scope: TimeScope, playerNamed: boolean): string {
+  const read = new Set([...readTime(question, scope).used, ...readOpponents(question, playerNamed).used]);
+  return read.size === 0
+    ? question
+    : tokenize(question.replace(/%/g, " percent "))
+        .filter((_, i) => !read.has(i))
+        .join(" ");
+}
 
 /** "saved" is an answer the user corrected earlier, replayed without asking anything. */
 export type AnswerPath = "rules" | "model" | "saved";
@@ -21,11 +34,12 @@ export async function interpretQuestion(args: {
   matches: readonly PlayerMatch[];
   seasons: readonly number[];
   chipGroups: readonly FilterChipGroup[];
+  maxWeeks?: Readonly<Record<number, number>>;
   askModel: (question: string) => Promise<IntentOutcome>;
 }): Promise<Interpretation> {
-  const { question, matches, seasons, chipGroups, askModel } = args;
+  const { question, matches, seasons, chipGroups, maxWeeks, askModel } = args;
 
-  const rules = parseRules(question, { matches, seasons, chipGroups });
+  const rules = parseRules(question, { matches, seasons, chipGroups, maxWeeks });
   if (rules.status === "resolved") {
     return { kind: "intent", intent: rules.intent, path: "rules" };
   }
@@ -34,7 +48,8 @@ export async function interpretQuestion(args: {
   }
 
   try {
-    const outcome = await askModel(question);
+    // Time words and opponents are read in code and put back on the answer; the model sees the rest.
+    const outcome = await askModel(modelText(question, { seasons, maxWeeks }, matches.length > 0));
     return outcome.outcome === "unsupported"
       ? { kind: "message", text: outcome.reason }
       : {

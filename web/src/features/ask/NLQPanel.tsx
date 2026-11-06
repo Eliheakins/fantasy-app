@@ -19,6 +19,7 @@ import { buildAnswer } from "./answerText";
 import { InterpretationChips } from "./InterpretationChips";
 import { PlayerChips, PlayerChoices } from "./NlqPlayerPickers";
 import { StartSitAnswer } from "./StartSitAnswer";
+import { RouteAnswer } from "./RouteAnswer";
 import { TradeAnswer } from "./TradeAnswer";
 import { useAsk } from "./useAsk";
 
@@ -69,6 +70,9 @@ export function NLQPanel() {
       ranked: isLeagueQuery(state),
       idColumn: state.subject === "teams" ? "team_id" : "player_id",
       leagueName,
+      lastGames: state.lastGames,
+      position: state.position,
+      rookie: state.rookie,
     });
   }, [showingAnswer, exec.result, exec.namedPlayers, state, chipGroups, leagueName]);
 
@@ -83,8 +87,9 @@ export function NLQPanel() {
     <div className="space-y-4">
       <section className="space-y-4" aria-label="Ask a question">
           <p className="measure text-caption text-muted">
-            Names are matched in your browser. Built-in rules read what they can; a local model reads the rest. The
-            numbers are computed in your browser from play-by-play data.
+            Names are matched in your browser. Built-in rules read what they can; the hosted model (Jev) reads the
+            rest, with a local model as the fallback. The model sees only the question. The numbers are computed in
+            your browser from play-by-play data.
           </p>
 
           <Textarea
@@ -129,9 +134,14 @@ export function NLQPanel() {
                     ? "Read by the built-in rules."
                     : ask.path === "saved"
                       ? "Using the fix you made to this question earlier."
-                      : "Read by the local model."}
+                      : "Read by the model (the hosted Jev, or the local model when Jev is unavailable)."}
                 </p>
               ) : null}
+              {ask.notes.map((note) => (
+                <p key={note} className="text-caption text-muted">
+                  {note}
+                </p>
+              ))}
               {ask.unrecognized.length > 0 ? (
                 <p className="text-caption text-warning">
                   The built-in rules did not recognise: {ask.unrecognized.join(", ")}. Check that this answers what you
@@ -148,6 +158,8 @@ export function NLQPanel() {
           {ask.trade && ask.phase === "idle" ? (
             <TradeAnswer give={ask.trade.give} get={ask.trade.get} names={ask.trade.names} positions={ask.trade.positions} />
           ) : null}
+
+          {ask.route && ask.phase === "idle" ? <RouteAnswer route={ask.route} /> : null}
 
           {showingAnswer ? <InterpretationChips /> : null}
       </section>

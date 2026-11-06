@@ -1,4 +1,5 @@
 /** Situational filter chips (WHERE); predicates reference unqualified column names. */
+import { TEAMS } from "./teams";
 
 export interface FilterChipOption {
   id: string;
@@ -13,6 +14,15 @@ export interface FilterChipGroup {
   combine: "or" | "and";
   options: FilterChipOption[];
 }
+
+/** The last week a season can have, playoffs included (22 since 2021). */
+export const MAX_WEEK = 22;
+
+/**
+ * Chip groups Ask reads in code (weeks, opponents) rather than through the model: numbers and team
+ * names are read reliably by rules, and listing them would add dozens of questions to every model call.
+ */
+export const CODE_READ_GROUP_IDS: ReadonlySet<string> = new Set(["week_number", "opponent"]);
 
 const GROUP_TEMPLATES: FilterChipGroup[] = [
   {
@@ -56,6 +66,20 @@ const GROUP_TEMPLATES: FilterChipGroup[] = [
     ],
   },
   {
+    id: "week_number",
+    label: "Week number",
+    description: "Single weeks; several make a range",
+    combine: "or",
+    options: Array.from({ length: MAX_WEEK }, (_, k) => ({ id: `wk-${k + 1}`, label: `Week ${k + 1}`, predicate: `week = ${k + 1}` })),
+  },
+  {
+    id: "opponent",
+    label: "Opponent",
+    description: "The defense a player's (or team's offense's) plays came against",
+    combine: "or",
+    options: TEAMS.map((t) => ({ id: `opp-${t.id}`, label: `vs ${t.nickname}`, predicate: `defteam = '${t.id}'` })),
+  },
+  {
     id: "location",
     label: "Location",
     description: "Offense home / away",
@@ -69,7 +93,11 @@ const GROUP_TEMPLATES: FilterChipGroup[] = [
     id: "field",
     label: "Field position",
     combine: "or",
-    options: [{ id: "field-redzone", label: "Red zone", predicate: "yardline_100 <= 20" }],
+    options: [
+      { id: "field-redzone", label: "Red zone", predicate: "yardline_100 <= 20" },
+      { id: "yl-inside10", label: "Inside the 10", predicate: "yardline_100 <= 10" },
+      { id: "yl-inside5", label: "Inside the 5 (goal line)", predicate: "yardline_100 <= 5" },
+    ],
   },
   {
     id: "red_zone_flag",
@@ -222,6 +250,8 @@ export const CHIP_PHRASES: Readonly<Record<string, readonly string[]>> = {
   "loc-home": ["at home", "home games", "home game", "home"],
   "loc-away": ["on the road", "road games", "road game", "away games", "away game", "away from home", "away"],
   "field-redzone": ["red zone", "redzone", "inside the 20"],
+  "yl-inside10": ["inside the 10", "inside the ten", "inside 10"],
+  "yl-inside5": ["inside the 5", "inside the five", "inside 5", "goal line", "goalline"],
   "gtg-yes": ["goal to go"],
   "stype-reg": ["regular season"],
   "stype-post": ["playoffs", "playoff", "postseason", "post season"],

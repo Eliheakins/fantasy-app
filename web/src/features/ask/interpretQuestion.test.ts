@@ -67,9 +67,9 @@ describe("interpretQuestion", () => {
   it("tells the user which words the rules did not understand when the model answers instead", async () => {
     const askModel = vi.fn().mockResolvedValue(MODEL_INTENT);
 
-    const result = await interpret("Patrick Mahomes passing yards against the Chiefs in 2023", askModel);
+    const result = await interpret("Patrick Mahomes passing yards in overtime in 2023", askModel);
 
-    expect(result).toMatchObject({ kind: "intent", path: "model", unrecognized: ["against", "chiefs"] });
+    expect(result).toMatchObject({ kind: "intent", path: "model", unrecognized: ["overtime"] });
   });
 
   it("has nothing to flag when the rules deferred for another reason", async () => {

@@ -4,6 +4,8 @@ export const queryIntentSchema = z.object({
   stat_ids: z.array(z.string()).min(1),
   filter_ids: z.array(z.string()),
   granularity: z.enum(["total", "per_game", "per_play"]),
+  /** The model read a ranking ("who leads"); a question with no player is then a leaderboard. */
+  ranking: z.boolean().optional(),
 });
 
 export type QueryIntent = z.infer<typeof queryIntentSchema>;
@@ -25,11 +27,14 @@ type ApiIntent = Api["QueryIntent"];
 // filter_ids has a pydantic default, so the generated type has it optional and zod's output has it
 // required. Pin that exact gap: if the backend makes it required (or drops it) this line breaks.
 const _filterIdsOptionalInApi: {} extends Pick<ApiIntent, "filter_ids"> ? true : false = true;
-const _intentMatchesApi: Equal<QueryIntent, Required<ApiIntent>> = true;
-const _outcomeMatchesApi: Equal<
-  IntentOutcome,
-  { outcome: "query"; intent: Required<ApiIntent> } | Api["UnsupportedOutcome"]
-> = true;
+// ranking has a pydantic default (the API always sends it); zod leaves it optional, since the rules
+// and saved intents have none.
+const _rankingOptionalHere: {} extends Pick<QueryIntent, "ranking"> ? true : false = true;
+const _intentMatchesApi: Equal<Required<QueryIntent>, Required<ApiIntent>> = true;
+const _outcomeMatchesApi: Equal<IntentOutcome, { outcome: "query"; intent: QueryIntent } | Api["UnsupportedOutcome"]> =
+  true;
+
+void _rankingOptionalHere;
 void _filterIdsOptionalInApi;
 void _intentMatchesApi;
 void _outcomeMatchesApi;

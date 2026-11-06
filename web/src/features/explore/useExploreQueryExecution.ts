@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { browserColumnStore } from "@/stat/engine/parquetColumns";
 import { runStatQuery } from "@/stat/engine/statQuery";
-import { playerGameSource, seasonSources } from "@/stat/lib/dataSources";
+import { playerGameSource, playerIndexSource, seasonSources } from "@/stat/lib/dataSources";
 import { useFilterChipGroups } from "@/stat/react/filterChipGroups";
 import { useManifest } from "@/stat/react/manifest";
 import { createLatestRunner } from "@/stat/lib/latestRun";
@@ -27,6 +27,7 @@ export function useExploreQueryExecution() {
 
   const sources = useMemo(() => seasonSources(manifest), [manifest]);
   const playerGame = useMemo(() => playerGameSource(manifest), [manifest]);
+  const playerIndex = useMemo(() => playerIndexSource(manifest), [manifest]);
 
   const [result, setResult] = useState<QueryResult | null>(null);
   // Which query the result belongs to: after back/forward the URL changes before the run finishes,
@@ -37,7 +38,8 @@ export function useExploreQueryExecution() {
   const [running, setRunning] = useState(false);
   const runLatest = useRef(createLatestRunner()).current;
 
-  const { players, stats, granularity, minPlays, order, limit, split, subject, teams, side } = state;
+  const { players, stats, granularity, minPlays, order, limit, split, subject, teams, side, lastGames, position, rookie } =
+    state;
   const league = isLeagueQuery(state);
   const forTeams = subject === "teams";
   // Whoever the rows are about is named, or the query ranks everyone.
@@ -124,7 +126,9 @@ export function useExploreQueryExecution() {
     }
 
     setRunning(true);
-    setDetails(describeQuery({ statIds: stats, granularity, filterChipState, chipGroups, minPlays }));
+    setDetails(
+      describeQuery({ statIds: stats, granularity, filterChipState, chipGroups, minPlays, lastGames, position, rookie }),
+    );
     let stale = false;
     try {
       const outcome = await runLatest((signal) =>
@@ -143,6 +147,10 @@ export function useExploreQueryExecution() {
             limit,
             split,
             teams: forTeams ? { ids: league ? null : teams, side } : null,
+            lastGames,
+            position,
+            rookie,
+            playerIndex,
             chipGroups,
           },
           browserColumnStore,
@@ -183,6 +191,10 @@ export function useExploreQueryExecution() {
     side,
     order,
     limit,
+    lastGames,
+    position,
+    rookie,
+    playerIndex,
     split,
     sources,
     playerGame,

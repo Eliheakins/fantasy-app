@@ -27,7 +27,10 @@ ROLE_COLUMN = {
 
 
 def _cases() -> list[tuple[MetricDefinition, ReferenceValue]]:
-    return [(m, ref) for m in load_metrics().metrics for ref in m.reference_values]
+    # A derived metric has no SQL of its own: referenceValues.test.ts (web) checks it.
+    return [
+        (m, ref) for m in load_metrics().metrics if m.source == "pbp" for ref in m.reference_values
+    ]
 
 
 def _metric_value(metric: MetricDefinition, ref: ReferenceValue, shard: str) -> float:

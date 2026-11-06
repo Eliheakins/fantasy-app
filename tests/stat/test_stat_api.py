@@ -132,6 +132,7 @@ async def test_nlq_intent_returns_validated_intent(client: httpx.AsyncClient, us
             "stat_ids": ["pass_yards"],
             "filter_ids": ["season-2023"],
             "granularity": "total",
+            "ranking": False,
         },
     }
 

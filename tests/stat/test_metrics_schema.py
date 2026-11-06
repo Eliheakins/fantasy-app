@@ -155,7 +155,7 @@ def test_aliases_follow_the_same_limits_the_model_catalog_enforces():
 
 
 def test_every_metric_has_at_least_one_alias():
-    assert [m.id for m in load_metrics().metrics if not m.aliases] == []
+    assert [m.id for m in load_metrics().metrics if not m.aliases and not m.hidden] == []
 
 
 def test_metric_sql_names_only_columns_the_pipeline_builds():
@@ -164,7 +164,10 @@ def test_metric_sql_names_only_columns_the_pipeline_builds():
             set(
                 re.findall(
                     r"\b[a-z_][a-z0-9_]*\b",
-                    " ".join(filter(None, [m.base_sql, m.play_filter])).lower(),
+                    # String literals ('pass') are values, not columns.
+                    re.sub(
+                        r"'[^']*'", "", " ".join(filter(None, [m.base_sql, m.play_filter]))
+                    ).lower(),
                 )
             )
             - SQL_WORDS

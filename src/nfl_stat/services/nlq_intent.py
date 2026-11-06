@@ -26,6 +26,7 @@ from nfl_stat.schemas.nlq import (
     UnsupportedOutcome,
 )
 from nfl_stat.services.llm_client import ChatMessage, chat_text
+from nfl_stat.services.undefined_terms import undefined_term
 
 MAX_ATTEMPTS = 2
 
@@ -177,6 +178,9 @@ async def translate_question(
     *, client: AsyncOpenAI, model: str, req: IntentRequest
 ) -> IntentOutcome:
     """Ask the model; on an invalid reply, show it the error and ask once more."""
+    reason = undefined_term(req.question)
+    if reason:  # refused in code: a model would map the term to a near stat
+        return UnsupportedOutcome(reason=reason)
     messages: list[ChatMessage] = [
         {"role": "system", "content": build_system_prompt(req.stats, req.filters)},
         {"role": "user", "content": f"Question: {req.question}"},

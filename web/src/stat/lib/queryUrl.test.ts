@@ -46,6 +46,9 @@ const FULL: QueryState = {
   teams: [],
   side: "offense",
   roster: "mine",
+  lastGames: 3,
+  position: "WR",
+  rookie: true,
 };
 
 describe("serializeQuery and parseQuery", () => {

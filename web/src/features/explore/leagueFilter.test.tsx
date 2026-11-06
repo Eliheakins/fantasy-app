@@ -20,6 +20,7 @@ const { sources } = vi.hoisted(() => ({ sources: { current: [{ year: 2024, url: 
 vi.mock("@/stat/lib/dataSources", () => ({
   seasonSources: () => sources.current,
   playerGameSource: () => null,
+  playerIndexSource: () => null,
 }));
 vi.mock("@/stat/lib/players", () => ({ getPlayersByIds: async () => [] }));
 

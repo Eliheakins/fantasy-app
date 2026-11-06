@@ -35,8 +35,17 @@ const metricSchema = z.object({
   id: z.string().regex(/^[a-z][a-z0-9_]*$/),
   label: z.string().min(1),
   category: z.string(),
-  /** "league": points under the league picked in the app, so no play SQL, role or filter. */
-  source: z.enum(["pbp", "league"]).default("pbp"),
+  /**
+   * "league": points under the league picked in the app, so no play SQL, role or filter. "derived": a
+   * `formula` over other metrics' totals (and `team__<id>` team totals in the player's games, `games`).
+   */
+  source: z.enum(["pbp", "league", "derived"]).default("pbp"),
+  /** A derived metric's arithmetic over other metric ids, `team__<id>` and `games`. */
+  formula: z.string().default(""),
+  /** A derived metric's volume (a formula) that the minimum plays cut compares against; null: no cut. */
+  volume: z.string().nullable().default(null),
+  /** A part of a derived metric only: left out of the picker, the model catalog and the rules. */
+  hidden: z.boolean().default(false),
   player_role: playerRoleSchema.nullish(),
   play_type: playTypeSchema.nullish(),
   base_sql: z.string().default(""),
@@ -46,6 +55,10 @@ const metricSchema = z.object({
   percent_format: z.boolean().default(false),
   play_filter: z.string().min(1).nullable().default(null),
   player_game_column: z.string().min(1).nullable().default(null),
+  /** Only a team has this stat (it counts every play, whoever had the ball); a player query is refused. */
+  team_only: z.boolean().default(false),
+  /** Stats that answer one question for different roles ("EPA"); Ask picks the one that fits the subject. */
+  family: z.string().min(1).nullable().default(null),
   description: z.string().nullish(),
   help: z.string().nullish(),
   aliases: z.array(aliasSchema).max(MAX_ALIASES).default([]),
@@ -55,9 +68,15 @@ const metricSchema = z.object({
 /** Which fields a metric needs depends on its source; the backend schema says the same. */
 const metricRulesSchema = metricSchema.superRefine((m, ctx) => {
   const problem = (message: string) => ctx.addIssue({ code: "custom", message });
-  if (m.source === "league") {
+  if (m.source !== "derived" && (m.formula || m.volume)) {
+    problem(`'${m.id}' has a formula but is not a derived metric`);
+  }
+  if (m.source === "league" || m.source === "derived") {
     if (m.base_sql || m.play_filter || m.player_game_column || m.player_role || m.play_type) {
-      problem(`'${m.id}' is a league metric: no play SQL, role or filter`);
+      problem(`'${m.id}' is a ${m.source} metric: no play SQL, role or filter`);
+    }
+    if (m.source === "derived" && !m.formula) {
+      problem(`'${m.id}' is a derived metric and needs a formula`);
     }
   } else if (!m.base_sql || !m.player_role || !m.play_type) {
     problem(`'${m.id}' needs base_sql, player_role and play_type`);

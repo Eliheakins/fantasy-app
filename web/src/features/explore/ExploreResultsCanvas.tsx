@@ -57,6 +57,7 @@ export function ExploreResultsCanvas({
     const headers = new Map<string, string>([
       ["season", "Season"],
       ["week", "Week"],
+      ["posteam_type", "Home or away"],
     ]);
     for (const id of selectedStatIds) {
       const st = getStatById(id);

@@ -4,7 +4,7 @@ import { ASK_PATHS } from "./index";
 import type { AskActions, AskInput, AskPath } from "./types";
 
 const input: AskInput = { question: "q", dictionary: [], seasons: [2024], chipGroups: [], signal: new AbortController().signal };
-const actions: AskActions = { fail: vi.fn(), answer: vi.fn(), showStartSit: vi.fn(), showTrade: vi.fn(), choose: vi.fn() };
+const actions: AskActions = { fail: vi.fn(), answer: vi.fn(), showStartSit: vi.fn(), showTrade: vi.fn(), showRoute: vi.fn(), choose: vi.fn() };
 const never = () => false;
 
 const fake = (id: AskPath["id"], match: unknown, calls: string[]): AskPath => ({
@@ -17,8 +17,8 @@ const fake = (id: AskPath["id"], match: unknown, calls: string[]): AskPath => ({
 });
 
 describe("ASK_PATHS", () => {
-  test("lists start/sit, trade, rules, then the model catch-all", () => {
-    expect(ASK_PATHS.map((p) => p.id)).toEqual(["start_sit", "trade", "rules", "model"]);
+  test("lists start/sit, trade, fantasy routes, rules, then the model catch-all", () => {
+    expect(ASK_PATHS.map((p) => p.id)).toEqual(["start_sit", "trade", "route", "rules", "model"]);
   });
 });
 
