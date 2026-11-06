@@ -995,3 +995,10 @@ Two research agents surveyed the decision code (assumptions with file and line) 
 - **Refresh failures are visible.** Each `make refresh` stage records ok or failed in `refresh_runs`; a soft failure still lets later stages run, but `refresh_report` makes the run exit 1 and the stale banner names the stage.
 - **Public readiness moved out.** Sign-in, per-league access and rate limits are issue #73 and wait on Sleeper's written permission.
 - **Docs.** CLAUDE.md is split into one file per area, next to the code it governs.
+
+## 2026-11-06: Lineup starts from win probability; matchup label renamed (user decisions on the redesign)
+
+- **Recommended objective: win probability, always** (user, 2026-11-06). U4 had mapped the matchup label to an objective (underdog to max ceiling, favourite to max floor). That contradicted the 2026-10-23 entry: the win-probability lineup already takes variance when you are the underdog and protects the floor when you are favoured, and no ceiling or floor lineup beat the max-points lineup on win probability. `recommendedObjective()` now returns win probability; the four-way switch stays under "Other ways to pick", and a manual pick no longer resets when the label changes.
+- **Matchup label "Toss-up (50% to win)" renamed "Even matchup (50% to win)"** (user, 2026-11-06), so "toss-up" means only the confidence word (clear, lean, toss-up).
+- **Kept as built** (user, 2026-11-06): "you're in good shape" from 75% playoff odds; to-dos without a number rank last within their day; the player page keeps next-game range and rest-of-season value (idea 17 supersedes the earlier "no projections in the sheet" rule).
+

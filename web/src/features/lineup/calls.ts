@@ -54,11 +54,10 @@ export function scratchFallbacks(rows: readonly LineupRow[]) {
     .map((r) => ({ gsisId: r.gsis_id, text: `If ${r.full_name} is out: start ${r.swap_in}` }));
 }
 
-/** Underdogs want variance, favourites want the floor; anything else keeps expected points. */
-export function recommendedObjective(script: string | null | undefined): ObjectiveKey {
-  if (script?.startsWith("Underdog")) return "max_ceiling";
-  if (script?.startsWith("Favorite") || script?.startsWith("Favourite")) return "max_floor";
-  return "expected_points";
+/** Always win probability: it already takes variance as the underdog and protects the floor as the
+ * favourite, and no ceiling or floor lineup beat it on win probability (decisions, 2026-10-23). */
+export function recommendedObjective(): ObjectiveKey {
+  return "win_probability";
 }
 
 const MAX_NAMED_STARTS = 2;

@@ -53,13 +53,9 @@ describe("late scratch fallbacks", () => {
   });
 });
 
-describe("objective from the matchup label", () => {
-  test("underdog seeks variance, favourite protects the floor, otherwise expected points", () => {
-    expect(recommendedObjective("Underdog (40% to win): variance helps")).toBe("max_ceiling");
-    expect(recommendedObjective("Favorite (70% to win): protect the floor")).toBe("max_floor");
-    expect(recommendedObjective("Toss-up (50% to win)")).toBe("expected_points");
-    expect(recommendedObjective("Favourite (70% to win)")).toBe("max_floor");
-    expect(recommendedObjective(null)).toBe("expected_points");
+describe("recommended objective", () => {
+  test("is win probability whatever the matchup", () => {
+    expect(recommendedObjective()).toBe("win_probability");
   });
 });
 

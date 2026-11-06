@@ -181,7 +181,7 @@ def _script(favourite: float) -> str:
         return f"Underdog ({favourite:.0%} to win): variance helps"
     if favourite > FAVORITE:
         return f"Favorite ({favourite:.0%} to win): protect the floor"
-    return f"Toss-up ({favourite:.0%} to win)"
+    return f"Even matchup ({favourite:.0%} to win)"
 
 
 def win_probability(

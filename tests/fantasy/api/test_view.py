@@ -56,7 +56,7 @@ def odds_rows(tag: str = "start a gamble") -> pl.DataFrame:
             "opp_floor": 0.5,
             "opp_median": 1.5,
             "opp_ceiling": 2.5,
-            "script": "Toss-up (50% to win)",
+            "script": "Even matchup (50% to win)",
         }
 
     return pl.DataFrame(

@@ -20,9 +20,9 @@ const odds: WinProbability = {
   script: "You are a slight favourite",
   swap: { differs: false, players_in: [], players_out: [], text: null },
   comparison: [cmp("Expected points"), cmp("Win probability")],
-  options: [option("max_points")],
+  options: [option("win_prob")],
   lineups: {},
-  summaries: { expected_points: { objective: "expected_points", shown_points: 10, sleeper_points: 10, gap: 0, win_prob: 0.5 } },
+  summaries: { win_probability: { objective: "win_probability", shown_points: 10, sleeper_points: 10, gap: 0, win_prob: 0.5 } },
 };
 
 const differing: WinProbability = {
@@ -35,7 +35,7 @@ const calls = [
   { slot: "QB", starter: "qb", alternative: null, share: null },
   { slot: "RB", starter: "rb1", alternative: "bench", share: 0.9 },
 ];
-const withCalls: WinProbability = { ...differing, options: [option("max_points", { slot_calls: calls })] };
+const withCalls: WinProbability = { ...differing, options: [option("win_prob", { slot_calls: calls })] };
 const cookRows = [
   row("cook", { full_name: "James Cook", slot: "FLEX", change: "Start", swap_in: "Ray Bernard" }),
   row("bern", { full_name: "Ray Bernard", recommended: false }),
@@ -56,10 +56,10 @@ describe("LineupView answer and evidence", () => {
     render(<LineupView base={cookRows} odds={withCalls} week={3} />);
     expect(screen.getByText("If James Cook is out: start Ray Bernard")).toBeTruthy();
   });
-  test("the underdog label picks max ceiling first; the four-way switch sits under Other ways to pick", () => {
+  test("win probability is the starting pick, even as the underdog; the four-way switch sits under Other ways to pick", () => {
     const underdog = { ...withCalls, script: "Underdog (40% to win): variance helps" };
     render(<LineupView base={cookRows} odds={underdog} week={3} />);
-    expect(screen.getByRole("radio", { name: "Max ceiling" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Win probability" })).toBeChecked();
     expect(screen.getByText("Other ways to pick").closest("details")).toContainElement(screen.getByRole("radiogroup"));
   });
   test("the answer uses the team total with K and DEF, the same one the range bars centre on", () => {
@@ -67,7 +67,7 @@ describe("LineupView answer and evidence", () => {
     expect(screen.getByText("131.2 points")).toBeTruthy();
   });
   test("no close slot, a slot with nobody eligible, and no panel without calls or fallbacks", () => {
-    const clearOnly = { ...differing, options: [option("max_points", { slot_calls: calls.slice(1) })] };
+    const clearOnly = { ...differing, options: [option("win_prob", { slot_calls: calls.slice(1) })] };
     const plain = [row("qb", { slot: "QB" }), row("rb1")];
     const { unmount } = render(<LineupView base={plain} odds={clearOnly} week={3} />);
     expect(screen.getByText("No slot is close.")).toBeTruthy();
@@ -114,15 +114,15 @@ describe("LineupView answer and evidence", () => {
     expect(screen.queryByRole("columnheader", { name: "Status" })).toBeNull();
     expect(screen.getAllByRole("columnheader", { name: "Points" }).length).toBeGreaterThan(0);
   });
-  test("a pick made under one label is dropped when the label flips; clicking after a derived default works", async () => {
+  test("a manual pick stays when the matchup label changes", async () => {
     const underdog = { ...withCalls, script: "Underdog (40% to win): variance helps" };
     const { rerender } = render(<LineupView base={cookRows} odds={underdog} week={3} />);
     await userEvent.click(screen.getByRole("radio", { name: "Max floor" }));
     expect(screen.getByRole("radio", { name: "Max floor" })).toBeChecked();
     rerender(<MemoryRouter><LineupView base={cookRows} odds={{ ...withCalls, script: "Favorite (70% to win): protect the floor" }} week={3} /></MemoryRouter>);
     expect(screen.getByRole("radio", { name: "Max floor" })).toBeChecked();
-    rerender(<MemoryRouter><LineupView base={cookRows} odds={{ ...withCalls, script: "Toss-up (50% to win)" }} week={3} /></MemoryRouter>);
-    expect(screen.getByRole("radio", { name: "Expected points" })).toBeChecked();
+    rerender(<MemoryRouter><LineupView base={cookRows} odds={{ ...withCalls, script: "Even matchup (50% to win)" }} week={3} /></MemoryRouter>);
+    expect(screen.getByRole("radio", { name: "Max floor" })).toBeChecked();
   });
   test("range bars show both teams", () => {
     render(<LineupView base={cookRows} odds={withCalls} week={3} />);

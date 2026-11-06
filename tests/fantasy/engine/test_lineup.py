@@ -123,4 +123,4 @@ def test_script_labels_keep_the_prefixes_the_lineup_page_parses() -> None:
 
     assert _lineup._script(0.30).startswith("Underdog")
     assert _lineup._script(0.70).startswith("Favorite")
-    assert _lineup._script(0.50).startswith("Toss-up")
+    assert _lineup._script(0.50).startswith("Even matchup")

@@ -58,7 +58,7 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
     );
   }
   const hasOdds = odds !== null && odds.options.length > 0;
-  const recommended = recommendedObjective(odds?.script);
+  const recommended = recommendedObjective();
   const differ = hasOdds && lineupsDiffer(odds.comparison);
   const chosen = differ && picked?.under === recommended ? picked.key : null;
   const objective = chosen ?? recommended;
