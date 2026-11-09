@@ -2,6 +2,10 @@
 
 > Status (2026-10-25): a dated spike. FantasyPros weekly rankings are now ingested as `nfl_ecr` under private use (decision of 2026-10-23, see `docs/backlog.md`, Modeling v2), so the licensing questions below are answered for private use only. Current loaders: `stages/ingest_nfl.py` and `stages/ingest_role.py`.
 
+> Added 2026-11-09, after the nfl-stat-app merge (#70):
+> - **nflverse play-by-play** (CC BY 4.0, per `research/public_features.py`). One full download per season in `data/raw/pbp/<season>.parquet` (`nfl_stat.pipeline.pbp_source`, gitignored, never served), read by `ingest_role`, `environment`, `streaming` (DEF scoring facts) and the stat build. The stat build (`make stat-data`) writes pruned shards for 2021 on to `data/stat`, joined with nflverse participation (`load_participation`, labelled FTN participation in Find players; only for seasons before the current one) and Next Gen Stats. FTN data is CC BY-SA 4.0 ("FTN Data via nflverse"). FTN charting (`load_ftn_charting`) is used only by a rejected research check (`research/pbp_features_check.py`), not by the app.
+> - **Jev** (TypeSafe's hosted model) reads Ask's questions when `JEV_API_KEY` is set. It receives only the question text and the generic stat catalog, never league names, ids, rosters or other league data (test: `tests/stat/test_jev_intent.py`).
+
 Every number below was measured by running real calls. Scratch scripts and cached responses live in `/private/tmp/claude-501/-Users-eliheakins/f1c4f309-1847-4dfc-9529-f4531042b485/scratchpad/spikes`. Environment: Python 3.12 (uv), nflreadpy, polars, requests. At the time of the run the real calendar was NFL week 7, regular season, and week 7 Thursday night (NE at CHI) was final.
 
 Sleeper usage: 35 GET calls total, players file fetched once (12,229 entries, 0.5 s), no auth, no errors, no rate-limit signals.
@@ -162,7 +166,7 @@ Method: for every starter on all 20 rosters (both leagues, 10 teams each), compu
 - Best variant tested (count `ff` forced fumbles when the league's `ff` is nonzero, use net yards allowed = opponent passing_yards + sack_yards_lost + rushing_yards): 17 of 19 exact. The two misses: Colgate CHI (the user's own DEF) calculated 14, Sleeper 12 (+2.0); YinzBurgh DEN calculated 11, Sleeper 12 (-1.0).
 - A gross-yards variant gives 16 of 19, and omitting `ff` gives 14 of 19, so the variants matter.
 - Cause of the CHI error is not proven. CHI has 3 forced fumbles in nflverse and Sleeper credited fewer. The likely cause is how Sleeper attributes forced fumbles (defense versus special teams, and the `def_st_ff` and `st_ff` keys) but this was not tested at play level.
-- The DEN residual is not explained. Pending a play-by-play test.
+- The DEN residual is not explained. Pending a play-by-play test. Resolved 2026-11-06 (decisions.md, "DEF scoring fixed against Sleeper"): the play-by-play test over 2026 weeks 1 to 8 found four causes (gross yards, missing fumble-return TDs, return TDs removed from points allowed, special-teams takeaways scored at the defense's rates). After the fix 92 of 94 (Colgate) and 88 of 89 (YinzBurgh) rostered DEF team-weeks match; the remaining misses listed there do not include this week's CHI or DEN.
 - Wrong team code was the first DEF failure: the Rams (`LAR` in Sleeper, `LA` in nflverse) produced a false missing row until mapped.
 
 Conclusion: per-league scoring from nflverse weekly stats is feasible for QB, RB, WR, TE, K to Sleeper's cent. DEF is within 2 points on this sample (17 of 19 exact) and needs a forced-fumble and yardage tune.
