@@ -35,7 +35,7 @@ export function RangeBar({ domain, width = 120, height = 16, name, muted = false
           width={Math.max(bar.x2 - bar.x1, 1)}
           height={barHeight}
           rx={2}
-          className={muted ? "fill-line" : "fill-faint"}
+          className={muted ? "fill-chart-other" : "fill-faint"}
         />
       )}
       {tick !== null && (
@@ -44,7 +44,7 @@ export function RangeBar({ domain, width = 120, height = 16, name, muted = false
           y={1}
           width={TICK_WIDTH}
           height={height - 2}
-          className={muted ? "fill-muted stroke-page" : "fill-ink stroke-page"}
+          className="fill-ink stroke-page"
           strokeWidth={1}
         />
       )}

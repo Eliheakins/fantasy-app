@@ -6,11 +6,11 @@ Light backgrounds: page `#F1F5F2`, surface `#FFFFFF` (fields, popovers), panel `
 
 ## Failures
 
-Every text pair passes. Eight mark pairs fail 3:1:
+Every text pair passes. One mark pair fails 3:1:
 
-- `chart-other` `#A3B0A9` (other teams' lines and bars) on page 2.04:1, panel 1.88:1, surface 2.25:1, and on the `line` track of a win bar 1.71:1. It is recessive on purpose (decisions.md, 2026-11-05), and those charts keep labels and a table view, but it is below 3:1.
-- `line` `#D9E3DC` as the opponent's range fill in `RangeBar` (`muted`) on page 1.19:1, panel 1.10:1, surface 1.31:1. The Lineup "Your matchup" panel draws it on the panel.
 - `ink` `#13201A` median tick on a `faint` `#5E6A64` range fill in `RangeBar`: 2.98:1. The tick has a page-colour stroke, and page against faint is 5.13:1.
+
+Fixed on 2026-11-09: `chart-other` went from `#A3B0A9` (1.71 to 2.25) to `#748179`, and the opponent's range fill in `RangeBar` (`muted`) moved from `line` (1.10 to 1.31) to `chart-other` with the ink tick. Forest against the new `chart-other` is 2.98:1. No grey reaches 3:1 against both forest and the `line` track, so the track came first; my series also differs by weight and a direct label.
 
 ## Text (need 4.5:1)
 
@@ -42,14 +42,13 @@ Every text pair passes. Eight mark pairs fail 3:1:
 |---|---|---|
 | forest/page, panel, surface | 11.03, 10.13, 12.14 | my line and bars |
 | faint/page, panel, surface | 5.13, 4.71, 5.64 | neutral bars, range fills, dumbbell line |
-| chart-other/page, panel, surface | 2.04, 1.88, 2.25 | other teams (fails) |
-| forest/chart-other | 5.40:1 | my series next to the others |
-| line/page, panel, surface | 1.19, 1.10, 1.31 | opponent's range fill (fails) |
+| chart-other `#748179`/page, panel, surface | 3.70, 3.40, 4.07 | other teams, opponent's range fill |
+| forest/chart-other | 2.98:1 | my series next to the others (also heavier and labelled) |
 | forest/line | 9.23:1 | win bar fill on its track |
 | faint/line | 4.29:1 | win bar fill on its track |
-| chart-other/line | 1.71:1 | win bar fill on its track (fails) |
+| chart-other/line | 3.10:1 | win bar fill on its track |
 | ink/faint | 2.98:1 | range bar median tick (fails) |
-| muted/line | 4.79:1 | opponent's median tick |
+| ink/chart-other | 4.13:1 | opponent's median tick |
 | chrome-accent `#9FE0BC`/chrome-tabs, forest | 6.67, 8.01 | active tab underline |
 | focus/page, surface, panel | 7.33, 8.07, 6.73 | focus ring |
 | white/forest | 12.14:1 | focus ring on the header band |

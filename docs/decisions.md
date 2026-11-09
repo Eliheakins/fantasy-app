@@ -1063,3 +1063,9 @@ Two research agents surveyed the decision code (assumptions with file and line) 
 - **Fantasy questions go to the app's pages, by rules alone** (`fantasyRoute.ts`, `paths/routePath.ts`, after trades and before the stat paths, so the model is never asked and no league data reaches it): waivers, pick-ups and drops to Moves (free agents); one player's injury, projection, rest of season or outlook to his player page; projections with no player, byes and this week's opponent to Lineup; strength of schedule is said to be missing. Logged as a message.
 - **"which defense" / "offense"** with no player makes a team question in the rules too (it did only in the model path).
 - **156 questions after step 5:** right 129, wrong 2, fair 4, refused but answerable 18, new data 3. Not done (later steps of the report): first names and typos in player names, snap share, DEF points, points scored, division, dome, prime time and snow chips, over-expected values, fantasy points per opportunity.
+
+## 2026-11-09: Chart greys pass 3:1
+
+- **`chart-other` darkened from `#A3B0A9` to `#748179`** (other teams' lines and bars, missed-playoff seeds). It was 1.7 to 2.3 against the page, panel, surface and the win bar's `line` track; it is now 3.4 to 4.1, and 3.1 on the track. Forest against it fell from 5.4 to 3.0. No grey reaches 3:1 against both forest and the track, so the track came first; my series is also heavier and directly labelled.
+- **The opponent's range on Lineup ("Your matchup") is drawn in `chart-other`, not `line`** (1.1 to 1.3, near invisible on the panel). Its median tick is ink with the page outline, like every other range bar (`muted` grey on the darker fill would have been 1.6). `line` stays a decoration colour for grids and tracks.
+- Still below 3:1: the ink median tick on a `faint` range fill (2.98); its page-colour outline carries it (5.13). Ratios in `web/CONTRAST.md`.
