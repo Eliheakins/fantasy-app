@@ -4,24 +4,38 @@ Status: merged into the plan on 2026-10-23. The "Problems the agent found" list 
 
 ## Repo layout
 
+Updated 2026-11-09, after the nfl-stat-app merge (#70) and the architecture cleanup (#72).
+
 ```
 pyproject.toml  uv.lock  Makefile  config.toml
-src/fantasy/
+src/fantasy/      the fantasy app; imports nfl_stat, never the other way
   config.py  store.py  scoring.py (pure: stats x league settings -> points)
-  api.py  api_routes.py  api_models.py  api_jobs.py  api_envelope.py   FastAPI app (make serve)
-  data_api.py  _*.py   read layer the API calls, and its private modules (_engine, _lineup, ...)
+  api.py  api_routes.py  api_models.py  api_jobs.py  api_deps.py  api_envelope.py   FastAPI app (make serve)
+  data_api.py  _*.py   read facade the API calls, and its private modules (_engine, _leagues, _live, ...)
+  _runs.py             refresh run records (refresh_runs)
   live_refresh.py      score refresh while make serve runs
   sources/    sleeper.py  (Sleeper client)
   stages/     one module per stage, run as python -m fantasy.stages.<name>
-  sim/        pure logic: sampler, lineup (greedy, no solver), season, moves, injuries, blend, odds
-web/          React UI (Vite, TypeScript); pages in web/src/pages, nav in web/src/nav.ts
-tests/        pytest suite
-data/         gitignored: raw/ derived/ archive/
+  sim/        pure logic: sampler, lineup (greedy, no solver), season, moves, injuries, blend, odds, league_data
+src/nfl_stat/     the stat backend: shard build (pipeline/), Ask intent endpoint (services/), shard serving, shared code
+  core/seasons.py      current_season() and the first-season constants
+  pipeline/pbp_source.py  shared play-by-play cache
+metrics/metrics.json  stat definitions, read by nfl_stat and the browser engine
+web/src/          React UI (Vite, TypeScript): stat/ (in-browser query engine) -> features/ -> pages/; lib/, components/ shared
+tests/            fantasy/{api,engine,stages}/ and stat/
+data/             gitignored: raw/ (raw/pbp/) derived/ archive/ stat/
 ```
+
+## Packages and boundaries
+
+- Two Python packages with a one-way dependency, `fantasy -> nfl_stat`. `nfl_stat` never imports `fantasy`.
+- One process. `fantasy.api.create_app` calls `nfl_stat.main.attach`, which adds the stat routes under `/api/stat` (`health`, `nlq/intent`) and serves only `data/stat` at `/api/stat/data`, before the SPA mount. `data/stat` holds nflverse data only (shards, `manifest.json`, `players.json`); league data and `nfl_ecr` never go there, because it is served.
+- One play-by-play download per season. `nfl_stat.pipeline.pbp_source` keeps the full nflverse play-by-play in `data/raw/pbp/<season>.parquet` (never served). The fantasy stages (`ingest_role`, `environment`, `streaming`) and the stat build read it through `read_pbp`.
+- The stat query engine runs in the browser (`web/src/stat/`): it reads the Parquet shards from `/api/stat/data` and league points from `/api/leagues/{league}/player-points`. `web/src/architecture.test.ts` enforces the layers.
 
 ## Storage
 
-Parquet is the source of truth. This is the design-time table: the current 46 tables are the keys of `store.SCHEMAS` (for example `nfl_player_stats` replaced `nfl_weekly`).
+Parquet is the source of truth. This is the design-time table: the current 55 tables (2026-11-09) are the keys of `store.SCHEMAS` (for example `nfl_player_stats` replaced `nfl_weekly`).
 
 | Table | Key | Writer | Readers |
 |---|---|---|---|
@@ -59,6 +73,7 @@ Each stage runs as `uv run python -m fantasy.stages.X` (most take no arguments).
 - There is no `make gameday`. While `make serve` runs, `live_refresh.py` runs `sync_week` and then `simulate.run(archive=False)` every 10 minutes while games are on. Players whose kickoff has passed (from schedules) are held fixed in lineup.py.
 - Run by hand (`make refresh`). The Refresh scores button re-pulls Sleeper matchups only.
 - Every raw pull is cached. Projections are archived every week and never overwritten, because point-in-time history cannot be rebuilt later. The API caches league inputs per data version (`_engine`).
+- `make refresh` ends with `stat-data-refresh` (the current season's stat shards). Each step runs through `fantasy.stages.run_recorded` and appends ok or failed to `refresh_runs`; a soft failure lets later steps run, but `refresh_report` exits 1 and the stale banner names the stage.
 
 ## Config
 
@@ -66,12 +81,16 @@ Each stage runs as `uv run python -m fantasy.stages.X` (most take no arguments).
 
 ## Data layer (the only module the API reads from)
 
-`data_api.py` is the read layer; `api_routes.py` maps its functions to the `/api/leagues/{league}/...` routes. The function list below is the design-time list, so check `data_api.py` for current names. All return Polars DataFrames. The UI does no SQL or math. The React front end in `web/` calls FastAPI, which wraps these functions.
+`data_api.py` is a read facade; `api_routes.py` maps its functions to the `/api/leagues/{league}/...` routes. It re-exports entry points from its sibling `_` modules (`_engine`, `_leagues`, `_lineup`, `_outlook`, `_market`, `_profile`, `_status`, `_calendar`, `_actions`, `_scoreboard`, and others); `_live` is the only writer (`live_win_history`, the Sleeper sync behind Refresh scores). The read path imports no `fantasy.stages` module (`tests/fantasy/api/test_api_import_boundary.py`). Functions return Polars DataFrames. The UI does no SQL or math on league data.
+
+- **Request context, not globals.** Each request builds `api_deps.RequestContext(data_dir, team)` and passes it down as arguments. There is no import-time data folder and no ContextVar; `?team=` makes that roster "me".
+- **One error envelope.** Every `/api/*` error, stat routes included, has the same shape (`api_envelope.register_error_handlers`). Errors from `guarded()` are HTTP 200; the rest keep their real status code.
+- **Ask's model step.** `nfl_stat.services.intent_provider` picks the provider: Jev (TypeSafe's hosted model) when `JEV_API_KEY` is set, else the local MLX server; any Jev failure falls back to local. The browser tries its rules first and calls the endpoint only for what they cannot read. Only the question text and the generic catalog are sent.
 
 ## Expansion points
 
 - **Dynasty:** models/aging.py, an asset_values table (DynastyProcess, FantasyCalc) keyed by sleeper_id, and a multi-season horizon in decide.
-- **Props:** `make odds` (`stages/snapshot_odds.py`) archives prop lines (needs `ODDS_API_KEY`). Nothing downstream reads them yet.
+- **Props:** `make odds` (`stages/snapshot_odds.py`) archives prop lines (needs `ODDS_API_KEY`); `prop_points` turns the latest snapshot into this week's prop-implied points.
 - **News LLM:** a news stage writes news_events (sleeper_id, ts, role_change, games_out), which project applies as adjustments.
 - **React:** done (`web/`, FastAPI over `data_api.py`).
 
