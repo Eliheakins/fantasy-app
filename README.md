@@ -104,7 +104,7 @@ src/fantasy/
   api.py, api_routes.py  FastAPI app and /api routes (`make serve`)
   data_api.py          read layer over the parquet store (the API reads through it; _*.py hold the logic)
   live_refresh.py      score refresh while `make serve` runs
-  store.py             parquet store: atomic writes, schema checks (store.SCHEMAS: 52 tables)
+  store.py             parquet store: atomic writes, schema checks (store.SCHEMAS: 55 tables)
   scoring.py           Sleeper scoring settings applied to nflverse stat lines
   sources/             Sleeper client
   stages/              pipeline stages, each run as python -m fantasy.stages.<name>
@@ -154,4 +154,4 @@ Pipeline order (`make refresh`), <!-- AUTO-GENERATED from the Makefile --> `back
 
 ## Status
 
-Built and used during the 2026 season. The React UI in `web/` is the only UI (the Streamlit app was removed in commit 0cd914c). Open work on GitHub: issue #40 (retest the Sleeper blend weight on clean snapshots, around week 11, which is also the trade deadline), #65 (phone access through `tailscale serve`), #66 (Streamlit removal, done in 0cd914c; the issue is still open), the #68 UI epic and #37 (post-MVP: FAAB, a 16-team FAAB league, dynasty, a draft assistant, an own model, a news model).
+Built and used during the 2026 season. The React UI in `web/` is the only UI (the Streamlit app was removed in commit 0cd914c). Open work on GitHub: issue #40 (retest the Sleeper blend weight on clean snapshots, around week 11, which is also the trade deadline), #65 (phone access through `tailscale serve`), #73 (public readiness: sign-in, per-league access, rate limits; waits on Sleeper's written permission), the #68 UI epic and #37 (post-MVP: FAAB, a 16-team FAAB league, dynasty, a draft assistant, an own model, a news model).
