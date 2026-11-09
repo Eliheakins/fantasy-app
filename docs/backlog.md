@@ -1,14 +1,27 @@
-# Backlog (2026-10-23; known gaps and status refreshed 2026-10-28)
+# Backlog (2026-10-23; known gaps and status refreshed 2026-11-09)
 
 One story is one working session. Engine and dashboard stories are merged per epic, so every epic ends with a usable panel. This file is canonical for story IDs and order. Story IDs in modeling.md and dashboard.md are superseded. modeling.md sections 10b and 10c override its earlier sections. Reference designs: spec/architecture.md, spec/modeling.md, spec/dashboard.md, spec/data-sources.md. Original brainstorm: archive/plan.md.
 
+## Status update (2026-11-09)
+
+**Open on GitHub:** #37 (post-MVP), #40 (Sleeper blend retest, around week 11), #65 (U17 phone access), the #68 UI epic, #70 (stat app merge) and #71 (Jev for Ask), both built but still open, #72 (architecture review) and #73 (public readiness). #66 is closed.
+
+**Landed since 2026-10-28:**
+- **nfl-stat-app merged (#70, 2026-11-04).** Its history is kept. The stat backend is the `nfl_stat` package (`fantasy -> nfl_stat`, one way), its routes are under `/api/stat` and only `data/stat` is served. One play-by-play download per season is shared by the model and the stat build (`data/raw/pbp`). Explore (now Find players) and Ask are pages of this app, league points are a stat, Explore has a league filter, and Ask answers start/sit and trade questions.
+- **Five-tab redesign (look F, 2026-11-04 to 2026-11-05).** This week, Lineup, Moves, Season and Players replace the old pages, with redirects. A player page (`/players/:gsisId`) replaces the side sheet, with compare and saved searches. The graphite tokens are deleted. This week has a game-day block and the scores of every matchup; the header is the Forest band.
+- **Jev is Ask's intent model (#71, 2026-11-05)**, behind `INTENT_PROVIDER`, with the local Qwen server as the fallback. Eval: Jev 93/95, Qwen 78/95. Only the question text and the generic catalog are sent.
+- **Architecture cleanup (#72, 2026-11-05).** Request context instead of globals, one error envelope, `data_api` split into a read facade over `_` modules, one current season, refresh run records (`refresh_runs`; a failed stage makes `make refresh` exit 1), tests grouped by subject, CLAUDE.md split by area. Item 5 is partial and item 10 has one part left; item 8 (going public) moved to #73.
+- **Redesign decisions (2026-11-06).** Lineup always starts from win probability, and its matchup label reads "Even matchup". Moves shows Sleeper's trending count ("Trending: N adds across Sleeper") instead of "Likely gone". The Season heading's odds explain themselves.
+- **DEF scoring fixed (2026-11-06).** Net yards allowed, fumble-return TDs, return TDs kept in points allowed, and special-teams takeaways at Sleeper's special-teams rates, all from play-by-play. DEF now matches Sleeper in 92 of 94 (Colgate) and 88 of 89 (YinzBurgh) rostered team-weeks. DEF projection tests on the corrected scoring: five mean arms and three distribution arms, none shipped; `components` and `drift` are worth a retest on 2026 weeks 9 to 17.
+- **Ask expansion, steps 1 to 5 (2026-11-06).** Role-aware efficiency and undefined terms refused in code; relative time read in code and the current season by default; rankings from the model with top N and minimums; counts, shares, WOPR, RACR, passer rating and PPR points; position, rookie and opponent filters, contrasts, stat lines, and fantasy questions linked to the app's pages without the model. On the 156-question set, right answers went from 53 to 129 and wrong ones from 22 to 2.
+
 ## Status (2026-10-23, end of the second working session)
 
-**Dates:** trade deadline is week 11; issue #40 (retest the Sleeper blend weight on clean snapshots) is due around then. Open work on GitHub: #40, #37 (post-MVP), #65 and #66 (U17 and U18), and the #68 epic.  Planned 2026-11-04: #70 (merge nfl-stat-app) and #71 (test Jev for Ask, after #70). #41 (cleanup follow-ups) is closed.
+**Dates:** trade deadline is week 11; issue #40 (retest the Sleeper blend weight on clean snapshots) is due around then. Open issues are listed in the 2026-11-09 update above. #41 (cleanup follow-ups) is closed.
 
 **Done and verified on live data:** every story except E3-8 (all 36 E-series issues are closed on GitHub, #18 included; the ECR check is not in the code). Added this session: E2-2 odds snapshots, E3-6 tau from history, E3-7 DEF scoring and K/DEF projections, E4-2 player sampler, E4-5 win-probability lineup, E4-7 locks and injuries, E5-2 waiver value by re-simulation, E5-5 K/DEF streaming, and the dashboard stories (footer, range bars, objective toggle, Home actions, Outlook seeds and schedule, waiver detail and trending).
 
-**Since 2026-10-24:** the learned projection and chance-of-playing model, teammate vacancy, the weekly digest, per-team K and DEF, a ridge K and DEF model, a trade acceptance figure, a drop-risk watch, archive backups and K and DEF snapshots, and an optional scheduled refresh. Open on GitHub: #40, #65, #66, #37 and the #68 epic.
+**Since 2026-10-24:** the learned projection and chance-of-playing model, teammate vacancy, the weekly digest, per-team K and DEF, a ridge K and DEF model, a trade acceptance figure, a drop-risk watch, archive backups and K and DEF snapshots, and an optional scheduled refresh.
 
 **Not done:** E3-8 (ECR rank-to-points check, blocked on the FantasyPros redistribution terms) and everything under Post-MVP below.
 
@@ -24,11 +37,11 @@ One story is one working session. Engine and dashboard stories are merged per ep
 - Injury status: measured by status, practice report and injury type for the next four games; IR and similar are zero for 4 games. Defender injury curves reuse the skill-player curves. Vacancy bumps are shared equally among a team's receivers or backs.
 - No slot-matchup modeling (free data has no alignment).
 - Simulated draws are shared only for an identical set of players, so comparisons that change the player set (a different opponent) do not share draws.
-- Live scoring uses a fixed 200-minute game window (`sim/availability.py`). `make serve` refreshes scores every 10 minutes during games, and the Refresh scores button re-pulls matchups on demand. Season odds on Home only update on `simulate`.
+- Live scoring uses a fixed 200-minute game window (`sim/availability.py`). `make serve` refreshes scores every 10 minutes during games, and the Refresh scores button re-pulls matchups on demand. Season odds on This week only update on `simulate`.
 - The trade finder's points route searches each team's top 6 players; its need route adds each team's surplus bench players. Nothing models whether the partner accepts: the finder shows a share of past accepted trades as lopsided in market value (8 completed trades so far), not a chance.
 - Win probability, the lineup page and the season odds use each team's own K and DEF projection (best rostered unit; league mean where a team has none) with a league-wide spread. `calibration` still uses league means for past weeks, because only skill-position projections were archived before 2026-10-28; K and DEF snapshots now accumulate in `streaming_snapshots`.
 - The Sleeper blend weight (50%) is untested on clean data: #40, around week 11. Also test the rule that a Sleeper 0 counts as missing for Questionable and Doubtful players (unvalidated, see decisions.md): score both rules on clean snapshots from week 8.
-- DEF scoring matches Sleeper exactly in 52 of 60 (Colgate) and 41 of 60 (YinzBurgh) team-weeks; the rest are off by 1 to 2 points, likely special-teams recoveries. Held out (2024 to 2026 week 6), the ridge K projection is about 1.4% to 1.8% better than the league average (marginal) and DEF about 2.1% to 2.8% (`decisions.md`, 2026-10-27).
+- DEF scoring matches Sleeper exactly in 92 of 94 (Colgate) and 88 of 89 (YinzBurgh) rostered team-weeks of 2026 weeks 1 to 8; the three remaining misses are listed in `decisions.md` (2026-11-06). Held out (2024 to 2026 week 6), the ridge K projection is about 1.4% to 1.8% better than the league average (marginal) (`decisions.md`, 2026-10-27). On the corrected scoring the DEF model beats the league mean by 4.5% (Colgate) and 7.1% (YinzBurgh) RMSE, 2024 to 2026 week 8 (`decisions.md`, 2026-11-06).
 - Weekly lineup shortfall of opponents (about 1.75 points) and the playoff-week weighting of player value were tested and not adopted (`decisions.md`, 2026-10-28).
 - tau is now estimated from history, but the spread of season win totals is untested (no league history).
 - The playoff bracket, byes and tiebreaks are assumptions; the user confirmed 6 teams, byes for seeds 1 and 2, weeks 15 to 17.
@@ -144,7 +157,7 @@ Plan from the `ecc:planner` agent, adjusted for the FantasyPros rankings now all
 
 Order: M1 (with the M4 features that passed testing), M2, M3, then M4 loaders for the live path, M5, M6. Cut first if short: M6, M5, then pace and advanced stats within M4. Participation data is skipped (no gain).
 
-## UI v2 (React): planned 2026-10-24; U1 to U16 and U19 closed on GitHub; U17 open; U18 done in 0cd914c (issue #66 still open)
+## UI v2 (React): planned 2026-10-24; U1 to U16, U18 and U19 closed on GitHub; U17 open
 
 Epic #68. One switch from Streamlit to React, built next to Streamlit and retired in one commit after a parity check on live data. Decided: FastAPI over `data_api`; Vite, React 19, TypeScript, TanStack Query and Table; shadcn/ui on Tailwind 4; Recharts for line and bar charts; hand-drawn SVG for the range bar, sparkline, bullet bar and trade dumbbell (Tremor rejected: stale npm package, React 18 only); phone through `tailscale serve`; refresh stays manual; no alerts and no AI assistant for now. First new features: League page (power rankings, luck and all-play, manager grades, schedule strength, what-ifs), market trade values (FantasyCalc), Weekly digest. The Streamlit pages were removed in 0cd914c (U18).
 
