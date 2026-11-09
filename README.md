@@ -87,7 +87,11 @@ Checks against real data: `uv run python -m fantasy.stages.validate_scoring` (co
 | `JEV_API_KEY` | For Jev only | `nfl_stat/services/jev_intent.py` | TypeSafe API key for Jev (`.env` only, never logged). `JEV_MODEL` (default `jev-latest`) and `JEV_TIMEOUT_SECONDS` (default 10) are optional |
 | `LLM_BASE_URL`, `LLM_MODEL`, `LLM_TIMEOUT_SECONDS` | No | `nfl_stat/core/config.py` | The local OpenAI-compatible server (default `http://127.0.0.1:8080/v1`, Qwen3-4B, 120 s) |
 | `FANTASY_BACKUP_DIR` | No | `stages/backup.py` | Where `make backup` writes (default `~/fantasy-app-backups`) |
+| `NFL_STAT_DATA_DIR` | No | `nfl_stat/core/config.py` | The stat shard folder the API serves (default `data/stat`). Must never hold league data |
+| `NFLVERSE_DOWNLOAD_BASE` | No | `nfl_stat/pipeline/pbp_source.py` | Release host for the play-by-play download (default the nflverse GitHub releases; `https://` or `http://` only) |
+| `PIPELINE_GC` | No | `nfl_stat/pipeline/cli.py` | `0`, `false` or `no` turns off garbage collection between seasons in the stat build (default on) |
 | `ESPN_S2`, `ESPN_SWID` | Only for `research/espn_fetch.py` | research script | ESPN login cookies for the private YinzBurgh history (`.env` only) |
+| `KDEF_SEED`, `VARIANTS_PREDS` | No | `research/kdef_pairs.py`, `research/variants_check.py` | Research reruns: the K and DEF draw seed (default `20261025`); where walk-forward predictions go (default `research/scratch/preds`) |
 <!-- END AUTO-GENERATED -->
 
 During the season, run `make refresh` after games and before setting a lineup. The app shows a banner when data is stale or when a projection layer's stage has not run. This week's "Refresh scores" button re-fetches Sleeper matchups on demand. While `make serve` runs, it also refreshes scores every 10 minutes while a game of the current week is on (`LIVE_REFRESH=off` turns that off).
