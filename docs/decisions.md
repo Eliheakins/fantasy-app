@@ -1107,3 +1107,8 @@ Plan: `.plans/accounts-and-refresh-20261109-2155.md`. Supersedes the Caddy-passw
 - **Refresh on the server:** queued through the marker file; the systemd path unit started it within 8 seconds and it finished in 3 min 51 s (20:21:58 to 20:25:49 EST), every stage ok, published. Peak memory 1.87 GB of 3.8 GB (cgroup `MemoryPeak`), 295 s of CPU. This replaces the "unmeasured" lines above. The Mac took 2 min 6 s on 8 cores.
 - **Found:** `uv` was not on the PATH of a non-interactive `ssh` command, so the admin command in `bootstrap.sh` would have failed; it is now linked into `/usr/local/bin`. The `invite` CLI prints a placeholder host when run over ssh (it reads `API_ALLOWED_HOSTS` from the environment, which only the service has); the admin page builds correct links.
 - **Not yet done:** the admin account (needs an interactive password), the GitHub deploy secrets, and `make schedule-remove` on the Mac.
+
+## 2026-11-09: Ask's model on the server
+
+- **`JEV_API_KEY` copied to the server's `.env`** (only that line; the Mac's `.env` also holds ESPN cookies and the Odds API key, which the server does not need). Mode 600, owner `fantasy`. Provider stays `auto`: Jev, with the local model as fallback, which does not exist on the server, so a Jev failure reaches the client as 503. What leaves the server is the question text and the generic stat catalog, never league data.
+- **Per-account limit of 20 Ask model calls a minute** in the sign-in gate, because every call to the route is billed to the owner's key. Jev's price per call was not looked up.

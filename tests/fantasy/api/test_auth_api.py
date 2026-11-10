@@ -173,3 +173,53 @@ def test_required_mode_serves_normally_once_signed_in(
     monkeypatch.setenv("FANTASY_AUTH", "required")
     assert login(secured).status_code == 200
     assert secured.get("/api/leagues").status_code == 200
+
+
+ASK = "/api/stat/nlq/intent"
+
+
+def ask(client: TestClient) -> Any:
+    return client.post(ASK, json={"question": "who led the league in rushing yards"})
+
+
+def test_each_account_may_ask_the_model_only_so_often(
+    secured: TestClient, store_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every call to the Ask route is a paid model call on the owner's key."""
+    monkeypatch.setattr(routes, "intent_limiter", routes.FailureLimiter(limit=3, window_s=60.0))
+    login(secured)
+    assert [ask(secured).status_code == 429 for _ in range(3)] == [False, False, False]
+    blocked = ask(secured)
+    assert blocked.status_code == 429
+    body = blocked.json()
+    assert body["error"]["code"] == "busy"
+    assert "Too many questions" in body["error"]["message"]
+
+
+def test_one_account_using_up_its_questions_does_not_block_another(
+    secured: TestClient, store_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(routes, "intent_limiter", routes.FailureLimiter(limit=2, window_s=60.0))
+    login(secured)
+    for _ in range(2):
+        ask(secured)
+    assert ask(secured).status_code == 429
+    friend = make_client(store_dir)
+    token = invite(store_dir, "friend@example.com")
+    friend.post("/api/auth/redeem", json={"token": token, "password": GOOD})
+    assert ask(friend).status_code != 429
+
+
+def test_the_question_limit_does_not_touch_other_routes(
+    secured: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(routes, "intent_limiter", routes.FailureLimiter(limit=1, window_s=60.0))
+    login(secured)
+    ask(secured)
+    assert ask(secured).status_code == 429
+    assert secured.get("/api/leagues").status_code == 200
+
+
+def test_the_limit_is_generous_enough_for_a_person_typing(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert routes.INTENT_PER_MINUTE >= 10
+    assert routes.intent_limiter.limit == routes.INTENT_PER_MINUTE

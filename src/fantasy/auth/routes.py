@@ -24,8 +24,13 @@ COOKIE = "fantasy_session"
 LOGIN_FAILURES = 5  # per address and per email, per minute
 LOGIN_WINDOW_S = 60.0
 LOCAL_PEERS = frozenset({"127.0.0.1", "::1"})
+# Every call to the Ask route reaches the paid model, so each account gets a few a minute, enough
+# for a person typing and not for a script.
+MODEL_ROUTE = "/api/stat/nlq/intent"
+INTENT_PER_MINUTE = 20
 
 limiter = FailureLimiter(limit=LOGIN_FAILURES, window_s=LOGIN_WINDOW_S)
+intent_limiter = FailureLimiter(limit=INTENT_PER_MINUTE, window_s=60.0)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
@@ -169,6 +174,11 @@ def install(app: FastAPI) -> None:
                 return fail("unauthorized", "Sign in to continue.", 401)
             if decision == "forbidden":
                 return fail("forbidden", "Only the admin can do that.", 403)
+            if account is not None and request.method == "POST" and request.url.path == MODEL_ROUTE:
+                key, now = f"ask:{account['id']}", time.monotonic()
+                if intent_limiter.blocked(key, now):
+                    return fail("busy", "Too many questions. Wait a minute and try again.", 429)
+                intent_limiter.record(key, now)
             league = access.LEAGUE_PATH.match(request.url.path)
             if league and account is not None:
                 data_dir = request.app.state.data_dir
