@@ -19,7 +19,8 @@ CHOPPED = {"num_teams": 16, "playoff_teams": None, "playoff_week_start": 0}  # w
 
 
 class FakeSleeper:
-    """Just enough of Sleeper's API: users by name, a user's leagues, a league's rosters."""
+    """Just enough of Sleeper's API: users by name, a user's leagues, a league's rosters and
+    users."""
 
     def __init__(self) -> None:
         self.users: dict[str, Any] = {
@@ -71,6 +72,13 @@ class FakeSleeper:
             return self.leagues.get(parts[1], [])
         if parts[0] == "league" and parts[2] == "rosters":
             return self.rosters.get(parts[1], [])
+        if parts[0] == "league" and parts[2] == "users":
+            owners = {r["owner_id"] for r in self.rosters.get(parts[1], [])}
+            return [
+                {**user, "metadata": {"team_name": f"{user['display_name']} FC"}}
+                for user in self.users.values()
+                if user["user_id"] in owners
+            ]
         raise AssertionError(f"unexpected Sleeper call {path}")
 
 
@@ -115,8 +123,11 @@ def lookup(client: TestClient, username: str = "FriendUser") -> Any:
     return client.post("/api/me/sleeper/lookup", json={"username": username})
 
 
-def add(client: TestClient, league_id: str, username: str = "FriendUser") -> Any:
-    return client.post("/api/me/leagues", json={"username": username, "league_id": league_id})
+def add(
+    client: TestClient, league_id: str, username: str = "FriendUser", roster_id: int = 1
+) -> Any:
+    body = {"username": username, "league_id": league_id, "roster_id": roster_id}
+    return client.post("/api/me/leagues", json=body)
 
 
 def test_lookup_lists_the_users_current_leagues_and_which_are_already_added(
@@ -124,7 +135,7 @@ def test_lookup_lists_the_users_current_leagues_and_which_are_already_added(
 ) -> None:
     assert add(friend, "111").status_code == 200
     data = lookup(friend).json()["data"]
-    assert data["display_name"] == "Friend"
+    assert (data["display_name"], data["user_id"]) == ("Friend", "u-friend")
     assert {lg["league_id"]: lg["added"] for lg in data["leagues"]} == {
         "111": True,
         "222": False,
@@ -221,7 +232,7 @@ def test_a_league_mate_adding_the_same_league_shares_it(
     first = sign_in(store_dir, "a@example.com")
     second = sign_in(store_dir, "b@example.com")
     assert add(first, "111").status_code == 200
-    assert add(second, "111", username="OtherUser").status_code == 200
+    assert add(second, "111", username="OtherUser", roster_id=2).status_code == 200
     conn = accounts.connect(store_dir)
     assert conn.execute("SELECT COUNT(*) FROM league_registry").fetchone()[0] == 1
     conn.close()
@@ -262,3 +273,49 @@ def test_a_league_the_app_cannot_model_cannot_be_added(friend: TestClient, store
     assert "no playoff" in response.json()["error"]["message"]
     assert friend.get("/api/me/leagues").json()["data"] == []
     assert refresh_queue.status(store_dir)["state"] == "idle"  # and no refresh was asked for
+
+
+def test_adding_a_league_keeps_the_team_picked_as_yours(friend: TestClient) -> None:
+    assert add(friend, "111", roster_id=2).json()["data"]["roster_id"] == 2
+    [row] = friend.get("/api/me/leagues").json()["data"]
+    assert row["roster_id"] == 2
+
+
+def test_adding_needs_a_team_and_one_that_is_in_the_league(friend: TestClient) -> None:
+    missing = friend.post("/api/me/leagues", json={"username": "FriendUser", "league_id": "111"})
+    assert missing.status_code == 422
+    response = add(friend, "111", roster_id=9)
+    assert response.status_code == 409
+    assert "not in that league" in response.json()["error"]["message"]
+    assert friend.get("/api/me/leagues").json()["data"] == []
+
+
+def test_the_teams_to_pick_from_carry_their_owners(friend: TestClient) -> None:
+    teams = friend.get("/api/me/sleeper/leagues/111/teams").json()["data"]
+    assert teams == [
+        {"roster_id": 1, "team_name": "Friend FC", "owner_id": "u-friend", "owner_name": "Friend"},
+        {"roster_id": 2, "team_name": "Other FC", "owner_id": "u-other", "owner_name": "Other"},
+    ]
+    assert friend.get("/api/me/sleeper/leagues/abc/teams").status_code == 422
+
+
+def test_an_unowned_team_is_named_by_its_number(friend: TestClient, sleeper: FakeSleeper) -> None:
+    sleeper.rosters["222"].append({"roster_id": 2, "owner_id": None})
+    teams = friend.get("/api/me/sleeper/leagues/222/teams").json()["data"]
+    assert teams[1] == {"roster_id": 2, "team_name": "Team 2", "owner_id": None, "owner_name": None}
+
+
+def test_the_team_in_an_added_league_can_be_changed(friend: TestClient) -> None:
+    add(friend, "111")
+    response = friend.put("/api/me/leagues/111/team", json={"roster_id": 2})
+    assert response.json()["data"] == {"league_id": "111", "roster_id": 2}
+    [row] = friend.get("/api/me/leagues").json()["data"]
+    assert row["roster_id"] == 2
+
+
+def test_changing_the_team_needs_your_league_and_a_team_in_it(friend: TestClient) -> None:
+    add(friend, "111")
+    assert friend.put("/api/me/leagues/222/team", json={"roster_id": 1}).status_code == 404
+    refused = friend.put("/api/me/leagues/111/team", json={"roster_id": 9})
+    assert refused.status_code == 409
+    assert friend.get("/api/me/leagues").json()["data"][0]["roster_id"] == 1

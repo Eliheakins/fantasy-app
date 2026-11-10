@@ -7,6 +7,7 @@ import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Button } from "@/components/ui/button";
 import { useLeague } from "@/lib/league";
+import { TeamPicker } from "./TeamPicker";
 
 const MY_LEAGUES_URL = "/api/me/leagues";
 const POLL_MS = 8000;
@@ -16,14 +17,17 @@ const STATUS_TEXT: Record<string, string> = {
   error: "Problem",
 };
 
-/** The leagues this account added, with where each stands. A new league is read at the next
- * refresh; the list checks every few seconds and tells the rest of the app when one becomes ready. */
+/** The leagues this account added, with where each stands and a way to change which team is yours.
+ * A league added before teams were picked asks for one. A new league is read at the next refresh;
+ * the list checks every few seconds and tells the rest of the app when one becomes ready. */
 export function MyLeagueList() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { setLeague } = useLeague();
   const state = useEnvelopeQuery<MyLeague[]>(MY_LEAGUES_URL, POLL_MS);
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [picking, setPicking] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const readyBefore = useRef(0);
   const ready = state.kind === "ready" ? state.data.filter((l) => l.status === "ready").length : 0;
@@ -43,6 +47,19 @@ export function MyLeagueList() {
     }
     await queryClient.invalidateQueries({ queryKey: ["api", MY_LEAGUES_URL] });
     await queryClient.invalidateQueries({ queryKey: ["api", "/api/leagues"] });
+  }
+
+  async function changeTeam(league: MyLeague, rosterId: number) {
+    setError(null);
+    setSaving(true);
+    const sent = await sendJson(`${MY_LEAGUES_URL}/${encodeURIComponent(league.league_id)}/team`, "PUT", { roster_id: rosterId });
+    setSaving(false);
+    if (!sent.ok) {
+      setError(sent.error.message);
+      return;
+    }
+    setPicking(null);
+    await queryClient.invalidateQueries({ queryKey: ["api"] }); // every page that shows "your team"
   }
 
   function open(league: MyLeague) {
@@ -71,8 +88,21 @@ export function MyLeagueList() {
                       {STATUS_TEXT[l.status] ?? l.status}
                       {l.error ? `: ${l.error}` : ""}
                     </span>
+                    {l.roster_id === null && (
+                      <span className="block text-caption text-ink">No team picked yet. Pick yours to confirm which team the app shows as you.</span>
+                    )}
                   </span>
-                  <span className="flex gap-2">
+                  <span className="flex flex-wrap gap-2">
+                    {picking !== l.league_id && (
+                      <Button
+                        size="sm"
+                        variant={l.roster_id === null ? "default" : "outline"}
+                        aria-label={`${l.roster_id === null ? "Pick" : "Change"} your team in ${l.name}`}
+                        onClick={() => setPicking(l.league_id)}
+                      >
+                        {l.roster_id === null ? "Pick your team" : "Change team"}
+                      </Button>
+                    )}
                     {l.status === "ready" && (
                       <Button size="sm" aria-label={`Open ${l.name}`} onClick={() => open(l)}>
                         Open
@@ -93,6 +123,17 @@ export function MyLeagueList() {
                       </Button>
                     )}
                   </span>
+                  {picking === l.league_id && (
+                    <TeamPicker
+                      leagueId={l.league_id}
+                      leagueName={l.name}
+                      initial={l.roster_id}
+                      confirmLabel="Save team"
+                      isBusy={saving}
+                      onConfirm={(rosterId) => void changeTeam(l, rosterId)}
+                      onCancel={() => setPicking(null)}
+                    />
+                  )}
                 </li>
               ))}
             </ul>

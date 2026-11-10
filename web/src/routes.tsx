@@ -3,6 +3,7 @@ import { createBrowserRouter, type RouteObject } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { RequireAdmin } from "@/components/layout/RequireAdmin";
 import { RequireSession } from "@/components/layout/RequireSession";
+import { WelcomeDialog } from "@/features/leagues/WelcomeDialog";
 import { redirectRoutes } from "@/lib/redirects";
 import { NAV_ITEMS, type NavPath } from "@/nav";
 import Admin from "@/pages/Admin";
@@ -39,7 +40,12 @@ export const routes: RouteObject[] = [
     element: <RequireSession />,
     children: [
       {
-        element: <AppShell />,
+        element: (
+          <>
+            <AppShell />
+            <WelcomeDialog />
+          </>
+        ),
         children: [
           ...NAV_ITEMS.map(({ path }) => ({ path, element: TABS[path] })),
           { path: "/players/find", element: <Explore /> },

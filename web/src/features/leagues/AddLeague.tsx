@@ -4,6 +4,7 @@ import { sendJson } from "@/api/envelope";
 import type { MyLeague, SleeperLookup } from "@/api/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TeamPicker } from "./TeamPicker";
 
 const MY_LEAGUES_KEY = ["api", "/api/me/leagues"] as const;
 /** Sleeper's own rule for a username; the server checks it again. */
@@ -11,13 +12,15 @@ const USERNAME_PATTERN = "[A-Za-z0-9_]{1,40}";
 
 type Props = { username: string; onUsername: (name: string) => void };
 
-/** Find a Sleeper user's leagues, then add the ones that are theirs. The username is not proof of
- * who someone is (Sleeper has no sign-in to check against), so the page says plainly what it does. */
+/** Find a Sleeper user's leagues, then add the ones that are theirs, picking which team in each is
+ * yours. The username is not proof of who someone is (Sleeper has no sign-in to check against), so
+ * the page says plainly what it does. */
 export function AddLeague({ username, onUsername }: Props) {
   const queryClient = useQueryClient();
   const [lookup, setLookup] = useState<SleeperLookup | null>(null);
   const [looking, setLooking] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
+  const [picking, setPicking] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<string | null>(null);
 
@@ -36,15 +39,17 @@ export function AddLeague({ username, onUsername }: Props) {
     setLookup(sent.data);
   }
 
-  async function handleAdd(leagueId: string, name: string) {
+  async function handleAdd(leagueId: string, name: string, rosterId: number) {
     setAdding(leagueId);
     setError(null);
-    const sent = await sendJson<MyLeague>("/api/me/leagues", "POST", { username: username.trim(), league_id: leagueId });
+    const body = { username: username.trim(), league_id: leagueId, roster_id: rosterId };
+    const sent = await sendJson<MyLeague>("/api/me/leagues", "POST", body);
     setAdding(null);
     if (!sent.ok) {
       setError(sent.error.message);
       return;
     }
+    setPicking(null);
     setAdded(name);
     setLookup((current) =>
       current ? { ...current, leagues: current.leagues.map((l) => (l.league_id === leagueId ? { ...l, added: true } : l)) } : current,
@@ -103,15 +108,29 @@ export function AddLeague({ username, onUsername }: Props) {
                   {l.added ? (
                     <span className="text-caption text-label">Added</span>
                   ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={l.problem !== null || adding !== null}
-                      aria-label={`Add ${l.name}`}
-                      onClick={() => void handleAdd(l.league_id, l.name)}
-                    >
-                      {adding === l.league_id ? "Adding…" : "Add"}
-                    </Button>
+                    picking !== l.league_id && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={l.problem !== null || adding !== null}
+                        aria-label={`Add ${l.name}`}
+                        onClick={() => setPicking(l.league_id)}
+                      >
+                        Add
+                      </Button>
+                    )
+                  )}
+                  {picking === l.league_id && !l.added && (
+                    <TeamPicker
+                      leagueId={l.league_id}
+                      leagueName={l.name}
+                      initial={null}
+                      ownerId={lookup.user_id}
+                      confirmLabel={`Add ${l.name}`}
+                      isBusy={adding === l.league_id}
+                      onConfirm={(rosterId) => void handleAdd(l.league_id, l.name, rosterId)}
+                      onCancel={() => setPicking(null)}
+                    />
                   )}
                 </li>
               ))}

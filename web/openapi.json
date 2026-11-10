@@ -418,6 +418,103 @@
         }
       }
     },
+    "/api/me/sleeper/leagues/{league_id}/teams": {
+      "get": {
+        "tags": [
+          "me"
+        ],
+        "summary": "League Teams",
+        "description": "The teams to pick from when adding a league or changing which team is yours.",
+        "operationId": "league_teams_api_me_sleeper_leagues__league_id__teams_get",
+        "parameters": [
+          {
+            "name": "league_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{1,30}$",
+              "title": "League Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_SleeperTeam__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/leagues/{league_id}/team": {
+      "put": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Set Team",
+        "description": "Change which team in one of the account's leagues is theirs.",
+        "operationId": "set_team_api_me_leagues__league_id__team_put",
+        "parameters": [
+          {
+            "name": "league_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_TeamSet_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/status": {
       "get": {
         "summary": "Status",
@@ -2850,13 +2947,19 @@
             "type": "string",
             "pattern": "^[0-9]{1,30}$",
             "title": "League Id"
+          },
+          "roster_id": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Roster Id"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
           "username",
-          "league_id"
+          "league_id",
+          "roster_id"
         ],
         "title": "AddRequest"
       },
@@ -3849,6 +3952,59 @@
           "started_at"
         ],
         "title": "Envelope[StatusData]"
+      },
+      "Envelope_TeamSet_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TeamSet"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[TeamSet]"
       },
       "Envelope_TradeEvaluation_": {
         "properties": {
@@ -5373,6 +5529,63 @@
         ],
         "title": "Envelope[list[SeedRow]]"
       },
+      "Envelope_list_SleeperTeam__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SleeperTeam"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[SleeperTeam]]"
+      },
       "Envelope_list_StatusChangeRow__": {
         "properties": {
           "status": {
@@ -6815,6 +7028,10 @@
             "type": "string",
             "title": "Username"
           },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
           "display_name": {
             "type": "string",
             "title": "Display Name"
@@ -6831,6 +7048,7 @@
         "type": "object",
         "required": [
           "username",
+          "user_id",
           "display_name",
           "leagues"
         ],
@@ -7243,6 +7461,17 @@
               }
             ],
             "title": "Error"
+          },
+          "roster_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roster Id"
           }
         },
         "additionalProperties": false,
@@ -7252,7 +7481,8 @@
           "league_key",
           "name",
           "status",
-          "error"
+          "error",
+          "roster_id"
         ],
         "title": "MyLeague"
       },
@@ -9067,6 +9297,49 @@
         ],
         "title": "SleeperLeague"
       },
+      "SleeperTeam": {
+        "properties": {
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          },
+          "team_name": {
+            "type": "string",
+            "title": "Team Name"
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Id"
+          },
+          "owner_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "roster_id",
+          "team_name",
+          "owner_id",
+          "owner_name"
+        ],
+        "title": "SleeperTeam"
+      },
       "SlotCall": {
         "properties": {
           "slot": {
@@ -9486,6 +9759,21 @@
         ],
         "title": "TeamGradeRow"
       },
+      "TeamRequest": {
+        "properties": {
+          "roster_id": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Roster Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "roster_id"
+        ],
+        "title": "TeamRequest"
+      },
       "TeamRow": {
         "properties": {
           "roster_id": {
@@ -9569,6 +9857,25 @@
           "record"
         ],
         "title": "TeamRow"
+      },
+      "TeamSet": {
+        "properties": {
+          "league_id": {
+            "type": "string",
+            "title": "League Id"
+          },
+          "roster_id": {
+            "type": "integer",
+            "title": "Roster Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "league_id",
+          "roster_id"
+        ],
+        "title": "TeamSet"
       },
       "TradeEvaluation": {
         "properties": {

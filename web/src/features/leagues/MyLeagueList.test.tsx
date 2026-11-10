@@ -8,9 +8,13 @@ import { MyLeagueList } from "./MyLeagueList";
 
 afterEach(() => vi.unstubAllGlobals());
 
-const QUEUED = { league_id: "111", league_key: "sl-111", name: "Waiting League", status: "queued", error: null };
-const READY = { league_id: "222", league_key: "sl-222", name: "Ready League", status: "ready", error: null };
-const BROKEN = { league_id: "333", league_key: "sl-333", name: "Broken League", status: "error", error: "Sleeper refused this league or did not answer." };
+const QUEUED = { league_id: "111", league_key: "sl-111", name: "Waiting League", status: "queued", error: null, roster_id: 1 };
+const READY = { league_id: "222", league_key: "sl-222", name: "Ready League", status: "ready", error: null, roster_id: 1 };
+const BROKEN = { league_id: "333", league_key: "sl-333", name: "Broken League", status: "error", error: "Sleeper refused this league or did not answer.", roster_id: 1 };
+const TEAMS = [
+  { roster_id: 1, team_name: "Boss FC", owner_id: "u-boss", owner_name: "Boss" },
+  { roster_id: 2, team_name: "Friend FC", owner_id: "u-friend", owner_name: "Friend" },
+];
 
 function open() {
   const router = createMemoryRouter(
@@ -90,5 +94,53 @@ describe("MyLeagueList", () => {
     await user.click(await screen.findByRole("button", { name: "Remove Waiting League" }));
     await user.click(screen.getByRole("button", { name: "Confirm remove Waiting League" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("You have not added that league.");
+  });
+
+  it("changes which team in a league is yours", async () => {
+    let listed = [READY];
+    const calls = stubScoped("/api/me/", (call) => {
+      if (call.url === "/api/me/sleeper/leagues/222/teams") return okReply(TEAMS);
+      if (call.method === "PUT") {
+        listed = [{ ...READY, roster_id: 2 }];
+        return okReply({ league_id: "222", roster_id: 2 });
+      }
+      return okReply(listed);
+    });
+    open();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Change your team in Ready League" }));
+    const picker = await screen.findByRole("combobox", { name: "Which team in Ready League is yours?" });
+    expect(picker).toHaveTextContent("Boss FC (Boss)"); // starts on the team picked before
+    await user.click(picker);
+    await user.click(await screen.findByRole("option", { name: "Friend FC (Friend)" }));
+    await user.click(screen.getByRole("button", { name: "Save team" }));
+    expect(await screen.findByRole("button", { name: "Change your team in Ready League" })).toBeInTheDocument();
+    expect(calls.find((c) => c.method === "PUT")).toMatchObject({ url: "/api/me/leagues/222/team", body: { roster_id: 2 } });
+  });
+
+  it("asks for a team in a league added before teams were picked", async () => {
+    stubScoped("/api/me/", (call) => (call.url.endsWith("/teams") ? okReply(TEAMS) : okReply([{ ...READY, roster_id: null }])));
+    open();
+    expect(await screen.findByText(/no team picked yet/i)).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Pick your team in Ready League" }));
+    const picker = await screen.findByRole("combobox", { name: "Which team in Ready League is yours?" });
+    expect(picker).toHaveTextContent("Choose your team");
+    expect(screen.getByRole("button", { name: "Save team" })).toBeDisabled();
+  });
+
+  it("shows why a team change was refused", async () => {
+    stubScoped("/api/me/", (call) =>
+      call.url.endsWith("/teams")
+        ? okReply(TEAMS)
+        : call.method === "PUT"
+          ? errorReply("invalid", "That team is not in that league.", 409)
+          : okReply([READY]),
+    );
+    open();
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: "Change your team in Ready League" }));
+    await screen.findByRole("combobox", { name: "Which team in Ready League is yours?" });
+    await user.click(screen.getByRole("button", { name: "Save team" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("That team is not in that league.");
   });
 });

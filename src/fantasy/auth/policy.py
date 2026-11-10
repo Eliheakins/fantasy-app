@@ -19,6 +19,7 @@ FRIEND_WRITES = (
     re.compile(r"^/api/stat/nlq/intent$"),
     re.compile(r"^/api/me/sleeper/lookup$"),  # add and remove your own leagues
     re.compile(r"^/api/me/leagues(/[^/]+)?$"),
+    re.compile(r"^/api/me/leagues/[^/]+/team$"),  # pick which team in it is yours
 )
 ADMIN_PREFIX = "/api/admin/"
 

@@ -21,7 +21,10 @@ beforeEach(() => {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string) =>
-      Response.json({ status: "ok", data: url.startsWith("/api/status") ? status : [], error: null, started_at: null }),
+      url.startsWith("/api/me/")
+        ? // no account (login off), so the first-visit dialog stays shut and the nav can be clicked
+          Response.json({ status: "error", data: null, error: { code: "unauthorized", message: "Sign in" }, started_at: null }, { status: 401 })
+        : Response.json({ status: "ok", data: url.startsWith("/api/status") ? status : [], error: null, started_at: null }),
     ),
   );
   window.localStorage.clear();

@@ -104,7 +104,7 @@ const UNREACHABLE: ApiError = { message: "Could not reach the server. Try again.
 
 /** POST or DELETE with a JSON body and fold every way it can fail into one result: a refusal from
  * the server keeps its message, and a network failure becomes a plain sentence. Never throws. */
-export async function sendJson<T>(url: string, method: "POST" | "DELETE", body?: unknown): Promise<Sent<T>> {
+export async function sendJson<T>(url: string, method: "POST" | "PUT" | "DELETE", body?: unknown): Promise<Sent<T>> {
   try {
     const envelope = await fetchEnvelope<T>(url, {
       method,

@@ -7,7 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from fantasy import api, store
-from fantasy.auth import accounts, passwords
+from fantasy.auth import accounts, leagues, passwords
 
 CSRF = {"X-Requested-With": "fantasy-app"}
 GOOD = "a long enough password"
@@ -126,6 +126,54 @@ def test_a_friends_default_team_is_the_roster_their_sleeper_id_owns(store_dir: P
     assert row["roster_id"] == 3
     default = friend.get("/api/leagues/t/roster").json()["data"]
     assert default == friend.get("/api/leagues/t/roster?team=3").json()["data"]
+
+
+def test_a_friend_in_the_owners_league_gets_their_own_team_not_the_owners(
+    store_dir: Path,
+) -> None:
+    teams = store.read_table("league_teams", "raw", store_dir)
+    owners = teams.filter(pl.col("is_me"))["roster_id"].to_list()
+    assert len(owners) == 1  # the shared store marks the owner's team, like a config.toml league
+    friend_roster = next(r for r in teams["roster_id"].to_list() if r not in owners)
+    store.write_table(
+        "league_teams",
+        teams.with_columns(
+            pl.when(pl.col("roster_id") == friend_roster)
+            .then(pl.lit(FRIEND_SLEEPER_ID))
+            .otherwise(pl.col("owner_id"))
+            .alias("owner_id")
+        ),
+        "raw",
+        store_dir,
+    )
+    friend = sign_in(store_dir, "friend@example.com", grant=True)
+    conn = accounts.connect(store_dir)
+    accounts.set_sleeper_user(conn, account_id(store_dir, "friend@example.com"), FRIEND_SLEEPER_ID)
+    conn.close()
+
+    teams_seen = friend.get("/api/leagues/t/teams").json()["data"]
+    assert [r["roster_id"] for r in teams_seen if r["is_me"]] == [friend_roster]
+    [row] = friend.get("/api/leagues").json()["data"]
+    assert row["roster_id"] == friend_roster
+
+
+def test_the_team_an_account_picked_beats_the_one_its_sleeper_user_owns(store_dir: Path) -> None:
+    set_friend_as_a_roster(store_dir, roster_id=3)
+    friend = sign_in(store_dir, "friend@example.com", grant=True)
+    conn = accounts.connect(store_dir)
+    friend_id = account_id(store_dir, "friend@example.com")
+    accounts.set_sleeper_user(conn, friend_id, FRIEND_SLEEPER_ID)
+    leagues.set_team(conn, friend_id, LEAGUE_ID, 2)
+    conn.close()
+
+    teams = friend.get("/api/leagues/t/teams").json()["data"]
+    assert [r["roster_id"] for r in teams if r["is_me"]] == [2]
+    [row] = friend.get("/api/leagues").json()["data"]
+    assert row["roster_id"] == 2
+    assert (
+        friend.get("/api/leagues/t/roster").json()
+        == friend.get("/api/leagues/t/roster?team=2").json()
+    )
 
 
 def test_the_week_calendar_lists_only_the_accounts_leagues(store_dir: Path) -> None:

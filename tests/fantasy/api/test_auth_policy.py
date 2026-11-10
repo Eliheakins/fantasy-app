@@ -30,6 +30,7 @@ ADMIN = {"id": 1, "email": "boss@example.com", "is_admin": True}
         ("POST", "/api/me/leagues", USER, "allow"),
         ("DELETE", "/api/me/leagues/111", USER, "allow"),
         ("DELETE", "/api/me/leagues/111/extra", USER, "forbidden"),
+        ("PUT", "/api/me/leagues/111/team", USER, "allow"),
         ("POST", "/api/live/refresh", USER, "forbidden"),
         ("POST", "/api/leagues/colgate/anything-new", USER, "forbidden"),
         ("DELETE", "/api/leagues/colgate", USER, "forbidden"),
@@ -71,6 +72,7 @@ def test_every_write_the_app_has_is_one_we_decided_about(tmp_path) -> None:  # n
         "POST /api/me/leagues",
         "POST /api/me/sleeper/lookup",
         "POST /api/stat/nlq/intent",
+        "PUT /api/me/leagues/{league_id}/team",
     ]
 
 

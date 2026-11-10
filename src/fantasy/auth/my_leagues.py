@@ -2,16 +2,18 @@
 
 Sleeper cannot prove who someone is, so the checks are the ones that can be made: the league must
 be in that user's current-season list, one team in it must belong to that user, and an account
-stays tied to the first Sleeper user it used. League data is public on Sleeper, so nothing secret is
-exposed; the account link only decides whose list a league appears in. Adding a league queues a
-refresh, and the next run reads it (see fantasy/refresh_queue and stages/sync_sleeper).
+stays tied to the first Sleeper user it used. The person picks which team is theirs (the one that
+user owns is offered first) and can change it later; that pick is the team the app views as
+theirs. League data is public on Sleeper, so nothing secret is exposed; the account link only
+decides whose list a league appears in. Adding a league queues a refresh, and the next run reads it
+(see fantasy/refresh_queue and stages/sync_sleeper).
 """
 
 import time
 from datetime import UTC, datetime
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Path, Request
 from pydantic import Field
 
 from fantasy import refresh_queue
@@ -25,6 +27,7 @@ from fantasy.sources.sleeper import SleeperError, fetch
 
 USERNAME_PATTERN = r"^[A-Za-z0-9_]{1,40}$"  # Sleeper usernames; nothing that could alter the url
 LOOKUPS_PER_MINUTE = 10
+LEAGUE_ID_PATTERN = r"^[0-9]{1,30}$"
 
 lookup_limiter = FailureLimiter(limit=LOOKUPS_PER_MINUTE, window_s=60.0)
 router = APIRouter(prefix="/api/me", tags=["me"])
@@ -36,7 +39,12 @@ class LookupRequest(Row):
 
 class AddRequest(Row):
     username: str = Field(pattern=USERNAME_PATTERN)
-    league_id: str = Field(pattern=r"^[0-9]{1,30}$")
+    league_id: str = Field(pattern=LEAGUE_ID_PATTERN)
+    roster_id: int = Field(ge=1)
+
+
+class TeamRequest(Row):
+    roster_id: int = Field(ge=1)
 
 
 class SleeperLeague(Row):
@@ -49,6 +57,7 @@ class SleeperLeague(Row):
 
 class Lookup(Row):
     username: str
+    user_id: str
     display_name: str
     leagues: list[SleeperLeague]
 
@@ -59,6 +68,19 @@ class MyLeague(Row):
     name: str
     status: str  # queued (waiting for a refresh), ready, or error
     error: str | None
+    roster_id: int | None  # the team the account picked; null for one added before teams were
+
+
+class SleeperTeam(Row):
+    roster_id: int
+    team_name: str
+    owner_id: str | None
+    owner_name: str | None
+
+
+class TeamSet(Row):
+    league_id: str
+    roster_id: int
 
 
 class Removed(Row):
@@ -86,6 +108,33 @@ def _their_leagues(user_id: str) -> list[dict[str, Any]]:
     return [lg for lg in found if isinstance(lg, dict)] if isinstance(found, list) else []
 
 
+def _rosters(league_id: str) -> list[dict[str, Any]]:
+    found = _sleeper(f"/league/{league_id}/rosters")
+    return [r for r in found if isinstance(r, dict)] if isinstance(found, list) else []
+
+
+def _teams(league_id: str) -> list[dict[str, Any]]:
+    """Every team in the league with its owner's name, so a person can tell which is theirs."""
+    rosters = _rosters(league_id)
+    found = _sleeper(f"/league/{league_id}/users")
+    users = {str(u.get("user_id")): u for u in found if isinstance(u, dict)} if found else {}
+    teams = []
+    for r in rosters:
+        owner_id = str(r["owner_id"]) if r.get("owner_id") else None
+        user = users.get(owner_id or "", {})
+        owner_name = user.get("display_name")
+        team_name = (user.get("metadata") or {}).get("team_name") or owner_name
+        teams.append(
+            {
+                "roster_id": int(r["roster_id"]),
+                "team_name": str(team_name or f"Team {r['roster_id']}"),
+                "owner_id": owner_id,
+                "owner_name": str(owner_name) if owner_name else None,
+            }
+        )
+    return sorted(teams, key=lambda t: t["roster_id"])
+
+
 def _problem(lg: dict[str, Any]) -> str | None:
     """Why the season simulation cannot model this league, from Sleeper's own settings."""
     settings = lg.get("settings") or {}
@@ -105,6 +154,17 @@ def no_account() -> Any:
 
 
 NO_USER = "No Sleeper user has that name."
+NO_TEAM = "That team is not in that league."
+
+
+def _limited(account: dict[str, Any]) -> bool:
+    """Count one Sleeper lookup for the account; True when it has had its share this minute."""
+    key = f"lookup:{account['id']}"
+    now = time.monotonic()
+    if lookup_limiter.blocked(key, now):
+        return True
+    lookup_limiter.record(key, now)
+    return False
 
 
 @router.post("/sleeper/lookup", response_model=Envelope[Lookup])
@@ -112,11 +172,8 @@ def lookup(body: LookupRequest, request: Request) -> Any:
     account = _account(request)
     if account is None:
         return no_account()
-    key = f"lookup:{account['id']}"
-    now = time.monotonic()
-    if lookup_limiter.blocked(key, now):
+    if _limited(account):
         return fail("busy", "Too many lookups. Wait a minute and try again.", 429)
-    lookup_limiter.record(key, now)
     try:
         user = _user(body.username)
         if user is None:
@@ -129,6 +186,7 @@ def lookup(body: LookupRequest, request: Request) -> Any:
     return ok(
         {
             "username": body.username,
+            "user_id": str(user["user_id"]),
             "display_name": str(user.get("display_name") or body.username),
             "leagues": [
                 {
@@ -157,21 +215,25 @@ def add_league(body: AddRequest, request: Request) -> Any:
         theirs = {str(lg["league_id"]): lg for lg in _their_leagues(user_id)}
         if body.league_id not in theirs:
             return fail("no_data", "That league is not one of that user's current leagues.", 404)
-        rosters = _sleeper(f"/league/{body.league_id}/rosters")
+        rosters = _rosters(body.league_id)
     except SleeperUnreachable as err:
         return fail("server", str(err), 502)
     problem = _problem(theirs[body.league_id])
     if problem:
         return fail("invalid", f"{problem} It cannot be added.", 409)
-    if not any(isinstance(r, dict) and r.get("owner_id") == user_id for r in rosters or []):
+    if not any(r.get("owner_id") == user_id for r in rosters):
         return fail("invalid", "No team in that league belongs to that Sleeper user.", 409)
+    if not any(r.get("roster_id") == body.roster_id for r in rosters):
+        return fail("invalid", NO_TEAM, 409)
     linked = account["sleeper_user_id"]
     if linked and linked != user_id:
         return fail("invalid", "This account is already linked to a different Sleeper user.", 409)
     name = str(theirs[body.league_id].get("name") or body.league_id)
     with accounts.open_db(request.app.state.data_dir) as conn:
         try:
-            row = leagues.add(conn, account["id"], body.league_id, name, datetime.now(UTC))
+            row = leagues.add(
+                conn, account["id"], body.league_id, name, datetime.now(UTC), body.roster_id
+            )
         except leagues.LeagueLimit as err:
             return fail("invalid", str(err), 409)
         if not linked:
@@ -202,3 +264,40 @@ def remove_league(league_id: str, request: Request) -> Any:
         if not leagues.release(conn, account["id"], league_id):
             return fail("no_data", "You have not added that league.", 404)
     return ok({"league_id": league_id})
+
+
+@router.get("/sleeper/leagues/{league_id}/teams", response_model=Envelope[list[SleeperTeam]])
+def league_teams(
+    league_id: Annotated[str, Path(pattern=LEAGUE_ID_PATTERN)], request: Request
+) -> Any:
+    """The teams to pick from when adding a league or changing which team is yours."""
+    account = _account(request)
+    if account is None:
+        return no_account()
+    if _limited(account):
+        return fail("busy", "Too many lookups. Wait a minute and try again.", 429)
+    try:
+        return ok(_teams(league_id))
+    except SleeperUnreachable as err:
+        return fail("server", str(err), 502)
+
+
+@router.put("/leagues/{league_id}/team", response_model=Envelope[TeamSet])
+def set_team(league_id: str, body: TeamRequest, request: Request) -> Any:
+    """Change which team in one of the account's leagues is theirs."""
+    account = _account(request)
+    if account is None:
+        return no_account()
+    with accounts.open_db(request.app.state.data_dir) as conn:
+        held = {row["league_id"] for row in leagues.mine(conn, account["id"])}
+    if league_id not in held:
+        return fail("no_data", "You have not added that league.", 404)
+    try:
+        rosters = _rosters(league_id)
+    except SleeperUnreachable as err:
+        return fail("server", str(err), 502)
+    if not any(r.get("roster_id") == body.roster_id for r in rosters):
+        return fail("invalid", NO_TEAM, 409)
+    with accounts.open_db(request.app.state.data_dir) as conn:
+        leagues.set_team(conn, account["id"], league_id, body.roster_id)
+    return ok({"league_id": league_id, "roster_id": body.roster_id})

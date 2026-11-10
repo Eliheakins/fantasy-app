@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS account_leagues (
     account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     league_id TEXT NOT NULL,
     added_at TEXT NOT NULL,
+    roster_id INTEGER,
     PRIMARY KEY (account_id, league_id)
 );
 CREATE TABLE IF NOT EXISTS league_registry (
@@ -86,6 +87,9 @@ def connect(data_dir: Path | None = None) -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
     conn.executescript(SCHEMA)
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(account_leagues)")}
+    if "roster_id" not in columns:  # a database made before teams were chosen
+        conn.execute("ALTER TABLE account_leagues ADD COLUMN roster_id INTEGER")
     return conn
 
 

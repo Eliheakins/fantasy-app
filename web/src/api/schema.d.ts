@@ -200,6 +200,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/sleeper/leagues/{league_id}/teams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * League Teams
+         * @description The teams to pick from when adding a league or changing which team is yours.
+         */
+        get: operations["league_teams_api_me_sleeper_leagues__league_id__teams_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/leagues/{league_id}/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Team
+         * @description Change which team in one of the account's leagues is theirs.
+         */
+        put: operations["set_team_api_me_leagues__league_id__team_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/status": {
         parameters: {
             query?: never;
@@ -1006,6 +1046,8 @@ export interface components {
             username: string;
             /** League Id */
             league_id: string;
+            /** Roster Id */
+            roster_id: number;
         };
         /** ApiError */
         ApiError: {
@@ -1254,6 +1296,18 @@ export interface components {
              */
             status: "ok" | "running" | "error";
             data: components["schemas"]["StatusData"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[TeamSet] */
+        Envelope_TeamSet_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["TeamSet"] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -1601,6 +1655,19 @@ export interface components {
             status: "ok" | "running" | "error";
             /** Data */
             data: components["schemas"]["SeedRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[list[SleeperTeam]] */
+        Envelope_list_SleeperTeam__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["SleeperTeam"][] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -2018,6 +2085,8 @@ export interface components {
         Lookup: {
             /** Username */
             username: string;
+            /** User Id */
+            user_id: string;
             /** Display Name */
             display_name: string;
             /** Leagues */
@@ -2159,6 +2228,8 @@ export interface components {
             status: string;
             /** Error */
             error: string | null;
+            /** Roster Id */
+            roster_id: number | null;
         };
         /** OddsChangeRow */
         OddsChangeRow: {
@@ -2672,6 +2743,17 @@ export interface components {
             /** Problem */
             problem: string | null;
         };
+        /** SleeperTeam */
+        SleeperTeam: {
+            /** Roster Id */
+            roster_id: number;
+            /** Team Name */
+            team_name: string;
+            /** Owner Id */
+            owner_id: string | null;
+            /** Owner Name */
+            owner_name: string | null;
+        };
         /**
          * SlotCall
          * @description Display only: how often this slot's starter outscores the best eligible bench player.
@@ -2786,6 +2868,11 @@ export interface components {
             /** Grade */
             grade: string;
         };
+        /** TeamRequest */
+        TeamRequest: {
+            /** Roster Id */
+            roster_id: number;
+        };
         /** TeamRow */
         TeamRow: {
             /** Roster Id */
@@ -2804,6 +2891,13 @@ export interface components {
             is_me: boolean;
             /** Record */
             record: string;
+        };
+        /** TeamSet */
+        TeamSet: {
+            /** League Id */
+            league_id: string;
+            /** Roster Id */
+            roster_id: number;
         };
         /** TradeEvaluation */
         TradeEvaluation: {
@@ -3363,6 +3457,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["fantasy__api_models__Envelope_Removed___2"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    league_teams_api_me_sleeper_leagues__league_id__teams_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                league_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_SleeperTeam__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_team_api_me_leagues__league_id__team_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                league_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_TeamSet_"];
                 };
             };
             /** @description Validation Error */
