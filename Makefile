@@ -3,7 +3,10 @@
 # failures in the run, which puts a clear line in data/refresh.log and fails the launchd job.
 stage = uv run python -m fantasy.stages.run_recorded $(1) fantasy.stages.$(1)
 
-.PHONY: setup test lint fmt check refresh backup schedule-install schedule-remove serve dev web-build odds odds-slate stat-data stat-data-refresh ask-model
+ACTIONLINT = 1.7.12.25
+PIP_AUDIT = 2.10.1
+
+.PHONY: setup test lint audit fmt check refresh backup schedule-install schedule-remove serve dev web-build odds odds-slate stat-data stat-data-refresh ask-model
 
 backup:
 	$(call stage,backup)
@@ -48,16 +51,24 @@ test:
 
 lint:
 	uv run ruff check .
-	uv run mypy src
+	uv run mypy src tests
+	uvx --from actionlint-py==$(ACTIONLINT) actionlint
+
+# Known advisories in the locked dependencies (network; CI runs it before every deploy).
+audit:
+	uv export --frozen --format requirements-txt --no-emit-project -o .audit-requirements.txt -q
+	uvx pip-audit==$(PIP_AUDIT) --disable-pip -r .audit-requirements.txt; status=$$?; rm -f .audit-requirements.txt; exit $$status
+	cd web && npm audit --audit-level=high
 
 fmt:
 	uv run ruff check --fix .
 	uv run ruff format .
+	cd web && npm run format
 
 check: lint
 	uv run ruff format --check .
 	uv run pytest -q
-	cd web && npm run typecheck && npm test
+	cd web && npm run typecheck && npm run lint && npm run format:check && npm run knip && npm test
 
 odds:
 	uv run python -m fantasy.stages.snapshot_odds

@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0 # the server-config check below diffs against the previous push
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
@@ -39,3 +41,17 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
       - run: ops/server/push.sh "fantasy@${{ secrets.DEPLOY_HOST }}"
+      # push.sh cannot install root-owned config (the app user may only restart the app), so changes
+      # to the units or bootstrap.sh reach the server only through provision.sh run as the admin.
+      - name: Warn when server config changed
+        if: github.event_name == 'push'
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          git cat-file -e "$BEFORE^{commit}" 2>/dev/null || exit 0
+          changed=$(git diff --name-only "$BEFORE" "$AFTER" -- 'ops/server/*.service' 'ops/server/*.timer' \
+            'ops/server/*.path' ops/server/bootstrap.sh | paste -sd ' ' -)
+          if [ -n "$changed" ]; then
+            echo "::warning title=Server config not applied::$changed changed. Run ops/server/provision.sh <admin>@<server> <site-hostname> to install it."
+          fi

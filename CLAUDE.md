@@ -7,8 +7,9 @@ Each area has its own CLAUDE.md next to the code, and Claude Code loads it when 
 ## Commands
 
 - `make setup`: install dependencies and enable the git hook. A fresh clone has no data: run `make refresh` next (needs the network).
-- `make check`: ruff, mypy, pytest, plus web typecheck and tests. Run before committing. Never pipe it into `tail`: the pipe hides a failing exit code.
-- `make fmt`: auto-fix lint and formatting.
+- `make check`: ruff, mypy (strict on `src`, `src` and `tests` both checked), actionlint, pytest, plus the web typecheck, ESLint, Prettier check, knip and tests. Run before committing. The pre-commit hook runs only ruff and the Prettier check. Never pipe it into `tail`: the pipe hides a failing exit code.
+- `make fmt`: auto-fix lint and formatting (ruff and Prettier).
+- `make audit`: known advisories in the locked Python and npm dependencies (network). CI runs it before every deploy, and a high or critical npm advisory, or any pip-audit finding, blocks the deploy.
 - `make refresh`: back up `data/archive/`, pull Sleeper and nflverse, rebuild every table, and end with `stat-data-refresh`. See `src/fantasy/stages/CLAUDE.md`.
 - `make stat-data`: build the stat shards into `data/stat` for every season (network, minutes). `make stat-data-refresh` rebuilds only the current season. See `src/nfl_stat/CLAUDE.md`.
 - `make serve`: build `web/` and serve the UI and API at http://127.0.0.1:8000. `make dev`: API plus the Vite dev server (hot reload).

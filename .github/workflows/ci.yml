@@ -28,10 +28,19 @@ jobs:
         working-directory: web
       # Same commands as the Makefile's `check` target (CI has no data/ or .env; tests use tmp stores)
       - run: uv run ruff check .
+      - run: uvx --from actionlint-py==1.7.12.25 actionlint
       - run: uv run ruff format --check .
-      - run: uv run mypy src
+      - run: uv run mypy src tests
       - run: uv run pytest -q
       - run: npm run typecheck
         working-directory: web
+      - run: npm run lint
+        working-directory: web
+      - run: npm run format:check
+        working-directory: web
+      - run: npm run knip
+        working-directory: web
       - run: npm test
         working-directory: web
+      # Known advisories at high severity or above block the deploy (as zod 4.3.6 would have).
+      - run: make audit
