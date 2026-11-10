@@ -31,7 +31,7 @@ export function InviteLink({ email, path, validDays }: Props) {
       </p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <Input ref={field} readOnly aria-label="Invite link" value={url} onFocus={(e) => e.currentTarget.select()} />
-        <Button onClick={handleCopy} className="shrink-0">
+        <Button onClick={() => void handleCopy()} className="shrink-0">
           Copy link
         </Button>
       </div>

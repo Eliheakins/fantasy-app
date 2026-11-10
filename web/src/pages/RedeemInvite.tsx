@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { redeemInvite } from "@/lib/session";
 
 /** The server's minimum (fantasy/auth/passwords.py); checked here too so most mistakes need no round trip. */
-export const MIN_PASSWORD_LENGTH = 12;
+const MIN_PASSWORD_LENGTH = 12;
 
 /** What the invite link opens: choose a password, then you are signed in. The server says if the
  * link is wrong, used or expired. */
@@ -52,7 +52,7 @@ export default function RedeemInvite() {
   return (
     <main className="mx-auto w-full max-w-sm px-4 py-10">
       <PageHeader title="Choose a password" subtitle={`At least ${MIN_PASSWORD_LENGTH} characters. A password manager makes this easy.`} />
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <label htmlFor="invite-password" className="text-body font-medium text-ink">
             New password

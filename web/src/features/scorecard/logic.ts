@@ -20,7 +20,7 @@ const POSITION_ORDER = ["QB", "RB", "WR", "TE", "K", "DEF"];
 
 export const EMPTY_TEXT = "Fills after the first archived week finishes and you run make refresh.";
 
-export type Cell = { n: number; mae: number | null; bias: number | null };
+type Cell = { n: number; mae: number | null; bias: number | null };
 export type Line = {
   key: string;
   label: string;

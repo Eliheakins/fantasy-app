@@ -59,7 +59,7 @@ export function AddLeague({ username, onUsername }: Props) {
 
   return (
     <div>
-      <form onSubmit={handleFind} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+      <form onSubmit={(e) => void handleFind(e)} className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <div className="flex flex-1 flex-col gap-1">
           <label htmlFor="sleeper-username" className="text-body font-medium text-ink">
             Your Sleeper username

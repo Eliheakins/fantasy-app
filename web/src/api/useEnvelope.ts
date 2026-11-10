@@ -17,7 +17,7 @@ type ApiQueryOptions = {
 };
 
 /** The query options every GET shares: key, fetch, one retry, polling while the server says "running". */
-export function apiQueryOptions<T>(url: string, { refetchMs, pollOnError = false }: ApiQueryOptions = {}) {
+function apiQueryOptions<T>(url: string, { refetchMs, pollOnError = false }: ApiQueryOptions = {}) {
   return {
     queryKey: ["api", url] as const,
     queryFn: () => fetchEnvelope<T>(url),

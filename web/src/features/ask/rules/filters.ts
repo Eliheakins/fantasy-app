@@ -4,7 +4,7 @@ import { type Found, findPhrases, namesPartOfSomething } from "./phrases";
 import { ambiguous, proceed, type RuleContext, type Stage, stop, type WordMask } from "./types";
 import { SEASON_CONTEXT, YEAR } from "./vocab";
 
-export interface YearMention {
+interface YearMention {
   at: number;
   year: number;
 }

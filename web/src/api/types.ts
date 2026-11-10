@@ -3,7 +3,7 @@ import type { components } from "./schema";
 
 type Schemas = components["schemas"];
 
-export type ApiErrorBody = Schemas["ApiError"];
+type ApiErrorBody = Schemas["ApiError"];
 export type EnvelopeStatus = Schemas["Envelope_StatusData_"]["status"];
 export const ENVELOPE_STATUSES: readonly EnvelopeStatus[] = ["ok", "running", "error"];
 

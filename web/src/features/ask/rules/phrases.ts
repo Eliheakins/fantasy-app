@@ -6,8 +6,7 @@ import { tokenize } from "../resolvePlayers";
 import type { WordMask } from "./types";
 import { GAME_PART_PREFIXES, wordsOf } from "./vocab";
 
-export type Piece =
-  { kind: "stat"; id: string } | { kind: "chips"; ids: readonly string[] } | { kind: "granularity"; value: GranularityMode };
+type Piece = { kind: "stat"; id: string } | { kind: "chips"; ids: readonly string[] } | { kind: "granularity"; value: GranularityMode };
 
 interface Phrase {
   words: string[];

@@ -62,7 +62,7 @@ export async function requestJson<S extends z.ZodType>(url: string, schema: S, o
     if (e instanceof DOMException && e.name === "AbortError") {
       throw e;
     }
-    throw new Error(`${capitalize(what)} is not reachable at ${originOf(url)}. ${unreachableHint}`);
+    throw new Error(`${capitalize(what)} is not reachable at ${originOf(url)}. ${unreachableHint}`, { cause: e });
   }
 
   if (res.status === 404) {

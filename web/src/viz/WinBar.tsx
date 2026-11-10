@@ -4,7 +4,7 @@ import { formatPercent } from "./format";
 export type BarTone = "mine" | "other";
 type WinBarProps = { fraction: number | null; width?: number; tone?: BarTone };
 
-export const TONE_FILL: Record<BarTone | "plain", string> = { mine: "fill-forest", other: "fill-chart-other", plain: "fill-faint" };
+const TONE_FILL: Record<BarTone | "plain", string> = { mine: "fill-forest", other: "fill-chart-other", plain: "fill-faint" };
 
 const BAR_HEIGHT = 8;
 

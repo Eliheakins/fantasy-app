@@ -68,6 +68,7 @@ export function createParquetLoader(open: OpenParquet, codecs?: Compressors): Co
     } catch (e) {
       throw new Error(
         `Could not read the ${source.year} play-by-play data at ${source.url} (${e instanceof Error ? e.message : String(e)}). ${DATA_READ_HINT}`,
+        { cause: e },
       );
     }
   };

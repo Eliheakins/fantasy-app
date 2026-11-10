@@ -8,7 +8,7 @@ import { tokenize } from "./resolvePlayers";
 import { readTime, type TimeScope } from "./timeWords";
 
 /** The question without the words code reads itself (time, opponents); the question as asked when there are none. */
-export function modelText(question: string, scope: TimeScope, playerNamed: boolean): string {
+function modelText(question: string, scope: TimeScope, playerNamed: boolean): string {
   const read = new Set([...readTime(question, scope).used, ...readOpponents(question, playerNamed).used]);
   return read.size === 0
     ? question

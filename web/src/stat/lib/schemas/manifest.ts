@@ -3,7 +3,7 @@ import { z } from "zod";
 // A plain Parquet file name: nothing that could point outside the data folder (mirrors the backend).
 const fileNameSchema = z.string().regex(/^[\w.-]+\.parquet$/);
 
-export const manifestSeasonSchema = z.object({
+const manifestSeasonSchema = z.object({
   season: z.number().int(),
   path: fileNameSchema,
   rows: z.number().int(),

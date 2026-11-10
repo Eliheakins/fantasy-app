@@ -69,7 +69,7 @@ export function readWho(tokens: readonly string[]): {
 }
 
 /** Words that set which end of a ranking comes first. "best" and "worst" depend on the stat (see `better`). */
-export const RANK_DIRECTION = new Map<string, "desc" | "asc" | "best" | "worst">([
+const RANK_DIRECTION = new Map<string, "desc" | "asc" | "best" | "worst">([
   ["most", "desc"],
   ["highest", "desc"],
   ["fewest", "asc"],
@@ -95,12 +95,12 @@ export const LEADERBOARD_CUES = new Set([
   ...RANK_DIRECTION.keys(),
 ]);
 
-export const DEFAULT_LEADERBOARD_LIMIT = 10;
-export const MAX_LEADERBOARD_LIMIT = 100;
+const DEFAULT_LEADERBOARD_LIMIT = 10;
+const MAX_LEADERBOARD_LIMIT = 100;
 /** A rate, per-game or fewest-first ranking needs a floor of plays, or a player with one play tops it. */
-export const LEADERBOARD_MIN_PLAYS = 100;
+const LEADERBOARD_MIN_PLAYS = 100;
 /** A weekly ranking needs a game's worth of plays to qualify, not a season's. */
-export const WEEKLY_LEADERBOARD_MIN_PLAYS = 10;
+const WEEKLY_LEADERBOARD_MIN_PLAYS = 10;
 
 /** "top 5", "fewest 5": the number after a ranking word is the limit, not a stat or a season. */
 export function readLimit(tokens: readonly string[]): { limit: number; at: number } | { reason: string } | null {
@@ -154,7 +154,7 @@ export function readSingleGame(tokens: readonly string[]): number[] | null {
  * Highest first unless the question asks otherwise; asking both ways, or "best" of a neutral stat, is
  * unclear. `allowed` ranks defenses, where what is allowed is better the other way round.
  */
-export function rankDirection(tokens: readonly string[], metric: string, allowed = false): "asc" | "desc" | { reason: string } {
+function rankDirection(tokens: readonly string[], metric: string, allowed = false): "asc" | "desc" | { reason: string } {
   const stated = getStatById(metric)?.better;
   const better = stated && allowed ? (stated === "higher" ? "lower" : "higher") : stated;
   const asked = new Set<"asc" | "desc">();

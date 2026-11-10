@@ -1,7 +1,7 @@
 /** Situational filter chips (WHERE); predicates reference unqualified column names. */
 import { TEAMS } from "./teams";
 
-export interface FilterChipOption {
+interface FilterChipOption {
   id: string;
   label: string;
   predicate: string;

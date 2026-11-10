@@ -135,7 +135,7 @@ function parseOptional(sql: string): Node | null {
 }
 
 /** Sorts rows by a stat (rows without a number last) and keeps the first `limit`. */
-export function orderAndLimit(result: QueryResult, order: QueryOrder | null, limit: number | null): QueryResult {
+function orderAndLimit(result: QueryResult, order: QueryOrder | null, limit: number | null): QueryResult {
   let rows = result.rows;
   if (order) {
     const key = metricSelectAlias(order.metric);

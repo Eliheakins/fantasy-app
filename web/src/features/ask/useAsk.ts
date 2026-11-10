@@ -9,17 +9,14 @@ import { isLeagueQuery, parseQuery, type QueryState, writeQuery } from "@/stat/l
 import type { PlayerDictionaryRow } from "@/stat/lib/schemas/players";
 import { useQueryState } from "@/stat/react/useQueryState";
 
-import { type AskState, askReducer, initialAsk, shownOf } from "./askReducer";
+import { askReducer, initialAsk, shownOf } from "./askReducer";
 import { isNewEdit, type LoggedQuery } from "./askLog";
 import { browserStorage, logAsk, logCorrection } from "./askLogStore";
 import type { AnswerPath } from "./interpretQuestion";
 import { forgetCorrection, storeIntent } from "./intentCache";
 import { dispatchAsk } from "./paths/dispatch";
 import { keyFor } from "./paths/modelPath";
-import type { AskActions, Resume, StartSitShown, TradeShown } from "./paths/types";
-
-export type { StartSitShown, TradeShown };
-export type AskPhase = AskState["phase"];
+import type { AskActions, Resume } from "./paths/types";
 
 const loggedFrom = (state: QueryState): LoggedQuery => ({
   players: state.players,
@@ -217,7 +214,7 @@ export function useAsk() {
       resume.current = null;
       finish(players, question.trim());
     },
-    [ask],
+    [ask, question],
   );
 
   /** True when the URL holds a query to show: players (or a leaderboard) and at least one stat. */

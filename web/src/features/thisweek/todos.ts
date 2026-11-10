@@ -6,7 +6,7 @@ import { type EffectWhy, lineupWhy, waiverWhy } from "@/features/effects/explain
 
 type MoveIdea = components["schemas"]["MoveIdeaRow"];
 
-export type TodoKind = "waiver" | "lineup" | "injury";
+type TodoKind = "waiver" | "lineup" | "injury";
 export type Todo = {
   id: string;
   leagueKey: string;

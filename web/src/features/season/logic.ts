@@ -6,8 +6,8 @@ import { formatPercent } from "@/viz";
 import type { SeasonEventRow, WinNeedRow } from "./types";
 
 /** The odds we call "in good shape" for the headline sentence. */
-export const GOOD_ODDS = 0.75;
-export const ROOT_FOR_LIMIT = 5;
+const GOOD_ODDS = 0.75;
+const ROOT_FOR_LIMIT = 5;
 
 export type NeedLine = { wins: number; games: number; row: WinNeedRow | null };
 

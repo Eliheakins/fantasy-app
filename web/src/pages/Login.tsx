@@ -55,7 +55,7 @@ export default function Login() {
           Your session ended. Sign in again to continue.
         </p>
       )}
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
           <label htmlFor="login-email" className="text-body font-medium text-ink">
             Email

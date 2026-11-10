@@ -25,10 +25,10 @@ type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ?
 type ApiIntent = Api["QueryIntent"];
 // filter_ids has a pydantic default, so the generated type has it optional and zod's output has it
 // required. Pin that exact gap: if the backend makes it required (or drops it) this line breaks.
-const _filterIdsOptionalInApi: {} extends Pick<ApiIntent, "filter_ids"> ? true : false = true;
+const _filterIdsOptionalInApi: object extends Pick<ApiIntent, "filter_ids"> ? true : false = true;
 // ranking has a pydantic default (the API always sends it); zod leaves it optional, since the rules
 // and saved intents have none.
-const _rankingOptionalHere: {} extends Pick<QueryIntent, "ranking"> ? true : false = true;
+const _rankingOptionalHere: object extends Pick<QueryIntent, "ranking"> ? true : false = true;
 const _intentMatchesApi: Equal<Required<QueryIntent>, Required<ApiIntent>> = true;
 const _outcomeMatchesApi: Equal<IntentOutcome, { outcome: "query"; intent: QueryIntent } | Api["UnsupportedOutcome"]> = true;
 

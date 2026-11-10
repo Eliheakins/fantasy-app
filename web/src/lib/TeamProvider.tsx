@@ -5,6 +5,8 @@ import { useLeague } from "@/lib/league";
 import { parseTeam } from "@/lib/team";
 import { TeamContext, type TeamContextValue, type TeamRow } from "@/lib/teamContext";
 
+const NO_TEAMS: TeamRow[] = []; // one array while loading, so the context value stays stable
+
 /** Team selection lives in the URL (`?team=<roster_id>&league=<key>`), so a link opens that view.
  * Mount inside the router and LeagueProvider. */
 export function TeamProvider({ children }: { children: ReactNode }) {
@@ -12,7 +14,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const [params, setParams] = useSearchParams();
   const asked = parseTeam(params.get("team"));
   const list = useEnvelopeQuery<TeamRow[]>(league === null ? null : `/api/leagues/${encodeURIComponent(league)}/teams`);
-  const teams = list.kind === "ready" ? list.data : [];
+  const teams = list.kind === "ready" ? list.data : NO_TEAMS;
   const row = teams.find((t) => t.roster_id === asked) ?? null;
   // Until the list loads, trust the URL; once it has, an unknown or own team means the default.
   const [notice, setNotice] = useState<string | null>(null);

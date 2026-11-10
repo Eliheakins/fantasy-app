@@ -21,13 +21,13 @@ export const etDay = (at: Date): string => DAY_FORMAT.format(at);
 
 const dayAsDate = (day: string): Date => new Date(`${day}T12:00:00Z`);
 
-export function addDays(day: string, n: number): string {
+function addDays(day: string, n: number): string {
   const d = dayAsDate(day);
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
 
-export const weekdayLabel = (day: string): string => WEEKDAYS[dayAsDate(day).getUTCDay()] ?? "";
+const weekdayLabel = (day: string): string => WEEKDAYS[dayAsDate(day).getUTCDay()] ?? "";
 
 /** "Wed 11": the weekday with the date, so a deadline next week is not mistaken for this week's. */
 export const dayLabel = (day: string): string => `${weekdayLabel(day)} ${Number(day.slice(8))}`;
@@ -57,7 +57,7 @@ export function lineupDeadlineDay(kickoffs: readonly Kickoff[], now: Date): stri
   return etDay(new Date(Math.min(...ahead.map((t) => t.getTime()))));
 }
 
-export type StripEvent = { kind: "waivers" | "injury" | "kickoff"; text: string };
+type StripEvent = { kind: "waivers" | "injury" | "kickoff"; text: string };
 export type StripDay = { day: string; label: string; dayOfMonth: number; isToday: boolean; isPast: boolean; events: StripEvent[] };
 
 function kickoffEvent(group: readonly TimedKickoff[]): StripEvent {

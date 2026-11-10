@@ -13,7 +13,7 @@ import {
   parseMetricsFile,
 } from "@/stat/lib/schemas/metrics";
 
-export type { MetricSource, PlayerRole, PlayTypeScope };
+export type { PlayerRole };
 
 /** Category ids come from the metrics file, so a new category needs no code change. */
 export type StatCategory = string;

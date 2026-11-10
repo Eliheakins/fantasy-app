@@ -1,7 +1,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 /** Tailwind's min-width breakpoints, so JS and CSS agree. */
-export const BREAKPOINTS = { md: 768, lg: 1024, xl: 1280 } as const;
+const BREAKPOINTS = { md: 768, lg: 1024, xl: 1280 } as const;
 export type Breakpoint = keyof typeof BREAKPOINTS;
 
 const hasMatchMedia = () => typeof window.matchMedia === "function";

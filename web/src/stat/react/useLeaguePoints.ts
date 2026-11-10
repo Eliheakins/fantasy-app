@@ -54,5 +54,6 @@ export function useLeaguePoints(
     if (failed) return { kind: "error", message: failed.error?.message ?? "League points did not load." };
     if (queries.some((q) => q.data === undefined)) return { kind: "loading" };
     return { kind: "ready", rows: queries.flatMap((q) => q.data ?? []) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `queries` is a new array each render; `signature` tracks its contents
   }, [signature, queries.length]);
 }

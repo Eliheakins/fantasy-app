@@ -12,10 +12,10 @@ import type { GranularityMode, Side, Split } from "@/stat/types/queryBuilder";
 export const MAX_SELECTED_STATS = 5;
 export const MAX_PINNED_PLAYERS = 5;
 export const MAX_PINNED_TEAMS = 5;
-export const MAX_MIN_PLAYS = 500;
+const MAX_MIN_PLAYS = 500;
 export const MAX_LIMIT = 100;
-export const DEFAULT_LIMIT = 10;
-export const DEFAULT_GRANULARITY: GranularityMode = "per_play";
+const DEFAULT_LIMIT = 10;
+const DEFAULT_GRANULARITY: GranularityMode = "per_play";
 
 export interface QueryState {
   /** GSIS ids of the pinned players. */
@@ -48,7 +48,7 @@ export interface QueryState {
 }
 
 export type Position = "QB" | "RB" | "WR" | "TE";
-export const POSITIONS: readonly Position[] = ["QB", "RB", "WR", "TE"];
+const POSITIONS: readonly Position[] = ["QB", "RB", "WR", "TE"];
 
 export type RosterFilter = "mine" | "rostered" | "fa";
 const ROSTER_FILTERS: readonly RosterFilter[] = ["mine", "rostered", "fa"];

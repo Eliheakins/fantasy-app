@@ -1,6 +1,6 @@
 # web: React UI
 
-Vite and React. Commands: `npm run typecheck`, `npm test` (vitest, beside the code), `npm run types` (generated API types). Run from `web/`, or through `make check`.
+Vite and React. Commands: `npm run typecheck`, `npm run lint` (ESLint: typescript-eslint, the promise rules and the React hooks rules), `npm run format` / `format:check` (Prettier, print width 140), `npm run knip` (unused files, exports and dependencies), `npm test` (vitest, beside the code), `npm run types` (generated API types). Run from `web/`, or through `make check`.
 
 ## Layers and folders
 

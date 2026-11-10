@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 /** primary: the row's identity (row header, row title). secondary: key numbers, shown on the row.
  * detail: folded under "More" on the row. Unflagged columns are secondary; with no primary flag, column 1 is primary. */
-export type ColumnRole = "primary" | "secondary" | "detail";
+type ColumnRole = "primary" | "secondary" | "detail";
 
 export type Column<T> = { label: string; render: (row: T) => ReactNode; numeric?: boolean; role?: ColumnRole };
 

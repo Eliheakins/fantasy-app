@@ -13,7 +13,7 @@ import { resolvePlayers } from "./resolvePlayers";
 import { dropTeamNames, resolveTeams } from "./resolveTeams";
 import { parseRules, type RuleResult } from "./ruleParser";
 
-export interface EvalCase {
+interface EvalCase {
   q: string;
   stats?: string[];
   filters?: string[];
@@ -35,11 +35,11 @@ export interface EvalCase {
  * correct: resolved to the expected query, or refused a question that should be refused.
  * deferred: handed to the model. wrong: answered a question it should not have, or answered it differently.
  */
-export type Verdict = "correct" | "deferred" | "wrong";
+type Verdict = "correct" | "deferred" | "wrong";
 
 const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x) => b.includes(x));
 
-export function judge(c: EvalCase, result: RuleResult): Verdict {
+function judge(c: EvalCase, result: RuleResult): Verdict {
   if (result.status === "ambiguous" || result.status === "unknown") {
     return "deferred";
   }
@@ -68,7 +68,7 @@ export function judge(c: EvalCase, result: RuleResult): Verdict {
 const EVAL_DIR = resolve(import.meta.dirname, "../../../../tests/stat/eval");
 const readJson = <T>(name: string): T => JSON.parse(readFileSync(resolve(EVAL_DIR, name), "utf8")) as T;
 
-export const EVAL_SETS = ["cases", "heldout", "corrections"] as const;
+const EVAL_SETS = ["cases", "heldout", "corrections"] as const;
 
 export interface EvalRow {
   set: (typeof EVAL_SETS)[number];

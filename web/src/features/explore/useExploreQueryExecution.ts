@@ -203,7 +203,7 @@ export function useExploreQueryExecution() {
     latestOnly,
     pointSeasons,
     leagueKey,
-    points.kind,
+    points,
     state.roster,
     leagues.kind,
     ownersState.kind,

@@ -5,7 +5,7 @@ import type { Envelope, Me } from "@/api/types";
 /** Who is signed in. The server decides: `/api/auth/me` answers 401 when nobody is, and on a
  * laptop with no accounts it answers as a local admin, so the same gate works in both places. */
 
-export const ME_URL = "/api/auth/me";
+const ME_URL = "/api/auth/me";
 /** What the server calls the one person on a run with no accounts (`fantasy/auth/routes.py`). */
 export const LOCAL_EMAIL = "local";
 /** The key `useEnvelopeQuery` would use for this url, so the session is one cache entry. */

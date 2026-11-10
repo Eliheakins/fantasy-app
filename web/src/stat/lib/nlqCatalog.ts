@@ -1,14 +1,14 @@
 import { STAT_DEFINITIONS } from "@/stat/config/statDictionary";
 import { buildFilterChipGroups, CODE_READ_GROUP_IDS } from "@/stat/config/queryBuilderOptions";
 
-export interface IntentCatalogStat {
+interface IntentCatalogStat {
   id: string;
   label: string;
   category: string;
   aliases: string[];
 }
 
-export interface IntentCatalogFilter {
+interface IntentCatalogFilter {
   id: string;
   label: string;
   group: string;

@@ -10,7 +10,7 @@ export const clampWeek = (week: number): number => Math.min(Math.max(week, FIRST
 const isWeek = (n: number): boolean => Number.isInteger(n) && n >= FIRST_WEEK && n <= LAST_WEEK;
 
 /** The selected league's current week (week 1 until the league list loads). */
-export function useCurrentWeek(): number {
+function useCurrentWeek(): number {
   const { league, leagues } = useLeague();
   const current = leagues.kind === "ready" ? leagues.data.find((l) => l.league_key === league)?.current_week : null;
   return clampWeek(current ?? FIRST_WEEK);

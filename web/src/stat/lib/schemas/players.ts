@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** Mirrors `backend/schemas/players.py`: the `players.json` the data build writes. */
-export const playerSchema = z.object({
+const playerSchema = z.object({
   gsis_id: z.string().min(1),
   full_name: z.string().min(1),
   position: z.string().nullable().default(null),
