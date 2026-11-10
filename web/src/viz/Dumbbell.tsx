@@ -1,6 +1,6 @@
 import { Delta } from "./Delta";
+import { clampedLinear } from "./linearMap";
 import { type Domain } from "./rangeAxis";
-import { scaleLinear } from "d3-scale";
 import { formatNumber, NOISE_PERCENT, NOISE_WINS } from "./format";
 
 type DumbbellProps = {
@@ -21,7 +21,7 @@ const RADIUS = 4;
 
 /** Before (hollow) and after (filled) dots joined by a line, with the signed change beside it. */
 export function Dumbbell({ before, after, domain, measure, width = 140, percent = false, noise }: DumbbellProps) {
-  const x = scaleLinear().domain([...domain]).range([RADIUS + 1, width - RADIUS - 1]).clamp(true);
+  const x = clampedLinear(domain, [RADIUS + 1, width - RADIUS - 1]);
   const unit = percent ? "%" : "";
   const shown = (v: number) => `${formatNumber(v)}${unit}`;
   if (!Number.isFinite(before) || !Number.isFinite(after)) {

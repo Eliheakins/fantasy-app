@@ -8,7 +8,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from fantasy.stages import environment, ingest_role
+from fantasy.stages import ingest_role
 from nfl_stat.pipeline import pbp_source
 
 CURRENT = 2026
@@ -226,7 +226,7 @@ def test_unpublished_earlier_season_still_stops_the_run(monkeypatch: pytest.Monk
         ingest_role.load_pace()
 
 
-def test_pace_and_efficiency_read_only_the_columns_they_use(monkeypatch: pytest.MonkeyPatch):
+def test_pace_reads_only_the_columns_it_uses(monkeypatch: pytest.MonkeyPatch):
     seen: dict[str, list[str] | None] = {}
     full = _pace_frame(2024).with_columns(defteam=pl.lit("BBB"), sack=pl.lit(0.0), junk=pl.lit(1))
 
@@ -240,9 +240,7 @@ def test_pace_and_efficiency_read_only_the_columns_they_use(monkeypatch: pytest.
 
     monkeypatch.setattr(ingest_role, "seasons", lambda: [2024])
     monkeypatch.setattr(ingest_role, "read_pbp", reader("pace"))
-    monkeypatch.setattr(environment, "read_pbp", reader("eff"))
 
     assert ingest_role.load_pace().height == 1
-    assert environment.team_efficiency(range(2024, 2025)).height == 1
-    assert seen["pace"] and seen["eff"]
-    assert "junk" not in (seen["pace"] or []) + (seen["eff"] or [])
+    assert seen["pace"]
+    assert "junk" not in seen["pace"]

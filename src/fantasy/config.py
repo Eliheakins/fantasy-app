@@ -23,18 +23,15 @@ class Config:
     n_sims: int
     leagues: dict[str, str]  # league name -> Sleeper league id
     projection_model: str = "baseline"  # "learned" or "baseline"; learned falls back if missing
-    environment_layer: bool = True  # opposing-corner and offense-efficiency adjustments
     stat_line_model: bool = False  # learned projection times P(stat line | active)
     outside_sources: tuple[str, ...] = ()  # archived by outside_projections; empty disables
     blend_sources: tuple[str, ...] = ("sleeper",)  # empty: ours only
     prop_positions: tuple[str, ...] = ("RB", "WR")  # positions that get prop-implied points
-    inactive_swap: bool = False  # Lineup advice: bench player to start if a Q/D starter sits
-    ir_return_curve: bool = False  # IR players follow the measured return curve, not 4 games
 
 
-def _switch(raw: dict, key: str, path: Path) -> bool:
-    """An on/off setting, false when absent; anything but true or false (say "false") raises."""
-    value = raw.get(key, False)
+def _switch(raw: dict, key: str, path: Path, default: bool = False) -> bool:
+    """An on/off setting, `default` when absent; anything but true or false (say "false") raises."""
+    value = raw.get(key, default)
     if not isinstance(value, bool):
         raise ValueError(f"{path}: {key} must be true or false, not {value!r}")
     return value
@@ -62,6 +59,10 @@ def _load(path: Path, _mtime_ns: int) -> Config:
     positions = tuple(raw.get("prop_positions", ("RB", "WR")))
     if not set(positions) <= set(SKILL_POSITIONS):
         raise ValueError(f"{path}: prop_positions must be among {SKILL_POSITIONS}, not {positions}")
+    n_sims = raw.get("n_sims")
+    not_a_count = isinstance(n_sims, bool) or not isinstance(n_sims, int) or n_sims < 1
+    if n_sims is not None and not_a_count:
+        raise ValueError(f"{path}: n_sims must be a whole number of at least 1, not {n_sims!r}")
     try:
         raw["season"]  # a missing season stays an error here; only stat-only use may fall back
         return Config(
@@ -70,13 +71,10 @@ def _load(path: Path, _mtime_ns: int) -> Config:
             n_sims=raw["n_sims"],
             leagues={name: league["id"] for name, league in raw["leagues"].items()},
             projection_model=model,
-            environment_layer=bool(raw.get("environment_layer", True)),
-            stat_line_model=bool(raw.get("stat_line_model", False)),
+            stat_line_model=_switch(raw, "stat_line_model", path),
             outside_sources=outside,
             blend_sources=sources,
             prop_positions=positions,
-            inactive_swap=_switch(raw, "inactive_swap", path),
-            ir_return_curve=_switch(raw, "ir_return_curve", path),
         )
     except KeyError as missing:
         raise ValueError(f"{path} is missing {missing}") from missing

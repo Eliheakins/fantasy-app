@@ -101,7 +101,6 @@ def _inputs() -> dict[str, pl.DataFrame]:
         "team_games": pl.from_dicts(games, schema_overrides=_dtypes("team_games")),
         "nfl_team_stats": pl.from_dicts(stats, schema_overrides=_dtypes("nfl_team_stats")),
         "player_points": pl.from_dicts(kicks, schema_overrides=_dtypes("player_points")),
-        "nfl_team_efficiency": pl.DataFrame(schema=_dtypes("nfl_team_efficiency")),
         "nfl_team_pace": pl.DataFrame(schema=_dtypes("nfl_team_pace")),
         "nfl_player_stats": pl.DataFrame(schema=_dtypes("nfl_player_stats")),
         "leagues": pl.from_dicts([league]),
@@ -129,6 +128,7 @@ def tables(monkeypatch: pytest.MonkeyPatch) -> dict[str, pl.DataFrame]:
 
     monkeypatch.setattr(store, "read_table", read_table)
     monkeypatch.setattr(store, "write_table", write_table)
+    monkeypatch.setattr(store, "with_archive", lambda name, new, data_dir=None: new)  # no archive
     no_facts = pl.DataFrame(
         schema={"team": pl.String, "season": pl.Int64, "week": pl.Int64}
         | dict.fromkeys(streaming.DEFENSE_FACTS, pl.Float64)

@@ -1,4 +1,4 @@
-import { scaleLinear } from "d3-scale";
+import { clampedLinear } from "./linearMap";
 
 export type Range = { p10?: number | null; p50?: number | null; p90?: number | null };
 export type Domain = readonly [number, number];
@@ -26,7 +26,7 @@ export function sharedDomain(rows: readonly Range[]): Domain | null {
 
 /** Pixel layout on a shared domain. Values outside the domain clamp to its edges. */
 export function layoutRange(range: Range, domain: Domain, width: number): BarLayout {
-  const x = scaleLinear().domain([...domain]).range([0, width]).clamp(true);
+  const x = clampedLinear(domain, [0, width]);
   const tick = finite(range.p50) ? x(range.p50) : null;
   if (!finite(range.p10) || !finite(range.p90)) return { bar: null, tick };
   const [lo, hi] = [x(Math.min(range.p10, range.p90)), x(Math.max(range.p10, range.p90))];

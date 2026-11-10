@@ -17,6 +17,7 @@ Run: uv run python -m fantasy.stages.streaming
 
 import json
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import numpy as np
@@ -34,7 +35,6 @@ DOMES = ("dome", "closed")
 SCORED_FROM = 2018
 BACKTEST_FROM = 2024
 MIN_CONTEXT_ROWS = 50  # fewer rows than this and the context fit is skipped
-KINDS = ("DEF", "K")
 PBP_COLUMNS = [
     "season", "week", "season_type", "posteam", "defteam", "special_teams_play", "sack",
     "yards_gained", "touchdown", "fumble", "interception", "td_team", "fumbled_1_team",
@@ -335,7 +335,24 @@ def _with_k_features(rows: pl.DataFrame, teams: pl.DataFrame, usage: pl.DataFram
     )
 
 
-def run() -> dict[str, tuple[float, float]]:
+@dataclass(frozen=True)
+class Inputs:
+    """The tables one `run` projects from."""
+
+    games: pl.DataFrame
+    coded: pl.DataFrame  # games with team codes mapped to nflverse's
+    stats: pl.DataFrame
+    leagues: pl.DataFrame
+    kickers: pl.DataFrame
+    active_k: pl.DataFrame
+    id_map: pl.DataFrame
+    teams: pl.DataFrame  # trailing team features for the K model
+    player_stats: pl.DataFrame
+    facts: pl.DataFrame  # defense play-by-play facts
+    last_season: int
+
+
+def _load_inputs() -> Inputs:
     games = store.read_table("team_games")
     stats = store.read_table("nfl_team_stats", "raw")
     leagues = store.read_table("leagues", "raw")
@@ -348,77 +365,82 @@ def run() -> dict[str, tuple[float, float]]:
     coded = games.with_columns(
         pl.col("team").replace(SCHEDULE_TEAM_CODES), pl.col("opponent").replace(SCHEDULE_TEAM_CODES)
     )
-    teams = sm.team_trailing(
-        stats,
-        store.read_table("nfl_team_efficiency", "raw"),
-        store.read_table("nfl_team_pace", "raw"),
-        coded,
-    )
-    player_stats = store.read_table("nfl_player_stats", "raw")
     last_season = int(stats["season"].max())  # type: ignore[arg-type]
-    facts = load_play_facts(range(SCORED_FROM, last_season + 1))
-    defense_frames, projections, report = [], [], {}
-    for lg in leagues.iter_rows(named=True):
-        lid, current = lg["league_id"], int(lg["current_week"])
-        scoring = json.loads(lg["scoring_settings"])
-        points = defense_points_frame(stats, games, scoring, lid, facts).filter(
-            pl.col("season") >= SCORED_FROM
-        )
-        defense_frames.append(points)
-        season = int(points["season"].to_numpy().max())
-        past = points.filter((pl.col("season") < season) | (pl.col("week") < current))
-        ahead = games.filter((pl.col("season") == season) & (pl.col("week") >= current)).select(
-            pl.col("team").alias("unit"),
-            "team",
-            "season",
-            "week",
-            pl.col("opp_implied").alias("implied"),
-            "roof",
-        )
-        d_hist = past.rename({"team": "unit", "opp_implied": "implied"})
-        d_hist, d_ahead = sm.with_form(d_hist, ahead)
-        d_proj, d_rmse = _unit_projection(
-            d_hist, d_ahead, sm.DEF_FEATURES, False, "DEF", lid, id_map
-        )
-        projections.append(d_proj)
-        report[f"{lg['league_key']} DEF rmse (model, mean)"] = d_rmse
+    teams = sm.team_trailing(stats, store.read_table("nfl_team_pace", "raw"), coded)
+    return Inputs(
+        games=games,
+        coded=coded,
+        stats=stats,
+        leagues=leagues,
+        kickers=kickers,
+        active_k=active_k,
+        id_map=id_map,
+        teams=teams,
+        player_stats=store.read_table("nfl_player_stats", "raw"),
+        facts=load_play_facts(range(SCORED_FROM, last_season + 1)),
+        last_season=last_season,
+    )
 
-        k_hist = kickers.filter(
-            (pl.col("league_id") == lid)
-            & (pl.col("season") >= SCORED_FROM)
-            & (pl.col("season_type") == "REG")
-            & ((pl.col("season") < season) | (pl.col("week") < current))
-        )
-        k_hist = k_hist.select(
-            pl.col("gsis_id").alias("unit"),
-            "team",
-            "opponent_team",
-            "season",
-            "week",
-            "points",
-            pl.col("team_implied").alias("implied"),
-            "roof",
-        )
-        k_ahead = active_k.join(
-            coded.filter((pl.col("season") == season) & (pl.col("week") >= current)),
-            left_on="nfl_team",
-            right_on="team",
-        ).select(
-            pl.col("gsis_id").alias("unit"),
-            pl.col("nfl_team").alias("team"),
-            pl.col("opponent").alias("opponent_team"),
-            "season",
-            "week",
-            pl.col("team_implied").alias("implied"),
-            "roof",
-        )
-        k_hist, k_ahead = sm.with_form(k_hist, k_ahead)
-        usage = sm.kicker_trailing(player_stats, k_ahead.rename({"unit": "gsis_id"}))
-        k_hist = _with_k_features(k_hist, teams, usage)
-        k_ahead = _with_k_features(k_ahead, teams, usage)
-        k_proj, k_rmse = _unit_projection(k_hist, k_ahead, sm.K_FEATURES, True, "K", lid, id_map)
-        projections.append(k_proj)
-        report[f"{lg['league_key']} K rmse (model, mean)"] = k_rmse
+
+def _def_projection(
+    data: Inputs, points: pl.DataFrame, season: int, current: int, lid: str
+) -> tuple[pl.DataFrame, tuple[float, float]]:
+    """One league's DEF projections for the weeks from `current` on, and their RMSE."""
+    past = points.filter((pl.col("season") < season) | (pl.col("week") < current))
+    ahead = data.games.filter((pl.col("season") == season) & (pl.col("week") >= current)).select(
+        pl.col("team").alias("unit"),
+        "team",
+        "season",
+        "week",
+        pl.col("opp_implied").alias("implied"),
+        "roof",
+    )
+    d_hist = past.rename({"team": "unit", "opp_implied": "implied"})
+    d_hist, d_ahead = sm.with_form(d_hist, ahead)
+    return _unit_projection(d_hist, d_ahead, sm.DEF_FEATURES, False, "DEF", lid, data.id_map)
+
+
+def _k_projection(
+    data: Inputs, season: int, current: int, lid: str
+) -> tuple[pl.DataFrame, tuple[float, float]]:
+    """One league's K projections for the weeks from `current` on, and their RMSE."""
+    k_hist = data.kickers.filter(
+        (pl.col("league_id") == lid)
+        & (pl.col("season") >= SCORED_FROM)
+        & (pl.col("season_type") == "REG")
+        & ((pl.col("season") < season) | (pl.col("week") < current))
+    )
+    k_hist = k_hist.select(
+        pl.col("gsis_id").alias("unit"),
+        "team",
+        "opponent_team",
+        "season",
+        "week",
+        "points",
+        pl.col("team_implied").alias("implied"),
+        "roof",
+    )
+    k_ahead = data.active_k.join(
+        data.coded.filter((pl.col("season") == season) & (pl.col("week") >= current)),
+        left_on="nfl_team",
+        right_on="team",
+    ).select(
+        pl.col("gsis_id").alias("unit"),
+        pl.col("nfl_team").alias("team"),
+        pl.col("opponent").alias("opponent_team"),
+        "season",
+        "week",
+        pl.col("team_implied").alias("implied"),
+        "roof",
+    )
+    k_hist, k_ahead = sm.with_form(k_hist, k_ahead)
+    usage = sm.kicker_trailing(data.player_stats, k_ahead.rename({"unit": "gsis_id"}))
+    k_hist = _with_k_features(k_hist, data.teams, usage)
+    k_ahead = _with_k_features(k_ahead, data.teams, usage)
+    return _unit_projection(k_hist, k_ahead, sm.K_FEATURES, True, "K", lid, data.id_map)
+
+
+def _write_outputs(defense_frames: list[pl.DataFrame], projections: list[pl.DataFrame]) -> None:
     store.write_table("defense_points", pl.concat(defense_frames))
     out = pl.concat(projections).select("league_id", "kind", "unit", "team", "week", "projection")
     store.write_table("streaming_projection", out)
@@ -429,6 +451,32 @@ def run() -> dict[str, tuple[float, float]]:
     store.write_table(
         "streaming_snapshots", store.with_archive("streaming_snapshots", snapshot), "archive"
     )
+
+
+def run() -> dict[str, tuple[float, float]]:
+    """Project each league's DEF and K units from the current week on.
+
+    Reads `team_games`, `nfl_team_stats`, `leagues`, `player_points`, `sleeper_players`, `id_map`,
+    `nfl_team_pace`, `nfl_player_stats` and play-by-play (needs `ingest_nfl` and `score` first).
+    Writes `defense_points` (each league's DEF points per team-week), `streaming_projection` and
+    appends the run to `streaming_snapshots`. Returns each league's (model, mean) RMSE by unit kind.
+    """
+    data = _load_inputs()
+    defense_frames, projections, report = [], [], {}
+    for lg in data.leagues.iter_rows(named=True):
+        lid, current = lg["league_id"], int(lg["current_week"])
+        points = defense_points_frame(
+            data.stats, data.games, json.loads(lg["scoring_settings"]), lid, data.facts
+        ).filter(pl.col("season") >= SCORED_FROM)
+        defense_frames.append(points)
+        season = int(points["season"].to_numpy().max())
+        d_proj, d_rmse = _def_projection(data, points, season, current, lid)
+        projections.append(d_proj)
+        report[f"{lg['league_key']} DEF rmse (model, mean)"] = d_rmse
+        k_proj, k_rmse = _k_projection(data, season, current, lid)
+        projections.append(k_proj)
+        report[f"{lg['league_key']} K rmse (model, mean)"] = k_rmse
+    _write_outputs(defense_frames, projections)
     return report
 
 

@@ -26,14 +26,13 @@ TEAM_KEY = ["team", "season", "week"]
 TEAM_STATS = (
     "sacks_suffered", "passing_interceptions", "attempts", "def_sacks", "def_interceptions",
 )  # fmt: skip
-TEAM_EFFICIENCY = ("pass_epa", "sack_rate")
 TEAM_PACE = ("plays", "pass_oe", "team_epa")
 LONG_KICK_COLUMNS = (
     "fg_made_40_49", "fg_made_50_59", "fg_made_60_",
     "fg_missed_40_49", "fg_missed_50_59", "fg_missed_60_",
 )  # fmt: skip
 KICKER_TRAILED = ("fg_att", "pat_att", "long_share")
-TEAM_TRAILED = (*TEAM_STATS, *TEAM_EFFICIENCY, *TEAM_PACE, "points_against", "points_for")
+TEAM_TRAILED = (*TEAM_STATS, *TEAM_PACE, "points_against", "points_for")
 DEF_FEATURES = ["form", "implied"]
 K_FEATURES = [
     "form", "implied", "dome", "spread", "is_home",
@@ -101,24 +100,18 @@ def with_form(history: pl.DataFrame, upcoming: pl.DataFrame) -> tuple[pl.DataFra
     )
 
 
-def team_trailing(
-    stats: pl.DataFrame, efficiency: pl.DataFrame, pace: pl.DataFrame, games: pl.DataFrame
-) -> pl.DataFrame:
+def team_trailing(stats: pl.DataFrame, pace: pl.DataFrame, games: pl.DataFrame) -> pl.DataFrame:
     """Trailing team features before each regular-season team-game, unplayed games included.
     `games` (team_games) must already use the stats team codes. Carries the game's spread and
     home flag."""
     spine = games.filter(pl.col("game_type") == "REG").select(
         *TEAM_KEY, "points_against", "points_for", "spread", "is_home"
     )
-    table = (
-        spine.join(
-            stats.filter(pl.col("season_type") == "REG").select(*TEAM_KEY, *TEAM_STATS),
-            on=TEAM_KEY,
-            how="left",
-        )
-        .join(efficiency.select(*TEAM_KEY, *TEAM_EFFICIENCY), on=TEAM_KEY, how="left")
-        .join(pace.select(*TEAM_KEY, *TEAM_PACE), on=TEAM_KEY, how="left")
-    )
+    table = spine.join(
+        stats.filter(pl.col("season_type") == "REG").select(*TEAM_KEY, *TEAM_STATS),
+        on=TEAM_KEY,
+        how="left",
+    ).join(pace.select(*TEAM_KEY, *TEAM_PACE), on=TEAM_KEY, how="left")
     return trailing(table, "team", TEAM_TRAILED).select(
         *TEAM_KEY,
         "spread",

@@ -30,7 +30,7 @@ import polars as pl
 from blend_weight import league_rows
 from fantasy import store
 from fantasy._scorecard import KEY, _at, _kickoff_frame
-from fantasy.sim.league_data import SLEEPER_ZEROED_STATUSES
+from fantasy.sim.league_projections import SLEEPER_ZEROED_STATUSES
 
 WINDOW = timedelta(days=6)  # shortcut: a fixed window, not "since the player's last game"
 OUT_STATUSES = ("Out", "IR", "Sus", "PUP")

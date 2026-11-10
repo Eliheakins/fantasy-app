@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { type QueryIntent, queryIntentSchema } from "@/stat/lib/schemas/nlqIntent";
+import { queryIntentSchema } from "@/stat/lib/schemas/nlqIntent";
 
 import type { StorageLike } from "./askLog";
 
@@ -82,5 +82,3 @@ function writeCache(storage: StorageLike, cache: IntentCache): void {
     // Full or blocked storage only costs the speed-up.
   }
 }
-
-export type { QueryIntent };

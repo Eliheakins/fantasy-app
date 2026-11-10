@@ -15,11 +15,6 @@ from fantasy.config import load_config
 from fantasy.sim.availability import EASTERN
 
 
-def _swap_config(monkeypatch: pytest.MonkeyPatch, on: bool) -> None:
-    cfg = replace(load_config(), inactive_swap=on)
-    monkeypatch.setattr(_lineup, "load_config", lambda: cfg)
-
-
 def test_kickoffs_by_player_leave_out_players_with_no_team_or_no_game(tmp_path: Path) -> None:
     _engine_store(tmp_path)
     ids = store.read_table("id_map", "derived", tmp_path)
@@ -37,7 +32,7 @@ def test_kickoffs_by_player_leave_out_players_with_no_team_or_no_game(tmp_path: 
     assert "G_NOTEAM" not in kicks and "G_BYE" not in kicks
 
 
-def test_lineup_names_the_swap_for_a_questionable_starter_only_when_switched_on(
+def test_lineup_names_the_swap_for_a_questionable_starter(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _engine_store(tmp_path)
@@ -45,7 +40,6 @@ def test_lineup_names_the_swap_for_a_questionable_starter_only_when_switched_on(
     sunday = datetime(2026, 9, 20, 13, 0, tzinfo=EASTERN)
     kicks = {"G_WR": sunday, "G_DL": sunday + timedelta(hours=3), "G_QB": sunday}
     monkeypatch.setattr(_lineup, "_kickoffs_by_player", lambda week, data_dir=None: kicks)
-    _swap_config(monkeypatch, True)
     rows = {
         r["gsis_id"]: r
         for r in data_api.lineup("t", now=NOW, data_dir=tmp_path).iter_rows(named=True)
@@ -55,8 +49,6 @@ def test_lineup_names_the_swap_for_a_questionable_starter_only_when_switched_on(
         and rows["G_WR"]["swap_in"] == _engine._names(data_dir=tmp_path)["G_DL"]
     )
     assert rows["G_QB"]["swap_in"] is None
-    _swap_config(monkeypatch, False)
-    assert data_api.lineup("t", now=NOW, data_dir=tmp_path)["swap_in"].null_count() == len(rows)
 
 
 def test_long_term_notes_say_out_at_least_four_games_unless_the_curve_gives_a_chance(

@@ -1,7 +1,6 @@
 import { isLeagueStat } from "@/stat/engine/leaguePointsQuery";
 import { EMPTY_QUERY, MAX_PINNED_PLAYERS, type QueryState } from "@/stat/lib/queryUrl";
 import { type QueryIntent } from "@/stat/lib/nlqApi";
-import { specFromIntent, unsupportedReasons } from "@/stat/lib/querySpec";
 import type { PlayerDictionaryRow } from "@/stat/lib/schemas/players";
 import type { Side, Split } from "@/stat/types/queryBuilder";
 import type { AnswerPath } from "../interpretQuestion";
@@ -57,7 +56,7 @@ export function timeOf(
   return { filters: withDefaultSeasonType(merged), lastGames: time.lastGames, notes };
 }
 
-/** Answers with the named players and the intent's stats and filters, unless the engine cannot run them. */
+/** Answers with the named players and the intent's stats and filters. */
 export function showIntent(
   players: PlayerDictionaryRow[],
   intent: QueryIntent,
@@ -69,11 +68,6 @@ export function showIntent(
 ): void {
   const ids = [...new Set(players.map((p) => p.gsis_id))].slice(0, MAX_PINNED_PLAYERS);
   const stats = settleStats(intent.stat_ids, { kind: "players", positions: players.map((p) => p.position) });
-  const blocked = unsupportedReasons(specFromIntent({ ...intent, stat_ids: stats }, ids));
-  if (blocked.length > 0) {
-    actions.fail(asked, path, blocked.join(" "));
-    return;
-  }
   const split = splitOf(asked);
   const time = timeOf(intent.filter_ids, asked, scope, split, true);
   const next: QueryState = {

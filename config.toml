@@ -4,14 +4,11 @@ username = "Eliheakins"
 user_id = "1385113153716641792"
 n_sims = 20000
 projection_model = "learned"  # or "baseline" (the rolling average); learned needs the learn stage
-environment_layer = false  # no held-out gain on the learned projections (docs/decisions.md)
 stat_line_model = true  # q * E: -3.0% and -2.5% RMSE on all played games (docs/decisions.md)
 outside_sources = ["fftoday"]  # archived each refresh; [] turns the fetch off
 # current week: equal mean of ours and these (Sleeper also weeks 2 to 4 ahead); [] = ours only
 blend_sources = ["sleeper", "fftoday", "props"]
 prop_positions = ["RB", "WR"]  # QB and TE props were not significant (docs/decisions.md)
-inactive_swap = true  # Lineup advice: who to start if a Q/D starter is inactive (docs/decisions.md)
-ir_return_curve = true  # IR players follow the measured return curve (docs/decisions.md)
 
 [leagues.colgate]
 id = "1394105943137992704"
