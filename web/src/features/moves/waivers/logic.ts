@@ -1,23 +1,9 @@
-import { formatNumber } from "@/viz";
 import type { components } from "@/api/schema";
 
 export type WaiverRow = components["schemas"]["WaiverRow"];
 export type StrengthRow = components["schemas"]["StrengthRow"];
 export type StreamerRow = components["schemas"]["StreamerRow"];
 export type PlayerWeekRow = components["schemas"]["PlayerWeekRow"];
-
-type ChangeKind = "missing" | "noise" | "delta";
-type Change = { kind: ChangeKind; points: number; noiseText: string };
-
-/** Probability change in percentage points; a change inside the Monte Carlo error is noise ("~"). */
-export function classifyChange(change: number | null, error: number | null = null): Change {
-  if (change == null || !Number.isFinite(change)) return { kind: "missing", points: 0, noiseText: "–" };
-  const points = change * 100;
-  if (error != null && Math.abs(change) <= error) {
-    return { kind: "noise", points, noiseText: `~${formatNumber(Math.abs(points))}` };
-  }
-  return { kind: "delta", points, noiseText: "" };
-}
 
 /** Rank 1 first; ties keep the API order. */
 export function rankedStrength(rows: readonly StrengthRow[]): StrengthRow[] {

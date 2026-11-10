@@ -4,7 +4,7 @@ import polars as pl
 import pytest
 from test_odds import WEEKS, toy_league
 
-from fantasy.sim import moves
+from fantasy.sim import moves, trade_labels, trades
 from fantasy.sim.lineup import Player
 from fantasy.sim.odds import LeagueData
 
@@ -170,14 +170,14 @@ def test_paired_se_is_zero_for_identical_runs_and_below_the_independent_bound() 
 def test_fit_reaches_the_target_by_dropping_the_lowest_or_adding_the_best_free_agent() -> None:
     ros = {"a": 50.0, "b": 10.0, "c": 30.0, "fa1": 40.0, "fa2": 20.0}
     free = ["fa1", "fa2"]
-    assert sorted(moves._fit(["a", "b", "c"], 2, set(), ros, free)) == ["a", "c"]
-    assert sorted(moves._fit(["a", "c"], 3, set(), ros, free)) == ["a", "c", "fa1"]
-    assert sorted(moves._fit(["a", "c"], 3, {"fa1"}, ros, free)) == ["a", "c", "fa2"]
+    assert sorted(trades._fit(["a", "b", "c"], 2, set(), ros, free)) == ["a", "c"]
+    assert sorted(trades._fit(["a", "c"], 3, set(), ros, free)) == ["a", "c", "fa1"]
+    assert sorted(trades._fit(["a", "c"], 3, {"fa1"}, ros, free)) == ["a", "c", "fa2"]
 
 
 def test_pickup_swaps_the_lowest_player_for_the_best_free_agent() -> None:
     ros = {"a": 50.0, "b": 10.0, "fa1": 40.0}
-    assert sorted(moves._pickup(["a", "b"], set(), ros, ["fa1"])) == ["a", "fa1"]
+    assert sorted(trades._pickup(["a", "b"], set(), ros, ["fa1"])) == ["a", "fa1"]
 
 
 def test_finder_only_returns_the_four_trade_shapes_with_both_teams_gaining() -> None:
@@ -188,7 +188,7 @@ def test_finder_only_returns_the_four_trade_shapes_with_both_teams_gaining() -> 
     for row in found.iter_rows(named=True):
         assert set(row["give_ids"]) <= set(moves.team_ids(data, 1))
         assert set(row["get_ids"]) <= set(moves.team_ids(data, row["partner_id"]))
-        assert moves._both_gain(row)
+        assert trade_labels._both_gain(row)
 
 
 def test_position_strength_ranks_the_team_with_the_best_receivers_first_at_wr() -> None:
@@ -199,3 +199,11 @@ def test_position_strength_ranks_the_team_with_the_best_receivers_first_at_wr() 
     table = moves.position_strength(data)
     wr = table.filter(pl.col("position") == "WR").sort("rank")
     assert wr["roster_id"][0] == 4 and wr["rank"][0] == 1
+
+
+def test_a_player_listed_twice_in_a_trade_is_refused() -> None:
+    data = league_with([])
+    with pytest.raises(ValueError, match="twice"):
+        moves.apply_trade(data, 1, 2, give=["t1_wr1", "t1_wr1"], get=["t2_te"])
+    with pytest.raises(ValueError, match="twice"):
+        moves.apply_trade(data, 1, 2, give=["t1_wr1"], get=["t2_te", "t2_te"])

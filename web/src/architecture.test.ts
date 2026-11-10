@@ -33,12 +33,18 @@ describe("layers", () => {
   test("a page does not import another page", () => {
     expect(offenders("pages", /^pages\//, /\.test\.tsx?$/)).toEqual([]);
   });
+  test("a feature does not import a page", () => {
+    expect(offenders("features", /^pages\//, /\.test\.tsx?$/)).toEqual([]);
+  });
   test("lib and layout components do not import features or pages", () => {
     expect([...offenders("lib", /^(features|pages)\//), ...offenders("components", /^(features|pages)\//)]).toEqual([]);
   });
   test("stat engine, lib and config stay free of the UI and the fantasy API", () => {
     // api/schema is allowed: generated types only, used by nlqIntent.ts to pin zod to the backend at compile time.
     expect(offenders("stat", /^(features|components|pages)\/|^api\/(?!schema$)/, /^stat\/react\//)).toEqual([]);
+  });
+  test("moves and thisweek do not import each other; what they share lives in features/effects", () => {
+    expect([...offenders("features/moves", /^features\/thisweek\//), ...offenders("features/thisweek", /^features\/moves\//)]).toEqual([]);
   });
   test("moves/trade does not import the rest of moves, so the two do not form a cycle", () => {
     expect(offenders("features/moves/trade", /^features\/moves\/(?!trade\/)[^/]+$/)).toEqual([]);

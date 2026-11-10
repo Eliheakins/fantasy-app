@@ -7,7 +7,7 @@ type RoleWeek = components["schemas"]["RoleWeek"];
 export const MAX_COMPARE = 3;
 const SHARED_KEYS = ["league", "team", "week"];
 
-const pts = (n: number | null | undefined) => formatNumber(n);
+const pts = formatNumber;
 const OUT = (p: PlayerProfile) => (p.is_out ? " He is out, so this is what he is worth if he returns." : "");
 
 /** "Week 8: 17.3 points, final." when the player's game this week is over. */

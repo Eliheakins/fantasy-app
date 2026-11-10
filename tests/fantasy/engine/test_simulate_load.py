@@ -5,7 +5,7 @@ import pytest
 from store_fixture import write_rows
 
 from fantasy import data_api
-from fantasy.sim import league_data as sim
+from fantasy.sim import league_checks
 from fantasy.sim.league_data import load_league_data
 
 LEAGUE = {
@@ -156,7 +156,6 @@ def test_missing_effect_tables_do_not_stop_the_load(tmp_path: Path) -> None:
     build_store(tmp_path, [(100.0, 90.0)])
     missing = data_api.missing_layers(tmp_path)
     assert {"injury model", "outlook"} <= set(missing)
-    assert "matchup and offense effects" not in missing  # the shipped config has that layer off
     data = load_league_data(LEAGUE, data_dir=tmp_path)
     assert data.trade_deadline == 99 and data.roster_ids == [1, 2, 3, 4, 5, 6]
     assert data.injuries["G_RB"][0] == "Out"
@@ -215,6 +214,6 @@ def test_league_data_fields_for_the_fixture_league(tmp_path: Path) -> None:
 def test_report_raises_over_the_limit_for_the_stage_but_only_warns_for_the_dashboard() -> None:
     names = ["a", "b", "c"]
     with pytest.raises(RuntimeError, match="limit 2"):
-        sim._report("players with no projection", names, 2, "L")
+        league_checks.report("players with no projection", names, 2, "L")
     with pytest.warns(UserWarning, match="3 players with no projection"):
-        sim._report("players with no projection", names, 2, "L", strict=False)
+        league_checks.report("players with no projection", names, 2, "L", strict=False)

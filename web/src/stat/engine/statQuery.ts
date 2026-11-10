@@ -14,7 +14,7 @@ import type { QueryOrder } from "@/stat/lib/queryUrl";
 import type { GranularityMode, Side, Split } from "@/stat/types/queryBuilder";
 import type { QueryResult } from "@/stat/types/workbench";
 
-import type { ColumnSource, ColumnStore } from "./columns";
+import type { ColumnSource, ColumnStore, Table } from "./columns";
 import { isLeagueStat, leaguePointsProblem, runLeaguePointsQuery, type LeaguePointsRow } from "./leaguePointsQuery";
 import { isDerivedStat, runDerivedStats } from "./derivedQuery";
 import { latestGames } from "./lastGames";
@@ -243,14 +243,23 @@ async function runPlayAndDerived(params: StatQueryParams, store: ColumnStore, si
   return { ...merged, notices: [...(plays.notices ?? []), ...(derived.notices ?? [])] };
 }
 
-async function runPlayStats(params: StatQueryParams, store: ColumnStore, signal?: AbortSignal): Promise<QueryResult> {
-  const teams = params.teams ?? null;
-  if (!teams && params.playerGame && canServeFromPlayerGame(params)) {
-    return runPlayerGameQuery(params, params.playerGame, store, signal);
-  }
+/** What a play-stat query reads and reports, settled before any data is loaded. */
+interface PlayTarget {
+  groups: StatDefinition[][];
+  idColumn: "team_id" | "player_id";
+  /** The team column the stats count by (posteam or defteam), or null for a player query. */
+  teamColumn: string | null;
+  groupColumns: string[];
+  /** The output columns of an empty result. */
+  columns: string[];
+  /** The season files to read: the chip-selected seasons, else all. */
+  sources: ColumnSource[];
+}
 
+/** Rejects stats the target cannot answer, then fixes the output columns and the files to read. */
+function playTarget(params: StatQueryParams): PlayTarget {
+  const teams = params.teams ?? null;
   const groups = groupStatsByRows(params.statIds);
-  const knownIds = groups.flat().map((s) => s.id);
   if (groups.length === 0) {
     throw new Error("Select at least one stat.");
   }
@@ -262,16 +271,32 @@ async function runPlayStats(params: StatQueryParams, store: ColumnStore, signal?
     throw new Error("Next Gen Stats are per-player weekly values, so a team has no total for them.");
   }
   const idColumn = teams ? "team_id" : "player_id";
-  const teamColumn = teams ? TEAM_COLUMN[teams.side] : null;
   const groupColumns = splitColumns(params.split);
-  const columns = [idColumn, ...groupColumns, ...params.statIds.filter((id) => getStatById(id)).map(metricSelectAlias)];
-
   const chipYears = seasonsSelectedByChips(params);
-  const sources = chipYears.size > 0 ? params.sources.filter((s) => chipYears.has(s.year)) : params.sources;
-  if (sources.length === 0) {
-    return { columns, rows: [] };
-  }
+  return {
+    groups,
+    idColumn,
+    teamColumn: teams ? TEAM_COLUMN[teams.side] : null,
+    groupColumns,
+    columns: [idColumn, ...groupColumns, ...params.statIds.filter((id) => getStatById(id)).map(metricSelectAlias)],
+    sources: chipYears.size > 0 ? params.sources.filter((s) => chipYears.has(s.year)) : params.sources,
+  };
+}
 
+/** The parsed filters and the columns to load for them. */
+interface PlayPlan {
+  lastN: number | null;
+  needGames: boolean;
+  chipNode: Node | null;
+  /** The chips that describe the game, for per-game counts and last-N games. */
+  scopeNode: Node | null;
+  /** One play filter per group of stats, null when the group has none. */
+  filterNodes: (Node | null)[];
+  neededColumns: string[];
+}
+
+function planPlayStats(params: StatQueryParams, target: PlayTarget): PlayPlan {
+  const { groups, teamColumn, groupColumns } = target;
   const lastN = params.lastGames ?? null;
   const needGames = groups.some((g) => g.some((s) => usesGameCount(s, params.granularity)));
   const chipNode = parseOptional(buildFilterWhereSql(params.filterChipState, { groups: params.chipGroups }));
@@ -316,18 +341,41 @@ async function runPlayStats(params: StatQueryParams, store: ColumnStore, signal?
   if (lastN) {
     add(["season", "week"]);
   }
+  return { lastN, needGames, chipNode, scopeNode, filterNodes, neededColumns: [...needed] };
+}
 
-  const table = await store.table(sources, [...needed], signal);
+/** The loaded plays and the per-query lookups the groups share. */
+interface PlayScan {
+  table: Table;
+  wanted: (id: string) => boolean;
+  keyOf: (playerId: string, row: number) => string;
+  chip: ((row: number) => Value) | null;
+  /** Each id's latest N games when the query asks for them, else null. */
+  last: Map<string, Set<unknown>> | null;
+  /** Games played per group key, filled only when a stat divides by games. */
+  games: Map<string, number>;
+}
+
+async function scanPlays(
+  params: StatQueryParams,
+  target: PlayTarget,
+  plan: PlayPlan,
+  store: ColumnStore,
+  signal?: AbortSignal,
+): Promise<PlayScan> {
+  const teams = params.teams ?? null;
+  const { teamColumn } = target;
+  const table = await store.table(target.sources, plan.neededColumns, signal);
   signal?.throwIfAborted();
 
   const wanted = wantedPlayers(teams ? teams.ids : params.gsisIds, teams ? null : params.playerSet);
   const keyOf = splitKeyer(table.cols, params.split);
-  const chip = chipNode ? compileRowExpression(chipNode, table.cols) : null;
-  const scope = scopeNode ? compileRowExpression(scopeNode, table.cols) : null;
+  const chip = plan.chipNode ? compileRowExpression(plan.chipNode, table.cols) : null;
+  const scope = plan.scopeNode ? compileRowExpression(plan.scopeNode, table.cols) : null;
   const idColumns = teamColumn ? [teamColumn] : ROLE_COLUMNS;
   // A player's games are those he had a play in (any role); a team's, those it played.
-  const last = lastN
-    ? latestGames(lastN, (addGame) => {
+  const last = plan.lastN
+    ? latestGames(plan.lastN, (addGame) => {
         const { game_id: gameIds, season, week } = table.cols;
         for (let i = 0; i < table.rowCount; i++) {
           if (scope && scope(i) !== true) continue;
@@ -338,67 +386,93 @@ async function runPlayStats(params: StatQueryParams, store: ColumnStore, signal?
         }
       })
     : null;
-  const gameIdAt = last ? table.cols.game_id! : null;
-  const games = needGames
+  const games = plan.needGames
     ? gamesPlayed(table.cols, table.rowCount, wanted, scope, keyOf, idColumns, last)
     : new Map<string, number>();
+  return { table, wanted, keyOf, chip, last, games };
+}
+
+/** The rows of one group of stats that share a role, play type and filter, aggregated per player (or team) and split. */
+function shapeGroup(
+  params: StatQueryParams,
+  target: PlayTarget,
+  plan: PlayPlan,
+  scan: PlayScan,
+  stats: StatDefinition[],
+  k: number,
+): QueryResult {
+  const { table, wanted, keyOf, chip, last, games } = scan;
+  const { idColumn, teamColumn, groupColumns } = target;
+  const first = stats[0]!;
+  const roleIds = table.cols[playerColumnForRole(first.playerRole)]!;
+  // A team counts the plays its players would: those with someone in the stat's role.
+  const ids = teamColumn ? table.cols[teamColumn]! : roleIds;
+  const playTypes = first.playType === "all" ? null : table.cols.play_type!;
+  const filterNode = plan.filterNodes[k];
+  const rowFilter = filterNode ? compileRowExpression(filterNode, table.cols) : null;
+  const metrics = stats.map((s) => compileMetric(s, params.granularity, table.cols));
+  const gameIdAt = last ? table.cols.game_id! : null;
   const minPlays = Math.floor(params.minPlays);
 
-  const results = groups.map((stats, k): QueryResult => {
-    const first = stats[0]!;
-    const roleIds = table.cols[playerColumnForRole(first.playerRole)]!;
-    // A team counts the plays its players would: those with someone in the stat's role.
-    const ids = teamColumn ? table.cols[teamColumn]! : roleIds;
-    const playTypes = first.playType === "all" ? null : table.cols.play_type!;
-    const rowFilter = filterNodes[k] ? compileRowExpression(filterNodes[k]!, table.cols) : null;
-    const metrics = stats.map((s) => compileMetric(s, params.granularity, table.cols));
-
-    const rowsByGroup = new Map<string, { pid: string; rows: number[] }>();
-    for (let i = 0; i < table.rowCount; i++) {
-      const pid = ids[i];
-      // A team-only stat counts every play of its type, whoever had the ball.
-      if (typeof pid !== "string" || !wanted(pid) || (!first.teamOnly && typeof roleIds[i] !== "string")) {
-        continue;
-      }
-      if (playTypes && playTypes[i] !== first.playType) {
-        continue;
-      }
-      if (rowFilter && rowFilter(i) !== true) {
-        continue;
-      }
-      if (chip && chip(i) !== true) {
-        continue;
-      }
-      if (last && !last.get(pid)?.has(gameIdAt![i])) {
-        continue;
-      }
-      const key = keyOf(pid, i);
-      let group = rowsByGroup.get(key);
-      if (!group) {
-        group = { pid, rows: [] };
-        rowsByGroup.set(key, group);
-      }
-      group.rows.push(i);
+  const rowsByGroup = new Map<string, { pid: string; rows: number[] }>();
+  for (let i = 0; i < table.rowCount; i++) {
+    const pid = ids[i];
+    // A team-only stat counts every play of its type, whoever had the ball.
+    if (typeof pid !== "string" || !wanted(pid) || (!first.teamOnly && typeof roleIds[i] !== "string")) {
+      continue;
     }
-
-    const out: Record<string, unknown>[] = [];
-    for (const [key, { pid, rows }] of rowsByGroup) {
-      if (minPlays > 0 && rows.length < minPlays) {
-        continue;
-      }
-      const row: Record<string, unknown> = { [idColumn]: pid, ...splitValues(table.cols, params.split, rows[0]!) };
-      stats.forEach((stat, m) => {
-        row[metricSelectAlias(stat.id)] = metrics[m]!(rows, games.get(key) ?? 0);
-      });
-      out.push(row);
+    if (playTypes && playTypes[i] !== first.playType) {
+      continue;
     }
-    return { columns: [idColumn, ...groupColumns, ...stats.map((s) => metricSelectAlias(s.id))], rows: out };
-  });
+    if (rowFilter && rowFilter(i) !== true) {
+      continue;
+    }
+    if (chip && chip(i) !== true) {
+      continue;
+    }
+    if (last && !last.get(pid)?.has(gameIdAt![i])) {
+      continue;
+    }
+    const key = keyOf(pid, i);
+    let group = rowsByGroup.get(key);
+    if (!group) {
+      group = { pid, rows: [] };
+      rowsByGroup.set(key, group);
+    }
+    group.rows.push(i);
+  }
 
+  const out: Record<string, unknown>[] = [];
+  for (const [key, { pid, rows }] of rowsByGroup) {
+    if (minPlays > 0 && rows.length < minPlays) {
+      continue;
+    }
+    const row: Record<string, unknown> = { [idColumn]: pid, ...splitValues(table.cols, params.split, rows[0]!) };
+    stats.forEach((stat, m) => {
+      row[metricSelectAlias(stat.id)] = metrics[m]!(rows, games.get(key) ?? 0);
+    });
+    out.push(row);
+  }
+  return { columns: [idColumn, ...groupColumns, ...stats.map((s) => metricSelectAlias(s.id))], rows: out };
+}
+
+/** Answers play stats from the shards: plan the columns and filters, load and index the plays, then aggregate each group. */
+async function runPlayStats(params: StatQueryParams, store: ColumnStore, signal?: AbortSignal): Promise<QueryResult> {
+  if (!params.teams && params.playerGame && canServeFromPlayerGame(params)) {
+    return runPlayerGameQuery(params, params.playerGame, store, signal);
+  }
+  const target = playTarget(params);
+  if (target.sources.length === 0) {
+    return { columns: target.columns, rows: [] };
+  }
+  const plan = planPlayStats(params, target);
+  const scan = await scanPlays(params, target, plan, store, signal);
+  const results = target.groups.map((stats, k) => shapeGroup(params, target, plan, scan, stats, k));
+  const knownIds = target.groups.flat().map((s) => s.id);
   return mergeStatQueryResults(
     results,
     params.statIds.filter((id) => knownIds.includes(id)),
     params.split,
-    idColumn,
+    target.idColumn,
   );
 }

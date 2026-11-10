@@ -1,6 +1,7 @@
 import type { components } from "@/api/schema";
-import { type EffectWhy, tradeWhy, waiverWhy } from "@/features/thisweek/explain";
-import { MIN_PLAYOFF_GAIN, rankTodos, type Effect } from "@/features/thisweek/todos";
+import { MIN_PLAYOFF_GAIN, rankTodos, type Effect } from "@/features/effects/effect";
+import { type EffectWhy, tradeWhy, waiverWhy } from "@/features/effects/explain";
+import { toPoints } from "@/viz";
 
 type Waiver = components["schemas"]["WaiverRow"];
 type Idea = components["schemas"]["MoveIdeaRow"];
@@ -23,8 +24,6 @@ export type Move = {
   /** The player an add drops. Points are net of the drop: the response holds no separate cost for him. */
   drop: { name: string; netPoints: number | null } | null;
 };
-
-const toPoints = (fraction: number | null): number | null => (fraction === null ? null : fraction * PERCENT);
 
 export const waiverMoves = (rows: readonly Waiver[]): Move[] =>
   rows.map((w) => ({

@@ -1,6 +1,7 @@
 import {
-  barSpan, formatAge, ideasNotice, maxAbsDiff, nextLineupAction, oddsComparison, resultSentence, toPoints,
+  barSpan, formatAge, ideasNotice, maxAbsDiff, nextLineupAction, oddsComparison, resultSentence,
 } from "./logic";
+import { toPoints } from "@/viz";
 import type { ActionRow, IdeasInfo, LastWeekRow, OddsChangeRow, ProjectionMissRow } from "@/lib/digestTypes";
 
 const NOW = Date.parse("2026-10-25T12:00:00Z");

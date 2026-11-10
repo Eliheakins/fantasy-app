@@ -1,5 +1,5 @@
 import { PlayerLink } from "@/components/PlayerLink";
-import { EffectText } from "@/features/thisweek/TodoList";
+import { EffectText } from "@/features/effects/EffectText";
 import { MOVE_NOISE_PERCENT, type Move } from "./moves";
 
 function MoveTitle({ move }: { move: Move }) {

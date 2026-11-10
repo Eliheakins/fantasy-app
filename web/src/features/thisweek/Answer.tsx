@@ -1,5 +1,6 @@
 import { useHeld } from "@/lib/useHeld";
-import { EffectText, deadlineText } from "./TodoList";
+import { EffectText } from "@/features/effects/EffectText";
+import { deadlineText } from "./TodoList";
 import { useTodos } from "./useTodos";
 
 /** The page's answer sentence: the first thing to do, in which league, with its effect. */

@@ -26,6 +26,13 @@ export function formatNumber(value: number | null | undefined, digits = 1): stri
   return Number(text) === 0 ? (0).toFixed(digits) : text;
 }
 
+/** A probability change as percentage points (0.05 becomes 5); null stays null, so a missing value is not zero. */
+export function toPoints(fraction: number): number;
+export function toPoints(fraction: number | null): number | null;
+export function toPoints(fraction: number | null): number | null {
+  return fraction === null ? null : fraction * 100;
+}
+
 /** Points of probability or fantasy score: "+4.1 ▲", "-2.0 ▼", "~0.4" inside the noise band. */
 export function formatDelta(points: number, noise: number = NOISE_POINTS): FormattedDelta {
   if (!Number.isFinite(points)) return { text: "–", tone: "neutral", sign: 0 };

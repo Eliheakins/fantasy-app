@@ -1,5 +1,6 @@
 """My lineup for a week and the lineup with the best chance to win it (see data_api)."""
 
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -36,7 +37,14 @@ from fantasy.sim import moves
 from fantasy.sim.availability import LONG_TERM, kickoffs
 from fantasy.sim.lineup import Player, lineup_slots, lineup_with_locks, swap_plan
 from fantasy.sim.odds import LeagueData
-from fantasy.sim.winprob import choose, pick_by_quantile, search, slot_shares, swap_candidates
+from fantasy.sim.winprob import (
+    Verdict,
+    choose,
+    pick_by_quantile,
+    search,
+    slot_shares,
+    swap_candidates,
+)
 
 LINEUP_SIMS = 20000
 UNDERDOG = 0.45  # below this chance to win with the best lineup, variance is an asset
@@ -147,7 +155,7 @@ def lineup(
     pinned = {p.id for p in available if p.id in locked}
     best = lineup_with_locks(available, lineup_slots(data.roster_positions), pinned, starting)
     swap: dict[str, str] = {}
-    if current and load_config().inactive_swap:  # advice only: the lineup above is unchanged
+    if current:  # advice only: the lineup above is unchanged
         flagged = {p.id for p in available if _flag_status(data, p.id) in SWAP_STATUSES}
         swap = swap_plan(best, available, flagged, _kickoffs_by_player(week, data_dir), pinned)
     slot_of = {pid: slot for slot, pid in best.slots}
@@ -184,36 +192,36 @@ def _script(favourite: float) -> str:
     return f"Even matchup ({favourite:.0%} to win)"
 
 
-def win_probability(
-    league_key: str,
-    week: int = 0,
-    n_sims: int = LINEUP_SIMS,
-    now: datetime | None = None,
-    loaded: tuple[LeagueData, int] | None = None,
-    data_dir: Path | None = None,
-    team: int | None = None,
-) -> pl.DataFrame:
-    """My max-points lineup, the lineup set in Sleeper, and the lineup with the best chance of
-    beating this week's opponent, each with its win probability on held-out draws.
+@dataclass(frozen=True)
+class _Draws:
+    """Both teams' simulated week totals on shared draws. The first `half` of the draws picks the
+    candidates; the rest is held out for every number shown."""
 
-    The opponent plays the lineup set in Sleeper, or their best lineup if none is set. In the
-    current week a player whose game has started counts the points he has, plus a draw scaled to
-    the share of his game still to play (a game is assumed to last 200 minutes from kickoff).
-    Sleeper points are only as fresh as the last refresh.
-    """
-    loaded = loaded or _league(league_key, data_dir, team)
-    data, mine = loaded
-    week = week or data.current_week
-    opp = _opponent_of(data, mine, week)
-    mine_rows = lineup(league_key, week, now, loaded, data_dir, team)
-    if opp is None or mine_rows.is_empty():
-        return pl.DataFrame(schema=ENGINE_SCHEMAS["win_probability"])
+    base: frozenset[str]  # the max-points lineup
+    sleeper: frozenset[str]  # the lineup set in Sleeper, empty when none is set
+    candidates: list[frozenset[str]]
+    totals: dict[frozenset[str], np.ndarray]
+    opponent: np.ndarray
+    points: np.ndarray  # player draws, one column per id
+    column: dict[str, int]
+    half: int
 
-    positions = moves.position_of(data)
-    values = _week_values(data, week, positions)
-    slots = lineup_slots(data.roster_positions)
-    opp_ids = _opponent_lineup(data, opp, week, positions, values, slots, data_dir)
 
+def _simulate_candidates(
+    data: LeagueData,
+    mine: int,
+    opp: int,
+    opp_ids: list[str],
+    mine_rows: pl.DataFrame,
+    positions: dict[str, str],
+    values: dict[str, float],
+    slots: list[str],
+    week: int,
+    n_sims: int,
+    data_dir: Path | None,
+) -> _Draws:
+    """Draw both lineups' totals and search for candidate lineups on the training half: the
+    max-points lineup, what the swap search finds, and the lineup set in Sleeper."""
     base = frozenset(mine_rows.filter(pl.col("recommended"))["gsis_id"])
     locked = set(mine_rows.filter(pl.col("locked"))["gsis_id"])
     pool_ids = list(mine_rows["gsis_id"])
@@ -252,49 +260,105 @@ def win_probability(
     if sleeper and sleeper not in candidates:
         candidates.append(sleeper)
     totals = {c: totals_of(c) for c in candidates}
-    verdict = choose(candidates, base, totals, opponent)
-    ceiling, _ = pick_by_quantile(candidates, totals, 0.9)
-    floor, _ = pick_by_quantile(candidates, totals, 0.1)
-    held = {
-        q: {c: float(np.quantile(totals[c][half:], q)) for c in candidates} for q in (0.1, 0.5, 0.9)
-    }
+    return _Draws(base, sleeper, candidates, totals, opponent, points, column, half)
+
+
+def _option_rows(
+    options: dict[str, frozenset[str]],
+    verdict: Verdict,
+    draws: _Draws,
+    mine_rows: pl.DataFrame,
+    kd_mean: float,
+    positions: dict[str, str],
+    values: dict[str, float],
+    slots: list[str],
+) -> list[dict[str, object]]:
+    """One row per lineup option; every range is read on the held-out half of the draws."""
+    held_out = slice(draws.half, None)
     opp_floor, opp_median, opp_ceiling = (
-        float(np.quantile(opponent[half:], q)) for q in (0.1, 0.5, 0.9)
+        float(np.quantile(draws.opponent[held_out], q)) for q in (0.1, 0.5, 0.9)
     )
-    script = _script(verdict.win_prob[base])
-
+    script = _script(verdict.win_prob[draws.base])
     mean_of = {r["gsis_id"]: r["projection"] for r in mine_rows.iter_rows(named=True)}
-    kd_mean, _ = _constant_moments(data, data.current.get(mine) if current else None, mine, week)
-    options = {"max_points": base, "win_prob": verdict.chosen, "ceiling": ceiling, "floor": floor}
-    if sleeper:
-        options["sleeper_now"] = sleeper
-
-    slots_in = {name: _slots_of(ids_, mean_of, positions, slots) for name, ids_ in options.items()}
-
-    def calls(name: str, ids_: frozenset[str]) -> list[dict[str, str | float | None]]:
-        picks = list(zip(slots_in[name], sorted(ids_), strict=True))
+    locked = set(mine_rows.filter(pl.col("locked"))["gsis_id"])
+    pool_ids = list(mine_rows["gsis_id"])
+    rows: list[dict[str, object]] = []
+    for name, ids_ in options.items():
+        slots_in = _slots_of(ids_, mean_of, positions, slots)
+        floor, median, ceiling = (
+            float(np.quantile(draws.totals[ids_][held_out], q)) for q in (0.1, 0.5, 0.9)
+        )
+        picks = list(zip(slots_in, sorted(ids_), strict=True))
         bench = [i for i in pool_ids if i not in ids_]
-        # held-out half, like every other displayed number; display only, nothing is chosen from it
-        return slot_shares(points[half:], column, picks, bench, positions, values, locked)
+        rows.append(
+            {
+                "option": name,
+                "win_prob": verdict.win_prob[ids_],
+                "expected_points": sum(mean_of[i] for i in ids_) + kd_mean,
+                "gsis_ids": sorted(ids_),
+                "slots": slots_in,
+                "share_better": verdict.share_better if name == "win_prob" else 0.5,
+                "tag": verdict.tag if name == "win_prob" else "",
+                "floor": floor,
+                "median": median,
+                "ceiling": ceiling,
+                "opp_floor": opp_floor,
+                "opp_median": opp_median,
+                "opp_ceiling": opp_ceiling,
+                "script": script,
+                # display only, nothing is chosen from it
+                "slot_calls": slot_shares(
+                    draws.points[held_out], draws.column, picks, bench, positions, values, locked
+                ),
+            }
+        )
+    return rows
 
-    rows = [
-        {
-            "option": name,
-            "win_prob": verdict.win_prob[ids_],
-            "expected_points": sum(mean_of[i] for i in ids_) + kd_mean,
-            "gsis_ids": sorted(ids_),
-            "slots": slots_in[name],
-            "share_better": verdict.share_better if name == "win_prob" else 0.5,
-            "tag": verdict.tag if name == "win_prob" else "",
-            "floor": held[0.1][ids_],
-            "median": held[0.5][ids_],
-            "ceiling": held[0.9][ids_],
-            "opp_floor": opp_floor,
-            "opp_median": opp_median,
-            "opp_ceiling": opp_ceiling,
-            "script": script,
-            "slot_calls": calls(name, ids_),
-        }
-        for name, ids_ in options.items()
-    ]
+
+def win_probability(
+    league_key: str,
+    week: int = 0,
+    n_sims: int = LINEUP_SIMS,
+    now: datetime | None = None,
+    loaded: tuple[LeagueData, int] | None = None,
+    data_dir: Path | None = None,
+    team: int | None = None,
+) -> pl.DataFrame:
+    """My max-points lineup, the lineup set in Sleeper, and the lineup with the best chance of
+    beating this week's opponent, each with its win probability on held-out draws.
+
+    The opponent plays the lineup set in Sleeper, or their best lineup if none is set. In the
+    current week a player whose game has started counts the points he has, plus a draw scaled to
+    the share of his game still to play (a game is assumed to last 200 minutes from kickoff).
+    Sleeper points are only as fresh as the last refresh.
+    """
+    loaded = loaded or _league(league_key, data_dir, team)
+    data, mine = loaded
+    week = week or data.current_week
+    opp = _opponent_of(data, mine, week)
+    mine_rows = lineup(league_key, week, now, loaded, data_dir, team)
+    if opp is None or mine_rows.is_empty():
+        return pl.DataFrame(schema=ENGINE_SCHEMAS["win_probability"])
+
+    positions = moves.position_of(data)
+    values = _week_values(data, week, positions)
+    slots = lineup_slots(data.roster_positions)
+    opp_ids = _opponent_lineup(data, opp, week, positions, values, slots, data_dir)
+    draws = _simulate_candidates(
+        data, mine, opp, opp_ids, mine_rows, positions, values, slots, week, n_sims, data_dir
+    )
+    verdict = choose(draws.candidates, draws.base, draws.totals, draws.opponent)
+    ceiling, _ = pick_by_quantile(draws.candidates, draws.totals, 0.9)
+    floor, _ = pick_by_quantile(draws.candidates, draws.totals, 0.1)
+    options = {
+        "max_points": draws.base,
+        "win_prob": verdict.chosen,
+        "ceiling": ceiling,
+        "floor": floor,
+    }
+    if draws.sleeper:
+        options["sleeper_now"] = draws.sleeper
+    state = data.current.get(mine) if week == data.current_week else None
+    kd_mean, _ = _constant_moments(data, state, mine, week)
+    rows = _option_rows(options, verdict, draws, mine_rows, kd_mean, positions, values, slots)
     return pl.DataFrame(rows, schema=ENGINE_SCHEMAS["win_probability"])

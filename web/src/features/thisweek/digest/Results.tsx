@@ -1,7 +1,7 @@
 import { PlayerLink } from "@/components/PlayerLink";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
-import { Delta, NOISE_PERCENT, NOISE_POINTS, NOISE_WINS, formatNumber, formatPercent } from "@/viz";
-import { barSpan, maxAbsDiff, oddsComparison, resultSentence, toPoints } from "./logic";
+import { Delta, NOISE_PERCENT, NOISE_POINTS, NOISE_WINS, formatNumber, formatPercent, toPoints } from "@/viz";
+import { barSpan, maxAbsDiff, oddsComparison, resultSentence } from "./logic";
 import type { LastWeekRow, OddsChangeRow, ProjectionMissRow } from "@/lib/digestTypes";
 
 const BAR_HALF = 60;

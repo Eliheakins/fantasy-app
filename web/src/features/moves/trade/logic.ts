@@ -1,3 +1,4 @@
+import { formatNumber, toPoints } from "@/viz";
 import type { Draft, MarketSummary, TradeRequest, TradeSide } from "./types";
 
 /** The API rejects more ids than this per side. */
@@ -29,25 +30,25 @@ type Measure = { key: string; label: string; before: number; after: number; perc
 /** The three before/after measures of one side; probabilities become percentage points. */
 export function sideMeasures(side: TradeSide): [Measure, Measure, Measure] {
   return [
-    { key: "playoff", label: "Make playoffs", before: side.playoff_before * 100, after: side.playoff_after * 100, percent: true },
-    { key: "title", label: "Win the title", before: side.title_before * 100, after: side.title_after * 100, percent: true },
+    { key: "playoff", label: "Make playoffs", before: toPoints(side.playoff_before), after: toPoints(side.playoff_after), percent: true },
+    { key: "title", label: "Win the title", before: toPoints(side.title_before), after: toPoints(side.title_after), percent: true },
     { key: "wins", label: "Expected wins", before: side.wins_before, after: side.wins_after, percent: false },
   ];
 }
 
 export function formatValue(value: number, percent: boolean): string {
-  return `${value.toFixed(1)}${percent ? "%" : ""}`;
+  return `${formatNumber(value)}${percent ? "%" : ""}`;
 }
 
 /** "+1.2%" or "-0.4" with an explicit sign, for the text equivalent. */
 export function formatSigned(value: number, percent: boolean): string {
-  const text = value.toFixed(1);
-  const signed = Number(text) === 0 ? "0.0" : value > 0 ? `+${text}` : text;
+  const text = formatNumber(value);
+  const signed = value > 0 && Number(text) > 0 ? `+${text}` : text;
   return `${signed}${percent ? "%" : ""}`;
 }
 
-/** Probability change to points. */
-export const points = (fraction: number): number => fraction * 100;
+/** Probability change to points, under the name features/ask imports. */
+export { toPoints as points } from "@/viz";
 
 /** "gives 5,000, gets 5,700, you receive 14% more": what the market says, nothing about acceptance. */
 export function marketText(m: MarketSummary): string {

@@ -17,8 +17,6 @@ export type ObjectiveKey = (typeof OBJECTIVES)[number]["key"];
 
 export const labelOf = (key: ObjectiveKey): string => OBJECTIVES.find((o) => o.key === key)?.label ?? key;
 
-export const LAST_WEEK = 18;
-
 /** Rows for an objective; the lineup route's own rows when the simulation has not produced them. */
 export function rowsFor(
   base: readonly LineupRow[],

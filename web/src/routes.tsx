@@ -1,27 +1,30 @@
-import type { ReactNode } from "react";
+import { lazy, type ReactNode, Suspense } from "react";
 import { createBrowserRouter, type RouteObject } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { RequireAdmin } from "@/components/layout/RequireAdmin";
 import { RequireSession } from "@/components/layout/RequireSession";
-import { WelcomeDialog } from "@/features/leagues/WelcomeDialog";
 import { redirectRoutes } from "@/lib/redirects";
 import { NAV_ITEMS, type NavPath } from "@/nav";
-import Admin from "@/pages/Admin";
-import Ask from "@/pages/Ask";
 import DevViz from "@/pages/DevViz";
-import Explore from "@/pages/Explore";
-import Lineup from "@/pages/Lineup";
 import Login from "@/pages/Login";
-import Moves from "@/pages/Moves";
 import MyLeagues from "@/pages/MyLeagues";
 import NotFound from "@/pages/NotFound";
-import Player from "@/pages/Player";
-import Players from "@/pages/Players";
-import PlayersCompare from "@/pages/PlayersCompare";
 import RedeemInvite from "@/pages/RedeemInvite";
-import Scorecard from "@/pages/Scorecard";
-import Season from "@/pages/Season";
-import ThisWeek from "@/pages/ThisWeek";
+
+// Pages load on demand so the first paint ships only the shell. Navigation suspends inside a router transition,
+// so the old page stays up (and focus lands on the new h1) once the chunk arrives; the AppShell Suspense covers first load.
+const Admin = lazy(() => import("@/pages/Admin"));
+const Ask = lazy(() => import("@/pages/Ask"));
+const Explore = lazy(() => import("@/pages/Explore"));
+const Lineup = lazy(() => import("@/pages/Lineup"));
+const Moves = lazy(() => import("@/pages/Moves"));
+const Player = lazy(() => import("@/pages/Player"));
+const Players = lazy(() => import("@/pages/Players"));
+const PlayersCompare = lazy(() => import("@/pages/PlayersCompare"));
+const Scorecard = lazy(() => import("@/pages/Scorecard"));
+const Season = lazy(() => import("@/pages/Season"));
+const ThisWeek = lazy(() => import("@/pages/ThisWeek"));
+const WelcomeDialog = lazy(() => import("@/features/leagues/WelcomeDialog").then((m) => ({ default: m.WelcomeDialog })));
 
 /** The five tabs. Add a page here and in nav.ts. */
 const TABS: Record<NavPath, ReactNode> = {
@@ -43,7 +46,9 @@ export const routes: RouteObject[] = [
         element: (
           <>
             <AppShell />
-            <WelcomeDialog />
+            <Suspense fallback={null}>
+              <WelcomeDialog />
+            </Suspense>
           </>
         ),
         children: [

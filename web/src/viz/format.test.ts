@@ -1,4 +1,4 @@
-import { confidenceFromShare, formatDelta, formatNumber, formatPercent, NOISE_PERCENT, NOISE_WINS } from "./format";
+import { confidenceFromShare, formatDelta, formatNumber, formatPercent, NOISE_PERCENT, NOISE_WINS, toPoints } from "./format";
 
 describe("formatDelta", () => {
   it("shows sign and up arrow for gains", () => {
@@ -67,5 +67,26 @@ describe("confidenceFromShare", () => {
 describe("one confidence vocabulary", () => {
   it("maps paired-sim share to clear, lean, toss-up at 70% and 55%", () => {
     expect(["0.7", "0.69", "0.55", "0.54"].map((s) => confidenceFromShare(Number(s)))).toEqual(["clear", "lean", "lean", "toss-up"]);
+  });
+});
+
+describe("formatNumber edge cases", () => {
+  it("shows an en dash for null, undefined and NaN", () => {
+    expect(formatNumber(null)).toBe("–");
+    expect(formatNumber(undefined)).toBe("–");
+    expect(formatNumber(Number.NaN)).toBe("–");
+  });
+  it("prints zero and negative zero as 0.0", () => {
+    expect(formatNumber(0)).toBe("0.0");
+    expect(formatNumber(-0)).toBe("0.0");
+  });
+});
+
+describe("toPoints", () => {
+  it("turns a fraction into percentage points and keeps null", () => {
+    expect(toPoints(0.05)).toBeCloseTo(5);
+    expect(toPoints(null)).toBeNull();
+    expect(toPoints(0)).toBe(0);
+    expect(toPoints(-0.02)).toBeCloseTo(-2);
   });
 });

@@ -11,16 +11,12 @@ from typing import Any
 import polars as pl
 
 from fantasy._engine import _read
-from fantasy._schemas import ENGINE_SCHEMAS
+from fantasy._schemas import ENGINE_SCHEMAS, empty
 from fantasy.sim import grades
 from fantasy.sim.lineup import ActualPlayer, best_actual
 from fantasy.sim.schedule import all_play, completed, pairings
 
 LINEUP_POSITIONS = frozenset({"QB", "RB", "WR", "TE", "K", "DEF"})
-
-
-def _empty(name: str) -> pl.DataFrame:
-    return pl.DataFrame(schema=ENGINE_SCHEMAS[name])
 
 
 def _settings(me: dict[str, Any], data_dir: Path | None) -> dict[str, Any]:
@@ -46,7 +42,7 @@ def power_rankings(me: dict[str, Any], data_dir: Path | None) -> pl.DataFrame:
         pl.col("league_id") == me["league_id"]
     )
     if odds.is_empty():
-        return _empty("power_rankings")
+        return empty("power_rankings")
     weeks = _read("sim_team_weeks", data_dir, area="derived").filter(
         pl.col("league_id") == me["league_id"]
     )
@@ -92,7 +88,7 @@ def luck(me: dict[str, Any], data_dir: Path | None) -> pl.DataFrame:
     through = _through(me, _settings(me, data_dir))
     record = all_play(_matchups(me, data_dir), through)
     if record.is_empty():
-        return _empty("luck")
+        return empty("luck")
     games = pl.col("ap_wins") + pl.col("ap_losses") + pl.col("ap_ties")
     expected = (pl.col("ap_wins") + 0.5 * pl.col("ap_ties")) / games * pl.col("weeks")
     table = (
@@ -118,7 +114,7 @@ def manager_grades(me: dict[str, Any], data_dir: Path | None) -> pl.DataFrame:
     settings = _settings(me, data_dir)
     played = completed(_matchups(me, data_dir), _through(me, settings))
     if played.is_empty():
-        return _empty("manager_grades")
+        return empty("manager_grades")
     options = _lineup_options(_read("sleeper_players", data_dir))
     scored = _read("matchup_players", data_dir).join(
         played.select("league_id", "week", "roster_id"), on=["league_id", "week", "roster_id"]
@@ -160,7 +156,7 @@ def what_if(me: dict[str, Any], week: int, data_dir: Path | None) -> pl.DataFram
     settings = _settings(me, data_dir)
     week = week or int(me["current_week"])
     if week < int(me["current_week"]) or week >= int(settings["playoff_week_start"]):
-        return _empty("what_if")
+        return empty("what_if")
     lid, mine = me["league_id"], me["roster_id"]
     conditional = _read("sim_conditional", data_dir, area="derived").filter(
         (pl.col("league_id") == lid) & (pl.col("week") == week) & (pl.col("roster_id") == mine)
@@ -169,7 +165,7 @@ def what_if(me: dict[str, Any], week: int, data_dir: Path | None) -> pl.DataFram
         (pl.col("league_id") == lid) & (pl.col("roster_id") == mine)
     )
     if conditional.is_empty() or plain.is_empty():
-        return _empty("what_if")
+        return empty("what_if")
     base = plain.row(0, named=True)
     names = _teams(me, data_dir).select("roster_id", "team_name")
     table = (

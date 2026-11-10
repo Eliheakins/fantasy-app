@@ -6,13 +6,14 @@ import { statIdsFor, statLink } from "@/lib/statLink";
 import { getStatById } from "@/stat/config/statDictionary";
 import { metricSelectAlias } from "@/stat/lib/queryBuilder";
 import { formatQueryValue } from "@/stat/lib/formatQueryValue";
+import { formatNumber } from "@/viz";
 import { useGameLog } from "./useGameLog";
 
 type Props = { gsisId: string; position: string; season: number };
 type PointsRow = { week: number; points: number };
 
 /** League points to one decimal, whatever their size (formatQueryValue shows three below 1). */
-const formatPoints = (v: number | undefined): string => (v === undefined ? "—" : v.toFixed(1));
+const formatPoints = (v: number | undefined): string => (v === undefined ? "—" : formatNumber(v));
 
 const CELL = "px-2 py-2 text-right tabular-nums";
 
@@ -61,7 +62,7 @@ export function PlayerGameLog({ gsisId, position, season }: Props) {
         </div>
       )}
       {href && (
-        <Link to={href} className="inline-flex min-h-[44px] items-center underline decoration-border underline-offset-4 hover:decoration-text">
+        <Link to={href} className="inline-flex min-h-[44px] items-center underline decoration-line underline-offset-4 hover:decoration-ink">
           Open in Find players
         </Link>
       )}

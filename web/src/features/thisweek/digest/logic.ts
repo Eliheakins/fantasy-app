@@ -20,11 +20,6 @@ export function formatAge(iso: string, nowMs: number): string {
   return plural(Math.floor(age / DAY_MS), "day");
 }
 
-/** A probability change as percentage points; null stays null (no earlier run is not zero). */
-export function toPoints(fraction: number | null): number | null {
-  return fraction === null ? null : fraction * 100;
-}
-
 export function maxAbsDiff(rows: readonly Pick<ProjectionMissRow, "diff">[]): number {
   return rows.reduce((m, r) => (r.diff === null ? m : Math.max(m, Math.abs(r.diff))), 0);
 }

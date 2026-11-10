@@ -1,9 +1,9 @@
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
-import { Delta, NOISE_PERCENT } from "@/viz";
+import { Delta, NOISE_PERCENT, toPoints } from "@/viz";
 import { FailureNotice } from "./FailureNotice";
-import { marketDate, marketText, points } from "./logic";
+import { marketDate, marketText } from "./logic";
 import type { FoundTrade } from "./types";
 import { useKeptState } from "./useKeptState";
 import { usePostEnvelope } from "@/api/useEnvelope";
@@ -31,7 +31,7 @@ function PartnerKind({ r }: { r: FoundTrade }) {
   );
 }
 
-const odds = (fraction: number) => <Delta points={points(fraction)} noise={NOISE_PERCENT} />;
+const odds = (fraction: number) => <Delta points={toPoints(fraction)} noise={NOISE_PERCENT} />;
 
 const COLUMNS: readonly Column<FoundTrade>[] = [
   { label: "Partner", role: "primary", render: (r) => <PartnerKind r={r} /> },
@@ -55,7 +55,7 @@ const COLUMNS: readonly Column<FoundTrade>[] = [
         ""
       ),
   },
-  { label: "Title error (\u00b1 pp)", role: "detail", numeric: true, render: (r) => points(r.se_title).toFixed(2) },
+  { label: "Title error (\u00b1 pp)", role: "detail", numeric: true, render: (r) => toPoints(r.se_title).toFixed(2) },
 ];
 
 function FoundTradesTable({ rows }: { rows: readonly FoundTrade[] }) {

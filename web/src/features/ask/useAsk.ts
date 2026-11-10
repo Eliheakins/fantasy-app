@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { getAllFilterChipIds } from "@/stat/config/queryBuilderOptions";
@@ -9,6 +9,7 @@ import { isLeagueQuery, parseQuery, type QueryState, writeQuery } from "@/stat/l
 import type { PlayerDictionaryRow } from "@/stat/lib/schemas/players";
 import { useQueryState } from "@/stat/react/useQueryState";
 
+import { type AskState, askReducer, initialAsk, shownOf } from "./askReducer";
 import { isNewEdit, type LoggedQuery } from "./askLog";
 import { browserStorage, logAsk, logCorrection } from "./askLogStore";
 import type { AnswerPath } from "./interpretQuestion";
@@ -16,11 +17,9 @@ import { forgetCorrection, storeIntent } from "./intentCache";
 import { dispatchAsk } from "./paths/dispatch";
 import { keyFor } from "./paths/modelPath";
 import type { AskActions, Resume, StartSitShown, TradeShown } from "./paths/types";
-import type { FantasyRoute } from "./fantasyRoute";
-import type { PlayerMatch } from "./resolvePlayers";
 
 export type { StartSitShown, TradeShown };
-export type AskPhase = "idle" | "working" | "choosing";
+export type AskPhase = AskState["phase"];
 
 const loggedFrom = (state: QueryState): LoggedQuery => ({
   players: state.players,
@@ -51,14 +50,9 @@ export function useAsk() {
   const { state, question: urlQuestion, showQuery } = useQueryState();
   const { manifest, seasons } = useManifest();
   const chipGroups = useFilterChipGroups();
-  const [question, setQuestion] = useState(urlQuestion);
-  const [phase, setPhase] = useState<AskPhase>("idle");
-  const [message, setMessage] = useState<string | null>(null);
-  const [resolved, setResolved] = useState<PlayerDictionaryRow[]>([]);
-  const [choices, setChoices] = useState<PlayerMatch[]>([]);
-  const [startSit, setStartSit] = useState<StartSitShown | null>(null);
-  const [trade, setTrade] = useState<TradeShown | null>(null);
-  const [route, setRoute] = useState<FantasyRoute | null>(null);
+  const [ask, dispatch] = useReducer(askReducer, urlQuestion, initialAsk);
+  const { question, phase } = ask;
+  const setQuestion = useCallback((text: string) => dispatch({ type: "edit", question: text }), []);
   const [, setParams] = useSearchParams();
   // The question a start/sit or trade answer belongs to, and how the pending namesake choice finishes.
   const startSitFor = useRef<string | null>(null);
@@ -89,23 +83,13 @@ export function useAsk() {
   useEffect(() => {
     currentRequest.current += 1;
     controllerRef.current?.abort();
-    setQuestion(urlQuestion);
-    setMessage(null);
-    setResolved([]);
-    setChoices([]);
     resume.current = null;
-    if (startSitFor.current !== urlQuestion) {
-      setStartSit(null);
-      setTrade(null);
-      setRoute(null);
-    }
-    setPhase("idle");
+    dispatch({ type: "urlChanged", question: urlQuestion, keepShown: startSitFor.current === urlQuestion });
   }, [urlQuestion]);
 
   const fail = useCallback<AskActions["fail"]>((asked, path, text) => {
     logAsk({ question: asked, path, outcome: { kind: "message", text } });
-    setMessage(text);
-    setPhase("idle");
+    dispatch({ type: "fail", text });
   }, []);
 
   const answer = useCallback<AskActions["answer"]>(
@@ -119,7 +103,7 @@ export function useAsk() {
       setAnsweredBy({ question: asked, path, unrecognized, notes, entryId, answeredKey: editKey(shown) });
       showQuery(next, asked);
       // The same question can be asked twice, which leaves the URL's question unchanged.
-      setPhase("idle");
+      dispatch({ type: "answered" });
     },
     [showQuery, chipGroups],
   );
@@ -128,7 +112,6 @@ export function useAsk() {
   const keepQuestion = useCallback(
     (asked: string) => {
       startSitFor.current = asked;
-      setPhase("idle");
       setParams((prev) => {
         const next = new URLSearchParams(prev);
         next.set("q", asked);
@@ -142,7 +125,7 @@ export function useAsk() {
     (shown, asked) => {
       const [first, second] = [shown.names[shown.a], shown.names[shown.b]];
       logAsk({ question: asked, path: "rules", outcome: { kind: "start_sit", text: `${first} or ${second}` } });
-      setStartSit(shown);
+      dispatch({ type: "show", shown: { kind: "startSit", value: shown } });
       keepQuestion(asked);
     },
     [keepQuestion],
@@ -152,7 +135,7 @@ export function useAsk() {
     (shown, asked) => {
       const list = (ids: string[]) => ids.map((id) => shown.names[id]).join(" and ");
       logAsk({ question: asked, path: "rules", outcome: { kind: "trade", text: `${list(shown.give)} for ${list(shown.get)}` } });
-      setTrade(shown);
+      dispatch({ type: "show", shown: { kind: "trade", value: shown } });
       keepQuestion(asked);
     },
     [keepQuestion],
@@ -161,7 +144,7 @@ export function useAsk() {
   const showRoute = useCallback<AskActions["showRoute"]>(
     (shown, asked) => {
       logAsk({ question: asked, path: "rules", outcome: { kind: "message", text: shown.text } });
-      setRoute(shown);
+      dispatch({ type: "show", shown: { kind: "route", value: shown } });
       keepQuestion(asked);
     },
     [keepQuestion],
@@ -169,9 +152,7 @@ export function useAsk() {
 
   const choose = useCallback<AskActions["choose"]>((sure, unsure, finish) => {
     resume.current = finish;
-    setResolved(sure);
-    setChoices(unsure);
-    setPhase("choosing");
+    dispatch({ type: "choose", resolved: sure, choices: unsure });
   }, []);
 
   // Paths and namesake choices outlive this render, so they call through to the latest handlers.
@@ -192,20 +173,14 @@ export function useAsk() {
   const onAsk = useCallback(async (text?: string) => {
     const trimmed = (text ?? question).trim();
     if (!trimmed) {
-      setMessage("Type a question first.");
+      dispatch({ type: "needText" });
       return;
     }
     const request = ++currentRequest.current;
     controllerRef.current?.abort();
     const controller = new AbortController();
     controllerRef.current = controller;
-    setPhase("working");
-    setMessage(null);
-    setResolved([]);
-    setChoices([]);
-    setStartSit(null);
-    setTrade(null);
-    setRoute(null);
+    dispatch({ type: "start" });
     startSitFor.current = null;
     resume.current = null;
 
@@ -233,20 +208,20 @@ export function useAsk() {
   const onChoose = useCallback(
     (player: PlayerDictionaryRow) => {
       const finish = resume.current;
-      if (!finish) {
+      if (!finish || ask.phase !== "choosing") {
         return;
       }
+      const { choices, resolved } = ask;
       const remaining = choices.filter((c) => !c.candidates.some((x) => x.gsis_id === player.gsis_id));
       const players = [...resolved, player];
-      setResolved(players);
-      setChoices(remaining);
+      dispatch({ type: "choose", resolved: players, choices: remaining });
       if (remaining.length > 0) {
         return;
       }
       resume.current = null;
       finish(players, question.trim());
     },
-    [choices, resolved, question],
+    [ask],
   );
 
   /** True when the URL holds a query to show: players (or a leaderboard) and at least one stat. */
@@ -303,15 +278,15 @@ export function useAsk() {
     question,
     setQuestion,
     phase,
-    message,
-    resolved,
-    choices,
+    message: ask.message,
+    resolved: ask.phase === "choosing" ? ask.resolved : [],
+    choices: ask.phase === "choosing" ? ask.choices : [],
     onAsk,
     onChoose,
     hasResult,
-    startSit,
-    trade,
-    route,
+    startSit: shownOf(ask, "startSit"),
+    trade: shownOf(ask, "trade"),
+    route: shownOf(ask, "route"),
     path: current?.path ?? null,
     unrecognized: current?.unrecognized ?? [],
     notes: current?.notes ?? [],

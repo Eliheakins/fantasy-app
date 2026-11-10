@@ -5,16 +5,13 @@ import { RadioGroup } from "@/components/RadioGroup";
 import { useLeague, useLeagueApi } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
 import { cn } from "@/lib/utils";
-import { Delta, formatPercent } from "@/viz";
+import { Delta, formatPercent, toPoints } from "@/viz";
 import { MIN_RUNS, type Matchup, groupMatchups, isThin } from "./logic";
 import type { WhatIfRow } from "./types";
 
 const WEEKS_AHEAD = 4;
 const OPTION_CLASS = (on: boolean) =>
   cn("min-h-[44px] rounded-full border px-4 text-body", on ? "border-forest bg-forest font-semibold text-white" : "border-panel-line bg-surface text-forest hover:border-forest");
-
-/** Odds change in percentage points, so the shared Delta formatting applies. */
-const points = (fraction: number) => fraction * 100;
 
 function Outcome({ row, owner }: { row: WhatIfRow; owner: string }) {
   const runs = row.n_runs.toLocaleString("en-US");
@@ -33,9 +30,9 @@ function Outcome({ row, owner }: { row: WhatIfRow; owner: string }) {
       </p>
       <dl className="mt-1 grid max-w-xs grid-cols-2 gap-y-1 text-body">
         <dt>Playoff odds change (pp)</dt>
-        <dd className="text-right"><Delta points={points(row.d_playoffs)} /></dd>
+        <dd className="text-right"><Delta points={toPoints(row.d_playoffs)} /></dd>
         <dt>Title odds change (pp)</dt>
-        <dd className="text-right"><Delta points={points(row.d_title)} /></dd>
+        <dd className="text-right"><Delta points={toPoints(row.d_title)} /></dd>
       </dl>
     </div>
   );

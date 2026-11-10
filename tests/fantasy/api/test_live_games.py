@@ -16,7 +16,7 @@ from test_simulate_load import LEAGUE, build_store
 
 from fantasy import _engine, _lineup, data_api
 from fantasy.sim import league_data as sim
-from fantasy.sim import moves
+from fantasy.sim import league_projections, moves
 from fantasy.sim.availability import (
     EASTERN,
     GAME_MINUTES,
@@ -718,13 +718,13 @@ def test_kd_slot_projections_take_each_teams_best_rostered_unit_and_zero_for_a_b
     )  # fmt: skip
     ids = pl.DataFrame({"sleeper_id": ["k1", "k2"], "gsis_id": ["G1", "G2"]})
 
-    out = sim._kd_slot_projections("L1", ids, 3, tmp_path)
+    out = league_projections.kd_slot_projections("L1", ids, 3, tmp_path)
 
     assert out[("K", 1, 3)] == 9.0 and out[("K", 1, 4)] == 6.0  # best of two kickers
     assert out[("DEF", 1, 4)] == 4.0 and out[("DEF", 2, 3)] == 8.0  # Sleeper JAC is nflverse JAX
     assert out[("DEF", 2, 4)] == 0.0  # no row for a rostered defense in a projected week: bye
     assert ("K", 2, 3) not in out  # no kicker: the league mean applies
-    later = sim._kd_slot_projections("L1", ids, 4, tmp_path)
+    later = league_projections.kd_slot_projections("L1", ids, 4, tmp_path)
     assert (
         "DEF",
         2,

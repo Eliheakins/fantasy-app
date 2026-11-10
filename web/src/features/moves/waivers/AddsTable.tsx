@@ -1,7 +1,8 @@
 import { PlayerLink } from "@/components/PlayerLink";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { Delta, formatNumber } from "@/viz";
-import { classifyChange, type WaiverRow } from "./logic";
+import { classifyChange } from "@/features/effects/change";
+import type { WaiverRow } from "./logic";
 
 function Change({ change, error }: { change: number | null; error?: number | null }) {
   const c = classifyChange(change, error);
@@ -17,7 +18,7 @@ type Props = {
 };
 
 const BTN =
-  "min-h-[44px] text-left font-medium underline decoration-border underline-offset-4 hover:decoration-text lg:min-h-0";
+  "min-h-[44px] text-left font-medium underline decoration-line underline-offset-4 hover:decoration-ink lg:min-h-0";
 
 function columns(selected: string | null, onSelect: (id: string) => void): Column<WaiverRow>[] {
   return [

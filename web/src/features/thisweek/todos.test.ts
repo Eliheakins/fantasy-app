@@ -1,4 +1,5 @@
-import { type Todo, leagueTodos, orderByDeadline, rankTodos } from "./todos";
+import { rankTodos } from "@/features/effects/effect";
+import { type Todo, leagueTodos, orderByDeadline } from "./todos";
 
 const todo = (id: string, over: Partial<Todo> = {}): Todo => ({
   id, leagueKey: "a", leagueName: "A", kind: "lineup", title: id, detail: "", href: "/lineup?league=a",

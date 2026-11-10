@@ -50,3 +50,19 @@ describe("marketText", () => {
     expect(marketText({ ...base, accepted_share: null, accepted_sides: 3 })).not.toContain("past");
   });
 });
+
+describe("formatValue and formatSigned edge cases", () => {
+  it("prints zero and negative zero without a sign", () => {
+    expect(formatValue(0, true)).toBe("0.0%");
+    expect(formatValue(-0, false)).toBe("0.0");
+    expect(formatSigned(0, true)).toBe("0.0%");
+    expect(formatSigned(-0, false)).toBe("0.0");
+  });
+  it("shows an en dash for NaN, and signs only changes that survive rounding", () => {
+    expect(formatValue(Number.NaN, true)).toBe("–%");
+    expect(formatSigned(Number.NaN, false)).toBe("–");
+    expect(formatSigned(0.04, false)).toBe("0.0");
+    expect(formatSigned(0.05, false)).toBe("+0.1");
+    expect(formatSigned(-1.234, true)).toBe("-1.2%");
+  });
+});

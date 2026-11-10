@@ -4,7 +4,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MoveList } from "@/features/moves/MoveList";
 import { MOVE_NOISE_PERCENT, type MoveView, filterMoves, moveHeadline, worthMove } from "@/features/moves/moves";
 import { useMoves } from "@/features/moves/useMoves";
-import { EffectText } from "@/features/thisweek/TodoList";
+import { EffectText } from "@/features/effects/EffectText";
 import { WaiversContent } from "@/features/moves/waivers/WaiversView";
 import { useLeague } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";

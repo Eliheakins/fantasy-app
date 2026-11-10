@@ -1,13 +1,13 @@
-import { formatValue, points, sideMeasures } from "./logic";
+import { formatValue, sideMeasures } from "./logic";
 import type { TradeEvaluation } from "./types";
-import { NOISE_PERCENT } from "@/viz";
+import { NOISE_PERCENT, toPoints } from "@/viz";
 
 export const BUILDER_DEBOUNCE_MS = 600;
 /** How long "Copied." stays, so copying again is announced again. */
 export const COPIED_NOTE_MS = 3000;
 
 const sides = (r: TradeEvaluation) => ({ me: r.odds.find((s) => s.side === "me"), them: r.odds.find((s) => s.side === "them") });
-const playoffChange = (s: TradeEvaluation["odds"][number]) => points(s.playoff_after - s.playoff_before);
+const playoffChange = (s: TradeEvaluation["odds"][number]) => toPoints(s.playoff_after - s.playoff_before);
 
 /** A pitch makes sense only when both teams' playoff odds rise by more than the noise bar. */
 export function canPitch(r: TradeEvaluation): boolean {

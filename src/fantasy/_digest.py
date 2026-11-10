@@ -13,15 +13,11 @@ import polars as pl
 
 from fantasy import _league_view, store
 from fantasy._engine import _read
-from fantasy._schemas import ENGINE_SCHEMAS
+from fantasy._schemas import ENGINE_SCHEMAS, empty
 from fantasy.config import load_config
 from fantasy.sim.schedule import completed
 
 IDEA_KINDS = ("waiver", "trade")
-
-
-def _empty(name: str) -> pl.DataFrame:
-    return pl.DataFrame(schema=ENGINE_SCHEMAS[name])
 
 
 def _season_value(table: pl.DataFrame, roster_id: int, column: str) -> float | None:
@@ -41,7 +37,7 @@ def _week_figure(
     return now - (before or 0.0)
 
 
-def _nfl_week_over(me: dict[str, Any], week: int, data_dir: Path | None) -> bool:
+def _nfl_week_over(week: int, data_dir: Path | None) -> bool:
     """Every NFL game of the week has a score. False without schedule rows for the season."""
     games = _read("nfl_schedules", data_dir).filter(
         (pl.col("season") == load_config().season) & (pl.col("week") == week)
@@ -53,25 +49,25 @@ def last_scored_week(me: dict[str, Any], data_dir: Path | None) -> int:
     """The latest finished week: the week before the current one, or the current week itself once
     every NFL game in it is final (Sleeper keeps the old week until it rolls over midweek)."""
     current = int(me["current_week"])
-    return current if _nfl_week_over(me, current, data_dir) else current - 1
+    return current if _nfl_week_over(current, data_dir) else current - 1
 
 
 def last_week(me: dict[str, Any], data_dir: Path | None) -> pl.DataFrame:
     """My game in the last finished week; empty in week 1 or if it was not scored."""
     week = last_scored_week(me, data_dir)
     if week < 1:
-        return _empty("last_week")
+        return empty("last_week")
     settings = _league_view._settings(me, data_dir)
     games = completed(_league_view._matchups(me, data_dir), week).filter(pl.col("week") == week)
     mine = games.filter(pl.col("roster_id") == me["roster_id"])
     if mine.is_empty():
-        return _empty("last_week")
+        return empty("last_week")
     game = mine.row(0, named=True)
     other = games.filter(
         (pl.col("matchup_id") == game["matchup_id"]) & (pl.col("roster_id") != me["roster_id"])
     )
     if other.is_empty():
-        return _empty("last_week")
+        return empty("last_week")
     rival = other.row(0, named=True)
     names = dict(
         zip(*_league_view._teams(me, data_dir).select("roster_id", "team_name"), strict=True)
@@ -105,7 +101,7 @@ def player_vs_projection(me: dict[str, Any], week: int, data_dir: Path | None) -
     week = week or last_scored_week(me, data_dir)
     league = _read("leagues", data_dir).filter(pl.col("league_id") == me["league_id"])
     if week < 1 or league.is_empty():
-        return _empty("player_vs_projection")
+        return empty("player_vs_projection")
     starters = _read("matchup_players", data_dir).filter(
         (pl.col("league_id") == me["league_id"])
         & (pl.col("week") == week)
@@ -142,7 +138,7 @@ def odds_change(history: pl.DataFrame, league_id: str, mine: int) -> pl.DataFram
     there is no earlier week or the team was not in it."""
     runs = history.filter(pl.col("league_id") == league_id)
     if runs.is_empty():
-        return _empty("odds_change")
+        return empty("odds_change")
     last_runs = runs.group_by("as_of_week").agg(pl.col("run_at").max())
     latest_week = runs.filter(pl.col("run_at") == runs["run_at"].max())["as_of_week"][0]
     earlier = last_runs.filter(pl.col("as_of_week") < latest_week)
@@ -154,7 +150,7 @@ def odds_change(history: pl.DataFrame, league_id: str, mine: int) -> pl.DataFram
 
     now = take(latest_week).select("roster_id", "team_name", "as_of_week", "p_playoffs", "p_title")
     if prev_week is None:
-        before = _empty("odds_change").select("roster_id", "p_playoffs", "p_title")
+        before = empty("odds_change").select("roster_id", "p_playoffs", "p_title")
     else:
         before = take(prev_week).select("roster_id", "p_playoffs", "p_title")
     before = before.rename({"p_playoffs": "prev_playoffs", "p_title": "prev_title"})
@@ -177,12 +173,12 @@ def move_ideas(me: dict[str, Any], kind: str, data_dir: Path | None) -> pl.DataF
     """Stored ideas of a kind ("waiver" or "trade"), best first. Empty for any team but mine."""
     if kind not in IDEA_KINDS:
         raise ValueError(f"kind must be one of {IDEA_KINDS}, not {kind!r}")
-    empty = pl.DataFrame(schema=store.SCHEMAS["move_ideas"])
+    none_stored = pl.DataFrame(schema=store.SCHEMAS["move_ideas"])
     if not is_my_team(me, data_dir):
-        return empty
+        return none_stored
     stored = _read("move_ideas", data_dir, area="derived")
     mine = stored.filter((pl.col("league_id") == me["league_id"]) & (pl.col("kind") == kind))
-    return mine.sort("rank") if not mine.is_empty() else empty
+    return mine.sort("rank") if not mine.is_empty() else none_stored
 
 
 def stored_adds(me: dict[str, Any], data_dir: Path | None) -> pl.DataFrame:

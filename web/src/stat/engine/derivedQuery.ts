@@ -12,7 +12,7 @@ import { getStatById, playerColumnForRole, type StatDefinition } from "@/stat/co
 import { buildFilterWhereSql, metricSelectAlias, splitColumns, splitKeyer } from "@/stat/lib/queryBuilder";
 import type { QueryResult } from "@/stat/types/workbench";
 
-import type { ColumnStore } from "./columns";
+import type { ColumnStore, Table } from "./columns";
 import {
   type Columns,
   columnsIn,
@@ -20,6 +20,7 @@ import {
   compileRowExpression,
   type Node,
   parseExpression,
+  type Value,
 } from "./expression";
 import { latestGames } from "./lastGames";
 import { wantedPlayers } from "./playerGameQuery";
@@ -53,45 +54,15 @@ function partsOf(nodes: readonly Node[]): { stats: string[]; team: string[]; gam
 
 const parseOptional = (sql: string): Node | null => (sql === "" ? null : parseExpression(sql));
 
-/**
- * Team totals of `teamStats` in each player's games, and the games each player (or team) played, by
- * the row key (the player or team, and the split). One pass over the play-by-play.
- */
-async function teamTotalsAndGames(
-  params: StatQueryParams,
-  teamStats: StatDefinition[],
-  store: ColumnStore,
-  signal: AbortSignal | undefined,
-): Promise<{ team: Map<string, Record<string, number>>; games: Map<string, number> }> {
-  const years = seasonsSelectedByChips(params);
-  const sources = years.size > 0 ? params.sources.filter((s) => years.has(s.year)) : params.sources;
-  const chipNode = parseOptional(buildFilterWhereSql(params.filterChipState, { groups: params.chipGroups }));
-  const scopeNode = parseOptional(
-    buildFilterWhereSql(params.filterChipState, { groups: params.chipGroups, groupIds: GAME_SCOPE_GROUP_IDS }),
-  );
-  const teamColumn = params.teams ? TEAM_COLUMN[params.teams.side] : null;
-  const idColumns: readonly string[] = teamColumn ? [teamColumn] : ROLE_COLUMNS;
-  const parts = teamStats.map((stat) => {
-    const summed = summedExpression(stat);
-    if (!summed) {
-      throw new Error(`${stat.label} is not a count, so a team total of it cannot be added up.`);
-    }
-    return { stat, summed, filter: stat.playFilter ? parseExpression(stat.playFilter) : null };
-  });
+type TotalPart = { stat: StatDefinition; summed: Node; filter: Node | null };
 
-  const needed = new Set<string>(["game_id", "posteam", "season", "week", ...idColumns, ...splitColumns(params.split)]);
-  for (const node of [chipNode, scopeNode, ...parts.flatMap((p) => [p.summed, p.filter])]) {
-    if (node) columnsIn(node).forEach((c) => needed.add(c));
-  }
-  for (const { stat } of parts) {
-    needed.add(playerColumnForRole(stat.playerRole));
-    needed.add("play_type");
-  }
-  const table = await store.table(sources, [...needed], signal);
-  signal?.throwIfAborted();
-  const { cols, rowCount } = table;
-  const chip = chipNode ? compileRowExpression(chipNode, cols) : null;
-  const scope = scopeNode ? compileRowExpression(scopeNode, cols) : null;
+/** The games (with the team the player had the ball for) behind each row key, within the scope and last-N cut. */
+function gamesByRowKey(
+  params: StatQueryParams,
+  { cols, rowCount }: Table,
+  scope: ((row: number) => Value) | null,
+  idColumns: readonly string[],
+): Map<string, Set<string>> {
   const wanted = wantedPlayers(params.teams ? params.teams.ids : params.gsisIds, params.teams ? null : params.playerSet);
   const keyOf = splitKeyer(cols, params.split);
   const gameId = cols.game_id!;
@@ -110,7 +81,6 @@ async function teamTotalsAndGames(
       })
     : null;
 
-  // The games (with the team the player had the ball for) behind each row key.
   const gamesByKey = new Map<string, Set<string>>();
   for (let i = 0; i < rowCount; i++) {
     if (!inScope(i)) continue;
@@ -123,8 +93,17 @@ async function teamTotalsAndGames(
       gamesByKey.set(key, set);
     }
   }
+  return gamesByKey;
+}
 
-  // Each team's total of each stat in each game, under the same chips as the player's own plays.
+/** Each team's total of each stat in each game ("game|team"), under the same chips as the player's own plays. */
+function teamGameTotals(
+  { cols, rowCount }: Table,
+  parts: readonly TotalPart[],
+  chip: ((row: number) => Value) | null,
+): Map<string, Record<string, number>> {
+  const gameId = cols.game_id!;
+  const posteam = cols.posteam!;
   const perGame = new Map<string, Record<string, number>>();
   for (const { stat, summed, filter } of parts) {
     const rowsByGame = new Map<string, number[]>();
@@ -145,6 +124,50 @@ async function teamTotalsAndGames(
       perGame.set(game, totals);
     }
   }
+  return perGame;
+}
+
+/**
+ * Team totals of `teamStats` in each player's games, and the games each player (or team) played, by
+ * the row key (the player or team, and the split). One pass over the play-by-play.
+ */
+async function teamTotalsAndGames(
+  params: StatQueryParams,
+  teamStats: StatDefinition[],
+  store: ColumnStore,
+  signal: AbortSignal | undefined,
+): Promise<{ team: Map<string, Record<string, number>>; games: Map<string, number> }> {
+  const years = seasonsSelectedByChips(params);
+  const sources = years.size > 0 ? params.sources.filter((s) => years.has(s.year)) : params.sources;
+  const chipNode = parseOptional(buildFilterWhereSql(params.filterChipState, { groups: params.chipGroups }));
+  const scopeNode = parseOptional(
+    buildFilterWhereSql(params.filterChipState, { groups: params.chipGroups, groupIds: GAME_SCOPE_GROUP_IDS }),
+  );
+  const teamColumn = params.teams ? TEAM_COLUMN[params.teams.side] : null;
+  const idColumns: readonly string[] = teamColumn ? [teamColumn] : ROLE_COLUMNS;
+  const parts = teamStats.map((stat): TotalPart => {
+    const summed = summedExpression(stat);
+    if (!summed) {
+      throw new Error(`${stat.label} is not a count, so a team total of it cannot be added up.`);
+    }
+    return { stat, summed, filter: stat.playFilter ? parseExpression(stat.playFilter) : null };
+  });
+
+  const needed = new Set<string>(["game_id", "posteam", "season", "week", ...idColumns, ...splitColumns(params.split)]);
+  for (const node of [chipNode, scopeNode, ...parts.flatMap((p) => [p.summed, p.filter])]) {
+    if (node) columnsIn(node).forEach((c) => needed.add(c));
+  }
+  for (const { stat } of parts) {
+    needed.add(playerColumnForRole(stat.playerRole));
+    needed.add("play_type");
+  }
+  const table = await store.table(sources, [...needed], signal);
+  signal?.throwIfAborted();
+  const scope = scopeNode ? compileRowExpression(scopeNode, table.cols) : null;
+  const chip = chipNode ? compileRowExpression(chipNode, table.cols) : null;
+
+  const gamesByKey = gamesByRowKey(params, table, scope, idColumns);
+  const perGame = teamGameTotals(table, parts, chip);
 
   const team = new Map<string, Record<string, number>>();
   const games = new Map<string, number>();

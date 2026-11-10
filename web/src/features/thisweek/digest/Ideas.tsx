@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
-import { classifyChange } from "@/features/moves/waivers/logic";
+import { classifyChange } from "@/features/effects/change";
 import { Delta, formatNumber } from "@/viz";
 import { formatAge, ideasNotice } from "./logic";
 import type { IdeasInfo, MoveIdeaRow } from "@/lib/digestTypes";

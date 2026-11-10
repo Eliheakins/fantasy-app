@@ -213,3 +213,8 @@ OUTLOOK_SCHEMA: dict[str, pl.DataType | type[pl.DataType]] = {
     "label": _S,
     "why": _S,
 }
+
+
+def empty(name: str) -> pl.DataFrame:
+    """A zero-row frame with the columns of `ENGINE_SCHEMAS[name]`."""
+    return pl.DataFrame(schema=ENGINE_SCHEMAS[name])
