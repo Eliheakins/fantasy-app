@@ -76,7 +76,7 @@ def test_current_state_without_a_clock_treats_scoring_as_started() -> None:
 
 
 def test_sync_week_replaces_only_that_weeks_rows(tmp_path: Path) -> None:
-    leagues = {c: None for c in store.SCHEMAS["leagues"]} | {"league_key": "a", "league_id": "L1"}
+    leagues = dict.fromkeys(store.SCHEMAS["leagues"]) | {"league_key": "a", "league_id": "L1"}
     store.write_table(
         "leagues", pl.DataFrame([leagues], schema=store.SCHEMAS["leagues"]), "raw", tmp_path
     )

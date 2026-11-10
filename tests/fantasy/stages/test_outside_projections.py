@@ -80,7 +80,7 @@ def test_run_appends_to_the_archive_and_a_failing_position_does_not_stop_it(
             raise RuntimeError("site down")
         return RB_PAGE
 
-    sources = {"fftoday": fake}
+    sources: dict[str, op.Fetcher] = {"fftoday": fake}
     assert op.run(tmp_path, ["fftoday"], sources, pause=0) == 6  # RB, WR, TE pages, 2 rows each
     assert op.run(tmp_path, ["fftoday"], sources, pause=0) == 6
     archive = store.read_table("outside_proj_snapshots", "archive", tmp_path)

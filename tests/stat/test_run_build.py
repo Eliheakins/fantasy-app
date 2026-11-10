@@ -32,7 +32,7 @@ def _games(season: int) -> pl.DataFrame:
         rushing_epa=[None],
         receiving_epa=[None],
     )
-    epa = {c: pl.Float64 for c in ("passing_epa", "rushing_epa", "receiving_epa")}
+    epa = dict.fromkeys(("passing_epa", "rushing_epa", "receiving_epa"), pl.Float64)
     return pl.DataFrame(row, schema_overrides=epa)
 
 

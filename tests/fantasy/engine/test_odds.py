@@ -40,8 +40,8 @@ def toy_league(boost_team: int | None = None, boost: float = 0.0) -> odds.League
         cv={"QB": 0.5, "RB": 0.7, "WR": 0.7, "TE": 0.8},
         pair_rho={("QB1", "WR1"): 0.35, ("WR1", "QB1"): 0.35},
         pairings=pairings,
-        wins0={r: 0.0 for r in range(1, N_TEAMS + 1)},
-        points0={r: 0.0 for r in range(1, N_TEAMS + 1)},
+        wins0=dict.fromkeys(range(1, N_TEAMS + 1), 0.0),
+        points0=dict.fromkeys(range(1, N_TEAMS + 1), 0.0),
         k_mean=8.0,
         k_var=16.0,
         def_mean=8.0,
@@ -51,7 +51,8 @@ def toy_league(boost_team: int | None = None, boost: float = 0.0) -> odds.League
 
 def test_a_single_player_has_variance_from_his_projection() -> None:
     mean, var, persistent = odds.lineup_moments([Player("a", "WR", 10.0)], {"WR": 0.7}, {})
-    assert (mean, var) == (10.0, pytest.approx(49.0))
+    assert mean == 10.0
+    assert var == pytest.approx(49.0)
     assert persistent == odds.TAU["WR"] ** 2
 
 
@@ -121,7 +122,9 @@ def test_history_appends_and_never_overwrites(tmp_path: Path) -> None:
 
 
 def test_a_big_projection_uses_its_own_size_tiers_spread() -> None:
-    tiers = {"WR": ((6.0, 1.0), (12.0, 0.8), (1e9, 0.4))}
+    tiers: dict[str, tuple[tuple[float, float], ...]] = {
+        "WR": ((6.0, 1.0), (12.0, 0.8), (1e9, 0.4))
+    }
     steady = odds.lineup_moments([Player("a", "WR", 10.0)], {"WR": 0.7}, {}, tiers)
     erratic = odds.lineup_moments([Player("b", "WR", 4.0)], {"WR": 0.7}, {}, tiers)
     huge = odds.lineup_moments([Player("c", "WR", 20.0)], {"WR": 0.7}, {}, tiers)

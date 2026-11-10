@@ -20,9 +20,12 @@ HOLDER = (
 
 
 def test_a_second_non_blocking_holder_is_refused_until_the_first_leaves(tmp_path: Path) -> None:
-    with pipeline_lock(tmp_path):
-        with pytest.raises(PipelineBusy), pipeline_lock(tmp_path, blocking=False):
-            pass
+    with (
+        pipeline_lock(tmp_path),
+        pytest.raises(PipelineBusy),
+        pipeline_lock(tmp_path, blocking=False),
+    ):
+        pass
     with pipeline_lock(tmp_path, blocking=False):  # released on exit
         pass
 

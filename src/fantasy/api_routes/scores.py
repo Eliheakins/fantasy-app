@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from fantasy import _view as view
 from fantasy import data_api
 from fantasy.api_deps import Ctx, DataDir, RequestContext
-from fantasy.api_envelope import clean, guarded, rows
+from fantasy.api_envelope import clean_rows, guarded, rows
 from fantasy.api_models import (
     Envelope,
     LiveScoreRow,
@@ -26,7 +26,7 @@ def live_score(league: str, ctx: Ctx) -> Any:
 
 def scoreboard_data(league: str, week: int, ctx: RequestContext) -> list[dict[str, Any]]:
     board = data_api.scoreboard(league, week, data_dir=ctx.data_dir, team=ctx.team)
-    return clean(view.scoreboard_rows(board))
+    return clean_rows(view.scoreboard_rows(board))
 
 
 @router.get("/leagues/{league}/scoreboard", response_model=Envelope[list[ScoreboardRow]])

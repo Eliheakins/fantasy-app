@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import polars as pl
@@ -13,7 +14,7 @@ SCORING = {"pass_td": 4.0}
 
 def stats_row(player_id: str, passing_tds: float) -> pl.DataFrame:
     schema = store.SCHEMAS["nfl_player_stats"]
-    row = {c: 0.0 if t == pl.Float64 else None for c, t in schema.items()}
+    row: dict[str, Any] = {c: 0.0 if t == pl.Float64 else None for c, t in schema.items()}
     row |= {"player_id": player_id, "passing_tds": passing_tds}
     return pl.DataFrame([row], schema=schema)
 

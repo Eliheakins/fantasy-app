@@ -11,11 +11,13 @@ from nfl_stat.core.state import AppState
 
 # Both live on `app.state`, set by `attach`, so every app (and every test) has its own.
 def get_app_state(request: Request) -> AppState:
-    return request.app.state.stat_state
+    state: AppState = request.app.state.stat_state
+    return state
 
 
 def get_settings_dep(request: Request) -> AppSettings:
-    return request.app.state.stat_settings
+    settings: AppSettings = request.app.state.stat_settings
+    return settings
 
 
 def get_llm_client(state: Annotated[AppState, Depends(get_app_state)]) -> AsyncOpenAI:

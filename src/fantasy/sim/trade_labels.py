@@ -73,7 +73,10 @@ def _is_addon(big: dict[str, Any], small: dict[str, Any], positions: dict[str, s
         return False
     if positions[next(iter(extra_give))] != positions[next(iter(extra_get))]:
         return False
-    odds = lambda r: r["my_playoff"] + r["my_title"]  # noqa: E731
+
+    def odds(r: dict[str, Any]) -> float:
+        return float(r["my_playoff"] + r["my_title"])
+
     return abs(odds(big) - odds(small)) < ODDS_TOL
 
 

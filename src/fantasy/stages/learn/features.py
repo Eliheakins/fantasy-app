@@ -87,17 +87,17 @@ def games_frame(
 def state_frame(games: pl.DataFrame) -> pl.DataFrame:
     """Each player's state AFTER each game: weighted averages, last values, games played."""
     ordered = games.sort(*GROUP, "season", "week")
-    lag = []
+    lag: list[pl.Expr] = []
     for column in LAG_COLUMNS:
-        for half_life in HALF_LIVES:
-            # a value missing in the latest game carries the earlier one forward
-            lag.append(
-                pl.col(column)
-                .forward_fill()
-                .ewm_mean(half_life=half_life)
-                .over(GROUP)
-                .alias(f"{column}_hl{half_life}")
-            )
+        # a value missing in the latest game carries the earlier one forward
+        lag.extend(
+            pl.col(column)
+            .forward_fill()
+            .ewm_mean(half_life=half_life)
+            .over(GROUP)
+            .alias(f"{column}_hl{half_life}")
+            for half_life in HALF_LIVES
+        )
         lag.append(pl.col(column).alias(f"{column}_last"))
     return ordered.with_columns(
         *lag,

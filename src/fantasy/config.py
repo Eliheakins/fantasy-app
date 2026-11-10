@@ -4,10 +4,12 @@ import tomllib
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
-from nfl_stat.core.config import REPO_ROOT as ROOT
+from nfl_stat.core.config import REPO_ROOT
 from nfl_stat.core.seasons import current_season
 
+ROOT = REPO_ROOT
 PROJECTION_MODELS = ("learned", "baseline")
 # sites whose terms do not forbid scraping and storage; see stages/outside_projections
 OUTSIDE_SOURCES = ("fftoday",)
@@ -29,7 +31,7 @@ class Config:
     prop_positions: tuple[str, ...] = ("RB", "WR")  # positions that get prop-implied points
 
 
-def _switch(raw: dict, key: str, path: Path, default: bool = False) -> bool:
+def _switch(raw: dict[str, Any], key: str, path: Path, default: bool = False) -> bool:
     """An on/off setting, `default` when absent; anything but true or false (say "false") raises."""
     value = raw.get(key, default)
     if not isinstance(value, bool):

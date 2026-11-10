@@ -82,7 +82,8 @@ def noise_matrix(roster_ids: list[int], weeks: list[int], n_sims: int, seed: int
 def team_scores(inp: SeasonInputs) -> np.ndarray:
     """Simulated team scores (T, W, S): mean + persistent shift + noise."""
     z = noise_matrix(inp.roster_ids, inp.weeks, inp.shift.shape[2], inp.seed)
-    return inp.mean[:, :, None] + inp.shift + inp.noise_sd[:, :, None] * z
+    scores: np.ndarray = inp.mean[:, :, None] + inp.shift + inp.noise_sd[:, :, None] * z
+    return scores
 
 
 def simulate_season(inp: SeasonInputs) -> SeasonResult:
@@ -122,7 +123,8 @@ def simulate_season(inp: SeasonInputs) -> SeasonResult:
     champion = winner(finalist_1, finalist_2, w3)
 
     def share(chosen: np.ndarray) -> np.ndarray:
-        return np.bincount(chosen.ravel(), minlength=n_teams) / n_sims
+        shares: np.ndarray = np.bincount(chosen.ravel(), minlength=n_teams) / n_sims
+        return shares
 
     made = np.zeros((n_teams, n_sims), dtype=bool)
     for k in range(N_PLAYOFF_TEAMS):

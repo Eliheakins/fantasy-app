@@ -38,9 +38,12 @@ def test_games_on_boundaries() -> None:
 def calls(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     log: list[str] = []
     monkeypatch.setattr(live_refresh, "current_week_kickoffs", lambda data_dir: (8, {"A": KICK}))
-    monkeypatch.setattr(
-        sync_sleeper, "sync_week", lambda week, data_dir: log.append(f"sync{week}") or 1
-    )
+
+    def sync(week: int, data_dir: Path | None) -> int:
+        log.append(f"sync{week}")
+        return 1
+
+    monkeypatch.setattr(sync_sleeper, "sync_week", sync)
     monkeypatch.setattr(
         simulate, "run", lambda *a, **k: log.append(f"sim archive={k.get('archive')}")
     )
@@ -101,7 +104,12 @@ def test_error_is_recorded_lock_released_and_next_tick_runs(
     assert not live.step(KICK + timedelta(minutes=1))  # no tight retry
     with pipeline_lock(blocking=False):  # the failed tick released the lock
         pass
-    monkeypatch.setattr(sync_sleeper, "sync_week", lambda week, data_dir: calls.append("sync") or 1)
+
+    def sync(week: int, data_dir: Path | None) -> int:
+        calls.append("sync")
+        return 1
+
+    monkeypatch.setattr(sync_sleeper, "sync_week", sync)
     assert live.step(KICK + timedelta(minutes=LIVE_REFRESH_MINUTES))
     assert live.status()["last_error"] is None
 

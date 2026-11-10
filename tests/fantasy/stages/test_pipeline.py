@@ -1,13 +1,17 @@
 import importlib.util
 import os
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import polars as pl
 import pytest
 
 from fantasy import pipeline, store
+from fantasy._lock import NOT_PUBLISHED_EXIT
+from fantasy._runs import SOFT_FAILURE_EXIT, record_run
 from fantasy.pipeline import Outcome, Stage
+from fantasy.stages import refresh_report
 
 OK = Outcome(True)
 
@@ -39,7 +43,9 @@ def stages(*specs: str) -> tuple[Stage, ...]:
     return tuple(built)
 
 
-def run(plan: tuple[Stage, ...], runner: Script, data_dir: Path) -> dict[str, str]:
+def run(
+    plan: tuple[Stage, ...], runner: Callable[[Stage], Outcome], data_dir: Path
+) -> dict[str, str]:
     return pipeline.execute(plan, runner, data_dir=data_dir, sleep=lambda s: None)
 
 
@@ -244,19 +250,19 @@ def test_a_run_takes_every_queued_request(root: Path) -> None:
 
 @pytest.mark.parametrize(
     ("published", "report_code", "expected"),
-    [(True, 0, 0), (True, 1, 1), (False, 1, pipeline.NOT_PUBLISHED_EXIT)],
+    [(True, 0, 0), (True, 1, 1), (False, 1, NOT_PUBLISHED_EXIT)],
 )
 def test_the_exit_code_tells_the_service_whether_a_retry_is_worth_it(
     monkeypatch: pytest.MonkeyPatch, published: bool, report_code: int, expected: int
 ) -> None:
     monkeypatch.setattr(pipeline, "refresh", lambda stages, runner, **kw: ({}, published))
-    monkeypatch.setattr(pipeline.refresh_report, "main", lambda argv: report_code)
+    monkeypatch.setattr(refresh_report, "main", lambda argv: report_code)
     assert pipeline.main() == expected
 
 
 def test_the_childs_own_error_survives_the_parents_exit_code_row(tmp_path: Path) -> None:
     def runner(stage: Stage) -> Outcome:
-        pipeline.record_run(stage.name, "failed", "RuntimeError('disk full')", tmp_path)
+        record_run(stage.name, "failed", "RuntimeError('disk full')", tmp_path)
         return Outcome(False, "exit code 1")  # what run_command says after the child exits 1
 
     run(stages("a?"), runner, tmp_path)
@@ -273,7 +279,7 @@ SOFT = Outcome(False, "soft failure", soft=True)
 
 
 def test_a_soft_failure_exit_code_is_told_apart_from_a_failure() -> None:
-    code = f"raise SystemExit({pipeline.SOFT_FAILURE_EXIT})"
+    code = f"raise SystemExit({SOFT_FAILURE_EXIT})"
     assert pipeline.run_command([sys.executable, "-c", code], timeout=10) == SOFT
 
 

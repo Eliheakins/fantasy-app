@@ -52,7 +52,7 @@ def test_bad_table_name_rejected(tmp_path: Path) -> None:
 
 def test_write_tables_replaces_nothing_when_one_table_fails_its_schema(
     tmp_path,
-    monkeypatch,  # type: ignore[no-untyped-def]
+    monkeypatch,
 ) -> None:
     monkeypatch.setattr(
         store,

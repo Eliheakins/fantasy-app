@@ -73,7 +73,7 @@ def test_a_table_chance_of_playing_replaces_the_stat_line_chance() -> None:
     weeks = [7, 8, 9, 10, 11]
     rows = [("hurt", w, 9.0) for w in weeks] + [("snaps", w, 9.0) for w in weeks]
     frame = pl.DataFrame(
-        rows + [("fine", 7, 9.0)], schema=["gsis_id", "week", "projection"], orient="row"
+        [*rows, ("fine", 7, 9.0)], schema=["gsis_id", "week", "projection"], orient="row"
     )
     q = {(g, w): 0.9 for g, w, _ in rows} | {("fine", 7): 0.9}  # E is 10 everywhere
     flag = ("Questionable", "Hamstring", None)

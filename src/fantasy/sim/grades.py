@@ -79,6 +79,6 @@ def team_grades(
             "score",
             "rank",
             "grade",
-        )  # fmt: skip
+        )
         .sort(["position", "rank", "roster_id"])
     )

@@ -56,7 +56,8 @@ def load_players(
 ) -> dict[str, dict[str, Any]]:
     now = time.time() if now is None else now
     if cache.exists() and now - cache.stat().st_mtime < PLAYERS_TTL_SECONDS:
-        return json.loads(cache.read_text())
+        cached: dict[str, dict[str, Any]] = json.loads(cache.read_text())
+        return cached
     data: dict[str, dict[str, Any]] = fetch("/players/nfl")
     check_players(data)
     cache.parent.mkdir(parents=True, exist_ok=True)
@@ -140,27 +141,28 @@ def teams_frame(
 
 
 def rosters_frame(league_id: str, rosters: list[dict[str, Any]]) -> pl.DataFrame:
-    rows = []
+    rows: list[dict[str, Any]] = []
     for r in rosters:
         starters = {p for p in (r.get("starters") or []) if p != EMPTY_SLOT}
         reserve = set(r.get("reserve") or [])
-        for pid in r.get("players") or []:
-            rows.append(
-                {
-                    "league_id": league_id,
-                    "roster_id": _int(r["roster_id"]),
-                    "sleeper_id": str(pid),
-                    "is_starter": pid in starters,
-                    "is_ir": pid in reserve,
-                }
-            )
+        rows.extend(
+            {
+                "league_id": league_id,
+                "roster_id": _int(r["roster_id"]),
+                "sleeper_id": str(pid),
+                "is_starter": pid in starters,
+                "is_ir": pid in reserve,
+            }
+            for pid in r.get("players") or []
+        )
     return _frame("rosters", rows)
 
 
 def matchups_frames(
     league_id: str, week: int, matchups: list[dict[str, Any]]
 ) -> tuple[pl.DataFrame, pl.DataFrame]:
-    teams, players = [], []
+    teams: list[dict[str, Any]] = []
+    players: list[dict[str, Any]] = []
     for m in matchups:
         roster_id = _int(m["roster_id"])
         teams.append(
@@ -174,17 +176,17 @@ def matchups_frames(
         )
         starters = {p for p in (m.get("starters") or []) if p != EMPTY_SLOT}
         points = m.get("players_points") or {}
-        for pid in m.get("players") or []:
-            players.append(
-                {
-                    "league_id": league_id,
-                    "week": week,
-                    "roster_id": roster_id,
-                    "sleeper_id": str(pid),
-                    "points": points.get(pid),
-                    "is_starter": pid in starters,
-                }
-            )
+        players.extend(
+            {
+                "league_id": league_id,
+                "week": week,
+                "roster_id": roster_id,
+                "sleeper_id": str(pid),
+                "points": points.get(pid),
+                "is_starter": pid in starters,
+            }
+            for pid in m.get("players") or []
+        )
     return _frame("matchups", teams), _frame("matchup_players", players)
 
 

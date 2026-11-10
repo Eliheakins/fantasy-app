@@ -20,6 +20,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 EVAL_DIR = Path(__file__).parent
 RESULTS_FILE = EVAL_DIR / "results.jsonl"
@@ -68,7 +69,7 @@ def _recorded_runs() -> list[str]:
     return RESULTS_FILE.read_text().splitlines() if RESULTS_FILE.exists() else []
 
 
-def measure(model: str) -> dict[str, object]:
+def measure(model: str) -> dict[str, Any]:
     from huggingface_hub import snapshot_download
 
     snapshot_download(model)

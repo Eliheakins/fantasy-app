@@ -17,6 +17,7 @@ import time
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import httpx
 import polars as pl
@@ -71,7 +72,7 @@ def _text(cell: str) -> str:
     return html.unescape(re.sub(r"<[^>]+>", "", cell)).replace("\xa0", " ").strip()
 
 
-def parse_fftoday(page: str, position: str) -> list[dict]:
+def parse_fftoday(page: str, position: str) -> list[dict[str, Any]]:
     """Rows of FFToday's weekly projection page: source_id, name, team, stats (Sleeper keys).
     Raises ValueError when the column layout is not the one expected or no player row is found."""
     labels, keys = (s.split() for s in FFTODAY_LAYOUTS[position])
@@ -114,7 +115,7 @@ def fetch_fftoday(season: int, week: int, position: str) -> str:
     return resp.text
 
 
-SOURCES: dict[str, tuple[Fetcher, Callable[[str, str], list[dict]]]] = {
+SOURCES: dict[str, tuple[Fetcher, Callable[[str, str], list[dict[str, Any]]]]] = {
     "fftoday": (fetch_fftoday, parse_fftoday),
 }
 
@@ -130,7 +131,7 @@ def snapshot(
             time.sleep(pause)
         try:
             parsed = parse(check_week(fetch(season, week, position), season, week), position)
-        except Exception as err:  # fail soft: a site change must not stop make refresh
+        except Exception as err:  # noqa: BLE001 - fail soft: a site change must not stop refresh
             print(f"warning: {source} {position} week {week} skipped: {err!r}")
             note_soft_failure(f"{source} {position}: {err!r}")
             continue

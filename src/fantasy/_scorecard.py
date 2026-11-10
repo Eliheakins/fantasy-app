@@ -11,6 +11,7 @@ import warnings
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 
@@ -209,7 +210,7 @@ def _kickoff_frame(games: pl.DataFrame, schedules: pl.DataFrame) -> pl.DataFrame
 
 
 def _sleeper_points(
-    snaps: pl.DataFrame, league: dict, id_map: pl.DataFrame, games: pl.DataFrame
+    snaps: pl.DataFrame, league: dict[str, Any], id_map: pl.DataFrame, games: pl.DataFrame
 ) -> pl.DataFrame:
     """Sleeper's projection for the games we track, scored under the league's rules."""
     scoring = json.loads(league["scoring_settings"])

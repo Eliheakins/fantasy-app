@@ -134,7 +134,7 @@ def run(force: bool = False) -> dict[str, str]:
             if required_id:
                 df = df.drop_nulls(required_id)
             check_replacement(name, df, required_id)
-        except Exception as error:  # collected, then raised together below
+        except Exception as error:  # noqa: BLE001 - collected, then raised together below
             failures[name] = f"{type(error).__name__}: {error}"
             continue
         loaded[name] = df

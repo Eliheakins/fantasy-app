@@ -14,7 +14,11 @@ def test_conform_selects_orders_and_casts_registered_columns() -> None:
             "extra": [1],
         }
     )
-    schema = {"season": pl.Int64, "week": pl.Int64, "player_id": pl.String}
+    schema: dict[str, pl.DataType | type[pl.DataType]] = {
+        "season": pl.Int64,
+        "week": pl.Int64,
+        "player_id": pl.String,
+    }
     store.SCHEMAS["_tmp"] = schema
     try:
         out = i.conform("_tmp", raw)

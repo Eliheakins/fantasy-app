@@ -25,7 +25,7 @@ def client(league: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient
 
 
 def get(client: TestClient, url: str) -> dict[str, Any]:
-    return client.get(url).json()  # type: ignore[no-any-return]
+    return client.get(url).json()
 
 
 def set_settings(path: Path, settings: dict[str, Any] | None) -> None:

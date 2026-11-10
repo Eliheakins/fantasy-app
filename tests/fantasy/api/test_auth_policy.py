@@ -46,7 +46,7 @@ def test_the_decision_for_each_kind_of_request(
     assert policy.decide(method, path, account) == expected
 
 
-def test_every_write_the_app_has_is_one_we_decided_about(tmp_path) -> None:  # noqa: ANN001
+def test_every_write_the_app_has_is_one_we_decided_about(tmp_path) -> None:
     """A new write route must be added here on purpose: until then only the admin can use it."""
     paths = api.create_app(data_dir=tmp_path).openapi()["paths"]
     writes = sorted(

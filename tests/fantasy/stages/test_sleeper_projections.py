@@ -1,4 +1,5 @@
 import json
+from typing import Any
 
 import polars as pl
 
@@ -6,7 +7,7 @@ from fantasy.stages.sleeper_projections import snapshot_frame
 
 
 def test_snapshot_keeps_players_with_stats_and_stores_them_as_json() -> None:
-    items = [
+    items: list[dict[str, Any]] = [
         {"player_id": 4046, "stats": {"rec": 5.5, "rec_yd": 61.0}},
         {"player_id": "CHI", "stats": {"sack": 2.1}},
         {"player_id": "9999", "stats": {}},
@@ -19,7 +20,7 @@ def test_snapshot_keeps_players_with_stats_and_stores_them_as_json() -> None:
 
 
 def test_score_stats_maps_sleepers_coarse_kicker_buckets_to_league_scoring() -> None:
-    from fantasy.stages.sleeper_projections import score_stats
+    from fantasy.scoring import score_stats
 
     stats = {"fgm_30_39": 1.0, "fgm_50p": 0.5, "fgmiss_40_49": 0.2, "xpm": 2.0}
     league = {"fgm_30_39": 3.0, "fgm_50_59": 4.0, "fgmiss": -2.0, "xpm": 1.0}

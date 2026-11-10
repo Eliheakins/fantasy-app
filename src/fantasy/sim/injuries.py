@@ -119,7 +119,7 @@ def _steps(projections: pl.DataFrame, current_week: int) -> pl.DataFrame:
 
 def _table_games(
     projections: pl.DataFrame,
-    flagged: dict[str, Flag],
+    flagged: Mapping[str, Flag],
     model: InjuryModel | None,
     current_week: int,
     first_game_chance: dict[str, float] | None,
@@ -145,7 +145,7 @@ def _table_games(
 def stat_line_blend(
     ours: pl.DataFrame,
     others: Mapping[str, pl.DataFrame],
-    flagged: dict[str, Flag],
+    flagged: Mapping[str, Flag],
     model: InjuryModel | None,
     current_week: int,
     first_game_chance: dict[str, float] | None,
@@ -180,7 +180,7 @@ def stat_line_blend(
 
 def injury_projections(
     projections: pl.DataFrame,
-    flagged: dict[str, Flag],
+    flagged: Mapping[str, Flag],
     model: InjuryModel,
     current_week: int,
     first_game_chance: dict[str, float] | None = None,

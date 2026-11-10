@@ -48,7 +48,7 @@ def _effects() -> dict[tuple[str, str], float]:
 
 
 def _projections() -> pl.DataFrame:
-    rows = []
+    rows: list[tuple[str, int, str, str, float, float]] = []
     for g, pos, p in (
         ("star", "WR", 0.0),
         ("mate", "WR", 1.0),
@@ -56,8 +56,7 @@ def _projections() -> pl.DataFrame:
         ("other", "WR", 1.0),
     ):
         team = "B" if g == "other" else "A"
-        for week in (6, 7, 8):
-            rows.append((g, week, pos, team, 10.0 * p, p))
+        rows.extend((g, week, pos, team, 10.0 * p, p) for week in (6, 7, 8))
     return pl.DataFrame(
         rows,
         schema=["gsis_id", "week", "position", "team", "projection", "play_prob"],
@@ -90,21 +89,20 @@ def test_a_returning_player_is_ramped_by_the_kind_of_absence() -> None:
 
 
 def _panel() -> pl.DataFrame:
-    rows = []
-    for i in range(40):
-        rows.append(
-            {
-                "position": "WR",
-                "first_back": i < 10,
-                "second_back": False,
-                "injured_gap": i < 5,
-                "prev_injured": False,
-                "vac_target": 0.2 if i >= 20 else 0.0,
-                "vac_carry": 0.0,
-                "projection": 10.0,
-                "points": 8.0 if i < 5 else 6.0 if i < 10 else (13.0 if i >= 20 else 10.0),
-            }
-        )
+    rows = [
+        {
+            "position": "WR",
+            "first_back": i < 10,
+            "second_back": False,
+            "injured_gap": i < 5,
+            "prev_injured": False,
+            "vac_target": 0.2 if i >= 20 else 0.0,
+            "vac_carry": 0.0,
+            "projection": 10.0,
+            "points": 8.0 if i < 5 else 6.0 if i < 10 else (13.0 if i >= 20 else 10.0),
+        }
+        for i in range(40)
+    ]
     return pl.DataFrame(rows).with_columns((pl.col("points") - pl.col("projection")).alias("miss"))
 
 

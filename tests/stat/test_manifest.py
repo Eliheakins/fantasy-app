@@ -109,7 +109,7 @@ def test_other_files_are_ignored(data_dir: Path):
 def test_a_shard_missing_required_columns_names_the_file(tmp_path: Path):
     pl.DataFrame({"season": [2024]}).write_parquet(tmp_path / "nfl_pbp_2024.parquet")
 
-    with pytest.raises(ValueError, match="nfl_pbp_2024.parquet"):
+    with pytest.raises(ValueError, match=r"nfl_pbp_2024\.parquet"):
         build_manifest(tmp_path, built_at=BUILT_AT)
 
 
@@ -164,5 +164,5 @@ def test_manifest_has_no_players_entry_without_the_file(data_dir: Path):
 def test_a_corrupt_players_file_is_named_in_the_error(data_dir: Path):
     (data_dir / "players.json").write_text("{not json")
 
-    with pytest.raises(ValueError, match="players.json is invalid"):
+    with pytest.raises(ValueError, match=r"players\.json is invalid"):
         build_manifest(data_dir, built_at=BUILT_AT)

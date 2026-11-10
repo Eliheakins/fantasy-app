@@ -39,8 +39,8 @@ def test_team_games_has_two_rows_with_spread_implied_totals() -> None:
 
 def stat_row(**overrides: float | str) -> pl.DataFrame:
     schema = store.SCHEMAS["nfl_player_stats"]
-    zero = {pl.Float64: 0.0, pl.Int64: 0}
-    row = {c: zero.get(t) for c, t in schema.items()}  # type: ignore[call-overload]
+    zero: dict[pl.DataType | type[pl.DataType], float] = {pl.Float64: 0.0, pl.Int64: 0}
+    row = {c: zero.get(t) for c, t in schema.items()}
     return pl.DataFrame([{**row, **overrides}], schema=schema)
 
 

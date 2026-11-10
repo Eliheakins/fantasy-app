@@ -72,7 +72,7 @@ def status_changes(
     if since.tzinfo is None:
         since = since.replace(tzinfo=UTC)  # a time with no zone is read as UTC
     columns = ["sleeper_id", "full_name", "position", "team", "before", "after"]
-    empty = pl.DataFrame(schema={c: pl.String for c in columns})
+    empty = pl.DataFrame(schema=dict.fromkeys(columns, pl.String))
     snaps = _read("sleeper_player_status", data_dir, area="archive")
     stamps = {t: _as_utc(t) for t in snaps["fetched_at"].drop_nulls().unique()}
     old = [t for t, at in stamps.items() if at <= since]

@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from fantasy import store
+from fantasy.config import ROOT
 
 BASE = "https://api.the-odds-api.com/v4/sports/americanfootball_nfl"
 MARKETS = (
@@ -57,7 +58,7 @@ def parse_env_line(line: str) -> tuple[str, str] | None:
     return name.strip(), value
 
 
-def api_key(env_file: Path = store.ROOT / ".env") -> str:
+def api_key(env_file: Path = ROOT / ".env") -> str:
     key = os.environ.get("ODDS_API_KEY")
     if not key and env_file.exists():
         for line in env_file.read_text().splitlines():

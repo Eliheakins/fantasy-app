@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+from typing import cast
 
 import pytest
 from fakes import FILTERS, STATS, FakeLlm
+from openai import AsyncOpenAI
 from pydantic import ValidationError
 
 from nfl_stat.schemas.nlq import CatalogStat, IntentRequest, QueryOutcome, UnsupportedOutcome
@@ -69,7 +71,7 @@ def test_parse_intent_rejects_empty_stat_list():
 
 def test_parse_intent_dedupes_and_caps_stats_at_five():
     many = ["pass_yards", "pass_yards", "pass_tds", "rec_yards", "rec_receptions", "eff_epa"]
-    intent = _parse(json.dumps({"stat_ids": many + ["pass_yards"]}))
+    intent = _parse(json.dumps({"stat_ids": [*many, "pass_yards"]}))
 
     assert intent.stat_ids == ["pass_yards", "pass_tds", "rec_yards", "rec_receptions", "eff_epa"]
 
@@ -95,7 +97,7 @@ async def test_translate_question_retries_once_with_the_error_then_succeeds():
     )
     req = IntentRequest(question="Kelce yards per game", stats=STATS, filters=FILTERS)
 
-    outcome = await translate_question(client=llm, model="m", req=req)
+    outcome = await translate_question(client=cast(AsyncOpenAI, llm), model="m", req=req)
 
     assert isinstance(outcome, QueryOutcome)
     assert outcome.intent.stat_ids == ["rec_yards"]
@@ -109,7 +111,7 @@ async def test_translate_question_returns_unsupported_without_a_retry():
     llm = FakeLlm(['{"unsupported": "That is an opinion, not a stat."}'])
     req = IntentRequest(question="Is Mahomes better than Brady?", stats=STATS, filters=FILTERS)
 
-    outcome = await translate_question(client=llm, model="m", req=req)
+    outcome = await translate_question(client=cast(AsyncOpenAI, llm), model="m", req=req)
 
     assert outcome == UnsupportedOutcome(reason="That is an opinion, not a stat.")
     assert len(llm.calls) == 1
@@ -179,6 +181,6 @@ async def test_translate_question_raises_after_two_invalid_replies():
     req = IntentRequest(question="anything", stats=STATS, filters=FILTERS)
 
     with pytest.raises(IntentError):
-        await translate_question(client=llm, model="m", req=req)
+        await translate_question(client=cast(AsyncOpenAI, llm), model="m", req=req)
 
     assert len(llm.calls) == 2

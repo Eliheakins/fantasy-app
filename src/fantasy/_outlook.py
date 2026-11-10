@@ -1,6 +1,8 @@
 """Season outlook for my team and the league's players: schedule, live score, player outlook."""
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 
@@ -97,7 +99,7 @@ def live_score(
     )
 
 
-def _why(r: dict, injury_note: str | None) -> str:
+def _why(r: dict[str, Any], injury_note: str | None) -> str:
     """The drivers behind a player's expected change, in words."""
     why = []
     if r["factor"] < 0.97:
@@ -120,7 +122,7 @@ def _why(r: dict, injury_note: str | None) -> str:
     return "; ".join(why)
 
 
-def _label(r: dict, change: float | None) -> str:
+def _label(r: dict[str, Any], change: float | None) -> str:
     """Injured, No recent games, Improving, Regressing or Steady."""
     if (r["chance_to_play"] or 0.0) <= OUTLOOK_INJURED:
         return "Injured"
@@ -192,11 +194,12 @@ def player_outlook(
     owner_names = {**data.team_names, mine: "You"}
     names = _names(data_dir)
     positions = moves.position_of(data)
-    wanted = {
+    scopes: dict[str, Callable[[object], bool]] = {
         "mine": lambda owner: owner == mine,
         "league": lambda owner: owner is not None and owner != mine,
         "free": lambda owner: owner is None,
-    }[scope]
+    }
+    wanted = scopes[scope]
     rows = []
     for r in summary.join(recent, on="gsis_id", how="left").iter_rows(named=True):
         g = r["gsis_id"]

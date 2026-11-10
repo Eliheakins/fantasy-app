@@ -6,6 +6,7 @@
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import polars as pl
@@ -31,20 +32,20 @@ WEEK = 3
 HUGE = 1000.0  # a score no lineup of the fixture league can reach
 
 
-def _with(monkeypatch: pytest.MonkeyPatch, **changes: object) -> None:
+def _with(monkeypatch: pytest.MonkeyPatch, **changes: Any) -> None:
     """Replace LeagueData fields for everything `_lineup` loads."""
     from dataclasses import replace
 
     real = _engine._league
 
-    def patched(league_key: str, *args, **kwargs):  # type: ignore[no-untyped-def]
+    def patched(league_key: str, *args, **kwargs):
         data, mine = real(league_key, *args, **kwargs)
         return replace(data, **changes), mine
 
     monkeypatch.setattr(_lineup, "_league", patched)
 
 
-def _loaded(path: Path, live: dict[str, tuple[float, float]]):  # type: ignore[no-untyped-def]
+def _loaded(path: Path, live: dict[str, tuple[float, float]]):
     from dataclasses import replace
 
     data, mine = _engine._league("t", path)
@@ -330,7 +331,7 @@ def test_win_probability_is_unchanged_by_kicker_only_live_data(
 # --- (1) win probability with finished and in-progress starters ------------------------------
 
 
-def _draws(path: Path, live: dict[str, tuple[float, float]], ids: list[str], n: int = N_SIMS):  # type: ignore[no-untyped-def]
+def _draws(path: Path, live: dict[str, tuple[float, float]], ids: list[str], n: int = N_SIMS):
     data, _ = _loaded(path, live)
     positions = moves.position_of(data)
     values = _engine._week_values(data, WEEK, positions)
@@ -543,7 +544,7 @@ class _Clock(datetime):
     fixed = KICKOFF + timedelta(minutes=GAME_MINUTES / 2)
 
     @classmethod
-    def now(cls, tz=None):  # type: ignore[no-untyped-def]
+    def now(cls, tz=None):
         return cls.fixed
 
 

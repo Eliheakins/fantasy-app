@@ -128,7 +128,7 @@ def test_a_copy_that_does_not_match_the_source_is_discarded_and_nothing_is_prune
         (Path(dst) / "odds" / "w7.parquet").unlink(missing_ok=True)
         return Path(dst)
 
-    monkeypatch.setattr(backup.shutil, "copytree", lossy)
+    monkeypatch.setattr(shutil, "copytree", lossy)
     with pytest.raises(RuntimeError, match="incomplete"):
         backup.run(tmp_path / "data", out, keep=1)
 

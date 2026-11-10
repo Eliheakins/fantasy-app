@@ -109,7 +109,7 @@ def _inputs() -> dict[str, pl.DataFrame]:
     }
 
 
-def _dtypes(name: str) -> dict[str, pl.DataType]:
+def _dtypes(name: str) -> dict[str, pl.DataType | type[pl.DataType]]:
     return dict(store.SCHEMAS[name])
 
 
@@ -118,12 +118,12 @@ def tables(monkeypatch: pytest.MonkeyPatch) -> dict[str, pl.DataFrame]:
     inputs = _inputs()
     written: dict[str, pl.DataFrame] = {}
 
-    def read_table(name: str, area: str = "derived", data_dir=None) -> pl.DataFrame:  # type: ignore[no-untyped-def]
+    def read_table(name: str, area: str = "derived", data_dir=None) -> pl.DataFrame:
         if name not in inputs:
             raise FileNotFoundError(name)
         return inputs[name]
 
-    def write_table(name, df, area="derived", data_dir=None):  # type: ignore[no-untyped-def]
+    def write_table(name, df, area="derived", data_dir=None):
         written[name] = df
 
     monkeypatch.setattr(store, "read_table", read_table)

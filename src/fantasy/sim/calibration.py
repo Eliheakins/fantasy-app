@@ -66,7 +66,8 @@ N_TIERS = 3  # projection thirds, by the training seasons' baseline projections
 def size_tiers(train_projection: np.ndarray, projection: np.ndarray) -> np.ndarray:
     """0 to N_TIERS - 1: the projection's third, with edges taken from the training seasons."""
     edges = np.quantile(train_projection, np.linspace(0, 1, N_TIERS + 1)[1:-1])
-    return np.digitize(projection, edges)
+    tiers: np.ndarray = np.digitize(projection, edges)
+    return tiers
 
 
 def calibrated(frame: pl.DataFrame, data_dir: Path | None = None) -> pl.DataFrame:

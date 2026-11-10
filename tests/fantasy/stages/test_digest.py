@@ -10,6 +10,7 @@ from store_fixture import write_rows
 from test_league_view import LID
 
 from fantasy import _digest, data_api, store
+from fantasy._schemas import ENGINE_SCHEMAS
 from fantasy.stages import digest as stage
 
 AT = "2026-10-25T08:00:00+00:00"
@@ -224,7 +225,7 @@ def test_move_ideas_are_empty_for_another_team_and_without_the_table(league: Pat
 def test_stored_waivers_become_the_frame_actions_expects(league: Path) -> None:
     write_rows(league, "move_ideas", idea_rows())
     adds = data_api.stored_adds("t", league)
-    assert set(adds.columns) == set(data_api.ENGINE_SCHEMAS["waivers"])
+    assert set(adds.columns) == set(ENGINE_SCHEMAS["waivers"])
     row = adds.row(0, named=True)
     assert (row["gsis_id"], row["full_name"], row["drop_name"]) == ("G8", "Added", "Dropped")
     assert row["delta_points"] == 3.5 and row["playoff_delta"] == 0.02
@@ -240,7 +241,7 @@ def waivers_frame(n: int) -> pl.DataFrame:
             }
             for i in range(n)
         ],
-        schema=data_api.ENGINE_SCHEMAS["waivers"],
+        schema=ENGINE_SCHEMAS["waivers"],
     )  # fmt: skip
 
 
@@ -342,7 +343,7 @@ def test_run_keeps_the_other_leagues_ideas_when_one_league_breaks_and_says_so(
             "roster_id": [1, 1],
         }
     )
-    monkeypatch.setattr(stage.data_api, "leagues", lambda data_dir=None: both)
+    monkeypatch.setattr(data_api, "leagues", lambda data_dir=None: both)
 
     def waivers(key: str) -> pl.DataFrame:
         if key == "a":
@@ -367,7 +368,7 @@ def two_leagues(monkeypatch: pytest.MonkeyPatch) -> None:
             "roster_id": [1, 1],
         }
     )
-    monkeypatch.setattr(stage.data_api, "leagues", lambda data_dir=None: both)
+    monkeypatch.setattr(data_api, "leagues", lambda data_dir=None: both)
 
 
 def test_a_league_that_fails_keeps_its_previous_ideas(

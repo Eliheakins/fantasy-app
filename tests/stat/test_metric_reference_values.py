@@ -35,6 +35,7 @@ def _cases() -> list[tuple[MetricDefinition, ReferenceValue]]:
 
 def _metric_value(metric: MetricDefinition, ref: ReferenceValue, shard: str) -> float:
     """What the app computes for one player-season, minus the filter chips."""
+    assert metric.player_role is not None, f"{metric.id}: a pbp metric needs a player role"
     where = [f"{ROLE_COLUMN[metric.player_role]} = ?", "season = ?", "season_type = ?"]
     params: list[object] = [shard, ref.gsis_id, ref.season, ref.season_type]
     if metric.play_type != "all":
@@ -101,13 +102,15 @@ def test_player_game_total_matches_the_official_reference_value(
     if not table.exists():
         pytest.skip("no player-game table built")
 
-    total = (
+    column = metric.player_game_column
+    assert column is not None, f"{metric.id}: a player-game case needs a column"
+    total = float(
         pl.read_parquet(table)
         .filter(
             (pl.col("gsis_id") == ref.gsis_id)
             & (pl.col("season") == ref.season)
             & (pl.col("season_type") == ref.season_type)
-        )[metric.player_game_column]
+        )[column]
         .sum()
     )
 

@@ -8,6 +8,7 @@ and an injury is a change of the Sleeper status to Out, IR or Doubtful between t
 
 from bisect import bisect_left
 from datetime import UTC, datetime
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -113,7 +114,7 @@ def _injuries(
         (r["sleeper_id"], r["fetched_at"]): r["injury_status"] for r in snaps.iter_rows(named=True)
     }
     out = []
-    for before, after in zip(stamps, stamps[1:], strict=False):
+    for before, after in pairwise(stamps):
         for sid in sorted(starters):
             was, now = status.get((sid, before)), status.get((sid, after))
             if now in SEVERE and was != now:

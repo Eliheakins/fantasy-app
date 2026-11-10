@@ -31,6 +31,7 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "duckdb>=1.0.0",  # tests/stat/test_metric_reference_values.py runs metrics.json SQL on the shards
+    "httpx2>=2.16.0",
     "mypy>=2.4.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=0.24.0",
@@ -45,15 +46,43 @@ line-length = 100
 extend-exclude = ["research"]  # one-off analysis scripts, not maintained code
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP"]
+select = ["E", "F", "I", "B", "UP", "BLE", "DTZ", "RUF", "C4", "PERF", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/nfl_stat/pipeline/*" = ["E501"]  # long prose in column manifests and docstrings
 
 [tool.mypy]
 python_version = "3.12"
-ignore_missing_imports = true
+strict = true
+plugins = ["pydantic.mypy"]
 warn_unused_ignores = true
+# match pytest's pythonpath so bare-name test helper imports resolve
+mypy_path = ["src", "tests", "tests/stat", "tests/stat/eval", "tests/fantasy/api", "tests/fantasy/engine", "tests/fantasy/stages"]
+explicit_package_bases = true
+# both conftests map to the bare module "conftest"; this one only wires fixtures
+exclude = ["^tests/stat/conftest\\.py$"]
+# Test modules have bare names (pytest pythonpath), so no override pattern can
+# select them: relax here for tests and restore strict for the packages below.
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_any_generics = false
+warn_return_any = false
+implicit_reexport = true
+
+[[tool.mypy.overrides]]
+module = ["fantasy.*", "nfl_stat.*"]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
+disallow_any_generics = true
+warn_return_any = true
+implicit_reexport = false
+
+[[tool.mypy.overrides]]
+# no stubs or py.typed marker
+module = ["nflreadpy.*", "pyarrow.*", "scipy.*", "sklearn.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

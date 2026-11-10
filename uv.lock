@@ -312,6 +312,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "duckdb" },
+    { name = "httpx2" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -340,6 +341,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "duckdb", specifier = ">=1.0.0" },
+    { name = "httpx2", specifier = ">=2.16.0" },
     { name = "mypy", specifier = ">=2.4.0" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-asyncio", specifier = ">=0.24.0" },

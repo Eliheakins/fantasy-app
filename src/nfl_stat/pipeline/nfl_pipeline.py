@@ -78,7 +78,7 @@ NGS_PASS = ["avg_time_to_throw", "avg_intended_air_yards", "passer_rating"]
 NGS_REC = ["avg_separation", "avg_cushion", "avg_expected_yac"]
 NGS_RUSH = ["avg_time_to_los", "expected_rush_yards", "efficiency"]
 
-# After join: expose NGS rushing expected yards under the prompt’s name
+# After join: expose NGS rushing expected yards under the prompt's name
 EXPECTED_RUN_YARDS_ALIAS = "expected_run_yards"
 
 NGS_COLS = [*NGS_PASS, *NGS_REC, "avg_time_to_los", EXPECTED_RUN_YARDS_ALIAS, "efficiency"]

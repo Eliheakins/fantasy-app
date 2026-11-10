@@ -26,7 +26,7 @@ import polars as pl
 from fantasy import store
 from fantasy.sim.blend import blend
 from fantasy.stages import streaming_model as sm
-from fantasy.stages.crosswalk import TEAM_MAP
+from fantasy.teams import TEAM_MAP
 from nfl_stat.pipeline.pbp_source import read_pbp
 
 HALF_LIFE = 4.0  # games

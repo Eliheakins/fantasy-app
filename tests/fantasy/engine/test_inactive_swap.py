@@ -13,6 +13,7 @@ from test_lineup_live import _with
 from fantasy import _engine, _lineup, data_api, store
 from fantasy.config import load_config
 from fantasy.sim.availability import EASTERN
+from fantasy.sim.injuries import Flag
 
 
 def test_kickoffs_by_player_leave_out_players_with_no_team_or_no_game(tmp_path: Path) -> None:
@@ -64,7 +65,7 @@ def test_long_term_notes_say_out_at_least_four_games_unless_the_curve_gives_a_ch
             "play_prob": [0.0, 0.04, 0.0, 0.0],
         }
     )
-    flags = {"G_RB": ("IR", "Knee", None), "G_TE": ("PUP", None, None)}
+    flags: dict[str, Flag] = {"G_RB": ("IR", "Knee", None), "G_TE": ("PUP", None, None)}
     hurt = replace(data, injuries=flags, projections=chances)
     assert _engine._injury_note(hurt, "G_RB") == "IR (knee): 0% to play, 4% next game"
     assert _engine._injury_note(hurt, "G_TE") == "PUP, out at least 4 games"

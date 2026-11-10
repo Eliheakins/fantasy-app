@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import httpx
 import polars as pl
 import pytest
 from fastapi.testclient import TestClient
@@ -10,9 +11,10 @@ from test_api import wait_ok
 
 from fantasy import api, data_api, store
 from fantasy._values import past_trade_ratios
+from fantasy.sim.setting import Setting, setting_for
 from fantasy.sim.value import MIN_ACCEPTED_SIDES, accepted_share, market_hint
 from fantasy.stages import market_values as stage
-from fantasy.stages.market_values import Setting, fetch_values, setting_for, to_frame
+from fantasy.stages.market_values import fetch_values, to_frame
 
 TODAY = "2026-10-25T08:00:00+00:00"
 YESTERDAY = "2026-10-24T08:00:00+00:00"
@@ -119,7 +121,7 @@ def test_fetch_values_sends_the_query_and_a_user_agent_and_rejects_bad_bodies(
         seen.update(url=url, **kw)
         return Resp()
 
-    monkeypatch.setattr(stage.httpx, "get", get)
+    monkeypatch.setattr(httpx, "get", get)
     assert fetch_values(Setting(2, 10, 0.5)) == [item("1")]
     assert seen["params"] == {"isDynasty": "false", "numQbs": 2, "numTeams": 10, "ppr": 0.5}
     assert seen["headers"]["User-Agent"] and seen["timeout"] > 0
@@ -256,8 +258,9 @@ def test_trade_market_reports_the_share_from_the_partners_side_and_skips_unfinis
 
     overpay, underpay, unvalued = data_api.trade_market(
         "t", [(["00-1"], ["00-2"]), (["00-2"], ["00-1"]), (["00-2"], ["00-9"])], tmp_path
-    )  # type: ignore[misc]
+    )
 
+    assert overpay is not None and underpay is not None and unvalued is not None
     assert overpay["accepted_sides"] == 8  # the failed trade is not counted
     assert overpay["accepted_share"] == 1.0  # the partner gets 7,000 for 900: nothing is worse
     assert underpay["accepted_share"] == 0.5  # the partner gets 900 for 7,000: half took that

@@ -173,7 +173,7 @@ def matched_rankings(rankings: pl.DataFrame, calendar: pl.DataFrame) -> pl.DataF
 
 def schedule_games(seasons: list[int]) -> pl.DataFrame:
     """One row per team and regular-season game: season, week, team, gameday."""
-    s = nfl.load_schedules(seasons).filter(pl.col("game_type") == "REG")
+    s: pl.DataFrame = nfl.load_schedules(seasons).filter(pl.col("game_type") == "REG")
     return pl.concat(
         [
             s.select("season", "week", pl.col(side).alias("team"), "gameday")

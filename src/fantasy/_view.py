@@ -7,6 +7,7 @@ stay 0 to 1; scaling to percent is a display concern.
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 
@@ -51,7 +52,7 @@ def record_string(wins: int | None, losses: int | None, ties: int | None) -> str
     return f"{wins}-{losses}" + (f"-{ties}" if ties else "")
 
 
-def _option(odds: pl.DataFrame, option: str) -> dict | None:
+def _option(odds: pl.DataFrame, option: str) -> dict[str, Any] | None:
     if odds.is_empty():
         return None
     rows = odds.filter(pl.col("option") == option)

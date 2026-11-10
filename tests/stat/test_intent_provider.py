@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import logging
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 
 import httpx
+import httpx2
 import openai
 import pytest
 from fakes import FILTERS, STATS, FakeLlm
+from openai import AsyncOpenAI
 from pydantic import SecretStr
 
+from nfl_stat.core.config import AppSettings
 from nfl_stat.schemas.nlq import IntentRequest, QueryOutcome, UnsupportedOutcome
 from nfl_stat.services import intent_provider
 from nfl_stat.services.intent_provider import answer_intent
@@ -21,13 +24,16 @@ LOCAL_REPLY = '{"stat_ids": ["rec_yards"], "granularity": "total"}'
 JEV_OUTCOME = UnsupportedOutcome(reason="from jev")
 
 
-def _settings(provider: str, key: str | None = KEY) -> SimpleNamespace:
-    return SimpleNamespace(
-        intent_provider=provider,
-        jev_api_key=SecretStr(key) if key is not None else None,
-        jev_model="jev-latest",
-        jev_timeout_seconds=1.0,
-        llm_model="local-model",
+def _settings(provider: str, key: str | None = KEY) -> AppSettings:
+    return cast(
+        AppSettings,
+        SimpleNamespace(
+            intent_provider=provider,
+            jev_api_key=SecretStr(key) if key is not None else None,
+            jev_model="jev-latest",
+            jev_timeout_seconds=1.0,
+            llm_model="local-model",
+        ),
     )
 
 
@@ -53,7 +59,9 @@ def jev(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
 async def test_local_never_calls_jev_even_with_a_key(jev):
     llm = FakeLlm([LOCAL_REPLY])
 
-    outcome = await answer_intent(_req(), settings=_settings("local"), llm_client=llm)
+    outcome = await answer_intent(
+        _req(), settings=_settings("local"), llm_client=cast(AsyncOpenAI, llm)
+    )
 
     assert isinstance(outcome, QueryOutcome)
     assert jev.calls == []
@@ -63,7 +71,9 @@ async def test_local_never_calls_jev_even_with_a_key(jev):
 async def test_jev_answers_when_a_key_is_set(jev, provider: str):
     llm = FakeLlm([])
 
-    outcome = await answer_intent(_req(), settings=_settings(provider), llm_client=llm)
+    outcome = await answer_intent(
+        _req(), settings=_settings(provider), llm_client=cast(AsyncOpenAI, llm)
+    )
 
     assert outcome == JEV_OUTCOME
     assert jev.calls == [{"api_key": KEY, "model": "jev-latest", "timeout": 1.0}]
@@ -75,7 +85,9 @@ async def test_jev_answers_when_a_key_is_set(jev, provider: str):
 async def test_no_key_uses_the_local_model(jev, provider: str, key: str | None):
     llm = FakeLlm([LOCAL_REPLY])
 
-    outcome = await answer_intent(_req(), settings=_settings(provider, key), llm_client=llm)
+    outcome = await answer_intent(
+        _req(), settings=_settings(provider, key), llm_client=cast(AsyncOpenAI, llm)
+    )
 
     assert isinstance(outcome, QueryOutcome)
     assert jev.calls == []
@@ -88,7 +100,9 @@ async def test_a_jev_failure_falls_back_to_the_local_model_and_never_logs_the_ke
     llm = FakeLlm([LOCAL_REPLY])
 
     with caplog.at_level(logging.DEBUG):
-        outcome = await answer_intent(_req(), settings=_settings("auto"), llm_client=llm)
+        outcome = await answer_intent(
+            _req(), settings=_settings("auto"), llm_client=cast(AsyncOpenAI, llm)
+        )
 
     assert isinstance(outcome, QueryOutcome)
     assert len(llm.calls) == 1
@@ -102,14 +116,14 @@ async def test_a_jev_failure_with_the_local_server_down_is_the_model_unavailable
     base_url = "http://127.0.0.1:8080/v1"
 
     async def refuse(**_: Any) -> Any:
-        raise openai.APIConnectionError(request=httpx.Request("POST", base_url))
+        raise openai.APIConnectionError(request=httpx2.Request("POST", base_url))
 
     down = SimpleNamespace(
         base_url=base_url, chat=SimpleNamespace(completions=SimpleNamespace(create=refuse))
     )
 
     with pytest.raises(ModelUnavailable):
-        await answer_intent(_req(), settings=_settings("jev"), llm_client=down)
+        await answer_intent(_req(), settings=_settings("jev"), llm_client=cast(AsyncOpenAI, down))
 
 
 async def test_the_endpoint_falls_back_to_the_local_model_when_jev_fails(

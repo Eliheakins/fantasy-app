@@ -26,6 +26,7 @@ import polars as pl
 
 from fantasy import stat_line_table, store
 from fantasy.config import load_config
+from fantasy.sim.expected import expected_frame
 from fantasy.stages import stat_line
 from fantasy.stages.lags import lag_asof, latest_asof, train_seasons
 from fantasy.stages.learn.baseline import (
@@ -82,7 +83,7 @@ from fantasy.stages.learn.projection import (
     with_context,
 )
 from fantasy.stages.learn.snapshot import archive_snapshot, snapshot_frame, unplayed
-from fantasy.stages.project import GROUP, current_and_rostered, expected_frame, future_targets
+from fantasy.stages.project import GROUP, current_and_rostered, future_targets
 
 __all__ = [
     "ADVANCED_COLUMNS", "DEPTH_COLUMNS", "ECR_COLUMNS", "EXTRA_FEATURES",

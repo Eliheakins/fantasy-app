@@ -1,3 +1,4 @@
+import time
 from typing import Any
 
 import httpx
@@ -18,8 +19,8 @@ def _respond(monkeypatch: pytest.MonkeyPatch, *outcomes: int | Exception) -> lis
             raise outcome
         return httpx.Response(outcome, json=[1], request=httpx.Request("GET", url))
 
-    monkeypatch.setattr(sleeper.httpx, "get", get)
-    monkeypatch.setattr(sleeper.time, "sleep", lambda _: None)
+    monkeypatch.setattr(httpx, "get", get)
+    monkeypatch.setattr(time, "sleep", lambda _: None)
     return calls
 
 

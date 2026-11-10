@@ -60,7 +60,7 @@ def _rank(table: pl.DataFrame, roster_id: int, position: str) -> int:
 
 
 def test_weights_sum_to_one_and_favour_starters() -> None:
-    assert STARTER_WEIGHT + DEPTH_WEIGHT == pytest.approx(1.0) and STARTER_WEIGHT > DEPTH_WEIGHT
+    assert pytest.approx(1.0) == STARTER_WEIGHT + DEPTH_WEIGHT and STARTER_WEIGHT > DEPTH_WEIGHT
 
 
 def test_better_starter_beats_better_bench_at_75_25_and_loses_at_25_75() -> None:

@@ -1,11 +1,14 @@
 import dataclasses
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 import pytest
 from test_data_api_characterization import _engine_store
 
-from fantasy import _lineup, _profile, data_api, store
+from fantasy import _engine, _lineup, _outlook, _profile, data_api, store
+from fantasy.sim.odds import LeagueData
 
 
 @pytest.fixture
@@ -106,14 +109,18 @@ def test_role_weeks_are_empty_without_the_tables(store_ready: Path) -> None:
     assert data_api.player_profile("t", "G_WR", store_ready)["role_weeks"] == []
 
 
-def _with_live(monkeypatch: pytest.MonkeyPatch, live: dict[str, tuple[float, float]]) -> None:
-    real = _profile._league
+def _with_live(
+    monkeypatch: pytest.MonkeyPatch, live: dict[str, tuple[float, float]]
+) -> Callable[..., tuple[LeagueData, int]]:
+    """Patch `_profile._league` to add `live`; returns the patched loader."""
+    real = _engine._league
 
-    def patched(key: str, *args: object, **kwargs: object) -> tuple[object, int]:
+    def patched(key: str, *args: Any, **kwargs: Any) -> tuple[LeagueData, int]:
         data, mine = real(key, *args, **kwargs)
         return dataclasses.replace(data, live=live), mine
 
     monkeypatch.setattr(_profile, "_league", patched)
+    return patched
 
 
 def test_a_final_game_shows_the_result_and_the_next_weeks_range(
@@ -130,9 +137,9 @@ def test_a_game_under_way_matches_the_lineups_range(
     store_ready: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     live = {"G_QB": (4.0, 0.5)}
-    _with_live(monkeypatch, live)
+    patched = _with_live(monkeypatch, live)
     out = data_api.player_profile("t", "G_QB", store_ready)
-    frame = _lineup.lineup("t", loaded=_profile._league("t", store_ready), data_dir=store_ready)
+    frame = _lineup.lineup("t", loaded=patched("t", store_ready), data_dir=store_ready)
     row = frame.filter(pl.col("gsis_id") == "G_QB").row(0, named=True)
     assert out["result_points"] is None
     assert (out["p10"], out["p90"], out["projection"]) == pytest.approx(
@@ -159,10 +166,13 @@ def test_outlook_rows_are_cached_per_scope(
     store_ready: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     calls: list[str] = []
-    real = _profile.player_outlook
-    monkeypatch.setattr(
-        _profile, "player_outlook", lambda k, s, d, t: calls.append(s) or real(k, s, d, t)
-    )
+    real = _outlook.player_outlook
+
+    def counted(k: str, s: str, d: Path, t: int | None) -> Any:
+        calls.append(s)
+        return real(k, s, d, t)
+
+    monkeypatch.setattr(_profile, "player_outlook", counted)
     _profile._outlook_rows.cache_clear()
     data_api.player_profile("t", "G_QB", store_ready)
     data_api.player_profile("t", "G_WR", store_ready)

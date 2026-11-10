@@ -25,7 +25,8 @@ def current_season(config_path: Path = CONFIG_PATH) -> int:
     """
     pinned = tomllib.loads(config_path.read_text()).get("season") if config_path.exists() else None
     if pinned is None:
-        return get_current_season()
+        clock: int = get_current_season()
+        return clock
     if not isinstance(pinned, int) or isinstance(pinned, bool):
         raise ValueError(f"{config_path}: season must be a year, not {pinned!r}")
     return pinned
@@ -33,4 +34,5 @@ def current_season(config_path: Path = CONFIG_PATH) -> int:
 
 def roster_season() -> int:
     """nflverse's roster-year clock (rolls over March 15), for data availability checks."""
-    return get_current_season(roster=True)
+    season: int = get_current_season(roster=True)
+    return season

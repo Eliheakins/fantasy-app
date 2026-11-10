@@ -20,10 +20,10 @@ has the held-out test (docs/decisions.md).
 
 import polars as pl
 
+from fantasy.sim.injuries import PRACTICE
+from fantasy.sim.outlook import usage_table as share_table
 from fantasy.stages.crosswalk import norm_team
-from fantasy.stages.injuries import PRACTICE
 from fantasy.stages.lags import lag_asof
-from fantasy.stages.outlook import usage_table as share_table
 from fantasy.store import SKILL
 
 KEY = ["gsis_id", "season", "week"]

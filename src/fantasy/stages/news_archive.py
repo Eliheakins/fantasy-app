@@ -58,7 +58,7 @@ def run(data_dir: Path | None = None) -> int:
             print(f"{TABLE}: a snapshot of the {fetched.date()} players file is already archived")
             return 0
         store.write_table(TABLE, pl.concat([old, new]), "archive", data_dir)
-    except Exception as err:  # fail soft: the archive is optional, make refresh must run on
+    except Exception as err:  # noqa: BLE001 - fail soft: the archive is optional, refresh runs on
         print(f"warning: {TABLE} snapshot skipped: {err!r}")
         note_soft_failure(repr(err))
         return 0

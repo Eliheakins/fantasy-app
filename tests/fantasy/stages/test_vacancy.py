@@ -19,7 +19,7 @@ def usage(rows: list[tuple[str, int, float, float, float]], team: str = "KC") ->
     )  # fmt: skip
 
 
-def sleeper(statuses: list[str | None], ids: list[str]) -> tuple[pl.DataFrame, pl.DataFrame]:
+def sleeper(statuses: list[str | None], ids: list[str | None]) -> tuple[pl.DataFrame, pl.DataFrame]:
     """Sleeper players (their own gsis_id column mostly null, as in the real file) and id_map."""
     sleeper_ids = [str(i) for i in range(len(statuses))]
     players = pl.DataFrame(
@@ -58,7 +58,7 @@ def depth(rows: list[tuple[str, int, float]]) -> pl.DataFrame:
     )
 
 
-def features(rep: pl.DataFrame, use: pl.DataFrame, chart: pl.DataFrame | None = None) -> dict:  # type: ignore[type-arg]
+def features(rep: pl.DataFrame, use: pl.DataFrame, chart: pl.DataFrame | None = None) -> dict:
     chart = depth([]) if chart is None else chart
     return vacancy.vacancy_features(targets("A", 3), rep, use, WEIGHTS, chart).row(0, named=True)
 
@@ -231,7 +231,7 @@ def test_an_out_teammate_vacates_only_the_usage_he_had_with_this_team() -> None:
     assert features(rep, only_buf)["vac_out_tgt"] == 0.0
 
 
-def test_no_questionable_history_gives_neutral_weights_with_a_warning(capsys) -> None:  # type: ignore[no-untyped-def]
+def test_no_questionable_history_gives_neutral_weights_with_a_warning(capsys) -> None:
     empty = pl.DataFrame(schema=REPORT)
     snaps = pl.DataFrame(schema={**KEY, "offense_snaps": pl.Float64})
     weights = vacancy.sit_weights(empty, snaps, 2023)

@@ -9,6 +9,7 @@ Long-term designations sit out the 4-game minimum; after that the player is assu
 import warnings
 from collections.abc import Mapping
 from datetime import datetime, timedelta
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import polars as pl
@@ -66,7 +67,7 @@ def games_on(kicks: Mapping[str, datetime], now: datetime) -> bool:
     return any(k <= now < k + span for k in kicks.values())
 
 
-def _games(schedules: pl.DataFrame, season: int, week: int) -> list[tuple]:
+def _games(schedules: pl.DataFrame, season: int, week: int) -> list[tuple[Any, ...]]:
     games = schedules.filter((pl.col("season") == season) & (pl.col("week") == week))
     return list(games.select("gameday", "gametime", "away_team", "home_team").iter_rows())
 

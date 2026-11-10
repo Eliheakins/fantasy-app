@@ -112,7 +112,8 @@ def fit_predict(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray) ->
         return np.empty(0)
     model = make_classifier(0)
     model.fit(x_train, y_train)
-    return np.clip(model.predict_proba(x_test)[:, 1], MIN_P, MAX_P)
+    p: np.ndarray = np.clip(model.predict_proba(x_test)[:, 1], MIN_P, MAX_P)
+    return p
 
 
 def has_injury_report(season: int, week: int) -> bool:

@@ -14,13 +14,13 @@ def cheap_hashing(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def db(tmp_path: Path):  # noqa: ANN201 - a sqlite3 connection
+def db(tmp_path: Path):
     conn = accounts.connect(tmp_path)
     yield conn
     conn.close()
 
 
-def member(db, email: str) -> int:  # noqa: ANN001
+def member(db, email: str) -> int:
     token = accounts.create_invite(db, email, NOW)
     return int(accounts.redeem_invite(db, token, "a long enough password", NOW)["id"])
 
@@ -29,7 +29,7 @@ def test_a_league_gets_a_stable_key_that_cannot_clash_with_config_names() -> Non
     assert leagues.key_for("1394105943137992704") == "sl-1394105943137992704"
 
 
-def test_adding_a_league_registers_it_queued_and_grants_it_to_the_account(db) -> None:  # noqa: ANN001
+def test_adding_a_league_registers_it_queued_and_grants_it_to_the_account(db) -> None:
     account = member(db, "a@example.com")
     row, created = leagues.add(db, account, "111", "Friends League", NOW)
     assert created
@@ -38,7 +38,7 @@ def test_adding_a_league_registers_it_queued_and_grants_it_to_the_account(db) ->
     assert [r["league_id"] for r in leagues.registered(db)] == ["111"]
 
 
-def test_adding_the_same_league_again_changes_nothing(db) -> None:  # noqa: ANN001
+def test_adding_the_same_league_again_changes_nothing(db) -> None:
     account = member(db, "a@example.com")
     leagues.add(db, account, "111", "Friends League", NOW)
     leagues.add(db, account, "111", "Friends League", NOW)
@@ -46,14 +46,14 @@ def test_adding_the_same_league_again_changes_nothing(db) -> None:  # noqa: ANN0
     assert len(leagues.mine(db, account)) == 1
 
 
-def test_adding_reports_whether_the_registry_row_is_new(db) -> None:  # noqa: ANN001
+def test_adding_reports_whether_the_registry_row_is_new(db) -> None:
     first, second = member(db, "a@example.com"), member(db, "b@example.com")
     assert leagues.add(db, first, "111", "Shared", NOW)[1] is True
     assert leagues.add(db, first, "111", "Shared", NOW)[1] is False  # a repeat
     assert leagues.add(db, second, "111", "Shared", NOW)[1] is False  # a league-mate
 
 
-def test_the_third_league_is_refused_but_a_repeat_of_one_you_have_is_not(db) -> None:  # noqa: ANN001
+def test_the_third_league_is_refused_but_a_repeat_of_one_you_have_is_not(db) -> None:
     account = member(db, "a@example.com")
     leagues.add(db, account, "111", "One", NOW)
     leagues.add(db, account, "222", "Two", NOW)
@@ -63,7 +63,7 @@ def test_the_third_league_is_refused_but_a_repeat_of_one_you_have_is_not(db) -> 
     assert {r["league_id"] for r in leagues.mine(db, account)} == {"111", "222"}
 
 
-def test_two_accounts_in_one_league_share_one_registry_row(db) -> None:  # noqa: ANN001
+def test_two_accounts_in_one_league_share_one_registry_row(db) -> None:
     first, second = member(db, "a@example.com"), member(db, "b@example.com")
     leagues.add(db, first, "111", "Shared", NOW)
     leagues.add(db, second, "111", "Shared", NOW)
@@ -71,7 +71,7 @@ def test_two_accounts_in_one_league_share_one_registry_row(db) -> None:  # noqa:
     assert [r["league_id"] for r in leagues.mine(db, second)] == ["111"]
 
 
-def test_leaving_a_shared_league_keeps_it_for_the_other_person(db) -> None:  # noqa: ANN001
+def test_leaving_a_shared_league_keeps_it_for_the_other_person(db) -> None:
     first, second = member(db, "a@example.com"), member(db, "b@example.com")
     leagues.add(db, first, "111", "Shared", NOW)
     leagues.add(db, second, "111", "Shared", NOW)
@@ -80,7 +80,7 @@ def test_leaving_a_shared_league_keeps_it_for_the_other_person(db) -> None:  # n
     assert [r["league_id"] for r in leagues.registered(db)] == ["111"]
 
 
-def test_the_last_person_to_leave_takes_the_league_out_of_the_sync(db) -> None:  # noqa: ANN001
+def test_the_last_person_to_leave_takes_the_league_out_of_the_sync(db) -> None:
     account = member(db, "a@example.com")
     leagues.add(db, account, "111", "Mine", NOW)
     assert leagues.release(db, account, "111") is True
@@ -88,7 +88,7 @@ def test_the_last_person_to_leave_takes_the_league_out_of_the_sync(db) -> None: 
     assert leagues.release(db, account, "111") is False  # nothing left to release
 
 
-def test_leaving_frees_a_place_under_the_cap(db) -> None:  # noqa: ANN001
+def test_leaving_frees_a_place_under_the_cap(db) -> None:
     account = member(db, "a@example.com")
     leagues.add(db, account, "111", "One", NOW)
     leagues.add(db, account, "222", "Two", NOW)
@@ -96,7 +96,7 @@ def test_leaving_frees_a_place_under_the_cap(db) -> None:  # noqa: ANN001
     assert leagues.add(db, account, "333", "Three", NOW)[0]["league_id"] == "333"
 
 
-def test_the_sync_reports_each_leagues_outcome_and_the_account_sees_it(db) -> None:  # noqa: ANN001
+def test_the_sync_reports_each_leagues_outcome_and_the_account_sees_it(db) -> None:
     account = member(db, "a@example.com")
     leagues.add(db, account, "111", "Good", NOW)
     leagues.add(db, account, "222", "Bad", NOW)
@@ -106,7 +106,7 @@ def test_the_sync_reports_each_leagues_outcome_and_the_account_sees_it(db) -> No
     assert status == {"111": ("ready", None), "222": ("error", "Sleeper did not answer")}
 
 
-def test_an_error_clears_when_the_next_sync_succeeds(db) -> None:  # noqa: ANN001
+def test_an_error_clears_when_the_next_sync_succeeds(db) -> None:
     account = member(db, "a@example.com")
     leagues.add(db, account, "111", "Flaky", NOW)
     leagues.mark(db, "111", "boom", NOW)
@@ -115,7 +115,7 @@ def test_an_error_clears_when_the_next_sync_succeeds(db) -> None:  # noqa: ANN00
     assert (row["status"], row["error"]) == ("ready", None)
 
 
-def test_removing_an_account_removes_its_grants_and_orphaned_leagues(db) -> None:  # noqa: ANN001
+def test_removing_an_account_removes_its_grants_and_orphaned_leagues(db) -> None:
     account = member(db, "a@example.com")
     leagues.add(db, account, "111", "Mine", NOW)
     accounts.remove_account(db, account)

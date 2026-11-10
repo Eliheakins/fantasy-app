@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-import httpx
+import httpx2
 import openai
 import pytest
 
@@ -17,8 +17,8 @@ from nfl_stat.services.llm_client import (
 BASE_URL = "http://127.0.0.1:8080/v1"
 
 
-def _request() -> httpx.Request:
-    return httpx.Request("POST", f"{BASE_URL}/chat/completions")
+def _request() -> httpx2.Request:
+    return httpx2.Request("POST", f"{BASE_URL}/chat/completions")
 
 
 def test_timeout_maps_to_504():
@@ -36,7 +36,7 @@ def test_connection_error_maps_to_503_and_says_how_to_start_the_server():
 
 
 def test_http_status_error_maps_to_502_with_the_upstream_code():
-    response = httpx.Response(500, request=_request(), text="boom")
+    response = httpx2.Response(500, request=_request(), text="boom")
     exc = model_error_from_llm_error(
         openai.APIStatusError("boom", response=response, body=None), BASE_URL
     )

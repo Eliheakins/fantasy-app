@@ -1,5 +1,5 @@
 import random
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -63,7 +63,7 @@ def test_greedy_equals_exhaustive_search_on_random_rosters() -> None:
             assert greedy == pytest.approx(exhaustive)
 
 
-SUNDAY = datetime(2026, 10, 25, 13, 0)
+SUNDAY = datetime(2026, 10, 25, 13, 0, tzinfo=UTC)
 
 
 def _plan(

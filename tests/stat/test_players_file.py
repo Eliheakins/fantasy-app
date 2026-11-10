@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import polars as pl
@@ -135,7 +135,11 @@ def test_experience_that_is_not_a_whole_number_becomes_null_instead_of_aborting_
 
 def test_a_timestamp_birth_date_is_written_as_a_date():
     index = pl.DataFrame(
-        {"gsis_id": ["a"], "full_name": ["A A"], "birth_date": [datetime(2000, 1, 1, 5, 0)]}
+        {
+            "gsis_id": ["a"],
+            "full_name": ["A A"],
+            "birth_date": [datetime(2000, 1, 1, 5, 0, tzinfo=UTC)],
+        }
     )
 
     players, _ = build_players(index)

@@ -137,16 +137,16 @@ def trade_roster_changes(
     data, mine = _league(league_key, data_dir, team)
     after = moves.apply_trade(data, mine, partner_roster_id, list(give_ids), list(get_ids))
     names, positions = _names(data_dir), moves.position_of(data)
-    rows = []
+    rows: list[tuple[str, str, str, str]] = []
     sides = ((mine, give_ids, get_ids), (partner_roster_id, get_ids, give_ids))
     for roster_id, sent, received in sides:
         team_name = data.team_names[roster_id]
         before_ids = set(moves.team_ids(data, roster_id))
         after_ids = set(moves.team_ids(data, roster_id, after))
-        for gid in sorted((before_ids | set(received)) - after_ids - set(sent)):
-            rows.append((team_name, "dropped", names.get(gid, gid), positions[gid]))
-        for gid in sorted(after_ids - before_ids - set(received)):
-            rows.append((team_name, "picked up", names.get(gid, gid), positions[gid]))
+        dropped = sorted((before_ids | set(received)) - after_ids - set(sent))
+        picked_up = sorted(after_ids - before_ids - set(received))
+        rows.extend((team_name, "dropped", names.get(g, g), positions[g]) for g in dropped)
+        rows.extend((team_name, "picked up", names.get(g, g), positions[g]) for g in picked_up)
     schema = ["team_name", "action", "full_name", "position"]
     return pl.DataFrame(rows, schema=schema, orient="row")
 

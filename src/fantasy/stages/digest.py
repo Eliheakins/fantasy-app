@@ -111,7 +111,7 @@ def run(
             continue
         try:
             frames.append(league_ideas(league, waivers, trades, created))
-        except Exception as err:  # noqa: BLE001 - one league must not drop everyone's ideas
+        except Exception as err:
             log.exception("no ideas for %s", league["league_key"])
             note_soft_failure(f"digest skipped {league['league_key']}: {err!r}")
             failed.append(league["league_id"])

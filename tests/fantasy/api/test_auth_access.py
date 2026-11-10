@@ -54,7 +54,7 @@ def sign_in(store_dir: Path, email: str, *, admin: bool = False, grant: bool = F
     return client
 
 
-def account_id_of(conn, email: str) -> int:  # noqa: ANN001
+def account_id_of(conn, email: str) -> int:
     return int(conn.execute("SELECT id FROM accounts WHERE email = ?", (email,)).fetchone()[0])
 
 

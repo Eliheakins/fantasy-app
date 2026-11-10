@@ -81,7 +81,7 @@ def stamp(path: Path, when: datetime) -> None:
 
 def test_completed_season_fetched_mid_season_is_refetched_once(fetch: Fetcher):
     path = pbp_source.ensure_pbp(2024)
-    stamp(path, datetime(2024, 11, 20))  # fetched before the season's last weeks
+    stamp(path, datetime(2024, 11, 20).astimezone())  # fetched before the season's last weeks
 
     pbp_source.ensure_pbp(2024)
     pbp_source.ensure_pbp(2024)
@@ -91,7 +91,7 @@ def test_completed_season_fetched_mid_season_is_refetched_once(fetch: Fetcher):
 
 def test_completed_season_fetched_after_it_ended_is_kept(fetch: Fetcher):
     path = pbp_source.ensure_pbp(2024)
-    stamp(path, datetime(2025, 3, 1))
+    stamp(path, datetime(2025, 3, 1).astimezone())
 
     pbp_source.ensure_pbp(2024)
 

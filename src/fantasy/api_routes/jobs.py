@@ -9,7 +9,7 @@ from fastapi import APIRouter, Query
 from fantasy import _view as view
 from fantasy import data_api
 from fantasy.api_deps import Ctx, RequestContext
-from fantasy.api_envelope import clean, fail, guarded, rows
+from fantasy.api_envelope import clean_rows, fail, guarded, rows
 from fantasy.api_models import (
     ActionRow,
     Envelope,
@@ -90,7 +90,7 @@ def actions_data(league: str, stored_adds: bool, ctx: RequestContext) -> list[di
     found = data_api.actions(league, adds=adds, data_dir=d, team=team)
     needs_odds = "Win probability" in found["kind"].to_list()
     odds = data_api.win_probability(league, data_dir=d, team=team) if needs_odds else None
-    return clean(view.action_fields(found, odds))
+    return clean_rows(view.action_fields(found, odds))
 
 
 @router.get(

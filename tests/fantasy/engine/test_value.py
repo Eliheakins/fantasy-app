@@ -31,7 +31,7 @@ def test_a_starter_below_the_replacement_floor_adds_nothing() -> None:
 
 def test_a_bye_week_hole_is_filled_by_a_stand_in_not_left_empty() -> None:
     floor = {1: [Player("fa", "TE", 7.0)]}
-    on_bye = {1: {}}  # the starter has no projection this week
+    on_bye: dict[int, dict[str, float]] = {1: {}}  # the starter has no projection this week
     assert season_value(SLOTS, POSITIONS, on_bye, ["s"], {}, floor) == pytest.approx(7.0)
     assert season_value(SLOTS, POSITIONS, on_bye, ["s"], {}, {}) == 0.0  # no stand-in, no points
 

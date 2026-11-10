@@ -5,6 +5,7 @@ import polars as pl
 import pytest
 
 from fantasy import _scorecard as sc
+from fantasy.sim.calibration import size_tiers
 from fantasy.stages import backtest as bt
 
 KICK = datetime(2026, 10, 25, 17, 0, tzinfo=UTC)
@@ -190,7 +191,7 @@ def test_error_table_matches_the_backtest_metrics() -> None:
     m = bt.metrics(rows, 1).filter(pl.col("position") == "WR")
     test = rows.filter(pl.col("season") == 2024)
     train = rows.filter(pl.col("season") == 2022)
-    tier = bt.size_tiers(train["projection"].to_numpy(), test["projection"].to_numpy())
+    tier = size_tiers(train["projection"].to_numpy(), test["projection"].to_numpy())
     frame = test.select(
         pl.lit(7).alias("week"), "position", pl.Series("tier", tier),
         pl.col("points").alias("actual"),

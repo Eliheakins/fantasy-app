@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -9,7 +10,7 @@ from fantasy import store
 from fantasy.stages import news_archive as na
 
 # synthetic players-file entries in Sleeper's shape (not real players)
-RAW = {
+RAW: dict[str, dict[str, Any]] = {
     "1": {
         "position": "RB",
         "team": "KC",

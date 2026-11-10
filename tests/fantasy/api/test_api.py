@@ -15,6 +15,7 @@ from store_fixture import write_rows
 from fantasy import _engine, _live, api, api_envelope, api_routes, data_api
 from fantasy._lock import pipeline_lock
 from fantasy.api_jobs import Busy, JobRunner
+from fantasy.sim.availability import kickoffs
 from fantasy.sources import sleeper
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -451,7 +452,7 @@ def test_win_probability_job_returns_options_swap_and_every_objective(client: Te
     assert out["status"] == "ok"
     data = out["data"]
     assert set(data) == {"script", "swap", "comparison", "options", "lineups", "summaries"}
-    assert [r["option"] for r in data["comparison"]][0] == "Expected points"
+    assert data["comparison"][0]["option"] == "Expected points"
     assert set(data["lineups"]) == set(data["summaries"]) == {
         "expected_points", "win_probability", "max_ceiling", "max_floor",
     }  # fmt: skip
@@ -541,11 +542,12 @@ def test_origin_must_be_an_allowed_host(client: TestClient) -> None:
 def test_trade_request_is_bounded(client: TestClient) -> None:
     url = "/api/leagues/t/trades/evaluate"
     ok_ids = {"partner_roster_id": 2, "give_ids": ["a"], "get_ids": ["b"]}
-    for patch in (
+    patches: tuple[dict[str, list[str]], ...] = (
         {"give_ids": []},
         {"get_ids": ["x"] * 11},
         {"give_ids": ["x" * 65]},
-    ):
+    )
+    for patch in patches:
         assert client.post(url, json=ok_ids | patch).status_code == 422
 
 
@@ -609,9 +611,12 @@ def test_a_job_builds_its_league_under_the_version_in_its_key(
     seen: list[str] = []
     versions = iter(["v1", "v2"])
     monkeypatch.setattr(api_routes.common, "data_version", lambda data_dir: next(versions))
-    monkeypatch.setattr(
-        _engine, "_league_cached", lambda key, version, d: seen.append(version) or (None, 1)
-    )
+
+    def cached(key: str, version: str, d: str) -> tuple[None, int]:
+        seen.append(version)
+        return None, 1
+
+    monkeypatch.setattr(_engine, "_league_cached", cached)
     monkeypatch.setattr(
         data_api,
         "actions",
@@ -638,8 +643,8 @@ def test_refresh_failure_message_is_fixed_and_hides_the_detail(
         raise httpx.ConnectError("secret-host.internal refused")
 
     # fail inside the real Sleeper client so the route sees the exception it really raises
-    monkeypatch.setattr(sleeper.httpx, "get", refused)
-    monkeypatch.setattr(sleeper.time, "sleep", lambda _: None)
+    monkeypatch.setattr(httpx, "get", refused)
+    monkeypatch.setattr(time, "sleep", lambda _: None)
     monkeypatch.setattr(_live, "refresh_live", lambda data_dir: sleeper.fetch("/state/nfl"))
     out = body(client.post("/api/live/refresh"))
     assert out["status"] == "error" and out["error"]["message"].startswith("Sleeper refresh failed")
@@ -754,8 +759,13 @@ def test_data_version_parses_the_schedule_once_per_file_state(
     store_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     calls: list[int] = []
-    real = _engine.kickoffs
-    monkeypatch.setattr(_engine, "kickoffs", lambda *a: calls.append(1) or real(*a))
+    real = kickoffs
+
+    def counted(*a: Any) -> Any:
+        calls.append(1)
+        return real(*a)
+
+    monkeypatch.setattr(_engine, "kickoffs", counted)
     first = _engine.data_version(store_dir)
     assert _engine.data_version(store_dir) == first
     assert len(calls) == 1

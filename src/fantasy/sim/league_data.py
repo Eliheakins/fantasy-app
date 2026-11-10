@@ -64,7 +64,7 @@ def current_state(
     starter counts as started once he has scored.
     """
 
-    def left(row: dict) -> float:
+    def left(row: dict[str, Any]) -> float:
         if remaining is None:
             return 0.0 if (row["points"] or 0) > 0 else 1.0
         return remaining.get(row["sleeper_id"], 1.0)

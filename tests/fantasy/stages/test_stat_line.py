@@ -7,7 +7,11 @@ import pytest
 from fantasy.config import load_config
 from fantasy.stages import stat_line
 
-KEY_SCHEMA = {"gsis_id": pl.String, "season": pl.Int64, "week": pl.Int64}
+KEY_SCHEMA: dict[str, type[pl.DataType]] = {
+    "gsis_id": pl.String,
+    "season": pl.Int64,
+    "week": pl.Int64,
+}
 
 
 def active(
@@ -24,7 +28,7 @@ def usage(
 ) -> pl.DataFrame:
     weeks = weeks or list(range(1, len(snaps) + 1))
     rows = [(player, season, w, s, 0.1, 0.2, 5.0, 1.0) for w, s in zip(weeks, snaps, strict=True)]
-    columns = {
+    columns: dict[str, type[pl.DataType]] = {
         "snap": pl.Float64,
         "st": pl.Float64,
         "tshare": pl.Float64,
@@ -67,7 +71,7 @@ def test_a_player_with_no_earlier_game_has_no_lagged_values() -> None:
     assert row["n_prior"] == 0.0 and row["h_snap"] is None and row["weeks_since"] is None
 
 
-def test_each_season_is_scored_by_a_model_fit_on_earlier_seasons(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_each_season_is_scored_by_a_model_fit_on_earlier_seasons(monkeypatch) -> None:
     frames = [
         active([1, 0, 1], season=s).with_columns(
             pl.lit(None, pl.Float64).alias(c) for c in stat_line.FEATURES
@@ -85,7 +89,7 @@ def test_each_season_is_scored_by_a_model_fit_on_earlier_seasons(monkeypatch) ->
     assert (later["q"] == (later["season"] - 1).cast(pl.Float64)).all()
 
 
-def test_every_future_game_gets_the_chance_of_the_players_next_game(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_every_future_game_gets_the_chance_of_the_players_next_game(monkeypatch) -> None:
     monkeypatch.setattr(
         stat_line, "fit_predict", lambda train, test, *_: test["week"].cast(pl.Float64).to_numpy()
     )

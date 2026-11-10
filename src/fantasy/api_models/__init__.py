@@ -109,6 +109,8 @@ class Envelope[T](Row):
 
 
 __all__ = [
+    "MAX_ID_LENGTH",
+    "MAX_TRADE_IDS",
     "ActionRow",
     "ApiError",
     "AssetRow",
@@ -128,8 +130,6 @@ __all__ = [
     "LiveRefreshData",
     "LiveScoreRow",
     "LuckRow",
-    "MAX_ID_LENGTH",
-    "MAX_TRADE_IDS",
     "ManagerGradeRow",
     "MarketSummary",
     "MarketValueRow",

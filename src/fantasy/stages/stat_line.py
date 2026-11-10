@@ -26,9 +26,10 @@ stage take q back out there.
 import numpy as np
 import polars as pl
 
+from fantasy.sim.expected import POSITIONS
 from fantasy.stages.gbm import make_classifier
 from fantasy.stages.lags import lag_asof, latest_asof, train_seasons
-from fantasy.stages.project import FIRST_PROJECTED_SEASON, POSITIONS
+from fantasy.stages.project import FIRST_PROJECTED_SEASON
 
 KEY = ["gsis_id", "season", "week"]
 LAGGED = ["snap", "st", "tshare", "tgt", "car", "statline"]

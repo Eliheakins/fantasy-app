@@ -1,3 +1,5 @@
+from typing import Any
+
 from fantasy import store
 from fantasy.stages import sync_sleeper as s
 
@@ -83,7 +85,7 @@ def test_transactions_one_row_per_player_action_with_bid() -> None:
 
 
 def test_players_keep_only_fantasy_positions_and_name_defenses() -> None:
-    raw = {
+    raw: dict[str, dict[str, Any]] = {
         "1": {"position": "WR", "full_name": "A B", "team": "X", "fantasy_positions": ["WR"]},
         "2": {"position": "LB", "full_name": "C D"},
         "ARI": {"position": "DEF", "first_name": "Arizona", "last_name": "Cardinals"},

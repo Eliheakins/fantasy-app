@@ -83,14 +83,14 @@ def record_live_tick(now: datetime | None = None, data_dir: Path | None = None) 
         for league_key in leagues(data_dir)["league_key"].to_list():
             try:
                 row = live_win_row(league_key, data_dir)
-            except Exception:  # noqa: BLE001 - one league failing must not stop the other
+            except Exception:
                 log.exception("live history failed for %s", league_key)
                 continue
             if row is not None:
                 found.append({**row, "run_at": run_at})
         if found:
             _append_live_rows(found, data_dir)
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.exception("live history failed")
 
 

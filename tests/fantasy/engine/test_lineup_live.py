@@ -3,6 +3,7 @@
 from dataclasses import replace
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 import pytest
@@ -12,10 +13,10 @@ from fantasy import _engine, _lineup, data_api
 from fantasy.sim.availability import EASTERN, GAME_MINUTES
 
 
-def _with(monkeypatch: pytest.MonkeyPatch, **changes: object) -> None:
+def _with(monkeypatch: pytest.MonkeyPatch, **changes: Any) -> None:
     real = _engine._league
 
-    def patched(league_key: str, *args, **kwargs):  # type: ignore[no-untyped-def]
+    def patched(league_key: str, *args, **kwargs):
         data, mine = real(league_key, *args, **kwargs)
         return replace(data, **changes), mine
 

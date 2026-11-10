@@ -18,7 +18,7 @@ def test_missing_key_raises_clear_error(tmp_path: Path) -> None:
         load_config(bad)
 
 
-def test_an_edited_config_is_reloaded(tmp_path) -> None:  # type: ignore[no-untyped-def]
+def test_an_edited_config_is_reloaded(tmp_path) -> None:
     path = tmp_path / "config.toml"
     body = 'season = 2026\nuser_id = "u"\nn_sims = {n}\n[leagues.a]\nid = "1"\n'
     path.write_text(body.format(n=10))

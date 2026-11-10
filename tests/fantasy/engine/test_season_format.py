@@ -5,7 +5,7 @@ instead of crashing the refresh for everyone."""
 import polars as pl
 import pytest
 
-from fantasy import _runs
+from fantasy import _runs, store
 from fantasy.sim.season import format_problem
 from fantasy.stages import simulate as sim_stage
 
@@ -63,9 +63,9 @@ def test_the_simulation_leaves_out_an_unmodelled_league_and_says_so(
     def never_loaded(*args: object, **kwargs: object) -> None:
         raise AssertionError("an unmodelled league must not be loaded")
 
-    monkeypatch.setattr(sim_stage.store, "read_table", lambda *a, **k: leagues)
+    monkeypatch.setattr(store, "read_table", lambda *a, **k: leagues)
     monkeypatch.setattr(sim_stage, "load_league_data", never_loaded)
-    monkeypatch.setattr(sim_stage.store, "write_tables", lambda tables, **k: written.update(tables))
+    monkeypatch.setattr(store, "write_tables", lambda tables, **k: written.update(tables))
     _runs._soft_failures.clear()
 
     latest = sim_stage.run(archive=False)

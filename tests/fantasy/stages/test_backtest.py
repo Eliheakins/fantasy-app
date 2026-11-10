@@ -3,6 +3,7 @@ import polars as pl
 import pytest
 
 from fantasy import store
+from fantasy.sim.calibration import ALL_TIERS
 from fantasy.stages import backtest as b
 
 
@@ -47,7 +48,7 @@ def test_metrics_split_by_season_and_prefer_the_informed_forecaster() -> None:
     )
     m = b.metrics(rows, horizon=1)
     store.check_schema("backtest_metrics", m)
-    by_name = {r["forecaster"]: r for r in m.filter(pl.col("tier") == b.ALL_TIERS).to_dicts()}
+    by_name = {r["forecaster"]: r for r in m.filter(pl.col("tier") == ALL_TIERS).to_dicts()}
     assert by_name["baseline"]["n"] == n // 2  # only the test season is scored
     assert by_name["baseline"]["pinball"] < by_name["trailing_mean"]["pinball"]
     assert by_name["baseline"]["rmse"] < by_name["trailing_mean"]["rmse"]
@@ -73,8 +74,8 @@ def sized_rows(n: int = 6000) -> pl.DataFrame:
 def test_metrics_report_each_size_tier_and_the_whole_sample() -> None:
     m = b.metrics(sized_rows(), horizon=1)
     base = m.filter(pl.col("forecaster") == "baseline")
-    assert set(base["tier"].to_list()) == {b.ALL_TIERS, 0, 1, 2}
-    whole = base.filter(pl.col("tier") == b.ALL_TIERS)["n"].item()
+    assert set(base["tier"].to_list()) == {ALL_TIERS, 0, 1, 2}
+    whole = base.filter(pl.col("tier") == ALL_TIERS)["n"].item()
     assert base.filter(pl.col("tier") >= 0)["n"].sum() == whole
 
 
@@ -94,7 +95,7 @@ def test_tier_edges_come_from_the_training_seasons() -> None:
     m = b.metrics(rows, horizon=1).filter(pl.col("forecaster") == "baseline")
     assert (
         m.filter(pl.col("tier") == 2)["n"].item()
-        == m.filter(pl.col("tier") == b.ALL_TIERS)["n"].item()
+        == m.filter(pl.col("tier") == ALL_TIERS)["n"].item()
     )
 
 

@@ -38,10 +38,10 @@ from scipy.special import gammaincc
 from fantasy import store
 from fantasy._runs import note_soft_failure
 from fantasy.config import load_config
+from fantasy.scoring import score_stats
 from fantasy.sim.availability import EASTERN
 from fantasy.stages import outside_projections as op
 from fantasy.stages.crosswalk import norm_team, normalize_name
-from fantasy.stages.sleeper_projections import score_stats
 from fantasy.stages.snapshot_odds import ODDS_DIR
 
 Z_CLAMP = 1.0
@@ -372,7 +372,7 @@ def _outside_snapshots(
     """This week's archived outside rows fetched since `since`, mapped to gsis_id; logs each
     source's age by position and warns about missing positions."""
     empty = pl.DataFrame(
-        schema={s: pl.String for s in ("source", "fetched_at", "position", "gsis_id", "stats")}
+        schema=dict.fromkeys(("source", "fetched_at", "position", "gsis_id", "stats"), pl.String)
     )
     try:
         snaps = store.read_table("outside_proj_snapshots", "archive", data_dir)
@@ -452,7 +452,7 @@ def run(data_dir: Path | None = None, odds_dir: Path = ODDS_DIR) -> tuple[int, i
                     pl.lit(lg["league_id"]).alias("league_id")
                 )
             )
-    except Exception as err:  # fail soft like outside_projections: the blend runs without props
+    except Exception as err:  # noqa: BLE001 - fail soft: the blend runs without props
         print(f"warning: prop points skipped for week {week}: {err!r}")
         note_soft_failure(repr(err))
         implied = []

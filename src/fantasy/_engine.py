@@ -329,7 +329,8 @@ def _constant_points(
 ) -> np.ndarray:  # fmt: skip
     """K and DEF slots as draws around the team's projection."""
     mean, var = _constant_moments(data, state, roster_id, week)
-    return mean + np.sqrt(var) * np.random.default_rng(seed).standard_normal(n_sims)
+    draws: np.ndarray = mean + np.sqrt(var) * np.random.default_rng(seed).standard_normal(n_sims)
+    return draws
 
 
 def _opponent_lineup(

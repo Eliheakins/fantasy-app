@@ -52,7 +52,8 @@ def correlation_matrix(
     values, vectors = np.linalg.eigh(corr)
     fixed = (vectors * np.clip(values, MIN_EIGENVALUE, None)) @ vectors.T
     scale = np.sqrt(np.diag(fixed))
-    return fixed / np.outer(scale, scale)
+    nearest: np.ndarray = fixed / np.outer(scale, scale)
+    return nearest
 
 
 def sample_points(
@@ -73,7 +74,7 @@ def sample_points(
             for i in slate.ids
         ]
     )
-    u = norm.cdf(z @ np.linalg.cholesky(corr).T)
+    u: np.ndarray = norm.cdf(z @ np.linalg.cholesky(corr).T)
     probs = slate.play_probs or (1.0,) * len(slate.ids)
     tiers = slate.tiers or (-1,) * len(slate.ids)
     out = np.empty_like(u)

@@ -1,6 +1,7 @@
 """sim_win_need: my playoff odds by wins in the next four games, display only."""
 
 from dataclasses import replace
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -97,7 +98,7 @@ def test_more_wins_never_hurt_much() -> None:
     inp = inputs(np.full(N_TEAMS, 100.0), 20.0, n_sims=20000)
     mine = win_need_odds(inp, simulate_season(inp)).filter(pl.col("roster_id") == 1).sort("wins")
     odds = mine["p_playoffs"].to_list()
-    assert all(b >= a - 0.02 for a, b in zip(odds, odds[1:], strict=False))
+    assert all(b >= a - 0.02 for a, b in pairwise(odds))
     assert odds[-1] > odds[0] + 0.2
 
 

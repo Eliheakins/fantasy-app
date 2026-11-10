@@ -81,7 +81,7 @@ def config() -> Config:
     return Config(season=2026, user_id=OWNER, n_sims=100, leagues={"colgate": CONFIG_LEAGUE})
 
 
-def run(fake: FakeSleeper, monkeypatch: pytest.MonkeyPatch, registered=(), report=None):  # noqa: ANN001, ANN201
+def run(fake: FakeSleeper, monkeypatch: pytest.MonkeyPatch, registered=(), report=None):
     monkeypatch.setattr(sync_sleeper, "fetch", fake)
     return sync_sleeper.run(config(), registered=registered, report=report or (lambda *a: None))
 

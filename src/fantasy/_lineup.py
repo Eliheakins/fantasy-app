@@ -234,9 +234,10 @@ def _simulate_candidates(
     def total(lineup_ids: frozenset[str] | list[str], team: int, team_seed: int) -> np.ndarray:
         cols = [column[i] for i in lineup_ids]
         state = data.current.get(team) if current else None
-        return points[:, cols].sum(axis=1) + _constant_points(
+        totals: np.ndarray = points[:, cols].sum(axis=1) + _constant_points(
             data, n_sims, team_seed, team, week, state
         )
+        return totals
 
     opponent = total(opp_ids, opp, LINEUP_SEED + KD_SEED_OFFSET + 1)
     cache: dict[frozenset[str], np.ndarray] = {}  # shared by train_win and the final totals

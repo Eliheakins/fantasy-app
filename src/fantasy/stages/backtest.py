@@ -13,13 +13,13 @@ import polars as pl
 
 from fantasy import store
 from fantasy.sim.calibration import ALL_TIERS, MIN_MEAN, N_TIERS, TRAIN_END, size_tiers
+from fantasy.sim.expected import expected_frame
 from fantasy.stages.distributions import LEVELS
 from fantasy.stages.learn import history_forecasts
 from fantasy.stages.project import (
     FIRST_PROJECTED_SEASON,
     GROUP,
     build_form,
-    expected_frame,
     position_prior,
     project_targets,
 )
@@ -34,7 +34,8 @@ COVERAGE_GAP = 0.02  # the learned model's 80% coverage may differ from the base
 
 def fit_ratios(y: np.ndarray, mu: np.ndarray) -> np.ndarray:
     """Quantiles (at LEVELS) of actual / forecast."""
-    return np.quantile(y / mu, LEVELS)
+    ratios: np.ndarray = np.quantile(y / mu, LEVELS)
+    return ratios
 
 
 def predict(tau: float, mu: np.ndarray, ratios: np.ndarray) -> np.ndarray:

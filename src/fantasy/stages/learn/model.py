@@ -6,6 +6,7 @@ import polars as pl
 from sklearn.ensemble import HistGradientBoostingRegressor
 
 from fantasy import store
+from fantasy.sim.expected import expected_frame
 from fantasy.stages.lags import train_seasons
 from fantasy.stages.learn.features import (
     DEPTH_COLUMNS,
@@ -16,7 +17,7 @@ from fantasy.stages.learn.features import (
     load_extras,
     state_frame,
 )
-from fantasy.stages.project import GROUP, expected_frame, history_targets
+from fantasy.stages.project import GROUP, history_targets
 
 NULL_WARN = 0.10  # next-game rows may lack depth or ranking this much more often than history
 NULL_FAIL = 0.30  # beyond this the model would be scoring features it was not trained on
@@ -43,7 +44,8 @@ def fit_predict(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray) ->
         random_state=0,
     )
     model.fit(x_train, y_train)
-    return np.clip(model.predict(x_test), 0.0, None)
+    predicted: np.ndarray = np.clip(model.predict(x_test), 0.0, None)
+    return predicted
 
 
 def walk_forward(

@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from fantasy import api
 from fantasy.auth import accounts, passwords, routes
+from fantasy.auth.ratelimit import FailureLimiter
 
 CSRF = {"X-Requested-With": "fantasy-app"}
 GOOD = "a long enough password"
@@ -20,7 +21,7 @@ def quick_and_isolated(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AUTH_COOKIE_SECURE", "0")  # the test client speaks plain http
     monkeypatch.setenv("LIVE_REFRESH", "off")
     monkeypatch.delenv("FANTASY_AUTH", raising=False)
-    monkeypatch.setattr(routes, "limiter", routes.FailureLimiter(limit=5, window_s=60.0))
+    monkeypatch.setattr(routes, "limiter", FailureLimiter(limit=5, window_s=60.0))
 
 
 def make_client(store_dir: Path) -> TestClient:
@@ -204,7 +205,7 @@ def test_each_account_may_ask_the_model_only_so_often(
     secured: TestClient, store_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Every call to the Ask route is a paid model call on the owner's key."""
-    monkeypatch.setattr(routes, "intent_limiter", routes.FailureLimiter(limit=3, window_s=60.0))
+    monkeypatch.setattr(routes, "intent_limiter", FailureLimiter(limit=3, window_s=60.0))
     login(secured)
     assert [ask(secured).status_code == 429 for _ in range(3)] == [False, False, False]
     blocked = ask(secured)
@@ -217,7 +218,7 @@ def test_each_account_may_ask_the_model_only_so_often(
 def test_one_account_using_up_its_questions_does_not_block_another(
     secured: TestClient, store_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(routes, "intent_limiter", routes.FailureLimiter(limit=2, window_s=60.0))
+    monkeypatch.setattr(routes, "intent_limiter", FailureLimiter(limit=2, window_s=60.0))
     login(secured)
     for _ in range(2):
         ask(secured)
@@ -231,7 +232,7 @@ def test_one_account_using_up_its_questions_does_not_block_another(
 def test_the_question_limit_does_not_touch_other_routes(
     secured: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(routes, "intent_limiter", routes.FailureLimiter(limit=1, window_s=60.0))
+    monkeypatch.setattr(routes, "intent_limiter", FailureLimiter(limit=1, window_s=60.0))
     login(secured)
     ask(secured)
     assert ask(secured).status_code == 429

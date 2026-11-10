@@ -27,9 +27,14 @@ def clean(value: Any) -> Any:
     return value
 
 
+def clean_rows(rows: list[dict[str, object]]) -> list[dict[str, Any]]:
+    """`clean` for a list of row dicts, keeping that shape in the type."""
+    return [{k: clean(v) for k, v in row.items()} for row in rows]
+
+
 def rows(frame: pl.DataFrame) -> list[dict[str, Any]]:
     """A frame as a list of row dicts, NaN as null."""
-    return clean(frame.fill_nan(None).to_dicts())
+    return clean_rows(frame.fill_nan(None).to_dicts())
 
 
 def ok(data: Any) -> dict[str, Any]:

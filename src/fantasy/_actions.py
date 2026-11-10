@@ -90,9 +90,11 @@ def actions(
     rows = lineup(league_key, loaded=loaded, data_dir=data_dir, team=team)
     found: list[tuple[str, str]] = []
     if not rows.is_empty():
-        for r in rows.filter(pl.col("starting_now") & ~pl.col("locked")).iter_rows(named=True):
-            if r["injury"] in UNAVAILABLE:
-                found.append(("Injury", f"{r['full_name']} is {r['injury']} and in your lineup"))
+        found.extend(
+            ("Injury", f"{r['full_name']} is {r['injury']} and in your lineup")
+            for r in rows.filter(pl.col("starting_now") & ~pl.col("locked")).iter_rows(named=True)
+            if r["injury"] in UNAVAILABLE
+        )
         known = bool(rows["starting_now"].any())
         gap = float(
             rows.filter(pl.col("recommended"))["projection"].to_numpy().sum()

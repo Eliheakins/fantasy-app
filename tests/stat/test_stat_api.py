@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import cast
 
 import httpx
+import httpx2
 import openai
 import pytest
 from fakes import FILTERS, STATS
+from openai import AsyncOpenAI
 
 from nfl_stat.api.deps import get_llm_client
 from nfl_stat.pipeline.manifest import write_manifest
@@ -210,12 +213,12 @@ async def test_nlq_intent_returns_503_when_llm_server_is_down(client: httpx.Asyn
     class DownLlm:
         base_url = "http://127.0.0.1:8080/v1"
 
-        class chat:  # noqa: N801
-            class completions:  # noqa: N801
+        class chat:
+            class completions:
                 @staticmethod
                 async def create(**_):
                     raise openai.APIConnectionError(
-                        request=httpx.Request("POST", "http://127.0.0.1:8080/v1/chat/completions")
+                        request=httpx2.Request("POST", "http://127.0.0.1:8080/v1/chat/completions")
                     )
 
     app.dependency_overrides[get_llm_client] = lambda: DownLlm()
@@ -230,11 +233,11 @@ async def test_chat_text_raises_model_failed_when_model_returns_no_choices():
     class EmptyLlm:
         base_url = "http://fake/v1"
 
-        class chat:  # noqa: N801
-            class completions:  # noqa: N801
+        class chat:
+            class completions:
                 @staticmethod
                 async def create(**_):
                     return type("R", (), {"choices": []})()
 
     with pytest.raises(ModelFailed):
-        await chat_text(client=EmptyLlm(), model="m", messages=[])
+        await chat_text(client=cast(AsyncOpenAI, EmptyLlm()), model="m", messages=[])

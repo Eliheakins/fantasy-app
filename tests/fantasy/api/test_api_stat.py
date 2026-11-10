@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-import httpx
+import httpx2
 import openai
 import pytest
 from fakes import FakeLlm
@@ -197,7 +197,7 @@ def test_a_fantasy_validation_error_names_the_field(client: TestClient) -> None:
 
 def test_a_model_that_is_down_is_a_503_envelope(client: TestClient) -> None:
     async def refuse(**_: Any) -> Any:
-        raise openai.APIConnectionError(request=httpx.Request("POST", "http://127.0.0.1:8080/v1"))
+        raise openai.APIConnectionError(request=httpx2.Request("POST", "http://127.0.0.1:8080/v1"))
 
     down = SimpleNamespace(
         base_url="http://127.0.0.1:8080/v1",
@@ -232,7 +232,7 @@ def _llm_raising(error: Exception) -> SimpleNamespace:
 
 
 def test_a_model_timeout_is_a_504_envelope(client: TestClient) -> None:
-    request = httpx.Request("POST", "http://127.0.0.1:8080/v1")
+    request = httpx2.Request("POST", "http://127.0.0.1:8080/v1")
     down = _llm_raising(openai.APITimeoutError(request=request))
     client.app.dependency_overrides[get_llm_client] = lambda: down  # type: ignore[attr-defined]
     r = client.post("/api/stat/nlq/intent", json=INTENT, headers=CSRF_HEADER)
@@ -241,7 +241,7 @@ def test_a_model_timeout_is_a_504_envelope(client: TestClient) -> None:
 
 
 def test_a_model_server_error_is_a_502_envelope(client: TestClient) -> None:
-    response = httpx.Response(500, request=httpx.Request("POST", "http://x"), text="boom")
+    response = httpx2.Response(500, request=httpx2.Request("POST", "http://x"), text="boom")
     broken = _llm_raising(openai.APIStatusError("boom", response=response, body=None))
     client.app.dependency_overrides[get_llm_client] = lambda: broken  # type: ignore[attr-defined]
     r = client.post("/api/stat/nlq/intent", json=INTENT, headers=CSRF_HEADER)

@@ -251,7 +251,7 @@ def sleeps(monkeypatch: pytest.MonkeyPatch) -> list[float]:
     async def fake_sleep(seconds: float) -> None:
         waited.append(seconds)
 
-    monkeypatch.setattr(jev_intent.asyncio, "sleep", fake_sleep)
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
     return waited
 
 
@@ -367,7 +367,7 @@ async def test_each_attempt_opens_a_fresh_client(sleeps, monkeypatch: pytest.Mon
         opened.append(real(*args, **kwargs))
         return opened[-1]
 
-    monkeypatch.setattr(jev_intent.httpx, "AsyncClient", tracking)
+    monkeypatch.setattr(httpx, "AsyncClient", tracking)
     transport, _ = _transport(httpx.ConnectError("x"), httpx.Response(200, json={"answers": {}}))
 
     await _call(transport)

@@ -167,7 +167,7 @@ def test_defense_play_facts_count_what_team_stats_lack():
             td_team="AAA",
             fumbled_1_team="BBB",
             fumble_recovery_1_team="AAA",
-        ),  # fmt: skip
+        ),
         # BBB fumbles into the end zone and recovers its own ball: an offensive TD, not a return
         _play(
             posteam="BBB",
@@ -177,7 +177,7 @@ def test_defense_play_facts_count_what_team_stats_lack():
             td_team="BBB",
             fumbled_1_team="BBB",
             fumble_recovery_1_team="BBB",
-        ),  # fmt: skip
+        ),
         # AAA punts, BBB muffs, AAA forces and recovers
         _play(
             posteam="AAA",
@@ -187,7 +187,7 @@ def test_defense_play_facts_count_what_team_stats_lack():
             fumbled_1_team="BBB",
             fumble_recovery_1_team="AAA",
             forced_fumble_player_1_team="AAA",
-        ),  # fmt: skip
+        ),
         _play(posteam="BBB", defteam="AAA", defensive_two_point_conv=1.0),
         _play(posteam="BBB", defteam="AAA", season_type="POST", sack=1.0, yards_gained=-9.0),
     ]

@@ -4,7 +4,14 @@ from typing import Any
 
 from fantasy.sim.moves import ODDS_TOL, drop_addons
 
-POSITIONS = dict(swift="RB", shough="QB", stroud="QB", lamb="WR", kelce="TE", wr2="WR")
+POSITIONS = {
+    "swift": "RB",
+    "shough": "QB",
+    "stroud": "QB",
+    "lamb": "WR",
+    "kelce": "TE",
+    "wr2": "WR",
+}
 
 
 def row(give: list[str], get: list[str], odds: float = 0.02, partner: int = 2) -> dict[str, Any]:

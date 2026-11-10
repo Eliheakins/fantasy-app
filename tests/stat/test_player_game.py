@@ -50,9 +50,7 @@ def _source(**overrides: list) -> pl.DataFrame:
         "receiving_epa": [None, 2.5, None],
     }
     base.update(overrides)
-    return pl.DataFrame(
-        {k: v for k, v in {**base, **{k: [v] * 3 for k, v in SOURCE_ONLY.items()}}.items()}
-    )
+    return pl.DataFrame({**base, **{k: [v] * 3 for k, v in SOURCE_ONLY.items()}})
 
 
 def test_normalize_renames_ids_and_keeps_only_the_tier_one_columns():

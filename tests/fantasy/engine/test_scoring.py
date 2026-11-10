@@ -74,7 +74,7 @@ def test_blocked_field_goal_counts_as_a_miss() -> None:
 
 
 def test_kicker_distance_buckets() -> None:
-    scoring = {"fgm_30_39": 3, "fgm_50_59": 4, "fgm_60p": 5}
+    scoring: dict[str, float] = {"fgm_30_39": 3, "fgm_50_59": 4, "fgm_60p": 5}
     got = points(scoring, fg_made_30_39=2, fg_made_50_59=1, fg_made_60_=1)
     assert got == 15.0
 

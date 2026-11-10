@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 from fantasy import api, refresh_queue
 from fantasy.auth import accounts, my_leagues, passwords
+from fantasy.auth.ratelimit import FailureLimiter
 from fantasy.config import load_config
 from fantasy.sources.sleeper import SleeperError
 
@@ -106,9 +107,7 @@ def quick_and_isolated(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AUTH_COOKIE_SECURE", "0")
     monkeypatch.setenv("LIVE_REFRESH", "off")
     monkeypatch.delenv("FANTASY_AUTH", raising=False)
-    monkeypatch.setattr(
-        my_leagues, "lookup_limiter", my_leagues.FailureLimiter(limit=10, window_s=60.0)
-    )
+    monkeypatch.setattr(my_leagues, "lookup_limiter", FailureLimiter(limit=10, window_s=60.0))
 
 
 @pytest.fixture

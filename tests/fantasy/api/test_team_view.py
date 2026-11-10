@@ -2,6 +2,7 @@
 
 import inspect
 import threading
+from functools import partial
 from pathlib import Path
 
 import polars as pl
@@ -125,7 +126,7 @@ def test_job_keys_and_results_are_per_team(
         assert client.get(f"/api/leagues/t/actions{q}").status_code == 202
     gate.set()
     texts = [
-        wait_ok(client, lambda q=q: client.get(f"/api/leagues/t/actions{q}"))["data"][0]["text"]
+        wait_ok(client, partial(client.get, f"/api/leagues/t/actions{q}"))["data"][0]["text"]
         for q in queries
     ]
     assert texts == ["team 2", "team 1", "team 3"]
@@ -159,7 +160,7 @@ def test_jobs_run_for_the_viewed_roster_not_is_me(
         ("post", "/api/leagues/t/trades/find?team=2"),
     )
     for method, url in urls:
-        out = wait_ok(client, lambda m=method, u=url: getattr(client, m)(u))
+        out = wait_ok(client, partial(getattr(client, method), url))
         assert out["status"] == "ok", out
     assert seen == {"win_probability": 2, "actions": 2, "find_trades": 2}
     win = wait_ok(client, lambda: client.get("/api/leagues/t/win-probability?week=3&team=2"))

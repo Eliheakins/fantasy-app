@@ -104,7 +104,7 @@ def test_each_season_is_scored_by_a_model_that_never_saw_it() -> None:
     assert learn.train_seasons(2020, [2019, 2020, 2021, 2022, 2023]) == [2019, 2021, 2022]
 
 
-def test_rows_without_a_stat_line_are_projected_but_never_trained_on(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+def test_rows_without_a_stat_line_are_projected_but_never_trained_on(monkeypatch) -> None:
     monkeypatch.setattr(
         learn_model, "design", lambda frame, lines, vac: frame.select("x").to_numpy()
     )
@@ -122,7 +122,7 @@ def test_rows_without_a_stat_line_are_projected_but_never_trained_on(monkeypatch
     assert later["points"].null_count() == 1
 
 
-def test_a_stat_less_game_takes_its_team_weeks_context_and_is_not_reported(capsys) -> None:  # type: ignore[no-untyped-def]
+def test_a_stat_less_game_takes_its_team_weeks_context_and_is_not_reported(capsys) -> None:
     keys = {"league_id": ["L"] * 3, "season": [2025] * 3, "week": [5] * 3}
     rows = pl.DataFrame(keys | {"gsis_id": ["A", "B", "C"], "team": ["KC", "KC", "SF"]})
     baseline = pl.DataFrame(
@@ -145,7 +145,7 @@ def test_a_stat_less_game_takes_its_team_weeks_context_and_is_not_reported(capsy
     assert "2 projection rows have no proj_baseline row" in capsys.readouterr().out
 
 
-def test_a_team_weeks_context_is_the_mean_and_rows_without_one_are_counted(capsys) -> None:  # type: ignore[no-untyped-def]
+def test_a_team_weeks_context_is_the_mean_and_rows_without_one_are_counted(capsys) -> None:
     rows = pl.DataFrame(
         {
             "league_id": ["L"] * 2,
@@ -318,7 +318,7 @@ def test_a_lagged_join_across_a_season_boundary_does_not_see_the_current_season(
     assert ahead["pace_plays"].item() < 63.0  # only 2024's games, none of 2025's 100s
 
 
-def test_next_game_nulls_warn_then_fail_against_the_history_share(capsys) -> None:  # type: ignore[no-untyped-def]
+def test_next_game_nulls_warn_then_fail_against_the_history_share(capsys) -> None:
     cols = [*learn.DEPTH_COLUMNS, *learn.ECR_COLUMNS]
     history = pl.DataFrame({c: [1.0] * 10 for c in cols})
     future = pl.DataFrame({"week": [7] * 10, **{c: [1.0] * 8 + [None, None] for c in cols}})
@@ -326,7 +326,7 @@ def test_next_game_nulls_warn_then_fail_against_the_history_share(capsys) -> Non
     assert "WARNING" in capsys.readouterr().out
     broken = pl.DataFrame(
         {"week": [7] * 10, **{c: [None] * 10 for c in cols}},
-        schema={"week": pl.Int64, **{c: pl.Float64 for c in cols}},
+        schema={"week": pl.Int64, **dict.fromkeys(cols, pl.Float64)},
     )
     with pytest.raises(ValueError, match="missing"):
         learn.check_next_game_nulls(history, broken)
@@ -388,7 +388,7 @@ def test_vacancy_comes_from_the_games_report_one_game_ahead_and_nobody_further_a
 
 
 def test_future_weeks_without_a_report_use_a_model_without_the_vacancy_columns(
-    monkeypatch,  # type: ignore[no-untyped-def]
+    monkeypatch,
 ) -> None:
     widths: dict[int, int] = {}
 
@@ -398,7 +398,7 @@ def test_future_weeks_without_a_report_use_a_model_without_the_vacancy_columns(
 
     monkeypatch.setattr(learn_model, "fit_predict", record)
     columns = [*learn.STATE_FEATURES, *learn.LINE_FEATURES, *learn.EXTRA_FEATURES]
-    row = {c: 1.0 for c in columns} | {"position": "WR", "points": 5.0}
+    row = dict.fromkeys(columns, 1.0) | {"position": "WR", "points": 5.0}
     history = pl.DataFrame([row | {"week": 3}])
     future = pl.DataFrame([row | {"week": 8}, row | {"week": 9}])
     out = learn.predict_future(history, future, report_week=8)

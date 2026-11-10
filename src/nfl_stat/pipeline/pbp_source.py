@@ -73,7 +73,7 @@ def _is_fresh(path: Path, season: int) -> bool:
     if not path.exists():
         return False
     written = path.stat().st_mtime
-    if written >= datetime(season + 1, *COMPLETE_AFTER).timestamp():
+    if written >= datetime(season + 1, *COMPLETE_AFTER).astimezone().timestamp():  # local time
         return True  # written after the season ended
     return 0 <= (time.time() - written) / 3600 < TTL_HOURS  # a future mtime is not fresh
 

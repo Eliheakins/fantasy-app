@@ -96,7 +96,7 @@ def _record(
             os.environ.get(RUN_ID_ENV) or None
         )  # set by `make refresh`, absent for a lone stage
         record_run(stage, status, error, data_dir, run_id=run_id, duration_s=duration_s)
-    except Exception as err:  # a bookkeeping failure must not fail the refresh step itself
+    except Exception as err:  # noqa: BLE001 - bookkeeping must not fail the refresh step itself
         print(f"warning: could not record the {stage} run: {err!r}", file=sys.stderr)
 
 
