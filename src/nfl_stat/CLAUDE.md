@@ -4,7 +4,7 @@ The stat app's backend, merged in from the old stat app (#70). Fantasy imports t
 
 ## Wiring
 
-- `nfl_stat.main.attach(app, settings)` is called by `fantasy.api.create_app` before the SPA mount. It adds `GET /api/stat/health`, `POST /api/stat/nlq/intent` and the static mount `/api/stat/data/*`.
+- `nfl_stat.main.attach(app, settings)` is called by `fantasy.api.create_app` before the SPA mount. It adds `GET /api/stat/health`, `POST /api/stat/nlq/intent` and the static mount `/api/stat/data/*`. Every intent call is a paid model call, so `IntentRequest` caps the client's catalog at about 1.5 times the real one (measured from `tests/stat/eval/catalog.json`: 76 stats, 42 filters, 13 kB) and the route answers 413 above 20,000 bytes. A catalog that outgrows the caps needs them raised.
 - `/api/stat/health` reports `built_at` of the stat manifest. The banner reads it and marks the data stale after 48 hours (`web/src/lib/status.ts`).
 - The fantasy Host and X-Requested-With checks cover these routes. There is no CORS.
 - The stat-only `nfl_stat.main.create_app` (used by the stat tests) still returns `{detail}` errors. `web/src/stat/lib/http.ts` reads both error shapes.
@@ -26,7 +26,7 @@ The stat app's backend, merged in from the old stat app (#70). Fantasy imports t
 ## Shared play-by-play
 
 - `pipeline/pbp_source.py` keeps each season's full nflverse play-by-play in `data/raw/pbp/<season>.parquet`. It is raw nflverse data and is never served.
-- `ingest_role.load_pace` (fantasy), `environment.team_efficiency` and the stat build all read it, so a season downloads once.
+- `ingest_role.load_pace` (fantasy), `streaming.team_efficiency` and the stat build all read it, so a season downloads once.
 - A file is final, and never refetched, once written on or after March 1 of the next year. Any other file (the season in progress, or a past season fetched mid-season) refetches when older than 12 hours (`TTL_HOURS`). A future mtime counts as stale.
 - Downloads must be readable parquet before they replace the cache. Readers pass the columns they need. A season nflverse has not published yet is skipped in `load_pace` only.
 - Parity with the old nflreadpy reads was exact (`research/pbp_parity_check.py`; `docs/decisions.md`, 2026-11-04). Delete a file to force a refetch.

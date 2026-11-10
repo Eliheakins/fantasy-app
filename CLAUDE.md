@@ -32,7 +32,7 @@ Each area has its own CLAUDE.md next to the code, and Claude Code loads it when 
 ## Conventions
 
 - Parquet under `data/` (gitignored) is the source of truth. Readers use polars. DuckDB is a dev dependency only.
-- Lean MVP: simplest method that works, tests only for math and config, no CI.
+- Lean MVP: simplest method that works, tests only for math and config. CI runs `make check` before every deploy (`.github/workflows/`).
 - Annotate function signatures. Prefer frozen dataclasses.
 - Log every decision in `docs/decisions.md` as it is made.
 - No secrets in the repo. API keys come from environment variables (or the gitignored `.env`).

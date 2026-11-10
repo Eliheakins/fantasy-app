@@ -1119,3 +1119,60 @@ Plan: `.plans/accounts-and-refresh-20261109-2155.md`. Supersedes the Caddy-passw
 - **Team pick.** `account_leagues.roster_id` (nullable; `accounts.connect` adds the column to an existing `auth.db`). Adding a league now needs a `roster_id`, picked in the UI from the league's teams (the one the Sleeper user owns is preselected). The pick beats Sleeper ownership. Any team in the league may be picked: it only chooses the default view, which `?team=` already allows, and the league must still be the user's with a team they own.
 - **Repair path for existing accounts.** Leagues added before this have no pick; they now resolve to the roster the account's Sleeper user owns, which fixes them without action. My leagues shows "Pick your team" on them, and "Change team" on every league (`PUT /api/me/leagues/{id}/team`).
 - **First visit.** A signed-in account that can see no league and has added none gets a dialog with the add-league flow. Closing it leaves the existing no-leagues banner.
+
+## 2026-11-10: An added league can no longer stop the refresh; friends cannot claim the owner's identity
+
+- **Refused at add time:** scoring keys `scoring.check_keys` cannot map (`UnmappedScoring`) and lineup slots `sim/lineup.py` does not know (`UnknownSlot`), next to the existing playoff-format check. A league added before this that fails either is skipped by `score` and `simulate` (logged, `note_soft_failure`, registry marked `error` via `auth/leagues.skip_added`). A failing `config.toml` league still stops the run, as before.
+- **Owner identity.** A non-admin account cannot add a `config.toml` league or link the owner's Sleeper user, so it cannot become "me" in the owner's leagues.
+
+## 2026-11-10: Archive appends are idempotent per run
+
+- **Ledger, not a column.** `store.with_archive` records, per table, the run id and the row count before the run's first append in `data/archive/.runs/<table>.json`; a retry with the same run id truncates back to that count before appending. A `run_id` column was rejected because `store.check_schema` is exact and every archive table would need a migration.
+- **Retries share the id.** `_lock.hold_and_run` keeps the run id in `data/.retry_run_id` until a run exits 0 or 1, so the systemd retry after exit 75 reuses it.
+- **Missing tables.** `store.read_archive` raises `ArchiveMissing` when a table is missing but sibling tables exist (a lost file, not a fresh install); it bootstraps only a fully empty archive. On the server, fix such a table by writing it empty once.
+- **Backups.** `stages/backup.py` verifies the copy (file count and bytes) and prunes nothing when the new copy is smaller than the last one.
+- **Known gap.** Rows can still duplicate if a standalone stage run appends between a failed refresh and its retry, because the ledger is cleared.
+
+## 2026-11-10: Job keys and auth hardening
+
+- **Job keys** use `_engine.file_stamp(data_version)` with no clock bucket, so a long job (win probability, find trades) is no longer restarted every 2 minutes on game days. Finished jobs are reused until a table is rewritten. With `LIVE_REFRESH=off` on a game day, win probability therefore does not follow the clock until the next refresh.
+- **`?team=`** must be a roster in the league (`known_team`). Non-admin accounts may run at most 4 jobs at once (`MAX_ACTIVE_PER_OWNER`).
+- **Fail closed.** An unknown `FANTASY_AUTH` value stops startup (a typo in the server env file refuses to start). A public deployment (`API_ALLOWED_HOSTS` set) with the gate open logs a warning. The gate skips non-`/api/` paths; middleware order is Host, then CSRF, then login; the login throttle is atomic. `/docs`, `/redoc` and `/openapi.json` are off in the served app (`--openapi` still works). League add, remove and change-team are rate limited, and a refresh is queued only when the registry row is new.
+
+## 2026-11-10: CI gate before deploy
+
+- `.github/workflows/ci.yml` runs ruff, the format check, mypy, pytest, and the web typecheck and tests. `deploy.yml` calls it as a reusable workflow and `deploy` needs it. The reusable call has not run on GitHub yet (no `actionlint` locally; actions pinned by tag, not SHA), and branch protection is not set, so CI does not yet block a direct push.
+
+## 2026-11-10: Dead-code sweep
+
+- **Environment layer removed** (stage, `sim/environment.py`, config flag, schema, tests): it had shown no held-out gain. `nfl_team_efficiency` is now built inside `streaming`, so K and DEF projections read this run's table instead of the previous release's copy, and the 12-hour table cache was dropped. Checked the same day (next entry): this changes no projection. `research/layers_check.py` and `research/replication.py` import the removed stage and no longer run; `research/pbp_parity_check.py` needs `streaming.team_efficiency`. Left as records.
+- **Switches made unconditional:** `inactive_swap` and `ir_return_curve` (their ON behavior kept). Leftover keys for them, and for `environment_layer`, in `config.toml` are ignored.
+- **Also removed:** the QuerySpec schema (Python and web) and its dead branch in `ask/paths/queryStates.ts`, `has_accounts`, `grant_league`, six unused parameters, two pass-through wrappers, `streaming.KINDS`; `d3-scale` replaced by `web/src/viz/linearMap.ts`.
+- **Kept on purpose:** the `ALTER TABLE account_leagues ADD COLUMN roster_id` line in `auth/accounts.py` (the server's `auth.db` may still need it) and the local MLX Ask model path (the Mac uses it).
+- **Found, not changed:** `sim/blend.py`'s `SLEEPER_WEIGHT` does nothing; `blend()` calls `blend_all`, an equal mean, and the test passes only because 0.5 equals it. Left for issue #40.
+
+## 2026-11-10: Module splits (no behavior change)
+
+- Python: `stages/learn.py` is the package `stages/learn/` with shared GBM code in `stages/gbm.py`; `sim/moves.py` is a facade over `roster`, `waivers`, `trades`, `trade_labels` and `needs`; `api_models.py` and `api_routes.py` are packages; `sim/league_data.py` keeps the assembly and imports `sim/league_projections.py` and `sim/league_checks.py`; `_lineup.win_probability` is split into `_simulate_candidates` and `_option_rows` (same seeds and draws; the pinned characterization test is unchanged).
+- Web: `ruleParser.ts` keeps its parts in `features/ask/rules/`; routes are lazy-loaded; the moves/thisweek import cycle is gone (shared code in `features/effects/`, pinned by `architecture.test.ts`); `runPlayStats` is plan, scan and shape; `readTime` is table-driven; `useAsk` keeps its state in one reducer (`askReducer.ts`, a phase union, with unit tests); `toPoints` and the empty-frame helper each exist once.
+
+## 2026-11-10: Fresh team-efficiency table in `streaming` changes no K or DEF projection (held-out check)
+
+- **Question.** `streaming` now builds `nfl_team_efficiency` itself instead of reading the previous refresh's copy. Does that change K or DEF projections or held-out error? Ship rule, written before the run: identical, or fresh better than stale at a paired per-week t of -2 or lower.
+- **Method** (`research/efficiency_freshness_check.py`, real data through 2026 week 9): the table three ways (fresh, 4,526 rows; stale, without the latest played week, 4,496 rows; empty), each through `team_trailing` and both leagues' DEF and K projection and walk-forward backtest (fit from 2019, scored 2024 on).
+- **Result.** The trailed efficiency columns differ between fresh and stale, and every other trailed column is exactly equal. Projections are bit-for-bit identical in all three variants. Walk-forward RMSE (model, league mean): Colgate DEF 5.6589 / 5.9266, Colgate K 5.1361 / 5.2332, YinzBurgh DEF 5.9808 / 6.4365, YinzBurgh K 4.3135 / 4.3877; the largest gap between variants is 9e-16 (summation order). No t is computed: the per-week differences are zero.
+- **Why.** `pass_epa` and `sack_rate` are trailed in `streaming_model.team_trailing` but appear in neither `K_FEATURES` nor `DEF_FEATURES`; `trailing` updates each column independently, so they cannot move the others. The table is input to no shipped model now; only research scripts read it.
+- **Decision.** Keep the change (it ships under the rule). Whether to stop building the unused table is a separate, open question.
+
+## 2026-11-10: Open findings fixed after the optimize pass
+
+- **Shipping check.** The server archive holds every table (`outside_proj_snapshots`, `proj_snapshots`, `sim_season_history`, `sleeper_player_status`, `sleeper_proj_snapshots`, `streaming_snapshots`, `odds/`), so the new `ArchiveMissing` check will not stop the first refresh. Pushes to `main` deploy (secrets set 2026-11-10); auto-allowed `git push origin main` is issue #74, setting unchanged.
+- **CI.** Actions pinned to commit SHAs at the versions in use (checkout v4, setup-node v4, setup-uv v10.3.3); no branch protection, because `deploy` already needs the check.
+- **`SLEEPER_WEIGHT` takes effect.** Where Sleeper is a row's only other source the blend is `(1 - w) * ours + w * sleeper`; rows with more sources keep the equal mean. `blend_all` takes sources by name. At 0.5 the output is unchanged; issue #40 can now change it with one constant.
+- **`nfl_team_efficiency` no longer built** (no feature read it; previous entry).
+- **Security.** `auth.db` and its WAL files are mode 600 (the server's was 644 inside a 750 home), and both units set `UMask=0077`. Both units are sandboxed (`NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=strict`, `ProtectHome=read-only`, writes only to the checkout, uv's cache and the backups). Caddy sends a CSP (`script-src 'self'`; inline styles allowed for chart `style` attributes; `https:` images for headshots; no `wasm-unsafe-eval`: the app does not load `hyparquet-compressors`). The intent route caps the client catalog at about 1.5 times the real one (76 stats, 42 filters, 7 aliases, 13 kB measured; limits 114, 63, 11 and 20,000 bytes with 413), so a client cannot inflate a paid Jev call; Caddy caps that route's body at 32 KB before the app buffers it. `/api/status` hides stage and live-refresh error text from friends. uvicorn's access log is off (invite tokens rode in the `/invite/<token>` page URL). "Sign out everywhere" ends all of an account's sessions. Browser storage is cleared when a different account signs in on the same browser. zod 4.3.6 to 4.6.7 (memory exhaustion advisory; `npm audit` clean).
+- **Owner ids stay in `config.toml`** (user decision). They are public Sleeper data, already in git history, and read by 40-odd modules and the tests; moving them would not un-publish them.
+- **Silent failures.** `digest` keeps a failed league's previous ideas; a stage's recorded error is no longer overwritten by "exit code 1", and a `SystemExit` message is recorded; `refresh_report` fails when no stage recorded anything; `market_values` soft-fails on a response with no usable rows; `sleeper_projections` soft-fails when a league scores an offense stat key Sleeper never sends; `sync_sleeper` logs the traceback of a skipped league (the caught types stay broad so one friend's league cannot stop the refresh); `learn` flags rows archived with no baseline; a soft-failing network stage is retried (exit 65 under the pipeline) and then counts as ok; `guarded()` answers 500 for unexpected exceptions.
+- **Review fixes.** `bootstrap.sh` creates `~/.cache` and `~/fantasy-app-backups` before the sandboxed units need them (a missing backups folder would have failed the required `backup` stage). `accounts.connect` logs instead of failing when the db belongs to another user (a CLI run as root).
+- **Not changed.** `guarded()` still returns a `ValueError`'s text at 200 (`invalid`); a library `ValueError` can leak its message. Sign-out keeps browser storage (only a different account's sign-in clears it). A deterministic soft failure in a network stage is retried twice like a transient one.
+- **Behavior to know.** A friend's league that always fails now makes `sync_sleeper` retry twice (about a minute and two extra Sleeper syncs per refresh). The CSP and the sandbox are checked on the server after they are applied, not before.

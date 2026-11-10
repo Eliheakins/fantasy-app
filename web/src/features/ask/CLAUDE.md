@@ -46,7 +46,7 @@ Ask answers an NFL question in plain language. `pages/Ask.tsx` has an Ask tab an
 ## Model step
 
 - `stat/lib/nlqApi.ts` posts to `/api/stat/nlq/intent` with `X-Requested-With: fantasy-app`. The model's reason and any model text are rendered as React text, never HTML.
-- The intent cache (`intentCache.ts`) and the ask log (`askLog.ts`, `askLogStore.ts`) are in `localStorage`, so they are per origin. The old stat app's entries do not carry over.
+- The intent cache (`intentCache.ts`) and the ask log (`askLog.ts`, `askLogStore.ts`) are in `localStorage`, so they are per origin. The old stat app's entries do not carry over. When a different account signs in on the same browser, `lib/session.tsx` (`scopeStorageTo`) clears every `fantasy.*` and `bridge.*` key; a browser with no `fantasy.account` yet adopts the account and keeps its keys.
 - The model prompt does not list fantasy points as unsupported. League points are a catalog metric (`web/src/stat/CLAUDE.md`).
 - Refresh the model catalog fixture with `UPDATE_CATALOG=1 npx vitest run nlqCatalog.test.ts` in `web/` (the test is `web/src/stat/lib/nlqCatalog.test.ts`).
 

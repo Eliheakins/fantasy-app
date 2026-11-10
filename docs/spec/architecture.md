@@ -30,7 +30,7 @@ data/             gitignored: raw/ (raw/pbp/) derived/ archive/ stat/
 
 - Two Python packages with a one-way dependency, `fantasy -> nfl_stat`. `nfl_stat` never imports `fantasy`.
 - One process. `fantasy.api.create_app` calls `nfl_stat.main.attach`, which adds the stat routes under `/api/stat` (`health`, `nlq/intent`) and serves only `data/stat` at `/api/stat/data`, before the SPA mount. `data/stat` holds nflverse data only (shards, `manifest.json`, `players.json`); league data and `nfl_ecr` never go there, because it is served.
-- One play-by-play download per season. `nfl_stat.pipeline.pbp_source` keeps the full nflverse play-by-play in `data/raw/pbp/<season>.parquet` (never served). The fantasy stages (`ingest_role`, `environment`, `streaming`) and the stat build read it through `read_pbp`.
+- One play-by-play download per season. `nfl_stat.pipeline.pbp_source` keeps the full nflverse play-by-play in `data/raw/pbp/<season>.parquet` (never served). The fantasy stages (`ingest_role`, `streaming`) and the stat build read it through `read_pbp`.
 - The stat query engine runs in the browser (`web/src/stat/`): it reads the Parquet shards from `/api/stat/data` and league points from `/api/leagues/{league}/player-points`. `web/src/architecture.test.ts` enforces the layers.
 
 ## Storage
@@ -77,7 +77,7 @@ Each stage runs as `uv run python -m fantasy.stages.X` (most take no arguments).
 
 ## Config
 
-`config.toml` (committed, nothing secret) holds season, username, user_id, `[leagues.colgate] id`, `[leagues.yinzburgh] id`, n_sims, projection_model and environment_layer. Scoring is never set by hand: sync_sleeper stores each league's settings, and scoring.py applies one map from Sleeper stat keys to nflverse columns. Any nonzero key it cannot map stops the run with an error. Superflex comes from roster_positions.
+`config.toml` (committed, nothing secret) holds season, username, user_id, `[leagues.colgate] id`, `[leagues.yinzburgh] id`, n_sims and projection_model. Scoring is never set by hand: sync_sleeper stores each league's settings, and scoring.py applies one map from Sleeper stat keys to nflverse columns. Any nonzero key it cannot map stops the run with an error. Superflex comes from roster_positions.
 
 ## Data layer (the only module the API reads from)
 

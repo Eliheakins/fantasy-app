@@ -4,7 +4,7 @@ A personal NFL fantasy football decision tool for [Sleeper](https://sleeper.com)
 
 It is built for two leagues (Colgate, 10 teams, superflex, 1.0 PPR; YinzBurgh, 10 teams, 0.5 PPR), but nothing is hard-coded beyond `config.toml`. Single user, no login. Deployed to a VPS behind HTTPS (Caddy, `ops/server/`) with invite-only accounts (`src/fantasy/auth/`).
 
-> Lean on purpose: the simplest method that works, tested where the math is, no CI. Decisions and the evidence behind them are in [docs/decisions.md](docs/decisions.md).
+> Lean on purpose: the simplest method that works, tested where the math is; CI runs `make check` before every deploy. Decisions and the evidence behind them are in [docs/decisions.md](docs/decisions.md).
 
 ## What it does
 
@@ -29,7 +29,7 @@ The five tabs are This week, Lineup, Moves, Season and Players; the week picker 
 2. **Size calibration.** The baseline over-projects low projections; a per-position piecewise-linear curve corrects it (out of sample: MAE 2.75% lower).
 3. **Sleeper blend.** For the current week and the next three, our number is averaged 50/50 with Sleeper's (RotoWire) projection. The weight is an assumption until clean data exists (issue #40).
 4. **Injuries.** For a flagged player's next game a classifier (depth rank, report, practice, snap trend) gives the chance of playing (5.9% better Brier than the table); for the next four games the table gives the chance from report status, practice participation and injury type, plus a discount when playing through it. Out of sample the Brier score on the current game improved from 0.219 (fixed rates) to 0.193.
-5. **Outlook and environment effects.** (The environment half is off: no held-out gain.) First-games-back after missing time, teammates' vacated targets and carries, the opposing leading cornerback being out, and the offense's recent sack rate and pass efficiency. Applied only where the estimate is clear (|t| of 2 or more), and scaled to each league's scoring.
+5. **Outlook effects.** First-games-back after missing time, and teammates' vacated targets and carries. Applied only where the estimate is clear (|t| of 2 or more), and scaled to each league's scoring.
 6. **Distributions.** Points around the projection use empirical quantile shapes per league, position and projection size, with correlations between teammates and opponents (Gaussian copula). Each player also has their own chance of not playing.
 7. **Season simulation.** 20,000 runs of the rest of the season with a persistent per-player error, weekly roster drift, the playoff bracket (6 teams, byes for seeds 1 and 2, weeks 15 to 17), and common random numbers so that comparing two moves is low-noise.
 8. **Decisions.** Waivers, drops and trades are valued over a replacement-level free agent (a backup tight end is worth little when many are free; a quarterback in superflex is worth a lot). Lineups are picked on one half of the simulated draws and scored on the other half, and a win-probability pick is recommended only if it also wins on the held-out half.
@@ -118,7 +118,7 @@ overrides/id_map.csv   manual Sleeper to nflverse ID overrides
 docs/                  decisions log, backlog, one-pager, specs
 ```
 
-Pipeline order (`make refresh`), <!-- AUTO-GENERATED from the Makefile --> `backup`, `sync_sleeper`, `news_archive`, `sleeper_projections`, `outside_projections`, `ingest_nfl`, `crosswalk`, `score`, `prop_points`, `streaming`, `project`, `learn`, `availability`, `distributions`, `injuries`, `outlook`, `environment`, `simulate`, `digest`, `market_values`, `stat-data-refresh`, `refresh_report` <!-- END AUTO-GENERATED -->. Each stage reads and writes parquet tables under `data/` (`raw`, `derived`, `archive`) registered in `store.SCHEMAS`, so any stage can be replaced independently.
+Pipeline order (`make refresh`), <!-- AUTO-GENERATED from the Makefile --> `backup`, `sync_sleeper`, `news_archive`, `sleeper_projections`, `outside_projections`, `ingest_nfl`, `crosswalk`, `score`, `prop_points`, `streaming`, `project`, `learn`, `availability`, `distributions`, `injuries`, `outlook`, `simulate`, `digest`, `market_values`, `stat-data-refresh`, `refresh_report` <!-- END AUTO-GENERATED -->. Each stage reads and writes parquet tables under `data/` (`raw`, `derived`, `archive`) registered in `store.SCHEMAS`, so any stage can be replaced independently.
 
 ## Data sources
 
