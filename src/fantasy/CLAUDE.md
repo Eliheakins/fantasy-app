@@ -24,7 +24,7 @@ The FastAPI app (`api.py`, `api_routes.py`) and the read layer behind it. Refres
 
 ## API rules
 
-- Non-GET requests need `X-Requested-With: fantasy-app`. The server binds 127.0.0.1 and rejects unknown Host headers; extra names go in `API_ALLOWED_HOSTS`, comma separated. Phone access only through `tailscale serve`, never funnel.
+- Non-GET requests need `X-Requested-With: fantasy-app`. The server binds 127.0.0.1 and rejects unknown Host headers; extra names go in `API_ALLOWED_HOSTS`, comma separated. Outside access only through the server's Caddy (HTTPS, `ops/server/`), which proxies to the localhost bind. Login is the app's own (`auth/`, below); never expose port 8000 directly. Put the site hostname in `API_ALLOWED_HOSTS`.
 - Errors use one envelope. Errors from `guarded()` are HTTP 200 (`fail`). Other errors use the same shape with real status codes (`register_error_handlers` in `api_envelope.py`).
 - OpenAPI: `uv run python -m fantasy.api --openapi > web/openapi.json`, then `cd web && npm run types`. Checks are in `web/CLAUDE.md`.
 - The stat routes (`/api/stat/*`) are attached by `create_app`. See `src/nfl_stat/CLAUDE.md`.
@@ -39,3 +39,11 @@ The FastAPI app (`api.py`, `api_routes.py`) and the read layer behind it. Refres
 
 - Current-week lineup values include players whose game is over, at their actual points (`_engine._week_values`). Never read `moves.week_values` for a current-week lineup.
 - Known gaps, not fixed: `PLAYERS_CACHE` (`stages/sync_sleeper.py`) and `ODDS_DIR` (`stages/snapshot_odds.py`) are import-time paths that ignore `data_dir`.
+
+## Accounts and login (`auth/`)
+
+- `data/auth.db` (SQLite; backed up with the archive by `stages/backup.py`) holds accounts, invites, sessions, `account_leagues` and `league_registry`. Passwords are scrypt (`passwords.py`, at most 2 hashes at once); invite and session tokens are stored only as SHA-256 hashes.
+- The gate (`routes.install`, a middleware) runs for every `/api/*` request except login and redeem. It is on once an account exists; `FANTASY_AUTH=required` turns it on before that, `off` disables it. `policy.decide` is the whole rule: a signed-in member reads everything they may see and uses the compute-only POSTs plus add/remove of their own leagues; every other write, and `/api/admin/*`, is the admin's. A new write route is admin-only until it is listed in `policy.FRIEND_WRITES`; `test_auth_policy.py` pins the full list of write routes.
+- League access (`access.py`): a league is visible to the account that added it; the admin also sees the leagues in `config.toml`. Nobody sees another account's league. The middleware answers 404 for any other `/api/leagues/{league}/...`; `/api/leagues` and `/api/week-calendar` are filtered. With no `?team=`, `get_context` views the roster the account's Sleeper user owns; the owner's own leagues keep Sleeper's `is_me`.
+- Added leagues (`my_leagues.py`, `leagues.py`): lookup by Sleeper username (rate limited), add (needs a team owned by that user, the league must be a current-season league of theirs, an account stays linked to the first Sleeper user it used, 2 leagues per account), remove. `sync_sleeper` reads them next to `config.toml`; a failing one is marked `error` in the registry and skipped, while a failing config league still stops the run. `sim.season.format_problem` refuses leagues the 6-team-playoff model cannot fit, at add time and again in `simulate`.
+- A league someone else added has no `is_me` team: `_engine._league` needs a named team for it, the `digest` stage skips it, and `reference_league` ignores it (the effects stay measured in the owner's leagues).

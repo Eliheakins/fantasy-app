@@ -1,4 +1,4 @@
-"""End of `make refresh`: list the steps that failed softly since --since and exit 1 if any."""
+"""End of `make refresh`: list the steps that failed or were skipped since --since; exit 1."""
 
 import argparse
 from datetime import UTC, datetime
@@ -21,7 +21,7 @@ def main(argv: list[str] | None = None, data_dir: Path | None = None) -> int:
     if not failed:
         print("refresh finished: every stage ok")
         return 0
-    print(f"REFRESH FAILED: {len(failed)} stage(s) failed softly, the rest ran")
+    print(f"REFRESH FAILED: {len(failed)} stage(s) failed or were skipped")
     for run in failed:
         print(f"  {run['stage']}: {run['error']}")
     return 1

@@ -1,7 +1,9 @@
 import sys
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 
+import polars as pl
 import pytest
 
 from fantasy import _runs, store
@@ -121,3 +123,63 @@ def test_report_exits_zero_when_nothing_failed_in_this_run(
     _runs.record_run("score", "ok", None, tmp_path, now=NOW)
     assert refresh_report.main(["--since", "2026-11-05T11:00:00+00:00"], data_dir=tmp_path) == 0
     assert "every stage ok" in capsys.readouterr().out
+
+
+def test_concurrent_records_lose_no_rows(tmp_path: Path) -> None:
+    def worker(n: int) -> None:
+        for i in range(5):
+            _runs.record_run(f"stage{n}", "ok", None, tmp_path, now=NOW, run_id=f"r{i}")
+
+    threads = [threading.Thread(target=worker, args=(n,)) for n in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(runs(tmp_path)) == 40
+
+
+def test_a_table_written_before_run_ids_is_still_read_and_gains_the_columns(
+    tmp_path: Path,
+) -> None:
+    old = pl.DataFrame(
+        {
+            "stage": ["sync_sleeper"],
+            "finished_at": ["2026-11-05T12:00:00+00:00"],
+            "status": ["ok"],
+            "error": [None],
+        },
+        schema=dict.fromkeys(["stage", "finished_at", "status", "error"], pl.String),
+    )
+    path = store.table_path("refresh_runs", "derived", tmp_path)
+    path.parent.mkdir(parents=True)
+    old.write_parquet(path)
+    assert _runs.latest_runs(tmp_path)["stage"].to_list() == ["sync_sleeper"]
+
+    _runs.record_run("project", "ok", None, tmp_path, now=NOW, run_id="r1", duration_s=1.5)
+
+    assert [(r["stage"], r["run_id"], r["duration_s"]) for r in runs(tmp_path)] == [
+        ("sync_sleeper", None, None),
+        ("project", "r1", 1.5),
+    ]
+
+
+def test_a_stage_records_its_duration_and_the_run_id_from_the_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FANTASY_RUN_ID", "20261109T120000Z")
+    mod = module(tmp_path, monkeypatch, "stage_timed", "print('hi')\n")
+    assert _runs.run_stage("timed", mod, data_dir=tmp_path / "d") == 0
+    [row] = runs(tmp_path / "d")
+    assert row["run_id"] == "20261109T120000Z"
+    assert isinstance(row["duration_s"], float)
+    assert row["duration_s"] >= 0
+
+
+def test_a_stage_run_outside_a_pipeline_has_no_run_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("FANTASY_RUN_ID", raising=False)
+    mod = module(tmp_path, monkeypatch, "stage_alone", "print('hi')\n")
+    _runs.run_stage("alone", mod, data_dir=tmp_path / "d")
+    [row] = runs(tmp_path / "d")
+    assert row["run_id"] is None

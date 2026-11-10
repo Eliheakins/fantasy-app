@@ -1,0 +1,11 @@
+[Unit]
+Description=Start a refresh when one is requested (an added league, for example)
+
+[Path]
+# fantasy.refresh_queue writes this file; the pipeline takes it at the start of a run, so requests
+# made before then share one run and a request made during a run starts the next.
+PathExists=/home/fantasy/fantasy-app/data/refresh-requested
+Unit=fantasy-refresh.service
+
+[Install]
+WantedBy=multi-user.target

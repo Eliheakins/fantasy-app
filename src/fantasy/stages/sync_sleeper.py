@@ -5,6 +5,7 @@ Run: uv run python -m fantasy.stages.sync_sleeper
 
 import json
 import time
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -12,8 +13,9 @@ from typing import Any
 import polars as pl
 
 from fantasy import store
+from fantasy.auth import accounts, leagues
 from fantasy.config import Config, load_config
-from fantasy.sources.sleeper import fetch
+from fantasy.sources.sleeper import SleeperError, fetch
 from nfl_stat.pipeline.atomic import atomic_path
 
 PLAYERS_CACHE = store.DATA_DIR / "raw" / "sleeper_players_cache.json"
@@ -224,31 +226,100 @@ def _concat(name: str, frames: list[pl.DataFrame]) -> pl.DataFrame:
     return pl.concat(frames) if frames else _frame(name, [])
 
 
-def run(cfg: Config) -> dict[str, int]:
+LEAGUE_TABLES = (
+    "leagues",
+    "league_teams",
+    "rosters",
+    "matchups",
+    "matchup_players",
+    "transactions",
+)
+# What a league added by someone else can fail with: Sleeper refusing it or not answering, no
+# rosters, or a payload that is not the shape we read. Anything else is a bug: stop the run.
+ISOLATED_ERRORS = (SleeperError, RuntimeError, KeyError, ValueError, TypeError)
+MAX_REASON_CHARS = 200
+
+Registered = Sequence[tuple[str, str]]  # (league key, league id) of leagues people added
+Report = Callable[[str, str | None], None]  # league id, and why the sync failed (None: it worked)
+
+
+def _league_frames(
+    key: str, league_id: str, my_user_id: str, strict: bool
+) -> dict[str, list[pl.DataFrame]]:
+    """Every table's rows for one league. `strict` (the owner's leagues in config.toml) also
+    insists that one roster is the owner's; a league someone else added has none."""
+    lg = fetch(f"/league/{league_id}")
+    rosters = fetch(f"/league/{league_id}/rosters")
+    users = fetch(f"/league/{league_id}/users")
+    teams = teams_frame(league_id, rosters, users, my_user_id)
+    if not rosters:
+        raise RuntimeError(f"Sleeper returned no rosters for league {key} ({league_id})")
+    if strict and not teams["is_me"].any():
+        raise RuntimeError(f"no roster in league {key} belongs to user_id {my_user_id}")
+    frames: dict[str, list[pl.DataFrame]] = {name: [] for name in LEAGUE_TABLES}
+    frames["leagues"].append(league_frame(key, lg))
+    frames["league_teams"].append(teams)
+    frames["rosters"].append(rosters_frame(league_id, rosters))
+    for week in range(1, LAST_WEEK + 1):
+        raw_matchups = fetch(f"/league/{league_id}/matchups/{week}")
+        week_teams, week_players = matchups_frames(league_id, week, raw_matchups)
+        frames["matchups"].append(week_teams)
+        frames["matchup_players"].append(week_players)
+    current = _int((lg.get("settings") or {}).get("leg")) or 1
+    for week in range(1, current + 1):
+        txs = fetch(f"/league/{league_id}/transactions/{week}")
+        frames["transactions"].append(transactions_frame(league_id, week, txs))
+    return frames
+
+
+def _reason(err: Exception) -> str:
+    if isinstance(err, SleeperError):
+        return "Sleeper refused this league or did not answer."
+    return f"The league could not be read: {err}"[:MAX_REASON_CHARS]
+
+
+def registered_leagues() -> Registered:
+    """The leagues people added by username, from the accounts file (none if there is no file)."""
+    if not accounts.db_path().exists():
+        return []
+    with accounts.open_db() as conn:
+        return [(r["league_key"], r["league_id"]) for r in leagues.registered(conn)]
+
+
+def record_outcomes(outcomes: Sequence[tuple[str, str | None]]) -> None:
+    """Tell the accounts file how each added league went, for its owner to see."""
+    if not outcomes:
+        return
+    now = datetime.now(UTC)
+    with accounts.open_db() as conn:
+        for league_id, error in outcomes:
+            leagues.mark(conn, league_id, error, now)
+
+
+def run(
+    cfg: Config, registered: Registered | None = None, report: Report | None = None
+) -> dict[str, int]:
     fetched_at = datetime.now(UTC).isoformat(timespec="seconds")
-    league_tables = ("leagues", "league_teams", "rosters", "matchups", "matchup_players")
-    out: dict[str, list[pl.DataFrame]] = {k: [] for k in (*league_tables, "transactions")}
-    for key, league_id in cfg.leagues.items():
-        lg = fetch(f"/league/{league_id}")
-        rosters = fetch(f"/league/{league_id}/rosters")
-        users = fetch(f"/league/{league_id}/users")
-        teams = teams_frame(league_id, rosters, users, cfg.user_id)
-        if not rosters:
-            raise RuntimeError(f"Sleeper returned no rosters for league {key} ({league_id})")
-        if not teams["is_me"].any():
-            raise RuntimeError(f"no roster in league {key} belongs to user_id {cfg.user_id}")
-        out["leagues"].append(league_frame(key, lg))
-        out["league_teams"].append(teams)
-        out["rosters"].append(rosters_frame(league_id, rosters))
-        for week in range(1, LAST_WEEK + 1):
-            raw_matchups = fetch(f"/league/{league_id}/matchups/{week}")
-            teams, players = matchups_frames(league_id, week, raw_matchups)
-            out["matchups"].append(teams)
-            out["matchup_players"].append(players)
-        current = _int((lg.get("settings") or {}).get("leg")) or 1
-        for week in range(1, current + 1):
-            txs = fetch(f"/league/{league_id}/transactions/{week}")
-            out["transactions"].append(transactions_frame(league_id, week, txs))
+    out: dict[str, list[pl.DataFrame]] = {name: [] for name in LEAGUE_TABLES}
+    outcomes: list[tuple[str, str | None]] = []
+
+    def take(frames: dict[str, list[pl.DataFrame]]) -> None:
+        for name, parts in frames.items():
+            out[name].extend(parts)
+
+    for key, league_id in cfg.leagues.items():  # the owner's: a failure stops the run
+        take(_league_frames(key, league_id, cfg.user_id, strict=True))
+    configured = set(cfg.leagues.values())
+    for key, league_id in registered_leagues() if registered is None else registered:
+        if league_id in configured:  # already synced above; do not read it twice
+            outcomes.append((league_id, None))
+            continue
+        try:
+            take(_league_frames(key, league_id, cfg.user_id, strict=False))
+        except ISOLATED_ERRORS as err:  # one bad league must not stop everyone else's refresh
+            outcomes.append((league_id, _reason(err)))
+        else:
+            outcomes.append((league_id, None))
 
     out["trending"] = [
         trending_frame(fetched_at, kind, fetch(f"/players/nfl/trending/{kind}", {"limit": 50}))
@@ -261,6 +332,11 @@ def run(cfg: Config) -> dict[str, int]:
         df = _concat(name, frames)
         store.write_table(name, df, area="raw")
         counts[name] = df.height
+    if report is None:
+        record_outcomes(outcomes)
+    else:
+        for league_id, error in outcomes:
+            report(league_id, error)
     return counts
 
 

@@ -310,3 +310,49 @@ def test_main_logs_and_returns_zero_when_the_stage_breaks(
 
     monkeypatch.setattr(stage, "run", boom)
     assert stage.main() == 0
+
+
+def test_run_skips_a_league_with_no_team_of_mine(league: Path) -> None:
+    """A friend's league (added by Sleeper username) has no is_me team: no ideas, and no failure."""
+    teams = store.read_table("league_teams", "raw", league)
+    store.write_table(
+        "league_teams", teams.with_columns(pl.lit(False).alias("is_me")), "raw", league
+    )
+    asked: list[str] = []
+
+    def waivers(key: str) -> pl.DataFrame:
+        asked.append(key)
+        return waivers_frame(2)
+
+    written = stage.run(league, waivers=waivers, trades=lambda key: trades_frame(1), now=AT)
+    assert written == 0
+    assert asked == []
+
+
+def test_run_keeps_the_other_leagues_ideas_when_one_league_breaks_and_says_so(
+    league: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fantasy import _runs
+
+    both = pl.DataFrame(
+        {
+            "league_key": ["a", "b"],
+            "league_id": ["La", "Lb"],
+            "current_week": [3, 3],
+            "roster_id": [1, 1],
+        }
+    )
+    monkeypatch.setattr(stage.data_api, "leagues", lambda data_dir=None: both)
+
+    def waivers(key: str) -> pl.DataFrame:
+        if key == "a":
+            raise KeyError(0)  # what a league the simulation left out looks like downstream
+        return waivers_frame(2)
+
+    _runs._soft_failures.clear()
+    written = stage.run(league, waivers=waivers, trades=lambda key: trades_frame(1), now=AT)
+
+    table = store.read_table("move_ideas", "derived", league)
+    assert written > 0 and set(table["league_id"].to_list()) == {"Lb"}
+    assert any("a" in note and "KeyError" in note for note in _runs._soft_failures)
+    _runs._soft_failures.clear()

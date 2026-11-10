@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from store_fixture import write_rows
 
 from fantasy import _engine, _live, api, api_envelope, api_routes, data_api
+from fantasy._lock import pipeline_lock
 from fantasy.api_jobs import Busy, JobRunner
 from fantasy.sources import sleeper
 
@@ -625,11 +626,8 @@ def test_refresh_second_caller_gets_busy(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(_live, "refresh_live", lambda data_dir: 1)
-    assert api_routes.REFRESH_LOCK.acquire(blocking=False)
-    try:
+    with pipeline_lock(client.app.state.data_dir):  # type: ignore[attr-defined]
         assert body(client.post("/api/live/refresh"))["error"]["code"] == "busy"
-    finally:
-        api_routes.REFRESH_LOCK.release()
     assert body(client.post("/api/live/refresh"))["status"] == "ok"
 
 

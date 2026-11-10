@@ -1,0 +1,18 @@
+[Unit]
+Description=fantasy-app API and web UI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=fantasy
+WorkingDirectory=/home/fantasy/fantasy-app
+EnvironmentFile=-/etc/fantasy-app.env
+# push.sh syncs the environment; a sync on every start would hit the network each restart.
+Environment=UV_NO_SYNC=1
+Environment=PATH=/home/fantasy/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/fantasy/.local/bin/uv run python -m fantasy.api
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

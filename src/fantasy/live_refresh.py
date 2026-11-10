@@ -10,8 +10,9 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from fantasy import api_routes, data_api, store
+from fantasy import data_api, store
 from fantasy._engine import _clear_league_cache
+from fantasy._lock import PipelineBusy, pipeline_lock
 from fantasy.api_jobs import JobRunner
 from fantasy.config import load_config
 from fantasy.sim.availability import games_on, kickoffs
@@ -80,20 +81,18 @@ class LiveRefresher:
             return False
 
     def _tick(self, week: int, now: datetime) -> bool:
-        if not api_routes.REFRESH_LOCK.acquire(blocking=False):
-            log.info("live refresh skipped: a manual refresh is running")
-            return False
-        self._last_attempt = now  # failures wait a full interval: no tight retry loop
         try:
-            from fantasy.stages import simulate, sync_sleeper  # batch stages: not on the read path
+            with pipeline_lock(self.data_dir, blocking=False):
+                self._last_attempt = now  # failures wait a full interval: no tight retry loop
+                from fantasy.stages import simulate, sync_sleeper  # batch stages: not the read path
 
-            sync_sleeper.sync_week(week, self.data_dir)
-            simulate.run(archive=False, data_dir=self.data_dir)
-            data_api.record_live_tick(
-                now, self.data_dir
-            )  # display-only day history, never the archive
-        finally:
-            api_routes.REFRESH_LOCK.release()
+                sync_sleeper.sync_week(week, self.data_dir)
+                simulate.run(archive=False, data_dir=self.data_dir)
+                # display-only day history, never the archive
+                data_api.record_live_tick(now, self.data_dir)
+        except PipelineBusy:
+            log.info("live refresh skipped: a refresh is running")
+            return False
         _clear_league_cache()
         self.runner.clear()
         self.state.last_ok_at = now.isoformat(timespec="seconds")

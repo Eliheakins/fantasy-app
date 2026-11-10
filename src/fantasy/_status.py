@@ -50,7 +50,7 @@ def simulation_behind_inputs(data_dir: Path | None = None) -> str | None:
 
 def refresh_runs(data_dir: Path | None = None) -> pl.DataFrame:
     """The latest recorded outcome of each refresh stage: stage, finished_at, status, error."""
-    return latest_runs(data_dir)
+    return latest_runs(data_dir).select("stage", "finished_at", "status", "error")
 
 
 # projection layers that the simulation skips, without error, when their table is missing

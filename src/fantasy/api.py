@@ -21,6 +21,7 @@ from fantasy.api_envelope import fail, register_error_handlers
 from fantasy.api_envelope import rows as rows
 from fantasy.api_jobs import JobRunner
 from fantasy.api_routes import router
+from fantasy.auth import routes as auth_routes
 from fantasy.config import ROOT
 from fantasy.live_refresh import LiveRefresher
 from nfl_stat.core.config import AppSettings as StatSettings
@@ -30,7 +31,7 @@ from nfl_stat.main import attach as attach_stat
 
 WEB_DIST = ROOT / "web" / "dist"
 LOCAL_HOSTS = ("localhost", "127.0.0.1")
-HOSTS_ENV = "API_ALLOWED_HOSTS"  # comma separated, e.g. the tailnet name
+HOSTS_ENV = "API_ALLOWED_HOSTS"  # comma separated, e.g. the site hostname
 CSRF_HEADER, CSRF_VALUE = "x-requested-with", "fantasy-app"  # a browser cannot add it cross-site
 SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
 HOST, PORT = "127.0.0.1", 8000
@@ -87,6 +88,7 @@ def create_app(
         return fail("invalid", reason, 403) if reason else await call_next(request)
 
     register_error_handlers(app)
+    auth_routes.install(app)  # the login routes and the gate; off until an account exists
     app.include_router(router)
     attach_stat(app, stat_settings or get_stat_settings())  # before the SPA mount
     if dist.is_dir():  # mounted last so /api wins; absent until `web/` is built

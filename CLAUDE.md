@@ -1,6 +1,6 @@
 # fantasy-app
 
-Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Local only, $0, Python 3.12 with uv.
+Personal NFL fantasy decision tool (Sleeper, redraft, two leagues). Runs on an OVHcloud VPS behind HTTPS and its own sign-in (a Mac works too), Python 3.12 with uv.
 
 Each area has its own CLAUDE.md next to the code, and Claude Code loads it when you work in that folder. Read the one for the area you touch.
 
@@ -15,6 +15,8 @@ Each area has its own CLAUDE.md next to the code, and Claude Code loads it when 
 - `make ask-model`: local MLX model server for Ask on port 8080.
 - `make odds`: archive one week of prop lines. Needs `ODDS_API_KEY` in the environment or `.env` (gitignored).
 - `make schedule-install` / `make schedule-remove`: a macOS launchd job running `make refresh` on Tuesday 06:00, Friday 18:00 and Sunday 08:00. The Mac must be awake; the log is `data/refresh.log`. Installed on the main Mac on 2026-10-28.
+- Server (OVHcloud VPS, `ops/server/`): `ops/server/provision.sh admin@host site-hostname` once; `ops/server/push.sh [--data] fantasy@host` to deploy (`--data` only on the first deploy). The server runs the app and `make refresh` from systemd timers; the app is public on the internet behind Caddy HTTPS and its own accounts (`src/fantasy/auth/`).
+- Accounts (server): `uv run python -m fantasy.auth create-admin you@example.com` once, then `invite friend@example.com` prints a one-time link; the admin page at `/admin` does the same from the browser. `FANTASY_AUTH=required` (set by `bootstrap.sh`) locks the API until the admin exists; `off` disables login. People add their own Sleeper leagues at `/my-leagues` (2 each).
 - Checks against real data: `uv run python -m fantasy.stages.validate_scoring`, `validate_standings`, `backtest`, `calibration`.
 
 ## Layout

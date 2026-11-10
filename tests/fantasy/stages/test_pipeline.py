@@ -1,0 +1,255 @@
+import importlib.util
+import os
+import sys
+from pathlib import Path
+
+import polars as pl
+import pytest
+
+from fantasy import pipeline, store
+from fantasy.pipeline import Outcome, Stage
+
+OK = Outcome(True)
+
+
+def rows(data_dir: Path) -> dict[str, dict[str, object]]:
+    table = store.read_table("refresh_runs", "derived", data_dir).to_dicts()
+    return {str(r["stage"]): r for r in table}
+
+
+class Script:
+    """A runner that answers per stage from a script and remembers every call."""
+
+    def __init__(self, answers: dict[str, list[Outcome]]) -> None:
+        self.answers = {name: list(outcomes) for name, outcomes in answers.items()}
+        self.calls: list[str] = []
+
+    def __call__(self, stage: Stage) -> Outcome:
+        self.calls.append(stage.name)
+        queue = self.answers.get(stage.name)
+        return queue.pop(0) if queue else OK
+
+
+def stages(*specs: str) -> tuple[Stage, ...]:
+    """'a' is required, 'a?' optional, 'a@' required and network, 'a@?' optional and network."""
+    built = []
+    for spec in specs:
+        name = spec.rstrip("?@")
+        built.append(Stage(name, f"m.{name}", required="?" not in spec, network="@" in spec))
+    return tuple(built)
+
+
+def run(plan: tuple[Stage, ...], runner: Script, data_dir: Path) -> dict[str, str]:
+    return pipeline.execute(plan, runner, data_dir=data_dir, sleep=lambda s: None)
+
+
+def test_every_stage_runs_in_order_when_all_succeed(tmp_path: Path) -> None:
+    runner = Script({})
+    result = run(stages("a", "b?", "c"), runner, tmp_path)
+    assert runner.calls == ["a", "b", "c"]
+    assert set(result.values()) == {"ok"}
+
+
+def test_a_required_failure_skips_the_rest_and_records_why(tmp_path: Path) -> None:
+    runner = Script({"b": [Outcome(False, "exit code 1")]})
+    result = run(stages("a", "b", "c", "d?"), runner, tmp_path)
+    assert runner.calls == ["a", "b"]
+    assert result == {"a": "ok", "b": "failed", "c": "skipped", "d": "skipped"}
+    recorded = rows(tmp_path)
+    assert recorded["b"]["status"] == "failed"
+    assert recorded["b"]["error"] == "exit code 1"
+    assert recorded["c"]["status"] == "failed"
+    assert str(recorded["c"]["error"]).startswith("skipped: b failed")
+
+
+def test_an_optional_failure_is_recorded_and_the_run_goes_on(tmp_path: Path) -> None:
+    runner = Script({"b": [Outcome(False, "site changed")]})
+    result = run(stages("a", "b?", "c"), runner, tmp_path)
+    assert runner.calls == ["a", "b", "c"]
+    assert result == {"a": "ok", "b": "failed", "c": "ok"}
+    assert rows(tmp_path)["b"]["error"] == "site changed"
+
+
+def test_a_network_stage_is_retried_with_a_backoff_until_it_succeeds(tmp_path: Path) -> None:
+    runner = Script({"a": [Outcome(False, "timeout"), Outcome(False, "timeout"), OK]})
+    pauses: list[float] = []
+    result = pipeline.execute(stages("a@", "b"), runner, data_dir=tmp_path, sleep=pauses.append)
+    assert runner.calls == ["a", "a", "a", "b"]
+    assert pauses == [pipeline.RETRY_BACKOFF_S] * 2
+    assert result == {"a": "ok", "b": "ok"}
+
+
+def test_retries_give_up_after_the_limit_and_count_as_one_failure(tmp_path: Path) -> None:
+    runner = Script({"a": [Outcome(False, "down")] * 5})
+    result = run(stages("a@?", "b"), runner, tmp_path)
+    assert runner.calls.count("a") == 1 + pipeline.NETWORK_RETRIES
+    assert result["a"] == "failed"
+    assert result["b"] == "ok"
+
+
+def test_a_stage_that_is_not_network_is_not_retried(tmp_path: Path) -> None:
+    runner = Script({"a": [Outcome(False, "bug")]})
+    run(stages("a?"), runner, tmp_path)
+    assert runner.calls == ["a"]
+
+
+def test_the_run_stops_starting_stages_after_the_run_timeout(tmp_path: Path) -> None:
+    now = {"t": 0.0}
+
+    def runner(stage: Stage) -> Outcome:
+        now["t"] += 700.0  # each stage takes longer than the whole run may
+        return OK
+
+    result = pipeline.execute(
+        stages("a", "b", "c"),
+        runner,
+        data_dir=tmp_path,
+        sleep=lambda s: None,
+        clock=lambda: now["t"],
+        run_timeout=1000.0,
+    )
+    assert result == {"a": "ok", "b": "ok", "c": "skipped"}
+    assert "run exceeded" in str(rows(tmp_path)["c"]["error"])
+
+
+def test_run_command_reports_exit_codes_and_timeouts() -> None:
+    assert pipeline.run_command([sys.executable, "-c", "pass"], timeout=10) == OK
+    failed = pipeline.run_command([sys.executable, "-c", "raise SystemExit(3)"], timeout=10)
+    assert failed == Outcome(False, "exit code 3")
+    slow = pipeline.run_command([sys.executable, "-c", "import time; time.sleep(5)"], timeout=0.3)
+    assert not slow.ok
+    assert "timed out" in str(slow.error)
+
+
+def test_a_stage_is_started_through_run_recorded() -> None:
+    stage = Stage("stat_data", "nfl_stat.pipeline.cli", args=("--refresh",))
+    assert pipeline.argv_for(stage)[1:] == [
+        "-m",
+        "fantasy.stages.run_recorded",
+        "stat_data",
+        "nfl_stat.pipeline.cli",
+        "--refresh",
+    ]
+
+
+def test_the_stage_list_is_what_make_refresh_ran_before() -> None:
+    assert [s.name for s in pipeline.STAGES] == [
+        "backup",
+        "sync_sleeper",
+        "news_archive",
+        "sleeper_projections",
+        "outside_projections",
+        "ingest_nfl",
+        "crosswalk",
+        "score",
+        "prop_points",
+        "streaming",
+        "project",
+        "learn",
+        "availability",
+        "distributions",
+        "injuries",
+        "outlook",
+        "environment",
+        "simulate",
+        "digest",
+        "market_values",
+        "stat_data",
+    ]
+
+
+@pytest.mark.parametrize("stage", pipeline.STAGES, ids=lambda s: s.name)
+def test_every_stage_module_exists(stage: Stage) -> None:
+    assert importlib.util.find_spec(stage.module) is not None
+
+
+def test_the_stages_the_simulation_cannot_do_without_are_required() -> None:
+    required = {s.name for s in pipeline.STAGES if s.required}
+    assert {"backup", "sync_sleeper", "ingest_nfl", "project", "learn", "simulate"} <= required
+
+
+class Building:
+    """A runner that, like a stage, writes a table into whatever release is being built."""
+
+    def __init__(self, fail: str | None = None) -> None:
+        self.fail = fail
+
+    def __call__(self, stage: Stage) -> Outcome:
+        if stage.name == self.fail:
+            return Outcome(False, "boom")
+        path = store.table_path(f"out_{stage.name}", "derived")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(path.name + ".tmp")
+        pl.DataFrame({"v": [1]}).write_parquet(tmp)
+        os.replace(tmp, path)
+        return OK
+
+
+@pytest.fixture
+def root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path)
+    monkeypatch.delenv(store.RELEASE_ENV, raising=False)
+    old = tmp_path / "derived" / "out_old.parquet"
+    old.parent.mkdir()
+    pl.DataFrame({"v": [0]}).write_parquet(old)  # a table from before the first release
+    return tmp_path
+
+
+def names(directory: Path) -> set[str]:
+    return {p.stem for p in directory.glob("*.parquet")}
+
+
+def test_a_run_whose_required_stages_pass_is_published_and_keeps_older_tables(root: Path) -> None:
+    results, published = pipeline.refresh(stages("a", "b?"), Building(), sleep=lambda s: None)
+    assert published
+    assert results == {"a": "ok", "b": "ok"}
+    current = names(store.area_dir("derived"))
+    assert {"out_a", "out_b", "out_old"} <= current  # the first run also migrated the old layout
+    assert (root / "current").is_symlink()
+    assert store.RELEASE_ENV not in os.environ
+
+
+def test_a_failed_required_stage_publishes_nothing_but_the_failure_is_visible(root: Path) -> None:
+    pipeline.refresh(stages("a"), Building(), sleep=lambda s: None)  # a good release first
+    before = (root / "current").resolve()
+    results, published = pipeline.refresh(
+        stages("a", "b", "c"), Building(fail="b"), sleep=lambda s: None
+    )
+    assert not published
+    assert results == {"a": "ok", "b": "failed", "c": "skipped"}
+    assert (root / "current").resolve() == before  # readers still see the last good release
+    assert "out_c" not in names(store.area_dir("derived"))
+    failed = {r["stage"] for r in store.read_table("refresh_runs", "derived").to_dicts()}
+    assert {"b", "c"} <= failed  # the banner reads the current release, so it was carried over
+
+
+def test_an_optional_failure_still_publishes_and_the_old_table_carries_forward(root: Path) -> None:
+    results, published = pipeline.refresh(
+        stages("a", "b?"), Building(fail="b"), sleep=lambda s: None
+    )
+    assert published
+    assert results["b"] == "failed"
+    assert "out_old" in names(store.area_dir("derived"))
+    assert "out_b" not in names(store.area_dir("derived"))
+
+
+def test_a_run_takes_every_queued_request(root: Path) -> None:
+    from fantasy import refresh_queue
+
+    refresh_queue.request_refresh("league added: 1")
+    refresh_queue.request_refresh("league added: 2")
+    pipeline.refresh(stages("a"), Building(), sleep=lambda s: None)
+    assert refresh_queue.consume() == []  # served by that run
+    assert refresh_queue.status()["state"] == "idle"
+
+
+@pytest.mark.parametrize(
+    ("published", "report_code", "expected"),
+    [(True, 0, 0), (True, 1, 1), (False, 1, pipeline.NOT_PUBLISHED_EXIT)],
+)
+def test_the_exit_code_tells_the_service_whether_a_retry_is_worth_it(
+    monkeypatch: pytest.MonkeyPatch, published: bool, report_code: int, expected: int
+) -> None:
+    monkeypatch.setattr(pipeline, "refresh", lambda stages, runner, **kw: ({}, published))
+    monkeypatch.setattr(pipeline.refresh_report, "main", lambda argv: report_code)
+    assert pipeline.main([]) == expected

@@ -12,7 +12,7 @@ class Row(BaseModel):
 
 
 class ApiError(Row):
-    code: Literal["no_data", "invalid", "busy", "server"]
+    code: Literal["no_data", "invalid", "busy", "server", "unauthorized", "forbidden"]
     message: str
 
 
@@ -490,6 +490,13 @@ class TradeRequest(BaseModel):
 
 class RefreshData(Row):
     player_rows: int
+
+
+class RefreshStatus(Row):
+    state: Literal["idle", "queued", "running"]
+    queued: int  # requests waiting for the next run
+    last_finished_at: str | None  # when the newest stage of the last run finished
+    last_run_failed: bool | None  # any stage of that run failed or was skipped
 
 
 class ScoreboardSide(Row):

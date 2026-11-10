@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import polars as pl
+import pytest
 from store_fixture import write_rows
 from test_simulate_load import build_store
 
@@ -45,3 +46,25 @@ def test_the_app_reads_the_data_dir_it_was_built_on_and_the_team_param(tmp_path:
         assert client.app.state.data_dir == tmp_path  # type: ignore[attr-defined]
         rows = client.get("/api/leagues/t/season-odds?team=2").json()
         assert rows["status"] == "ok"
+
+
+def clear_is_me(path: Path) -> None:
+    from fantasy import store
+
+    teams = store.read_table("league_teams", "raw", path)
+    store.write_table("league_teams", teams.with_columns(pl.lit(False).alias("is_me")), "raw", path)
+
+
+def test_a_league_with_no_team_of_mine_builds_and_serves_a_named_team(tmp_path: Path) -> None:
+    """A league someone else added has no is_me team; the viewer's own roster comes in as `team`."""
+    build_store(tmp_path, [(100.0, 90.0)])
+    clear_is_me(tmp_path)
+    data, mine = _engine._league("t", tmp_path, team=2)
+    assert data.league_id == "L1" and mine == 2
+
+
+def test_a_league_with_no_team_of_mine_still_says_so_when_no_team_is_named(tmp_path: Path) -> None:
+    build_store(tmp_path, [(100.0, 90.0)])
+    clear_is_me(tmp_path)
+    with pytest.raises(ValueError, match="no team is marked is_me"):
+        _engine._league("t", tmp_path)

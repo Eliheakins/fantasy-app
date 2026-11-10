@@ -2,7 +2,7 @@
 
 A personal NFL fantasy football decision tool for [Sleeper](https://sleeper.com) redraft leagues. It runs locally, costs nothing, and answers the weekly questions: who to start, who to add or drop, which trades help, and how likely each team is to make the playoffs and win the title.
 
-It is built for two leagues (Colgate, 10 teams, superflex, 1.0 PPR; YinzBurgh, 10 teams, 0.5 PPR), but nothing is hard-coded beyond `config.toml`. Single user, no login, not deployed.
+It is built for two leagues (Colgate, 10 teams, superflex, 1.0 PPR; YinzBurgh, 10 teams, 0.5 PPR), but nothing is hard-coded beyond `config.toml`. Single user, no login. Deployed to a VPS behind HTTPS (Caddy, `ops/server/`) with invite-only accounts (`src/fantasy/auth/`).
 
 > Lean on purpose: the simplest method that works, tested where the math is, no CI. Decisions and the evidence behind them are in [docs/decisions.md](docs/decisions.md).
 

@@ -11,6 +11,7 @@ import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 
@@ -64,6 +65,24 @@ def ideas(
     return pl.DataFrame(numbered, schema=store.SCHEMAS["move_ideas"])
 
 
+def league_ideas(
+    league: dict[str, Any], waivers: Finder, trades: Finder, created: str
+) -> pl.DataFrame:
+    """The stored ideas for one league. After the trade deadline there are no trade rows."""
+    try:
+        found: pl.DataFrame | None = trades(league["league_key"])
+    except ValueError as past:  # the trade deadline has passed
+        log.info("no trade ideas for %s: %s", league["league_key"], past)
+        found = None
+    return ideas(
+        league["league_id"],
+        int(league["current_week"]),
+        created,
+        waivers(league["league_key"]),
+        found,
+    )
+
+
 def run(
     data_dir: Path | None = None,
     waivers: Finder | None = None,
@@ -76,20 +95,14 @@ def run(
     created = now or datetime.now(UTC).isoformat(timespec="seconds")
     frames = []
     for league in data_api.leagues(data_dir).iter_rows(named=True):
+        if league["roster_id"] is None:  # a league added by someone else: no team of mine in it
+            log.info("no ideas for %s: no team of mine", league["league_key"])
+            continue
         try:
-            found: pl.DataFrame | None = trades(league["league_key"])
-        except ValueError as past:  # the trade deadline has passed
-            log.info("no trade ideas for %s: %s", league["league_key"], past)
-            found = None
-        frames.append(
-            ideas(
-                league["league_id"],
-                int(league["current_week"]),
-                created,
-                waivers(league["league_key"]),
-                found,
-            )
-        )
+            frames.append(league_ideas(league, waivers, trades, created))
+        except Exception as err:  # noqa: BLE001 - one league must not drop everyone's ideas
+            log.exception("no ideas for %s", league["league_key"])
+            note_soft_failure(f"digest skipped {league['league_key']}: {err!r}")
     table = pl.concat(frames) if frames else pl.DataFrame(schema=store.SCHEMAS["move_ideas"])
     store.write_table("move_ideas", table, "derived", data_dir)
     return table.height

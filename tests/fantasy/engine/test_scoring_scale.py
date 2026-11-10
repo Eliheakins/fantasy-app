@@ -31,3 +31,27 @@ def test_a_point_effect_for_a_position_without_a_scale_raises() -> None:
     assert scale_points({("TE", "ratio"): 0.9}, {}, frozenset({"vac_target"})) == {
         ("TE", "ratio"): 0.9
     }
+
+
+def test_reference_league_ignores_leagues_other_people_added(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A friend's league with a lower id must not become the reference for the owner's effects."""
+    from fantasy.config import Config
+    from fantasy.sim import scoring_scale
+
+    owner = Config(season=2026, user_id="u", n_sims=1, leagues={"a": "500", "b": "700"})
+    monkeypatch.setattr(scoring_scale, "load_config", lambda: owner)
+    table = pl.DataFrame({"league_id": ["100", "500", "700", "900"]})
+    assert reference_league(table) == "500"
+
+
+def test_reference_league_falls_back_to_the_lowest_when_none_is_the_owners(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from fantasy.config import Config
+    from fantasy.sim import scoring_scale
+
+    owner = Config(season=2026, user_id="u", n_sims=1, leagues={"a": "999"})
+    monkeypatch.setattr(scoring_scale, "load_config", lambda: owner)
+    assert reference_league(pl.DataFrame({"league_id": ["9", "2", "5"]})) == "2"

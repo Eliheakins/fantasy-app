@@ -1,36 +1,18 @@
 # Every refresh step goes through run_recorded, which records ok or failed in data/derived/refresh_runs.
 # A soft failure still exits 0 so later steps run; the last step (refresh_report) exits 1 for the
-# failures since REFRESH_START, which puts a clear line in data/refresh.log and fails the launchd job.
+# failures in the run, which puts a clear line in data/refresh.log and fails the launchd job.
 stage = uv run python -m fantasy.stages.run_recorded $(1) fantasy.stages.$(1)
-REFRESH_START := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
 .PHONY: setup test lint fmt check refresh backup schedule-install schedule-remove serve dev web-build odds odds-slate stat-data stat-data-refresh ask-model
 
 backup:
 	$(call stage,backup)
 
-refresh: backup
-	$(call stage,sync_sleeper)
-	$(call stage,news_archive)
-	$(call stage,sleeper_projections)
-	$(call stage,outside_projections)
-	$(call stage,ingest_nfl)
-	$(call stage,crosswalk)
-	$(call stage,score)
-	$(call stage,prop_points)
-	$(call stage,streaming)
-	$(call stage,project)
-	$(call stage,learn)
-	$(call stage,availability)
-	$(call stage,distributions)
-	$(call stage,injuries)
-	$(call stage,outlook)
-	$(call stage,environment)
-	$(call stage,simulate)
-	$(call stage,digest)
-	$(call stage,market_values)
-	$(MAKE) stat-data-refresh; rc=$$?; \
-	uv run python -m fantasy.stages.refresh_report --since $(REFRESH_START) && exit $$rc
+# The stage list, retries, timeouts and the rule for a failed stage are in src/fantasy/pipeline.py.
+# The whole run holds data/.pipeline.lock (fantasy/_lock.py), so two refreshes, or a refresh and the
+# live score tick, never write the tables at once. A second `make refresh` waits for the first.
+refresh:
+	uv run python -m fantasy._lock uv run python -m fantasy.pipeline
 
 # nflverse play-by-play shards for the stat app, into data/stat (needs the network, takes minutes)
 stat-data:

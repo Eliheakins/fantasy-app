@@ -1,6 +1,6 @@
 # src/fantasy/stages: refresh pipeline
 
-Each stage is `python -m fantasy.stages.<name>`. `make refresh` runs them in the order below. Stages read and write parquet tables registered in `store.SCHEMAS`. A missing table for a layer, calibration or a blend source is skipped without error, and the stale banner lists it (`data_api.missing_layers`).
+Each stage is `python -m fantasy.stages.<name>`. `make refresh` runs `fantasy/pipeline.py`, which runs them in the order below. `pipeline.STAGES` is the one list: it marks each stage required (a failure stops the run and records the rest as skipped) or optional (recorded, the run goes on), and network stages as retried twice, 30 s apart. A stage times out after 10 minutes and the run stops starting stages after 20. A new stage goes in `pipeline.STAGES`, not the Makefile. Stages read and write parquet tables registered in `store.SCHEMAS`. A missing table for a layer, calibration or a blend source is skipped without error, and the stale banner lists it (`data_api.missing_layers`).
 
 ## Order
 
@@ -23,7 +23,16 @@ Each stage is `python -m fantasy.stages.<name>`. `make refresh` runs them in the
 - Every step runs through `python -m fantasy.stages.run_recorded <stage> <module>`. `fantasy/_runs.py` (`run_stage`, `record_run`, `latest_runs`, `note_soft_failure`) appends `{stage, finished_at, status, error}` to `refresh_runs` (`data/derived`, never `data/stat`).
 - A stage that fails soft calls `note_soft_failure(error)`. It is recorded as failed and exits 0, so later steps still run.
 - The last step, `refresh_report --since <start>`, prints `REFRESH FAILED` for each stage that failed in this run and exits 1. That puts the line in `data/refresh.log` and makes launchd see a failure.
+- Each row also has `run_id` (one per `make refresh`, from `FANTASY_RUN_ID`; null for a stage run alone) and `duration_s`. Rows written before 2026-11-09 read as null for both.
+- `make refresh` runs inside `python -m fantasy._lock`, which holds `data/.pipeline.lock` for the whole run. The live score tick and the Refresh scores button take the same lock without waiting and skip or answer "busy"; a second `make refresh` waits. The lock is a kernel file lock, so a crash never leaves it stuck. Stages started by the holder skip their own short locks (`FANTASY_PIPELINE_LOCK_HELD`). `pipeline_lock` is not reentrant.
 - `/api/status` returns the latest row per stage as `refresh_runs`. The stale banner shows a notice for each failed stage. A stage with no row did not run.
+
+## Releases
+
+- Tables live in a release. `data/current` is a symlink to `data/releases/<id>`, and `store.area_dir` finds raw and derived through it (inside a pipeline run, through `FANTASY_RELEASE_DIR`, the release being built). Before the first migration the tables sit in `data/raw` and `data/derived`, and that still works.
+- `pipeline.refresh` builds the next release as a hard-link copy of the current one, runs the stages into it, and flips `current` only if every required stage succeeded. A failed run leaves the old release serving, keeps the failed release folder for inspection, and carries `refresh_runs` over so the banner shows the failure.
+- Stages must replace table files (`store.write_table`, `atomic_path`), never overwrite one in place: releases share files through hard links, so an in-place write would change the live release.
+- Not in releases: `data/archive`, `data/stat`, and the download caches under `data/raw` (`pbp/`, the Sleeper players file). The first `make refresh` migrates the old layout by itself; `python -m fantasy.releases migrate|prune` does it by hand. The newest 5 releases are kept.
 
 ## Gotchas
 

@@ -18,6 +18,31 @@ import polars as pl
 
 N_PLAYOFF_TEAMS = 6
 BYE_SEEDS = 2
+LAST_NFL_WEEK = 18
+BRACKET_ROUNDS = 3  # round one, the semifinals, the final
+
+
+def format_problem(
+    num_teams: int | None, playoff_teams: int | None, playoff_week_start: int | None
+) -> str | None:
+    """Why the simulation cannot model a league, in words fit to show, or None when it can.
+    It assumes the bracket above: six playoff teams over three weeks inside the NFL season."""
+    if not playoff_teams:
+        return "This league has no playoff bracket (it may use weekly eliminations)."
+    if playoff_teams != N_PLAYOFF_TEAMS:
+        return (
+            f"Only leagues with a {N_PLAYOFF_TEAMS}-team playoff are supported "
+            f"(this one has {playoff_teams})."
+        )
+    if num_teams is None or num_teams < N_PLAYOFF_TEAMS:
+        return f"The league needs at least {N_PLAYOFF_TEAMS} teams."
+    last_start = LAST_NFL_WEEK - BRACKET_ROUNDS + 1
+    if playoff_week_start is None or not 1 <= playoff_week_start <= last_start:
+        return (
+            f"The playoff start week must be between 1 and {last_start} "
+            f"for a {BRACKET_ROUNDS}-week bracket."
+        )
+    return None
 
 
 @dataclass(frozen=True)

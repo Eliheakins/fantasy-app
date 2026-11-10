@@ -45,6 +45,8 @@ def build_store(
         "scoring_settings": "{}",
         "settings": "{}",
         "trade_deadline": trade_deadline,
+        "num_teams": 6,
+        "playoff_teams": 6,  # a real league always has both; the simulation needs the bracket
         **{k: LEAGUE[k] for k in ("league_id", "current_week", "playoff_week_start")},
         "roster_positions": LEAGUE["roster_positions"],
     }

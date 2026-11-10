@@ -53,3 +53,38 @@ def test_two_copies_in_one_second_both_survive_and_odd_folders_do_not_count(
     assert (out / "archive-notes").exists()
     copies = [p for p in out.iterdir() if backup.COPY_NAME.match(p.name)]
     assert len(copies) == 2 and not list(out.glob(".*.partial"))
+
+
+def _accounts(data_dir: Path) -> None:
+    import datetime as dt
+
+    from fantasy.auth import accounts
+
+    conn = accounts.connect(data_dir)
+    accounts.create_invite(conn, "friend@example.com", dt.datetime(2026, 11, 9, tzinfo=dt.UTC))
+    conn.close()
+
+
+def test_the_accounts_file_is_copied_with_the_archive_and_readable_as_a_database(
+    tmp_path: Path,
+) -> None:
+    import sqlite3
+    import stat
+
+    _archive(tmp_path / "data")
+    _accounts(tmp_path / "data")
+
+    copy = backup.run(tmp_path / "data", tmp_path / "out")
+
+    assert copy is not None
+    saved = copy / "auth.db"
+    assert stat.S_IMODE(saved.stat().st_mode) == 0o600  # it holds password hashes
+    conn = sqlite3.connect(saved)
+    assert conn.execute("SELECT email FROM accounts").fetchall() == [("friend@example.com",)]
+    conn.close()
+
+
+def test_accounts_are_backed_up_even_before_there_is_an_archive(tmp_path: Path) -> None:
+    _accounts(tmp_path / "data")
+    copy = backup.run(tmp_path / "data", tmp_path / "out")
+    assert copy is not None and (copy / "auth.db").exists()

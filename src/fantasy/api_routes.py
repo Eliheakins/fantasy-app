@@ -12,8 +12,9 @@ import polars as pl
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi import Path as PathParam
 
-from fantasy import _live, data_api, store
+from fantasy import _live, data_api, refresh_queue, store
 from fantasy import _view as view
+from fantasy._lock import PipelineBusy, pipeline_lock
 from fantasy.api_deps import Ctx, DataDir, RequestContext
 from fantasy.api_envelope import NO_DATA_MESSAGE, clean, fail, guarded, ok, rows, running
 from fantasy.api_jobs import Busy, JobKey, JobRunner
@@ -39,6 +40,7 @@ from fantasy.api_models import (
     PlayerWeekRow,
     PowerRankingRow,
     RefreshData,
+    RefreshStatus,
     RosterRow,
     ScheduleRow,
     ScoreboardRow,
@@ -61,6 +63,7 @@ from fantasy.api_models import (
     WinNeedRow,
     WinProbabilityData,
 )
+from fantasy.auth import access
 from fantasy.data_api import clear_league_cache, data_version, pinned_version
 from fantasy.sources.sleeper import SleeperError
 
@@ -72,7 +75,6 @@ JOB_RESPONSES: dict[int | str, dict[str, Any]] = {
 BUSY_MESSAGE = "The server is busy. Try again in a moment."
 MAX_TRADE_EVALUATIONS = 2
 TRADE_SLOTS = threading.BoundedSemaphore(MAX_TRADE_EVALUATIONS)
-REFRESH_LOCK = threading.Lock()
 MAX_IDS_LENGTH = 4000
 MAX_ID_LENGTH = 20  # nflverse ids are 10 characters (00-0012345)
 IDEA_STAMPS = frozenset({"league_id", "created_at", "as_of_week"})  # in `ideas`, not per row
@@ -143,16 +145,25 @@ def status(request: Request, data_dir: DataDir) -> Any:
     return guarded(build)
 
 
+@router.get("/refresh/status", response_model=Envelope[RefreshStatus])
+def refresh_status(data_dir: DataDir) -> Any:
+    """Whether a refresh is queued or running, and how the last one went."""
+    return guarded(lambda: refresh_queue.status(data_dir))
+
+
 @router.get("/leagues", response_model=Envelope[list[LeagueRow]])
-def leagues(data_dir: DataDir) -> Any:
+def leagues(request: Request, data_dir: DataDir) -> Any:
+    account = getattr(request.state, "account", None)
+
     def build() -> list[dict[str, Any]]:
+        mine = access.only_visible(data_api.leagues(data_dir), account, data_dir)
         return [
             {
                 **r,
                 "record": view.record_string(r["wins"], r["losses"], r["ties"]),
                 "trade_deadline": view.trade_deadline(r["league_key"], data_dir),
             }
-            for r in rows(data_api.leagues(data_dir))
+            for r in rows(access.with_account_team(mine, account, data_dir))
         ]
 
     return guarded(build)
@@ -173,10 +184,16 @@ def unmatched(data_dir: DataDir) -> Any:
 
 
 @router.get("/leagues/{league}/teams", response_model=Envelope[list[TeamRow]])
-def teams(league: str, data_dir: DataDir) -> Any:
+def teams(league: str, request: Request, data_dir: DataDir) -> Any:
+    own = access.default_team(getattr(request.state, "account", None), league, data_dir)
+
     def build() -> list[dict[str, Any]]:
         return [
-            {**r, "record": view.record_string(r["wins"], r["losses"], r["ties"])}
+            {
+                **r,
+                "is_me": r["is_me"] if own is None else r["roster_id"] == own,
+                "record": view.record_string(r["wins"], r["losses"], r["ties"]),
+            }
             for r in rows(data_api.teams(league, data_dir))
         ]
 
@@ -189,9 +206,18 @@ def season_odds(league: str, ctx: Ctx) -> Any:
 
 
 @router.get("/week-calendar", response_model=Envelope[WeekCalendarData])
-def week_calendar(data_dir: DataDir) -> Any:
+def week_calendar(request: Request, data_dir: DataDir) -> Any:
     """Kickoffs of the current NFL week and each league's waiver clear day, for the week strip."""
-    return guarded(lambda: data_api.week_calendar(data_dir))
+    account = getattr(request.state, "account", None)
+
+    def build() -> dict[str, Any]:
+        data = data_api.week_calendar(data_dir)
+        if account is None:
+            return data
+        keys = set(access.only_visible(data_api.leagues(data_dir), account, data_dir)["league_key"])
+        return {**data, "waivers": [w for w in data["waivers"] if w["league_key"] in keys]}
+
+    return guarded(build)
 
 
 @router.get("/leagues/{league}/game-day", response_model=Envelope[GameDayData])
@@ -563,16 +589,15 @@ def found_trades_data(league: str, ctx: RequestContext) -> list[dict[str, Any]]:
 @router.post("/live/refresh", response_model=Envelope[RefreshData])
 def refresh_live(runner: Runner, data_dir: DataDir) -> Any:
     """Pull this week's matchups from Sleeper, then drop every cache."""
-    if not REFRESH_LOCK.acquire(blocking=False):
-        return fail("busy", BUSY_MESSAGE)
     try:
-        player_rows = _live.refresh_live(data_dir)
-        _live.record_live_tick(data_dir=data_dir)  # the league cache follows data_version
+        with pipeline_lock(data_dir, blocking=False):
+            player_rows = _live.refresh_live(data_dir)
+            _live.record_live_tick(data_dir=data_dir)  # the league cache follows data_version
+    except PipelineBusy:
+        return fail("busy", BUSY_MESSAGE)
     except (OSError, SleeperError):
         log.exception("live refresh failed")
         return fail("server", "Sleeper refresh failed. See the server log.")
-    finally:
-        REFRESH_LOCK.release()
     clear_league_cache()
     runner.clear()
     return ok({"player_rows": player_rows})

@@ -15,12 +15,14 @@ import numpy as np
 import polars as pl
 
 from fantasy import store
+from fantasy._runs import note_soft_failure
 from fantasy.config import load_config
 from fantasy.sim.league_data import load_league_data
 from fantasy.sim.odds import LeagueData, build_inputs
 from fantasy.sim.season import (
     SeasonInputs,
     conditional_odds,
+    format_problem,
     simulate_season,
     team_scores,
     win_need_odds,
@@ -58,6 +60,12 @@ def run(
     n_sims = n_sims or cfg.n_sims
     rows, seed_rows, week_rows, conditional, win_need = [], [], [], [], []
     for league in store.read_table("leagues", "raw", data_dir).iter_rows(named=True):
+        problem = format_problem(
+            league["num_teams"], league["playoff_teams"], league["playoff_week_start"]
+        )
+        if problem:  # a league the bracket model does not fit is left out, not a crash for everyone
+            note_soft_failure(f"simulate left out {league['league_key']}: {problem}")
+            continue
         data = load_league_data(league, data_dir=data_dir)
         inp = build_inputs(data, None, n_sims, 0)
         result = simulate_season(inp)

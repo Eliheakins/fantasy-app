@@ -11,6 +11,8 @@ from typing import Annotated
 
 from fastapi import Depends, Query, Request
 
+from fantasy.auth import access
+
 Team = Annotated[
     int | None, Query(description="Roster id to view as; omitted means my team (Sleeper is_me)")
 ]
@@ -30,7 +32,11 @@ def get_data_dir(request: Request) -> Path:
 DataDir = Annotated[Path, Depends(get_data_dir)]
 
 
-def get_context(data_dir: DataDir, team: Team = None) -> RequestContext:
+def get_context(request: Request, data_dir: DataDir, team: Team = None) -> RequestContext:
+    """With no `?team=`, a signed-in account views its own roster (the owner keeps is_me)."""
+    if team is None:
+        account = getattr(request.state, "account", None)
+        team = access.default_team(account, request.path_params.get("league"), data_dir)
     return RequestContext(data_dir, team)
 
 

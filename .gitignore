@@ -16,3 +16,5 @@ research/scratch/
 
 # intent eval runs (tests/stat/eval/test_intent_eval.py)
 tests/stat/eval/results.jsonl
+
+.plans/

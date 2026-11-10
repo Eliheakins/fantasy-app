@@ -6,7 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 from store_fixture import write_rows
 
-from fantasy import api, api_routes, data_api, live_refresh
+from fantasy import api, data_api, live_refresh, store
+from fantasy._lock import pipeline_lock
 from fantasy.api_jobs import JobRunner
 from fantasy.live_refresh import LIVE_REFRESH_MINUTES, LiveRefresher
 from fantasy.sim.availability import GAME_MINUTES, LIVE_WINDOW_PAD_MINUTES, games_on
@@ -15,6 +16,13 @@ from fantasy.stages import simulate, sync_sleeper
 KICK = datetime(2026, 10, 25, 17, 0, tzinfo=UTC)
 END = KICK + timedelta(minutes=GAME_MINUTES + LIVE_WINDOW_PAD_MINUTES)
 CSRF = {"X-Requested-With": "fantasy-app"}
+
+
+@pytest.fixture(autouse=True)
+def isolated_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """The pipeline lock lives in the data folder; keep these tests off the real one."""
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path)
+    return tmp_path
 
 
 def test_games_on_boundaries() -> None:
@@ -73,11 +81,8 @@ def test_ticks_every_interval_and_once_more_after_close(calls: list[str]) -> Non
 
 def test_skips_when_manual_refresh_holds_the_lock(calls: list[str]) -> None:
     live = refresher()
-    assert api_routes.REFRESH_LOCK.acquire(blocking=False)
-    try:
+    with pipeline_lock():
         assert not live.step(KICK)
-    finally:
-        api_routes.REFRESH_LOCK.release()
     assert calls == []
     assert live.step(KICK + timedelta(seconds=30))  # a skip is not an attempt: retried at once
 
@@ -94,7 +99,8 @@ def test_error_is_recorded_lock_released_and_next_tick_runs(
     assert not live.step(KICK)
     assert "OSError: sleeper down" in (live.status()["last_error"] or "")
     assert not live.step(KICK + timedelta(minutes=1))  # no tight retry
-    assert not api_routes.REFRESH_LOCK.locked()
+    with pipeline_lock(blocking=False):  # the failed tick released the lock
+        pass
     monkeypatch.setattr(sync_sleeper, "sync_week", lambda week, data_dir: calls.append("sync") or 1)
     assert live.step(KICK + timedelta(minutes=LIVE_REFRESH_MINUTES))
     assert live.status()["last_error"] is None

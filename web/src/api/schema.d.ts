@@ -4,6 +4,202 @@
  */
 
 export interface paths {
+    "/api/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login */
+        post: operations["login_api_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Redeem */
+        post: operations["redeem_api_auth_redeem_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Logout */
+        post: operations["logout_api_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Me */
+        get: operations["me_api_auth_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Accounts */
+        get: operations["list_accounts_api_admin_accounts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Invite
+         * @description A new single-use link. For an email that already has an account this replaces the old link
+         *     and, once used, resets the password: it is also the way to recover a forgotten one.
+         */
+        post: operations["create_invite_api_admin_invites_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/accounts/{account_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Account */
+        delete: operations["remove_account_api_admin_accounts__account_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Refresh Overview */
+        get: operations["refresh_overview_api_admin_refresh_get"];
+        put?: never;
+        /**
+         * Refresh Now
+         * @description Queue a refresh; the server starts it within moments (or `make refresh` on a laptop).
+         */
+        post: operations["refresh_now_api_admin_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/sleeper/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lookup */
+        post: operations["lookup_api_me_sleeper_lookup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/leagues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Leagues */
+        get: operations["my_leagues_api_me_leagues_get"];
+        put?: never;
+        /** Add League */
+        post: operations["add_league_api_me_leagues_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/me/leagues/{league_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove League */
+        delete: operations["remove_league_api_me_leagues__league_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/status": {
         parameters: {
             query?: never;
@@ -13,6 +209,26 @@ export interface paths {
         };
         /** Status */
         get: operations["status_api_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/refresh/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Refresh Status
+         * @description Whether a refresh is queued or running, and how the last one went.
+         */
+        get: operations["refresh_status_api_refresh_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -758,6 +974,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AccountRow */
+        AccountRow: {
+            /** Id */
+            id: number;
+            /** Email */
+            email: string;
+            /** Is Admin */
+            is_admin: boolean;
+            /** Has Password */
+            has_password: boolean;
+            /** Invite Pending */
+            invite_pending: boolean;
+            /** Created At */
+            created_at: string;
+        };
         /** ActionRow */
         ActionRow: {
             /** Kind */
@@ -769,13 +1000,20 @@ export interface components {
             /** Share Better */
             share_better?: number | null;
         };
+        /** AddRequest */
+        AddRequest: {
+            /** Username */
+            username: string;
+            /** League Id */
+            league_id: string;
+        };
         /** ApiError */
         ApiError: {
             /**
              * Code
              * @enum {string}
              */
-            code: "no_data" | "invalid" | "busy" | "server";
+            code: "no_data" | "invalid" | "busy" | "server" | "unauthorized" | "forbidden";
             /** Message */
             message: string;
         };
@@ -830,6 +1068,13 @@ export interface components {
             /** Ceiling */
             ceiling: number;
         };
+        /** Credentials */
+        Credentials: {
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+        };
         /** DigestData */
         DigestData: {
             last_week: components["schemas"]["LastWeekRow"] | null;
@@ -869,6 +1114,54 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** Envelope[InviteCreated] */
+        Envelope_InviteCreated_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["InviteCreated"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[Lookup] */
+        Envelope_Lookup_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["Lookup"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[Me] */
+        Envelope_Me_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["Me"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[MyLeague] */
+        Envelope_MyLeague_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["MyLeague"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[OwnersData] */
         Envelope_OwnersData_: {
             /**
@@ -893,6 +1186,18 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** Envelope[RefreshAdmin] */
+        Envelope_RefreshAdmin_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["RefreshAdmin"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[RefreshData] */
         Envelope_RefreshData_: {
             /**
@@ -905,6 +1210,18 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** Envelope[RefreshStatus] */
+        Envelope_RefreshStatus_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["RefreshStatus"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[ScorecardData] */
         Envelope_ScorecardData_: {
             /**
@@ -913,6 +1230,18 @@ export interface components {
              */
             status: "ok" | "running" | "error";
             data: components["schemas"]["ScorecardData"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[SignedOut] */
+        Envelope_SignedOut_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["SignedOut"] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -973,6 +1302,19 @@ export interface components {
              */
             status: "ok" | "running" | "error";
             data: components["schemas"]["WinProbabilityData"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[list[AccountRow]] */
+        Envelope_list_AccountRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["AccountRow"][] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -1090,6 +1432,19 @@ export interface components {
             status: "ok" | "running" | "error";
             /** Data */
             data: components["schemas"]["MarketValueRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[list[MyLeague]] */
+        Envelope_list_MyLeague__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["MyLeague"][] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -1524,6 +1879,20 @@ export interface components {
             /** Filters */
             filters?: components["schemas"]["CatalogFilter"][];
         };
+        /** InviteCreated */
+        InviteCreated: {
+            /** Email */
+            email: string;
+            /** Path */
+            path: string;
+            /** Valid Days */
+            valid_days: number;
+        };
+        /** InviteRequest */
+        InviteRequest: {
+            /** Email */
+            email: string;
+        };
         /** KickoffRow */
         KickoffRow: {
             /** Team */
@@ -1645,6 +2014,20 @@ export interface components {
             /** Projected Final */
             projected_final: number;
         };
+        /** Lookup */
+        Lookup: {
+            /** Username */
+            username: string;
+            /** Display Name */
+            display_name: string;
+            /** Leagues */
+            leagues: components["schemas"]["SleeperLeague"][];
+        };
+        /** LookupRequest */
+        LookupRequest: {
+            /** Username */
+            username: string;
+        };
         /** LuckRow */
         LuckRow: {
             /** Roster Id */
@@ -1727,6 +2110,15 @@ export interface components {
             /** Fetched At */
             fetched_at: string;
         };
+        /** Me */
+        Me: {
+            /** Email */
+            email: string;
+            /** Is Admin */
+            is_admin: boolean;
+            /** Sleeper User Id */
+            sleeper_user_id: string | null;
+        };
         /** MoveIdeaRow */
         MoveIdeaRow: {
             /**
@@ -1754,6 +2146,19 @@ export interface components {
             se_title: number | null;
             /** Delta Points */
             delta_points: number | null;
+        };
+        /** MyLeague */
+        MyLeague: {
+            /** League Id */
+            league_id: string;
+            /** League Key */
+            league_key: string;
+            /** Name */
+            name: string;
+            /** Status */
+            status: string;
+            /** Error */
+            error: string | null;
         };
         /** OddsChangeRow */
         OddsChangeRow: {
@@ -2004,6 +2409,29 @@ export interface components {
             outcome: "query";
             intent: components["schemas"]["QueryIntent"];
         };
+        /** Redemption */
+        Redemption: {
+            /** Token */
+            token: string;
+            /** Password */
+            password: string;
+        };
+        /** RefreshAdmin */
+        RefreshAdmin: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "idle" | "queued" | "running";
+            /** Queued */
+            queued: number;
+            /** Last Finished At */
+            last_finished_at: string | null;
+            /** Last Run Failed */
+            last_run_failed: boolean | null;
+            /** Runs */
+            runs: components["schemas"]["RunRow"][];
+        };
         /** RefreshData */
         RefreshData: {
             /** Player Rows */
@@ -2022,6 +2450,20 @@ export interface components {
             status: "ok" | "failed";
             /** Error */
             error: string | null;
+        };
+        /** RefreshStatus */
+        RefreshStatus: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "idle" | "queued" | "running";
+            /** Queued */
+            queued: number;
+            /** Last Finished At */
+            last_finished_at: string | null;
+            /** Last Run Failed */
+            last_run_failed: boolean | null;
         };
         /** RoleWeek */
         RoleWeek: {
@@ -2059,6 +2501,19 @@ export interface components {
             is_starter: boolean | null;
             /** Is Ir */
             is_ir: boolean | null;
+        };
+        /** RunRow */
+        RunRow: {
+            /** Run Id */
+            run_id: string;
+            /** Finished At */
+            finished_at: string;
+            /** Stages */
+            stages: number;
+            /** Failed */
+            failed: number;
+            /** Seconds */
+            seconds: number;
         };
         /** ScheduleRow */
         ScheduleRow: {
@@ -2198,6 +2653,24 @@ export interface components {
             seed: number;
             /** P */
             p: number;
+        };
+        /** SignedOut */
+        SignedOut: {
+            /** Signed Out */
+            signed_out: boolean;
+        };
+        /** SleeperLeague */
+        SleeperLeague: {
+            /** League Id */
+            league_id: string;
+            /** Name */
+            name: string;
+            /** Num Teams */
+            num_teams: number | null;
+            /** Added */
+            added: boolean;
+            /** Problem */
+            problem: string | null;
         };
         /**
          * SlotCall
@@ -2513,6 +2986,40 @@ export interface components {
                 [key: string]: components["schemas"]["SummaryModel"];
             };
         };
+        /** Envelope[Removed] */
+        fantasy__api_models__Envelope_Removed___1: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["fantasy__auth__admin__Removed"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[Removed] */
+        fantasy__api_models__Envelope_Removed___2: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["fantasy__auth__my_leagues__Removed"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Removed */
+        fantasy__auth__admin__Removed: {
+            /** Email */
+            email: string;
+        };
+        /** Removed */
+        fantasy__auth__my_leagues__Removed: {
+            /** League Id */
+            league_id: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -2522,6 +3029,353 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    login_api_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Credentials"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Me_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    redeem_api_auth_redeem_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Redemption"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Me_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    logout_api_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_SignedOut_"];
+                };
+            };
+        };
+    };
+    me_api_auth_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Me_"];
+                };
+            };
+        };
+    };
+    list_accounts_api_admin_accounts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_AccountRow__"];
+                };
+            };
+        };
+    };
+    create_invite_api_admin_invites_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_InviteCreated_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_account_api_admin_accounts__account_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["fantasy__api_models__Envelope_Removed___1"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_overview_api_admin_refresh_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_RefreshAdmin_"];
+                };
+            };
+        };
+    };
+    refresh_now_api_admin_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_RefreshStatus_"];
+                };
+            };
+        };
+    };
+    lookup_api_me_sleeper_lookup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LookupRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_Lookup_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_leagues_api_me_leagues_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_MyLeague__"];
+                };
+            };
+        };
+    };
+    add_league_api_me_leagues_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_MyLeague_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_league_api_me_leagues__league_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                league_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["fantasy__api_models__Envelope_Removed___2"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     status_api_status_get: {
         parameters: {
             query?: never;
@@ -2538,6 +3392,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_StatusData_"];
+                };
+            };
+        };
+    };
+    refresh_status_api_refresh_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_RefreshStatus_"];
                 };
             };
         };

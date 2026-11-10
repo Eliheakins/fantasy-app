@@ -83,8 +83,8 @@ def data_version(data_dir: Path | None = None) -> str:
     or the live clock moves on. Every call stats the files (no TTL, so a write is seen at once);
     only the kickoff parsing is cached, keyed on the stats of the files it reads."""
     root = store.resolve(data_dir)
-    raw = {p.name: p.stat() for p in (root / "raw").glob("*.parquet")}
-    derived = [p.stat() for p in (root / "derived").glob("*.parquet")]
+    raw = {p.name: p.stat() for p in store.area_dir("raw", root).glob("*.parquet")}
+    derived = [p.stat() for p in store.area_dir("derived", root).glob("*.parquet")]
     stats = [*raw.values(), *derived]
     if not stats:
         return "0-0"
@@ -120,6 +120,11 @@ def _league(
     version = _PINNED_VERSION.get() or data_version(root)
     data, mine = _league_cached(league_key, version, str(root))
     if team is None:
+        if mine is None:  # a league someone else added: the caller has to say whose team to view
+            raise ValueError(
+                f"no team is marked is_me in league {league_key!r}; set user_id in config.toml "
+                "and run `make refresh`, or name a team"
+            )
         return data, mine
     if team not in data.roster_ids:
         raise ValueError(f"unknown team {team} in league {league_key!r}")
@@ -131,7 +136,7 @@ def _clear_league_cache() -> None:
     _build_league.cache_clear()
 
 
-def _league_cached(league_key: str, version: str, data_dir: str) -> tuple[LeagueData, int]:
+def _league_cached(league_key: str, version: str, data_dir: str) -> tuple[LeagueData, int | None]:
     """Single-flight: concurrent misses for one league wait for one build."""
     with _BUILD_LOCKS_GUARD:
         lock = _BUILD_LOCKS.setdefault((league_key, data_dir), Lock())
@@ -140,8 +145,9 @@ def _league_cached(league_key: str, version: str, data_dir: str) -> tuple[League
 
 
 @lru_cache(maxsize=LEAGUE_CACHE_SIZE)
-def _build_league(league_key: str, version: str, data_dir: str) -> tuple[LeagueData, int]:
-    """Build the league from `data_dir`; `version` only keys the cache."""
+def _build_league(league_key: str, version: str, data_dir: str) -> tuple[LeagueData, int | None]:
+    """Build the league from `data_dir` and the Sleeper is_me roster id (None when no team is
+    marked, as in a league someone else added); `version` only keys the cache."""
     from fantasy.sim.league_data import load_league_data  # heavy imports, only when asked
 
     root = Path(data_dir)
@@ -151,12 +157,8 @@ def _build_league(league_key: str, version: str, data_dir: str) -> tuple[LeagueD
     league = row.row(0, named=True)
     teams = store.read_table("league_teams", "raw", root)
     mine = teams.filter((pl.col("league_id") == league["league_id"]) & pl.col("is_me"))
-    if mine.is_empty():
-        raise ValueError(
-            f"no team is marked is_me in league {league_key!r}; set user_id in config.toml "
-            "and run `make refresh`"
-        )
-    return load_league_data(league, strict=False, data_dir=root), int(mine["roster_id"][0])
+    data = load_league_data(league, strict=False, data_dir=root)
+    return data, (None if mine.is_empty() else int(mine["roster_id"][0]))
 
 
 def _league_id(league_key: str, data_dir: Path | None) -> str:

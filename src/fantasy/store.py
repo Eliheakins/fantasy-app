@@ -5,6 +5,7 @@ data/<area>/<name>.parquet, where area is raw, derived or archive. Stages regist
 tables in SCHEMAS; reads and writes assert the columns and dtypes match.
 """
 
+import os
 import re
 from contextlib import ExitStack
 from pathlib import Path
@@ -16,6 +17,11 @@ from nfl_stat.pipeline.atomic import atomic_path
 
 DATA_DIR = ROOT / "data"
 AREAS = ("raw", "derived", "archive")
+# raw and derived tables live in a release: data/current -> data/releases/<id> (fantasy/releases).
+# Before the first migration they sit directly in data/raw and data/derived, and that still works.
+RELEASE_AREAS = ("raw", "derived")
+CURRENT = "current"
+RELEASE_ENV = "FANTASY_RELEASE_DIR"  # set by the pipeline for its stages: the release being built
 SKILL = ["QB", "RB", "WR", "TE"]  # positions the projection and simulation layers cover
 WEEK_STRIDE = 25  # weeks per season in the running index; playoffs reach week 22
 _NAME = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -147,7 +153,7 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     },
     # written by stages/run_recorded.py around every `make refresh` step (area: derived, appended;
     # never under data/stat, which is served over HTTP): one row per stage run
-    "refresh_runs": _cols(strings="stage finished_at status error"),
+    "refresh_runs": _cols(strings="stage finished_at status error run_id", floats="duration_s"),
     # written by crosswalk (area: derived)
     "id_map": {"sleeper_id": _S, "gsis_id": _S, "nfl_team": _S, "match_method": _S},
     # written by score (area: derived)
@@ -374,7 +380,20 @@ def table_path(name: str, area: str = "derived", data_dir: Path | None = None) -
         raise ValueError(f"bad table name {name!r}: use lowercase letters, digits, underscores")
     if area not in AREAS:
         raise ValueError(f"bad area {area!r}: expected one of {AREAS}")
-    return resolve(data_dir) / area / f"{name}.parquet"
+    return area_dir(area, data_dir) / f"{name}.parquet"
+
+
+def area_dir(area: str, data_dir: Path | None = None) -> Path:
+    """Where the tables of `area` are: the release being built (inside a pipeline run), else the
+    current release, else the plain folder (before the first migration, and for the archive)."""
+    root = resolve(data_dir)
+    if area in RELEASE_AREAS:
+        building = os.environ.get(RELEASE_ENV)
+        if building and root == DATA_DIR:
+            return Path(building) / area
+        if (root / CURRENT).is_symlink():
+            return root / CURRENT / area
+    return root / area
 
 
 def check_schema(name: str, df: pl.DataFrame) -> None:

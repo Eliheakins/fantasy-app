@@ -22,7 +22,9 @@ export type NavPath = (typeof NAV_ITEMS)[number]["path"];
 
 /** Routes that are not tabs: reached from the top bar Ask box, the footer, and Players. */
 export const EXTRA_TITLES: Readonly<Record<string, string>> = {
+  "/admin": "Admin",
   "/ask": "Ask",
+  "/my-leagues": "My leagues",
   "/model": "Model scorecard",
   "/players/find": "Find players",
   "/players/compare": "Compare players",

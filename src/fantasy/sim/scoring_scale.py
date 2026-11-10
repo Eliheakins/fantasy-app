@@ -8,12 +8,18 @@ by the league's mean projection per position relative to the reference league's.
 
 import polars as pl
 
+from fantasy.config import load_config
+
 Effects = dict[tuple[str, str], float]  # (position, kind) -> value
 
 
 def reference_league(leagues: pl.DataFrame) -> str:
-    """The league the effects are measured in: the same one on every run."""
-    return str(min(leagues["league_id"].to_list()))
+    """The league the effects are measured in: the same one on every run. It is the lowest id among
+    the owner's leagues (config.toml); a league someone else added never becomes the reference, or
+    adding one with a lower id would shift every effect measured for the owner's own leagues."""
+    ids = [str(league_id) for league_id in leagues["league_id"].to_list()]
+    owned = set(load_config().leagues.values())
+    return min([i for i in ids if i in owned] or ids)
 
 
 def position_scale(baseline: pl.DataFrame, league_id: str, reference_id: str) -> dict[str, float]:

@@ -1,0 +1,28 @@
+[Unit]
+Description=fantasy-app data refresh
+After=network-online.target
+Wants=network-online.target
+# At most 3 starts in 2 hours, so a persistent failure stops retrying instead of looping.
+StartLimitIntervalSec=2h
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+User=fantasy
+WorkingDirectory=/home/fantasy/fantasy-app
+Environment=UV_NO_SYNC=1
+Environment=PATH=/home/fantasy/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Not `make refresh`: make would turn the pipeline's exit codes into 2. _lock holds the pipeline lock
+# for the whole run and passes the exit code through.
+ExecStart=/home/fantasy/.local/bin/uv run python -m fantasy._lock /home/fantasy/.local/bin/uv run python -m fantasy.pipeline
+# Exit 1: an optional stage failed but the data was published. A retry would append to data/archive
+# a second time, so it counts as success. Exit 75: a required stage failed and nothing was published.
+SuccessExitStatus=1
+Restart=on-failure
+RestartSec=10min
+Nice=10
+# The stages took about 95 s on the Mac; a hung download should not hold the lock for hours.
+TimeoutStartSec=30min
+# Same log file the Mac job wrote, so the app's stale-data banner and docs still point at it.
+StandardOutput=append:/home/fantasy/fantasy-app/data/refresh.log
+StandardError=append:/home/fantasy/fantasy-app/data/refresh.log

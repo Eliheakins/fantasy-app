@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Footer } from "./Footer";
 import { navSearch } from "./navLinks";
+import { NoLeaguesNotice } from "./NoLeaguesNotice";
 import { StatusBanner } from "./StatusBanner";
 import { TeamBanner } from "./TeamBanner";
 import { TopBar } from "./TopBar";
@@ -64,6 +65,7 @@ function Frame() {
       </div>
       <div className="tab-bar-offset flex min-w-0 flex-1 flex-col md:pb-0">
         <StatusBanner />
+        <NoLeaguesNotice />
         <TeamBanner />
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1200px] flex-1 outline-none">
           <Outlet />
