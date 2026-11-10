@@ -1,4 +1,7 @@
+import shutil
 from pathlib import Path
+
+import pytest
 
 from fantasy.stages import backup
 
@@ -88,3 +91,46 @@ def test_accounts_are_backed_up_even_before_there_is_an_archive(tmp_path: Path) 
     _accounts(tmp_path / "data")
     copy = backup.run(tmp_path / "data", tmp_path / "out")
     assert copy is not None and (copy / "auth.db").exists()
+
+
+def test_a_copy_that_shrank_keeps_every_older_backup(tmp_path: Path) -> None:
+    _archive(tmp_path / "data")
+    out = tmp_path / "out"
+    first = backup.run(tmp_path / "data", out, keep=1)
+    (tmp_path / "data" / "archive" / "odds" / "w7.parquet").unlink()  # the archive lost a file
+
+    second = backup.run(tmp_path / "data", out, keep=1)
+
+    assert first and second and first.exists() and second.exists()
+
+
+def test_a_copy_that_did_not_shrink_still_prunes(tmp_path: Path) -> None:
+    _archive(tmp_path / "data")
+    out = tmp_path / "out"
+    first = backup.run(tmp_path / "data", out, keep=1)
+    (tmp_path / "data" / "archive" / "proj_snapshots.parquet").write_text("xx")  # grew
+
+    second = backup.run(tmp_path / "data", out, keep=1)
+
+    assert first and second and not first.exists() and second.exists()
+
+
+def test_a_copy_that_does_not_match_the_source_is_discarded_and_nothing_is_pruned(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _archive(tmp_path / "data")
+    out = tmp_path / "out"
+    first = backup.run(tmp_path / "data", out, keep=1)
+    real_copytree = shutil.copytree
+
+    def lossy(src: Path, dst: Path, *args: object, **kwargs: object) -> Path:
+        real_copytree(src, dst, *args, **kwargs)  # type: ignore[arg-type]
+        (Path(dst) / "odds" / "w7.parquet").unlink(missing_ok=True)
+        return Path(dst)
+
+    monkeypatch.setattr(backup.shutil, "copytree", lossy)
+    with pytest.raises(RuntimeError, match="incomplete"):
+        backup.run(tmp_path / "data", out, keep=1)
+
+    assert first and first.exists()
+    assert [p.name for p in out.iterdir()] == [first.name]

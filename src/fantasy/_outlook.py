@@ -259,9 +259,7 @@ def player_owners(
     )
 
 
-def rostered_unmatched(
-    league_key: str, data_dir: Path | None = None, team: int | None = None
-) -> int:
+def rostered_unmatched(league_key: str, data_dir: Path | None = None) -> int:
     """Rostered skill players with no nflverse id: missing from `player_owners`, so a free-agent
     filter would count them as free agents."""
     league_id = _league_id(league_key, data_dir)

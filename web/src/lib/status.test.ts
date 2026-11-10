@@ -44,7 +44,7 @@ describe("bannerMessages with refresh runs", () => {
     const long = `${"x".repeat(300)}\nTraceback line 2`;
     const [a, b] = bannerMessages({ ...base, refresh_runs: [run("b_stage", "failed"), run("a_stage", "failed", long)] });
     expect(a).toBe(`Refresh step a_stage failed: ${"x".repeat(200)}.... Run \`make refresh\`.`);
-    expect(b).toBe("Refresh step b_stage failed: no error recorded. Run `make refresh`.");
+    expect(b).toBe("Refresh step b_stage failed. Run `make refresh`.");
   });
   it("is quiet when every latest run is ok", () => {
     expect(bannerMessages({ ...base, refresh_runs: [run("score", "ok")] })).toEqual([]);

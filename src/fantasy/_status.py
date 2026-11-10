@@ -57,7 +57,6 @@ def refresh_runs(data_dir: Path | None = None) -> pl.DataFrame:
 OPTIONAL_LAYERS = (
     ("injury model", "injury_effects", "derived"),
     ("outlook", "outlook_effects", "derived"),
-    ("matchup and offense effects", "environment_effects", "derived"),
     ("size calibration", "projection_calibration", "derived"),
     ("Sleeper projections", "proj_sleeper", "derived"),
 )
@@ -66,11 +65,7 @@ OPTIONAL_LAYERS = (
 def missing_layers(data_dir: Path | None = None) -> list[str]:
     """Names of projection layers the simulation is running without because a stage did not run."""
     config = load_config()
-    layers = [
-        layer
-        for layer in OPTIONAL_LAYERS
-        if config.environment_layer or layer[1] != "environment_effects"
-    ]
+    layers = list(OPTIONAL_LAYERS)
     if config.projection_model == "learned":
         layers.append(("learned projections", "proj_learned", "derived"))
     missing = [

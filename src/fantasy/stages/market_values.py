@@ -89,7 +89,10 @@ def run(
         if setting.key in done:
             continue
         try:
-            new.append(to_frame(fetch(setting), setting.key, now))
+            frame = to_frame(fetch(setting), setting.key, now)
+            if not frame.height:  # an empty answer must not replace good values
+                raise RuntimeError("FantasyCalc returned no usable rows")
+            new.append(frame)
         except Exception as err:
             log.exception(
                 "market values fetch failed for %s; keeping the previous rows", setting.key

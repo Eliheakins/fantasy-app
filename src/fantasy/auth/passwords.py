@@ -12,9 +12,12 @@ import base64
 import binascii
 import hashlib
 import hmac
+import logging
 import os
 import threading
 from functools import lru_cache
+
+log = logging.getLogger(__name__)
 
 COST_N = 2**17
 COST_R = 8
@@ -66,6 +69,8 @@ def verify_password(password: str, stored: str) -> bool:
         expected = base64.b64decode(key, validate=True)
         actual = _derive(password, base64.b64decode(salt, validate=True), n, r, p)
     except (ValueError, binascii.Error):
+        # Unreadable hash, not a wrong password: say so, without the hash or the password.
+        log.error("stored password hash is malformed")
         return False
     return hmac.compare_digest(actual, expected)
 

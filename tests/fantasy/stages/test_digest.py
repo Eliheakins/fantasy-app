@@ -356,3 +356,47 @@ def test_run_keeps_the_other_leagues_ideas_when_one_league_breaks_and_says_so(
     assert written > 0 and set(table["league_id"].to_list()) == {"Lb"}
     assert any("a" in note and "KeyError" in note for note in _runs._soft_failures)
     _runs._soft_failures.clear()
+
+
+def two_leagues(monkeypatch: pytest.MonkeyPatch) -> None:
+    both = pl.DataFrame(
+        {
+            "league_key": ["a", "b"],
+            "league_id": ["La", "Lb"],
+            "current_week": [3, 3],
+            "roster_id": [1, 1],
+        }
+    )
+    monkeypatch.setattr(stage.data_api, "leagues", lambda data_dir=None: both)
+
+
+def test_a_league_that_fails_keeps_its_previous_ideas(
+    league: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    two_leagues(monkeypatch)
+    stage.run(league, waivers=lambda k: waivers_frame(2), trades=lambda k: trades_frame(1), now=AT)
+
+    def waivers(key: str) -> pl.DataFrame:
+        if key == "a":
+            raise KeyError(0)
+        return waivers_frame(1)
+
+    later = "2026-10-26T08:00:00+00:00"
+    stage.run(league, waivers=waivers, trades=lambda k: trades_frame(1), now=later)
+    table = store.read_table("move_ideas", "derived", league)
+    by_league = {k[0]: set(g["created_at"]) for k, g in table.group_by("league_id")}
+    assert by_league == {"La": {AT}, "Lb": {later}}
+
+
+def test_when_every_league_fails_the_old_table_is_kept(
+    league: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    two_leagues(monkeypatch)
+    stage.run(league, waivers=lambda k: waivers_frame(2), trades=lambda k: trades_frame(1), now=AT)
+    before = store.read_table("move_ideas", "derived", league)
+
+    def broken(key: str) -> pl.DataFrame:
+        raise KeyError(0)
+
+    stage.run(league, waivers=broken, trades=broken, now=AT)
+    assert store.read_table("move_ideas", "derived", league).equals(before)

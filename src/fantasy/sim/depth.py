@@ -5,8 +5,8 @@ import math
 import polars as pl
 
 from fantasy.sim.lineup import Player, auto_lineup
-from fantasy.sim.moves import Valuer, ros_value, team_ids
 from fantasy.sim.odds import LeagueData
+from fantasy.sim.roster import Valuer, ros_value, team_ids
 from fantasy.sim.value import POSITIONS
 
 

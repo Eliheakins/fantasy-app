@@ -27,7 +27,6 @@ export type AdminRun = Schemas["RunRow"];
 /** Adding Sleeper leagues by username: `/api/me/*`. */
 export type MyLeague = Schemas["MyLeague"];
 export type SleeperLookup = Schemas["Lookup"];
-export type SleeperLeague = Schemas["SleeperLeague"];
 export type SleeperTeam = Schemas["SleeperTeam"];
 /** `/api/stat/health`: a plain body, not the envelope. */
 export type StatHealth = Schemas["HealthResponse"];

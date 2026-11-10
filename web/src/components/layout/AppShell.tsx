@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Loading } from "@/components/ApiBoundary";
 import { Footer } from "./Footer";
 import { navSearch } from "./navLinks";
 import { NoLeaguesNotice } from "./NoLeaguesNotice";
@@ -68,7 +69,9 @@ function Frame() {
         <NoLeaguesNotice />
         <TeamBanner />
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1200px] flex-1 outline-none">
-          <Outlet />
+          <Suspense fallback={<Loading />}>
+            <Outlet />
+          </Suspense>
         </main>
         <Footer />
       </div>

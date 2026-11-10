@@ -12,7 +12,7 @@ export function PlayerLink({ gsisId, name, position, text }: Props) {
   return (
     <Link
       to={{ pathname: `/players/${encodeURIComponent(gsisId)}`, search: navSearch("/players/:gsisId", search, pathname) }}
-      className="inline-flex min-h-[44px] items-center text-left underline decoration-border underline-offset-4 hover:decoration-text lg:min-h-0"
+      className="inline-flex min-h-[44px] items-center text-left underline decoration-line underline-offset-4 hover:decoration-ink lg:min-h-0"
     >
       <span>
         {text ?? name}

@@ -6,6 +6,7 @@ a new link for an existing account cancels the old one and doubles as a password
 """
 
 import hashlib
+import logging
 import secrets
 import sqlite3
 from collections.abc import Iterator
@@ -19,6 +20,7 @@ from pydantic import StringConstraints
 from fantasy import store
 from fantasy.auth import passwords
 
+log = logging.getLogger(__name__)
 SESSION_DAYS = 30
 EMAIL_PATTERN = r"^[^@\s]{1,64}@[^@\s]+\.[^@\s]+$"  # one @, no spaces, a dot after it
 INVITE_DAYS = 7
@@ -81,7 +83,7 @@ def db_path(data_dir: Path | None = None) -> Path:
 
 def connect(data_dir: Path | None = None) -> sqlite3.Connection:
     path = db_path(data_dir)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)  # the mode applies only if created
     conn = sqlite3.connect(path, timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
@@ -90,6 +92,11 @@ def connect(data_dir: Path | None = None) -> sqlite3.Connection:
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(account_leagues)")}
     if "roster_id" not in columns:  # a database made before teams were chosen
         conn.execute("ALTER TABLE account_leagues ADD COLUMN roster_id INTEGER")
+    for file in (path, *path.parent.glob(f"{path.name}-*")):  # -wal and -shm hold the same data
+        try:
+            file.chmod(0o600)
+        except PermissionError:  # another user's file (a CLI run as root): serve, but say so
+            log.warning("cannot make %s owner-only; it belongs to another user", file)
     return conn
 
 
@@ -100,14 +107,6 @@ def open_db(data_dir: Path | None = None) -> Iterator[sqlite3.Connection]:
         yield conn
     finally:
         conn.close()
-
-
-def has_accounts(data_dir: Path | None = None) -> bool:
-    """Whether login is switched on: the file exists and holds an account. No file, no gate."""
-    if not db_path(data_dir).exists():
-        return False
-    with open_db(data_dir) as conn:
-        return conn.execute("SELECT 1 FROM accounts LIMIT 1").fetchone() is not None
 
 
 def normalize_email(email: str) -> str:
@@ -254,6 +253,11 @@ def end_session(conn: sqlite3.Connection, token: str) -> None:
         conn.execute("DELETE FROM sessions WHERE token_hash = ?", (_hash_token(token),))
 
 
+def end_all_sessions(conn: sqlite3.Connection, account_id: int) -> None:
+    with conn:
+        conn.execute("DELETE FROM sessions WHERE account_id = ?", (account_id,))
+
+
 def list_accounts(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     """Every account for the admin panel, without any hash."""
     rows = conn.execute(
@@ -269,16 +273,6 @@ def list_accounts(conn: sqlite3.Connection) -> list[dict[str, Any]]:
         }
         for row in rows
     ]
-
-
-def grant_league(conn: sqlite3.Connection, account_id: int, league_id: str) -> None:
-    """Let the account see a Sleeper league (the one it added). Safe to repeat."""
-    with conn:
-        conn.execute(
-            "INSERT INTO account_leagues (account_id, league_id, added_at) VALUES (?, ?, ?)"
-            " ON CONFLICT DO NOTHING",
-            (account_id, league_id, stamp(datetime.now(UTC))),
-        )
 
 
 def granted_league_ids(conn: sqlite3.Connection, account_id: int) -> set[str]:

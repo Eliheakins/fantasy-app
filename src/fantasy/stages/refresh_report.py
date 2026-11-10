@@ -17,7 +17,11 @@ def main(argv: list[str] | None = None, data_dir: Path | None = None) -> int:
     parser.add_argument("--since", required=True, help="ISO time this refresh started")
     since = _parse(parser.parse_args(argv).since)
     runs = _runs.latest_runs(data_dir).to_dicts()
-    failed = [r for r in runs if r["status"] == "failed" and _parse(str(r["finished_at"])) >= since]
+    recent = [r for r in runs if _parse(str(r["finished_at"])) >= since]
+    if not recent:  # a run that recorded nothing is not a run that went well
+        print(f"REFRESH FAILED: no stage recorded since {since.isoformat()}")
+        return 1
+    failed = [r for r in recent if r["status"] == "failed"]
     if not failed:
         print("refresh finished: every stage ok")
         return 0

@@ -1,6 +1,6 @@
 """Carry point-valued effects from the league they were measured in to another league.
 
-The outlook and environment effects are measured once, in points under the reference league's
+The outlook effects are measured once, in points under the reference league's
 scoring. A league that scores less per reception has smaller point effects, so they are scaled
 by the league's mean projection per position relative to the reference league's. Ratio effects
 (first game back and the like) need no scaling.

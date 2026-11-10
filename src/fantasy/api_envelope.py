@@ -48,7 +48,8 @@ def running(started_at: str) -> JSONResponse:
 
 
 def guarded(fn: Callable[[], Any]) -> Any:
-    """Wrap `fn`'s result; FileNotFoundError is `no_data`, ValueError `invalid`, else `server`."""
+    """Wrap `fn`'s result: FileNotFoundError is `no_data`, ValueError `invalid` (both HTTP 200),
+    anything else `server` (HTTP 500)."""
     try:
         return ok(fn())
     except FileNotFoundError:
@@ -58,7 +59,7 @@ def guarded(fn: Callable[[], Any]) -> Any:
         return fail("invalid", str(err))
     except Exception:  # last resort: never leak the text of an unexpected error
         log.exception("unexpected error")
-        return fail("server", SERVER_MESSAGE)
+        return fail("server", SERVER_MESSAGE, 500)
 
 
 def _validation_message(err: RequestValidationError) -> str:

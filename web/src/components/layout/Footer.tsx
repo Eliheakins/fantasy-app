@@ -43,6 +43,13 @@ export function Footer() {
           >
             Sign out
           </button>
+          <button
+            type="button"
+            className="inline-flex min-h-[44px] items-center underline"
+            onClick={() => void signOut(queryClient, true)}
+          >
+            Sign out everywhere
+          </button>
         </span>
       )}
     </footer>

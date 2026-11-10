@@ -8,6 +8,7 @@ from threading import Lock
 from typing import Any
 
 MAX_ACTIVE_JOBS = 8
+MAX_ACTIVE_PER_OWNER = 4  # so one friend cannot take every slot
 MAX_REMEMBERED_JOBS = 64
 JobKey = tuple[str, tuple[Any, ...], str]  # endpoint, args, data_version
 
@@ -20,6 +21,7 @@ class Busy(Exception):
 class Job:
     future: "Future[Any]"
     started_at: str
+    owner: int | None = None  # the account that started it; None for the admin and a local run
 
 
 class JobRunner:
@@ -28,19 +30,25 @@ class JobRunner:
         self._jobs: dict[JobKey, Job] = {}
         self._lock = Lock()
 
-    def submit(self, key: JobKey, fn: Callable[[], Any]) -> Job:
-        """The job for `key`: the existing one, or a new one started now. Finished jobs from an
-        older data version are dropped."""
+    def submit(self, key: JobKey, fn: Callable[[], Any], owner: int | None = None) -> Job:
+        """The job for `key`: the existing one, or a new one started now for `owner`. Finished jobs
+        from an older data version are dropped."""
         with self._lock:
             self._jobs = {
                 k: j for k, j in self._jobs.items() if k[2] == key[2] or not j.future.done()
             }
             if key not in self._jobs:
-                if sum(not j.future.done() for j in self._jobs.values()) >= MAX_ACTIVE_JOBS:
+                active = [j for j in self._jobs.values() if not j.future.done()]
+                if len(active) >= MAX_ACTIVE_JOBS:
                     raise Busy
+                if (
+                    owner is not None
+                    and sum(j.owner == owner for j in active) >= MAX_ACTIVE_PER_OWNER
+                ):
+                    raise Busy("You have several long jobs running. Wait for one to finish.")
                 self._evict_oldest_finished()
                 started = datetime.now(UTC).isoformat(timespec="seconds")
-                self._jobs[key] = Job(self._pool.submit(fn), started)
+                self._jobs[key] = Job(self._pool.submit(fn), started, owner)
             return self._jobs[key]
 
     def _evict_oldest_finished(self) -> None:

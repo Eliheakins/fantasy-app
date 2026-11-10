@@ -99,7 +99,7 @@ def _starters(me: dict[str, Any], data_dir: Path | None) -> set[str]:
 
 
 def _injuries(
-    me: dict[str, Any], starters: set[str], names: dict[str, str], data_dir: Path | None
+    starters: set[str], names: dict[str, str], data_dir: Path | None
 ) -> list[tuple[str, str, str]]:
     if not starters:
         return []
@@ -172,7 +172,7 @@ def season_events(me: dict[str, Any], data_dir: Path | None) -> pl.DataFrame:
     trades = _trades(me, data_dir)
     names = _names(starters | {i for _, got, sent in trades for i in [*got, *sent]}, data_dir)
     found = [("trade", when, _trade_label(t, names)) for t in trades for when in [t[0]]]
-    found += _injuries(me, starters, names, data_dir)
+    found += _injuries(starters, names, data_dir)
     rows: list[tuple[str, datetime, str | None, str]] = []
     for kind, when, label in found:
         if (at := _try_utc(when)) is not None:

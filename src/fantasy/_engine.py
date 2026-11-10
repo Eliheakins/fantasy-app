@@ -94,6 +94,12 @@ def data_version(data_dir: Path | None = None) -> str:
     )
 
 
+def file_stamp(version: str) -> str:
+    """A data version without its clock bucket: what changes only when a table is rewritten. Jobs
+    are keyed on it, so a job that outlives one bucket is still the one a client polls."""
+    return version.partition("@")[0]
+
+
 _PINNED_VERSION: ContextVar[str | None] = ContextVar("pinned_version", default=None)
 _BUILD_LOCKS: dict[tuple[str, str], Lock] = {}  # one per (league, data dir): bounded by leagues
 _BUILD_LOCKS_GUARD = Lock()

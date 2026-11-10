@@ -78,8 +78,12 @@ DEFENSE_KEYS = {
 DEFENSE_PREFIXES = ("pts_allow_", "yds_allow_")
 
 
+class UnmappedScoring(ValueError):
+    """A league gives points for a stat this module does not score."""
+
+
 def check_keys(scoring: dict[str, float]) -> None:
-    """Raise if a league gives points for something this module does not score."""
+    """Raise UnmappedScoring if a league gives points for something this module does not score."""
     unknown = sorted(
         key
         for key, weight in scoring.items()
@@ -89,7 +93,7 @@ def check_keys(scoring: dict[str, float]) -> None:
         and not key.startswith(DEFENSE_PREFIXES)
     )
     if unknown:
-        raise ValueError(f"Sleeper scoring keys with points but no mapping: {unknown}")
+        raise UnmappedScoring(f"Sleeper scoring keys with points but no mapping: {unknown}")
 
 
 def points_expr(scoring: dict[str, float]) -> pl.Expr:

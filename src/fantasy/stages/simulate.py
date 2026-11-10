@@ -7,6 +7,7 @@ injuries beyond the spread already in each player's outcome distribution.
 Run: uv run python -m fantasy.stages.simulate
 """
 
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -16,8 +17,11 @@ import polars as pl
 
 from fantasy import store
 from fantasy._runs import note_soft_failure
+from fantasy.auth import leagues
 from fantasy.config import load_config
+from fantasy.scoring import UnmappedScoring, check_keys
 from fantasy.sim.league_data import load_league_data
+from fantasy.sim.lineup import UnknownSlot
 from fantasy.sim.odds import LeagueData, build_inputs
 from fantasy.sim.season import (
     SeasonInputs,
@@ -52,6 +56,25 @@ def team_week_rows(data: LeagueData, inp: SeasonInputs) -> list[tuple[Any, ...]]
     ]
 
 
+def _inputs(
+    league: dict[str, Any], n_sims: int, data_dir: Path | None
+) -> tuple[LeagueData, SeasonInputs] | None:
+    """The league's data and simulation inputs. A league someone added that the app cannot model
+    (scoring it does not map, a lineup slot it does not know) is marked and left out, and its
+    unprojected players only warn; the same failure in a config.toml league stops the run."""
+    added = not leagues.is_configured(league["league_id"])
+    try:
+        if added:  # score drops such a league too; check here so the two stages agree
+            check_keys(json.loads(league["scoring_settings"]))
+        data = load_league_data(league, strict=not added, data_dir=data_dir)
+        return data, build_inputs(data, None, n_sims, 0)
+    except (UnmappedScoring, UnknownSlot) as err:
+        if not added:
+            raise
+        leagues.skip_added(league["league_id"], league["league_key"], "simulate", err, data_dir)
+        return None
+
+
 def run(
     n_sims: int | None = None, archive: bool = True, data_dir: Path | None = None
 ) -> pl.DataFrame:
@@ -66,8 +89,10 @@ def run(
         if problem:  # a league the bracket model does not fit is left out, not a crash for everyone
             note_soft_failure(f"simulate left out {league['league_key']}: {problem}")
             continue
-        data = load_league_data(league, data_dir=data_dir)
-        inp = build_inputs(data, None, n_sims, 0)
+        built = _inputs(league, n_sims, data_dir)
+        if built is None:
+            continue
+        data, inp = built
         result = simulate_season(inp)
         week_rows += team_week_rows(data, inp)
         scores = team_scores(inp)  # one draw for both display tables below

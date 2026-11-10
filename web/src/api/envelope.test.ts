@@ -1,4 +1,4 @@
-import { ApiFailure, elapsedSeconds, fetchEnvelope, pollInterval, resolveState } from "./envelope";
+import { ApiFailure, elapsedSeconds, fetchEnvelope, pollInterval, resolveState, sendJson } from "./envelope";
 import type { Envelope } from "./types";
 
 const ok: Envelope<number> = { status: "ok", data: 7, error: null, started_at: null };
@@ -91,5 +91,22 @@ describe("fetchEnvelope", () => {
   it("surfaces error.message from a body that has no status", async () => {
     stub({ error: { code: "server", message: "Something went wrong" } });
     await expect(fetchEnvelope("/x")).rejects.toThrow("Something went wrong");
+  });
+});
+
+describe("sendJson", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("a server reply that is not an envelope keeps its own message, not the network one", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 502, json: async () => ({}) }));
+    const sent = await sendJson("/x", "POST", {});
+    expect(sent).toMatchObject({ ok: false });
+    expect(sent.ok === false && sent.error.message).not.toMatch(/Could not reach the server/);
+  });
+
+  it("a network failure becomes the plain sentence", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    const sent = await sendJson("/x", "POST", {});
+    expect(sent.ok === false && sent.error.message).toMatch(/Could not reach the server/);
   });
 });

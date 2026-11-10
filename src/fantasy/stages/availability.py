@@ -15,10 +15,10 @@ Run: uv run python -m fantasy.stages.availability
 
 import numpy as np
 import polars as pl
-from sklearn.ensemble import HistGradientBoostingClassifier
 
 from fantasy import store
 from fantasy.config import load_config
+from fantasy.stages.gbm import make_classifier
 from fantasy.stages.lags import lag_asof, latest_asof
 from fantasy.stages.learn import KEY
 from fantasy.store import SKILL, WEEK_STRIDE, week_index
@@ -110,14 +110,7 @@ def design(frame: pl.DataFrame) -> np.ndarray:
 def fit_predict(x_train: np.ndarray, y_train: np.ndarray, x_test: np.ndarray) -> np.ndarray:
     if x_test.shape[0] == 0:  # nothing on the depth chart yet (preseason, or not yet published)
         return np.empty(0)
-    model = HistGradientBoostingClassifier(
-        max_iter=300,
-        learning_rate=0.05,
-        max_leaf_nodes=15,
-        min_samples_leaf=80,
-        l2_regularization=5.0,
-        random_state=0,
-    )
+    model = make_classifier(0)
     model.fit(x_train, y_train)
     return np.clip(model.predict_proba(x_test)[:, 1], MIN_P, MAX_P)
 

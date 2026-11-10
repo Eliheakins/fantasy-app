@@ -20,6 +20,10 @@ from fantasy._lock import RUN_ID_ENV, pipeline_lock
 
 TABLE = "refresh_runs"
 MAX_ERROR_CHARS = 300
+# The pipeline sets this so a soft failure exits SOFT_FAILURE_EXIT and gets retried; a lone stage
+# (make backup) leaves it unset and still exits 0. 65 is free: _lock uses 0, 1 and 75.
+SOFT_EXIT_ENV = "FANTASY_SOFT_EXIT"
+SOFT_FAILURE_EXIT = 65
 
 _soft_failures: list[str] = []
 
@@ -116,12 +120,14 @@ def run_stage(
         sys.argv = saved_argv
     if isinstance(code, str):
         print(code, file=sys.stderr)
+    message = code if isinstance(code, str) else None
     exit_code = code if isinstance(code, int) else (0 if code is None else 1)
     elapsed = time.monotonic() - started
     if exit_code:
-        _record(stage, "failed", f"exit code {exit_code}", data_dir, elapsed)
+        _record(stage, "failed", message or f"exit code {exit_code}", data_dir, elapsed)
     elif _soft_failures:
         _record(stage, "failed", "; ".join(_soft_failures), data_dir, elapsed)
+        exit_code = SOFT_FAILURE_EXIT if os.environ.get(SOFT_EXIT_ENV) else 0
     else:
         _record(stage, "ok", None, data_dir, elapsed)
     _soft_failures.clear()

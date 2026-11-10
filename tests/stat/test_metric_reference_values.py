@@ -14,11 +14,11 @@ import duckdb
 import polars as pl
 import pytest
 
-from nfl_stat.pipeline.cli import data_output_dir
+from nfl_stat.core.config import DEFAULT_DATA_DIR
 from nfl_stat.pipeline.player_game import PLAYER_GAME_COLUMNS, PLAYER_GAME_FILENAME
 from nfl_stat.schemas.metrics import MetricDefinition, ReferenceValue, load_metrics
 
-DATA_DIR = data_output_dir()
+DATA_DIR = DEFAULT_DATA_DIR.resolve()
 ROLE_COLUMN = {
     "passer": "passer_player_id",
     "rusher": "rusher_player_id",

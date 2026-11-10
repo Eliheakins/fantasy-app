@@ -12,7 +12,7 @@ Questionable, with a warning.
 """
 
 import warnings
-from collections.abc import Sequence
+from collections.abc import Mapping
 
 import polars as pl
 
@@ -50,11 +50,10 @@ IR_RETURN_CURVE = (
 class InjuryModel:
     """Lookup over the injury_effects table with fallbacks from specific to general.
 
-    `ir_curve` (the chance of playing each later game for a player on IR) replaces the four
-    zero games for IR when given; other long-term designations keep them."""
+    IR follows `IR_RETURN_CURVE` (the chance of playing each later game); other long-term
+    designations keep four zero games."""
 
-    def __init__(self, effects: pl.DataFrame, ir_curve: tuple[float, ...] | None = None) -> None:
-        self.ir_curve = ir_curve
+    def __init__(self, effects: pl.DataFrame) -> None:
         self.cells = {
             (r["status"], r["practice"], r["body"]): (
                 (r["p0"], r["p1"], r["p2"], r["p3"]),
@@ -68,8 +67,8 @@ class InjuryModel:
         """Chances of playing games 0 to 3 then healthy (1.0), and the play-through ratio.
         None when the status is not one the table covers."""
         status, body, practice = flag
-        if status == "IR" and self.ir_curve is not None:
-            return (*self.ir_curve, 1.0), 1.0
+        if status == "IR":
+            return (*IR_RETURN_CURVE, 1.0), 1.0
         if status in LONG_TERM:
             return (0.0,) * LONG_TERM_WEEKS + (1.0,), 1.0
         group = body if body in self.bodies else "Other"
@@ -145,7 +144,7 @@ def _table_games(
 
 def stat_line_blend(
     ours: pl.DataFrame,
-    others: Sequence[pl.DataFrame],
+    others: Mapping[str, pl.DataFrame],
     flagged: dict[str, Flag],
     model: InjuryModel | None,
     current_week: int,

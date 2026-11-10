@@ -31,7 +31,7 @@ from nfl_stat.main import attach as attach_stat
 
 WEB_DIST = ROOT / "web" / "dist"
 LOCAL_HOSTS = ("localhost", "127.0.0.1")
-HOSTS_ENV = "API_ALLOWED_HOSTS"  # comma separated, e.g. the site hostname
+HOSTS_ENV = auth_routes.HOSTS_ENV  # comma separated, e.g. the site hostname
 CSRF_HEADER, CSRF_VALUE = "x-requested-with", "fantasy-app"  # a browser cannot add it cross-site
 SAFE_METHODS = ("GET", "HEAD", "OPTIONS")
 HOST, PORT = "127.0.0.1", 8000
@@ -73,12 +73,21 @@ def create_app(
             live.stop()
             runner.shutdown()
 
-    app = FastAPI(title="Fantasy API", version="1", lifespan=lifespan)
+    # No public docs: the schema is for `--openapi`, which calls `app.openapi()` directly.
+    app = FastAPI(
+        title="Fantasy API",
+        version="1",
+        lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+    )
     app.state.data_dir = root
     app.state.runner = runner
     app.state.live = live
     hosts = allowed_hosts()
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=hosts)
+    # Starlette runs the last-added middleware first: Host check, then CSRF, then the login gate.
+    auth_routes.install(app)  # the login routes and the gate; off until an account exists
 
     @app.middleware("http")
     async def guard_cross_site(
@@ -87,8 +96,8 @@ def create_app(
         reason = forbidden(request, hosts)
         return fail("invalid", reason, 403) if reason else await call_next(request)
 
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=hosts)
     register_error_handlers(app)
-    auth_routes.install(app)  # the login routes and the gate; off until an account exists
     app.include_router(router)
     attach_stat(app, stat_settings or get_stat_settings())  # before the SPA mount
     if dist.is_dir():  # mounted last so /api wins; absent until `web/` is built
@@ -114,7 +123,7 @@ def main(argv: list[str]) -> None:
         return
     import uvicorn
 
-    uvicorn.run(create_app(), host=HOST, port=PORT)
+    uvicorn.run(create_app(), host=HOST, port=PORT, access_log=False)  # invite links are URLs
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ import fcntl
 import os
 import subprocess
 import sys
+import time
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -21,7 +22,12 @@ from fantasy import store
 
 LOCK_NAME = ".pipeline.lock"
 HELD_ENV = "FANTASY_PIPELINE_LOCK_HELD"
-RUN_ID_ENV = "FANTASY_RUN_ID"
+RUN_ID_ENV = store.RUN_ID_ENV
+NOT_PUBLISHED_EXIT = 75  # a required stage failed and nothing was published: systemd retries
+PUBLISHED_EXITS = (0, 1)  # 1: an optional stage failed but the data was published
+# A retry of a failed run keeps its run id (so the archive appends once per run) for this long
+RETRY_FILE = ".retry_run_id"
+RETRY_WINDOW_S = 3 * 3600
 RUN_ID_FORMAT = "%Y%m%dT%H%M%SZ"  # UTC, so ids sort in the order the runs started
 
 
@@ -49,15 +55,31 @@ def pipeline_lock(data_dir: Path | None = None, blocking: bool = True) -> Iterat
         yield
 
 
+def _run_id_to_use(retry_file: Path) -> str:
+    """The id of the last run that did not finish published, if recent (a systemd retry or a rerun
+    soon after), else a new one."""
+    try:
+        if time.time() - retry_file.stat().st_mtime < RETRY_WINDOW_S:
+            return retry_file.read_text().strip() or new_run_id()
+    except FileNotFoundError:
+        pass
+    return new_run_id()
+
+
 def hold_and_run(argv: Sequence[str], data_dir: Path | None = None) -> int:
-    """Run `argv` while holding the lock; the child sees HELD_ENV and one shared run id."""
+    """Run `argv` while holding the lock; the child sees HELD_ENV and one shared run id.
+
+    The id is written to RETRY_FILE before the run and removed once the run published, so a run
+    that failed, crashed or timed out is retried under the same id."""
     with pipeline_lock(data_dir):
-        env = {
-            **os.environ,
-            HELD_ENV: "1",
-            RUN_ID_ENV: os.environ.get(RUN_ID_ENV) or new_run_id(),
-        }
-        return subprocess.run(list(argv), env=env, check=False).returncode
+        retry_file = store.resolve(data_dir) / RETRY_FILE
+        run_id = os.environ.get(RUN_ID_ENV) or _run_id_to_use(retry_file)
+        retry_file.write_text(run_id)
+        env = {**os.environ, HELD_ENV: "1", RUN_ID_ENV: run_id}
+        code = subprocess.run(list(argv), env=env, check=False).returncode
+        if code in PUBLISHED_EXITS:
+            retry_file.unlink(missing_ok=True)
+        return code
 
 
 def main(argv: Sequence[str]) -> int:

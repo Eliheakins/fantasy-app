@@ -113,7 +113,8 @@ export async function sendJson<T>(url: string, method: "POST" | "PUT" | "DELETE"
     });
     if (envelope.status === "ok") return { ok: true, data: envelope.data as T };
     return { ok: false, error: envelope.error ?? { message: "Unknown error", code: null } };
-  } catch {
-    return { ok: false, error: UNREACHABLE };
+  } catch (err) {
+    // A non-JSON 5xx or an unexpected shape is not a network failure, so keep its message.
+    return { ok: false, error: err instanceof ApiFailure ? { message: err.message, code: err.code } : UNREACHABLE };
   }
 }

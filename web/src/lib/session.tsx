@@ -10,6 +10,8 @@ export const ME_URL = "/api/auth/me";
 export const LOCAL_EMAIL = "local";
 /** The key `useEnvelopeQuery` would use for this url, so the session is one cache entry. */
 export const ME_KEY = ["api", ME_URL] as const;
+const ACCOUNT_KEY = "fantasy.account";
+const OWN_KEY_PREFIXES = ["fantasy.", "bridge."];
 const SESSION_STALE_MS = 5 * 60 * 1000;
 const NO_ACCOUNT: Me = { email: "", is_admin: false, sleeper_user_id: null };
 const SIGNED_OUT: Envelope<Me> = {
@@ -25,10 +27,39 @@ export type Session =
   | { kind: "signedIn"; me: Me }
   | { kind: "error"; message: string; retry: () => void };
 
+/** Saved league, searches, Ask history and cache belong to one person: drop them when another account shows up. */
+function scopeStorageTo(envelope: Envelope<Me>): void {
+  const email = envelope.status === "ok" ? envelope.data?.email : undefined;
+  if (!email) return;
+  try {
+    const storage = window.localStorage;
+    const stored = storage.getItem(ACCOUNT_KEY);
+    if (stored === email) return;
+    // No account stored yet (a browser from before scoping): adopt it rather than wipe its keys.
+    if (stored === null) {
+      storage.setItem(ACCOUNT_KEY, email);
+      return;
+    }
+    const stale = Array.from({ length: storage.length }, (_, i) => storage.key(i) ?? "").filter((key) =>
+      OWN_KEY_PREFIXES.some((prefix) => key.startsWith(prefix)),
+    );
+    for (const key of stale) storage.removeItem(key);
+    storage.setItem(ACCOUNT_KEY, email);
+  } catch {
+    // Storage can be blocked; there is then nothing saved to leak.
+  }
+}
+
+async function fetchMe(): Promise<Envelope<Me>> {
+  const envelope = await fetchEnvelope<Me>(ME_URL);
+  scopeStorageTo(envelope);
+  return envelope;
+}
+
 export function useSession(): Session {
   const query = useQuery<Envelope<Me>, Error>({
     queryKey: ME_KEY,
-    queryFn: () => fetchEnvelope<Me>(ME_URL),
+    queryFn: fetchMe,
     retry: false,
     staleTime: SESSION_STALE_MS,
   });
@@ -43,6 +74,7 @@ export function useSession(): Session {
 
 /** Another person's cached pages must never show for the next person: drop everything, keep the session. */
 function startSession(queryClient: QueryClient, envelope: Envelope<Me>): void {
+  scopeStorageTo(envelope);
   queryClient.clear();
   queryClient.setQueryData(ME_KEY, envelope);
 }
@@ -62,7 +94,7 @@ export const signIn = (queryClient: QueryClient, email: string, password: string
 export const redeemInvite = (queryClient: QueryClient, token: string, password: string) =>
   authenticate(queryClient, "/api/auth/redeem", { token, password });
 
-export async function signOut(queryClient: QueryClient): Promise<void> {
-  await sendJson("/api/auth/logout", "POST");
+export async function signOut(queryClient: QueryClient, everywhere = false): Promise<void> {
+  await sendJson(everywhere ? "/api/auth/logout-everywhere" : "/api/auth/logout", "POST");
   startSession(queryClient, SIGNED_OUT);
 }

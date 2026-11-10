@@ -16,8 +16,8 @@ export function NoData({ message }: { message?: string }) {
   );
 }
 
-/** Reserves room so the page does not jump when data arrives. */
-function Loading() {
+/** Reserves room so the page does not jump when data arrives. Also the fallback while a lazy page loads. */
+export function Loading() {
   return (
     <div role="status" aria-busy="true" className="min-h-[160px] space-y-3 py-4">
       <span className="sr-only">Loading…</span>

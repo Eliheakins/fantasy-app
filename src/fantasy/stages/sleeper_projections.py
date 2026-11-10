@@ -8,6 +8,7 @@ Run: uv run python -m fantasy.stages.sleeper_projections
 """
 
 import json
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -15,10 +16,12 @@ from typing import Any
 import polars as pl
 
 from fantasy import store
+from fantasy._runs import note_soft_failure
 from fantasy.config import load_config
-from fantasy.scoring import score_stats
+from fantasy.scoring import DEFENSE_KEYS, DEFENSE_PREFIXES, score_stats
 from fantasy.sources.sleeper import fetch
 
+log = logging.getLogger(__name__)
 PROJECTIONS_BASE = "https://api.sleeper.com"
 POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"]
 WEEKS_AHEAD = 4
@@ -51,12 +54,30 @@ def unknown_keys(snapshots: pl.DataFrame, scoring: dict[str, float]) -> list[str
     return sorted(seen - scoring.keys() - IGNORED_KEYS)
 
 
+def unscored_keys(snapshots: pl.DataFrame, scoring: dict[str, float]) -> list[str]:
+    """Offense keys the league scores that no projection row has, so they count 0 (a renamed key).
+    Defense keys are scored in streaming and kicker field goals are mapped from coarser buckets."""
+    seen = {key for s in snapshots["stats"].unique() for key in json.loads(s)}
+    return sorted(
+        key
+        for key, weight in scoring.items()
+        if weight
+        and key not in seen
+        and key not in DEFENSE_KEYS
+        and not key.startswith((*DEFENSE_PREFIXES, "fg"))
+    )
+
+
 def scored_latest(snapshots: pl.DataFrame, scoring: dict[str, float]) -> pl.DataFrame:
     """Latest snapshot per week, scored: sleeper_id, week, projection."""
     latest = snapshots.filter(pl.col("fetched_at") == pl.col("fetched_at").max().over("week"))
     unknown = unknown_keys(latest, scoring)
     if unknown:  # these are scored as zero
         print(f"warning: Sleeper projection keys not in the league scoring: {unknown}")
+    missing = unscored_keys(latest, scoring)
+    if missing:
+        log.warning("league scores stats Sleeper no longer projects: %s", missing)
+        note_soft_failure(f"Sleeper projections lack scored stats: {missing}")
     scores = [score_stats(json.loads(s), scoring) for s in latest["stats"]]
     return latest.select("sleeper_id", "week").with_columns(
         pl.Series("projection", scores, dtype=pl.Float64)

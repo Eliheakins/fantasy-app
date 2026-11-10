@@ -31,6 +31,17 @@ describe("Footer sign-in", () => {
     expect(calls.some((c) => c.method === "POST" && c.url === "/api/auth/logout")).toBe(true);
   });
 
+  it("signs out of every device next to the plain sign-out", async () => {
+    const calls = stubApi((call) =>
+      okReply(call.url === "/api/auth/me" ? { email: "friend@example.com", is_admin: false, sleeper_user_id: null } : status),
+    );
+    open();
+    await screen.findByText("friend@example.com");
+    await userEvent.setup().click(screen.getByRole("button", { name: "Sign out everywhere" }));
+    expect(calls.some((c) => c.method === "POST" && c.url === "/api/auth/logout-everywhere")).toBe(true);
+    expect(calls.some((c) => c.url === "/api/auth/logout")).toBe(false);
+  });
+
   it("offers nothing to sign out of on a run with no accounts", async () => {
     stubApi((call) =>
       okReply(call.url === "/api/auth/me" ? { email: LOCAL_EMAIL, is_admin: true, sleeper_user_id: null } : status),

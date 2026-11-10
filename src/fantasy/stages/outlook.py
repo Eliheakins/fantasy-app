@@ -27,19 +27,12 @@ RIDGE = 1.0
 MIN_PROJECTION = 2.0  # below this a projection is a depth player and the ratios are unstable
 
 
-def build_panel(
-    stats: pl.DataFrame,
-    team_stats: pl.DataFrame,
-    injuries: pl.DataFrame,
-    team_games: pl.DataFrame,
-    points: pl.DataFrame,
-    baseline: pl.DataFrame,
+def _miss_panel(
+    team_games: pl.DataFrame, points: pl.DataFrame, baseline: pl.DataFrame
 ) -> pl.DataFrame:
-    """One row per projected player-game with the miss (points minus projection), whether it was
-    a first or second game back, and the target and carry share vacated by absent teammates."""
-    usage = usage_table(stats, team_stats)
+    """Projected player-games above MIN_PROJECTION with the miss and the games missed before."""
     games = store.team_game_index(team_games)
-    panel = (
+    return (
         baseline.join(points, on=["gsis_id", "season", "week"], how="inner")
         .join(games, on=["team", "season", "week"], how="left")
         .sort("gsis_id", "season", "week")
@@ -54,6 +47,10 @@ def build_panel(
         )
         .filter(pl.col("projection") > MIN_PROJECTION)
     )
+
+
+def _with_return_flags(panel: pl.DataFrame, injuries: pl.DataFrame) -> pl.DataFrame:
+    """Adds `injured_gap`, `first_back`, `second_back` and `prev_injured`."""
     # an absence is an injury absence if the player was on the report around the games he missed
     listed = (
         injuries.filter(pl.col("game_type") == "REG").select("gsis_id", "season", "week").unique()
@@ -69,7 +66,7 @@ def build_panel(
         .unique()
         .with_columns(pl.lit(True).alias("injured_gap"))
     )
-    panel = (
+    return (
         panel.join(reported, on=["gsis_id", "season", "week"], how="left")
         .with_columns(pl.col("injured_gap").fill_null(False))
         .with_columns(
@@ -84,7 +81,11 @@ def build_panel(
             .alias("prev_injured"),
         )
     )
-    # share carried by teammates reported Out or Doubtful, from their usage the week before
+
+
+def _vacated_share(injuries: pl.DataFrame, usage: pl.DataFrame) -> pl.DataFrame:
+    """Target and carry share carried by teammates reported Out or Doubtful, from their usage the
+    week before, per team-week."""
     out = (
         injuries.filter(
             pl.col("position").is_in(SKILL)
@@ -107,10 +108,24 @@ def build_panel(
     gone = gone.filter(
         (pl.col("target_ewma") > MIN_SHARE[0]) | (pl.col("carry_ewma") > MIN_SHARE[1])
     )
-    vacated = gone.group_by("team", "season", "week").agg(
+    return gone.group_by("team", "season", "week").agg(
         pl.col("target_ewma").sum().alias("vac_target"),
         pl.col("carry_ewma").sum().alias("vac_carry"),
     )
+
+
+def build_panel(
+    stats: pl.DataFrame,
+    team_stats: pl.DataFrame,
+    injuries: pl.DataFrame,
+    team_games: pl.DataFrame,
+    points: pl.DataFrame,
+    baseline: pl.DataFrame,
+) -> pl.DataFrame:
+    """One row per projected player-game with the miss (points minus projection), whether it was
+    a first or second game back, and the target and carry share vacated by absent teammates."""
+    panel = _with_return_flags(_miss_panel(team_games, points, baseline), injuries)
+    vacated = _vacated_share(injuries, usage_table(stats, team_stats))
     return panel.join(vacated, on=["team", "season", "week"], how="left").with_columns(
         pl.col("vac_target").fill_null(0.0), pl.col("vac_carry").fill_null(0.0)
     )
@@ -182,6 +197,11 @@ def history_panel(league_id: str, season: int) -> pl.DataFrame:
 
 
 def run() -> int:
+    """Measure the outlook effects (first and second game back, vacated target and carry share).
+
+    Reads `leagues` and the reference league's baseline, points, injuries and team games (after
+    `project` and `injuries`). Writes `outlook_effects`. Returns its row count.
+    """
     leagues = store.read_table("leagues", "raw")
     league_id = reference_league(leagues)  # point effects are scaled to the other league later
     season = int(leagues["season"].to_numpy().max())

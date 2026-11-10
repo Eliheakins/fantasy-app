@@ -24,6 +24,10 @@ BENCH_SLOTS = {"BN", "IR", "TAXI"}
 INACTIVES_LEAD = timedelta(minutes=90)  # NFL inactive lists come out this long before kickoff
 
 
+class UnknownSlot(ValueError):
+    """A league has a lineup slot type this module cannot fill."""
+
+
 class Player(NamedTuple):
     id: str
     position: str
@@ -43,13 +47,13 @@ class ActualPlayer(NamedTuple):
 
 
 def lineup_slots(roster_positions: list[str]) -> list[str]:
-    """Slots that hold a player projection. Raises on a slot type this module does not know."""
+    """Slots that hold a player projection. Raises UnknownSlot on a slot type not known here."""
     slots = []
     for slot in roster_positions:
         if slot in BENCH_SLOTS or slot in CONSTANT_SLOTS:
             continue
         if slot not in ELIGIBLE:
-            raise ValueError(f"unknown roster slot {slot!r}")
+            raise UnknownSlot(f"unknown roster slot {slot!r}")
         slots.append(slot)
     return slots
 

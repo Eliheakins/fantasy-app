@@ -18,7 +18,7 @@ from fantasy._engine import (
     _opponent_lineup,
     _week_points,
 )
-from fantasy._schemas import ENGINE_SCHEMAS
+from fantasy._schemas import ENGINE_SCHEMAS, empty
 from fantasy.sim import moves
 from fantasy.sim.lineup import lineup_slots
 from fantasy.sim.odds import LeagueData
@@ -169,7 +169,7 @@ def scoreboard_of(
     week = week or data.current_week
     placeholder = week > data.current_week and week >= data.playoff_start
     if not data.pairings.get(week) or placeholder:
-        return pl.DataFrame(schema=ENGINE_SCHEMAS["scoreboard"])
+        return empty("scoreboard")
     table = store.read_table("matchups", "raw", data_dir).filter(
         (pl.col("league_id") == data.league_id) & (pl.col("week") == week)
     )

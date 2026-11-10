@@ -10,13 +10,27 @@ StartLimitBurst=3
 Type=oneshot
 User=fantasy
 WorkingDirectory=/home/fantasy/fantasy-app
+# Sandbox: the app writes only its checkout (data/, .venv) and uv's cache; new files are private.
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+ReadWritePaths=/home/fantasy/fantasy-app /home/fantasy/.cache
+ReadWritePaths=/home/fantasy/fantasy-app-backups
 Environment=UV_NO_SYNC=1
 Environment=PATH=/home/fantasy/.local/bin:/usr/local/bin:/usr/bin:/bin
 # Not `make refresh`: make would turn the pipeline's exit codes into 2. _lock holds the pipeline lock
 # for the whole run and passes the exit code through.
 ExecStart=/home/fantasy/.local/bin/uv run python -m fantasy._lock /home/fantasy/.local/bin/uv run python -m fantasy.pipeline
-# Exit 1: an optional stage failed but the data was published. A retry would append to data/archive
-# a second time, so it counts as success. Exit 75: a required stage failed and nothing was published.
+# Exit 1: an optional stage failed but the data was published, so it counts as success. Exit 75: a
+# required stage failed and nothing was published; the retry keeps the run id (fantasy/_lock.py), so
+# the archive appends once per run (store.with_archive) instead of twice.
 SuccessExitStatus=1
 Restart=on-failure
 RestartSec=10min

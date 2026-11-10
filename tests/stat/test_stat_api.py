@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import httpx
@@ -135,6 +136,41 @@ async def test_nlq_intent_returns_validated_intent(client: httpx.AsyncClient, us
             "ranking": False,
         },
     }
+
+
+async def test_nlq_intent_accepts_the_catalog_the_app_really_sends(
+    client: httpx.AsyncClient, use_llm
+):
+    catalog = json.loads((Path(__file__).parent / "eval" / "catalog.json").read_text())
+    use_llm(['{"stat_ids": ["pass_yards"], "filter_ids": [], "granularity": "total"}'])
+
+    res = await client.post("/api/stat/nlq/intent", json={"question": "q", **catalog})
+
+    assert res.status_code == 200, res.text
+
+
+def _padded(stats: int, aliases: int) -> dict:
+    stat = {"id": "s", "label": "l", "category": "c", "aliases": ["a" * 50] * aliases}
+    return {"question": "q", "stats": [stat] * stats, "filters": []}
+
+
+@pytest.mark.parametrize(
+    ("payload", "status"),
+    [
+        (_padded(stats=121, aliases=1), 422),  # more stats than the app has
+        (_padded(stats=1, aliases=12), 422),  # more aliases than any stat has
+        (_padded(stats=100, aliases=11), 413),  # each field is allowed, the body is too big
+    ],
+)
+async def test_nlq_intent_rejects_an_oversized_catalog_without_calling_the_model(
+    client: httpx.AsyncClient, use_llm, payload: dict, status: int
+):
+    fake = use_llm(['{"stat_ids": ["pass_yards"], "filter_ids": []}'])
+
+    res = await client.post("/api/stat/nlq/intent", json=payload)
+
+    assert res.status_code == status, res.text
+    assert fake.calls == []
 
 
 async def test_nlq_intent_returns_the_reason_when_the_question_is_unsupported(

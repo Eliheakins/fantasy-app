@@ -8,7 +8,7 @@ from fantasy._engine import _league, _names, _read
 from fantasy._leagues import my_league
 from fantasy._lineup import lineup, win_probability
 from fantasy._market import waivers
-from fantasy._schemas import ENGINE_SCHEMAS
+from fantasy._schemas import ENGINE_SCHEMAS, empty
 from fantasy.teams import TEAM_MAP
 
 STREAM_WEEKS = 3
@@ -24,7 +24,7 @@ def streamers(
     """Best free K or DEF over the next weeks, plus mine for comparison. kind is "K" or "DEF"."""
     me = my_league(league_key, data_dir, team)
     if me is None or kind not in ("K", "DEF"):
-        return pl.DataFrame(schema=ENGINE_SCHEMAS["streamers"])
+        return empty("streamers")
     lid, current, mine = me["league_id"], int(me["current_week"]), me["roster_id"]
     proj = (
         _read("streaming_projection", data_dir, area="derived")

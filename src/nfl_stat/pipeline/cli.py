@@ -32,10 +32,6 @@ from nfl_stat.pipeline.player_game import (
 from nfl_stat.pipeline.players import write_players_file
 
 
-def data_output_dir() -> Path:
-    return DEFAULT_DATA_DIR.resolve()
-
-
 def _maybe_gc() -> None:
     if os.environ.get("PIPELINE_GC", "1").strip().lower() not in ("0", "false", "no"):
         gc.collect()
@@ -124,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    data_dir = Path(args.data_dir).resolve() if args.data_dir else data_output_dir()
+    data_dir = Path(args.data_dir).resolve() if args.data_dir else DEFAULT_DATA_DIR.resolve()
     if args.refresh:
         years = [current_season()]
     else:

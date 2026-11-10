@@ -1,9 +1,12 @@
+from pathlib import Path
+
 import numpy as np
 import polars as pl
 import pytest
 
 from fantasy import store
 from fantasy.stages import learn, vacancy
+from fantasy.stages.learn import model as learn_model
 
 GAME_SCHEMA = {
     "league_id": pl.String,
@@ -102,8 +105,12 @@ def test_each_season_is_scored_by_a_model_that_never_saw_it() -> None:
 
 
 def test_rows_without_a_stat_line_are_projected_but_never_trained_on(monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    monkeypatch.setattr(learn, "design", lambda frame, lines, vac: frame.select("x").to_numpy())
-    monkeypatch.setattr(learn, "fit_predict", lambda xt, yt, xs: np.full(len(xs), float(len(yt))))
+    monkeypatch.setattr(
+        learn_model, "design", lambda frame, lines, vac: frame.select("x").to_numpy()
+    )
+    monkeypatch.setattr(
+        learn_model, "fit_predict", lambda xt, yt, xs: np.full(len(xs), float(len(yt)))
+    )
     history = pl.DataFrame(
         {"season": [2019, 2020, 2021, 2021], "x": [1.0] * 4, "points": [5.0] * 4}
     )
@@ -389,7 +396,7 @@ def test_future_weeks_without_a_report_use_a_model_without_the_vacancy_columns(
         widths[len(widths)] = x_test.shape[1]
         return np.zeros(x_test.shape[0])
 
-    monkeypatch.setattr(learn, "fit_predict", record)
+    monkeypatch.setattr(learn_model, "fit_predict", record)
     columns = [*learn.STATE_FEATURES, *learn.LINE_FEATURES, *learn.EXTRA_FEATURES]
     row = {c: 1.0 for c in columns} | {"position": "WR", "points": 5.0}
     history = pl.DataFrame([row | {"week": 3}])
@@ -400,3 +407,43 @@ def test_future_weeks_without_a_report_use_a_model_without_the_vacancy_columns(
     without = learn.design(history, True, vacancy=False).shape[1]
     assert with_vacancy - without == len(vacancy.VAC_COLUMNS)
     assert sorted(widths.values()) == [without, with_vacancy]  # week 9 has no report yet
+
+
+def test_archiving_rows_with_no_baseline_still_archives_them_and_flags_a_soft_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fantasy import _runs
+    from fantasy.stages.learn import snapshot
+
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path)
+    monkeypatch.delenv(store.RELEASE_ENV, raising=False)
+    final = pl.DataFrame(
+        {
+            "league_id": ["L"],
+            "gsis_id": ["A"],
+            "position": ["WR"],
+            "team": ["KC"],
+            "season": [2099],
+            "week": [1],
+            "is_future": [True],
+            "projection": [11.0],
+        }
+    )
+    games = pl.DataFrame(
+        {
+            "season": [2099],
+            "week": [1],
+            "team": ["KC"],
+            "points_for": [None],
+            "gameday": ["2099-09-01"],
+        },
+        schema_overrides={"points_for": pl.Float64},
+    )
+    store.write_table(
+        "proj_baseline", pl.DataFrame(schema=store.SCHEMAS["proj_baseline"]), "derived"
+    )  # no baseline row for A
+    _runs._soft_failures.clear()
+    snapshot.archive_snapshot(final, 1, games)
+    assert store.read_table("proj_snapshots", "archive")["learned"].to_list() == [11.0]
+    assert any("1 archived rows" in note for note in _runs._soft_failures)
+    _runs._soft_failures.clear()

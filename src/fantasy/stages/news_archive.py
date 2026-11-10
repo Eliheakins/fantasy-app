@@ -53,10 +53,7 @@ def run(data_dir: Path | None = None) -> int:
     try:
         fetched = datetime.fromtimestamp(cache.stat().st_mtime, UTC)
         new = status_frame(json.loads(cache.read_text()), fetched.isoformat(timespec="seconds"))
-        try:
-            old = store.read_table(TABLE, "archive", data_dir)
-        except FileNotFoundError:
-            old = new.clear()
+        old = store.read_archive(TABLE, data_dir)
         if old["fetched_at"].str.starts_with(fetched.date().isoformat()).any():
             print(f"{TABLE}: a snapshot of the {fetched.date()} players file is already archived")
             return 0

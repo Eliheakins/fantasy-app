@@ -98,6 +98,24 @@ def test_after_logout_the_session_no_longer_works(secured: TestClient) -> None:
     assert secured.get("/api/leagues").status_code == 401
 
 
+def test_signing_out_everywhere_ends_every_session_of_that_account_only(
+    secured: TestClient, store_dir: Path
+) -> None:
+    login(secured)
+    phone = make_client(store_dir)
+    login(phone)
+    friend = make_client(store_dir)
+    redeemed = friend.post(
+        "/api/auth/redeem",
+        json={"token": invite(store_dir, "friend@example.com"), "password": GOOD},
+    )
+    assert redeemed.status_code == 200
+    assert secured.post("/api/auth/logout-everywhere").status_code == 200
+    assert secured.get("/api/leagues").status_code == 401
+    assert phone.get("/api/leagues").status_code == 401
+    assert friend.get("/api/leagues").status_code == 200
+
+
 def test_the_sixth_wrong_attempt_in_a_minute_is_refused_even_with_the_right_password(
     secured: TestClient,
 ) -> None:

@@ -15,7 +15,7 @@ from pathlib import Path
 import polars as pl
 
 from fantasy import store
-from fantasy._schemas import ENGINE_SCHEMAS
+from fantasy._schemas import ENGINE_SCHEMAS, empty
 from fantasy.scoring import score_stats
 from fantasy.sim.availability import kickoffs
 from fantasy.sim.calibration import ALL_TIERS, MIN_MEAN, TRAIN_END, size_tiers
@@ -236,12 +236,11 @@ def scorecard_of(league_id: str, data_dir: Path | None = None) -> Scorecard:
     except FileNotFoundError:  # nothing archived yet
         snaps = pl.DataFrame(schema=store.SCHEMAS["proj_snapshots"])
     weeks = sorted(snaps["week"].unique().to_list())
-    empty = ENGINE_SCHEMAS["scorecard"]
     no_counts = dict.fromkeys(
         ("games", "scored", "not_final", "no_kickoff", "no_snapshot", "sleeper_missing"), 0
     )
     if snaps.is_empty():
-        return Scorecard(pl.DataFrame(schema=empty), no_counts, [], [], False, None)
+        return Scorecard(empty("scorecard"), no_counts, [], [], False, None)
     baseline = store.read_table("proj_baseline", "derived", data_dir).filter(
         pl.col("league_id") == league_id
     )

@@ -18,7 +18,7 @@ const originOf = (url: string) => new URL(url, globalThis.location?.href).origin
 
 // `detail` is FastAPI's own shape; `error.message` is the fantasy envelope the host app now sends.
 const errorBodySchema = z.object({
-  detail: z.unknown(),
+  detail: z.unknown().optional(), // zod 4.6+ requires an unknown key unless it is optional
   error: z.object({ message: z.string() }).nullish().catch(null),
 });
 

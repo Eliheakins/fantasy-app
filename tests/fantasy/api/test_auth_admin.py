@@ -158,3 +158,24 @@ def test_refresh_now_queues_a_refresh(admin: TestClient, store_dir: Path) -> Non
     assert admin.post("/api/admin/refresh").status_code == 200
     assert refresh_queue.status(store_dir)["state"] == "queued"
     assert admin.get("/api/admin/refresh").json()["data"]["state"] == "queued"
+
+
+def test_status_shows_stage_errors_to_the_admin_but_not_to_a_friend(store_dir: Path) -> None:
+    now = datetime(2026, 11, 9, 12, 0, tzinfo=UTC)
+    _runs.record_run("project", "failed", "boom at /srv/secret", store_dir, now=now, run_id="r1")
+    admin = sign_in(store_dir, ADMIN, admin=True)
+    friend = sign_in(store_dir, FRIEND)
+
+    def stage_errors(client: TestClient) -> list[tuple[str, str, str | None]]:
+        runs = client.get("/api/status").json()["data"]["refresh_runs"]
+        return [(r["stage"], r["status"], r["error"]) for r in runs]
+
+    assert stage_errors(admin) == [("project", "failed", "boom at /srv/secret")]
+    assert stage_errors(friend) == [("project", "failed", None)]
+
+    def live_error(client: TestClient) -> str | None:
+        client.app.state.live.state.last_error = "12:00 OSError: /srv/secret"  # type: ignore[attr-defined]
+        return client.get("/api/status").json()["data"]["live_refresh"]["last_error"]
+
+    assert live_error(admin) == "12:00 OSError: /srv/secret"
+    assert live_error(friend) is None

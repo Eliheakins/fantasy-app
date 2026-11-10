@@ -22,6 +22,8 @@ from fantasy.api_models import Envelope, Row
 from fantasy.auth import accounts, leagues
 from fantasy.auth.ratelimit import FailureLimiter
 from fantasy.config import load_config
+from fantasy.scoring import UnmappedScoring, check_keys
+from fantasy.sim.lineup import UnknownSlot, lineup_slots
 from fantasy.sim.season import format_problem
 from fantasy.sources.sleeper import SleeperError, fetch
 
@@ -138,9 +140,19 @@ def _teams(league_id: str) -> list[dict[str, Any]]:
 def _problem(lg: dict[str, Any]) -> str | None:
     """Why the season simulation cannot model this league, from Sleeper's own settings."""
     settings = lg.get("settings") or {}
-    return format_problem(
+    shape = format_problem(
         settings.get("num_teams"), settings.get("playoff_teams"), settings.get("playoff_week_start")
     )
+    if shape:
+        return shape
+    try:  # the refresh would stop on these, so they are refused here rather than skipped later
+        check_keys(lg.get("scoring_settings") or {})
+        lineup_slots(lg.get("roster_positions") or [])
+    except UnmappedScoring as err:
+        return f"The app cannot score this league ({err})."
+    except UnknownSlot as err:
+        return f"The app cannot fill this league's lineup ({err})."
+    return None
 
 
 def _account(request: Request) -> dict[str, Any] | None:
@@ -155,6 +167,10 @@ def no_account() -> Any:
 
 NO_USER = "No Sleeper user has that name."
 NO_TEAM = "That team is not in that league."
+BUSY = "Too many requests. Wait a minute and try again."
+
+
+OWNER_ONLY = "That league belongs to the app's owner and cannot be added."
 
 
 def _limited(account: dict[str, Any]) -> bool:
@@ -173,7 +189,7 @@ def lookup(body: LookupRequest, request: Request) -> Any:
     if account is None:
         return no_account()
     if _limited(account):
-        return fail("busy", "Too many lookups. Wait a minute and try again.", 429)
+        return fail("busy", BUSY, 429)
     try:
         user = _user(body.username)
         if user is None:
@@ -207,11 +223,18 @@ def add_league(body: AddRequest, request: Request) -> Any:
     account = _account(request)
     if account is None:
         return no_account()
+    if _limited(account):
+        return fail("busy", BUSY, 429)
+    owner = load_config()
+    if not account["is_admin"] and body.league_id in owner.leagues.values():
+        return fail("invalid", OWNER_ONLY, 409)
     try:
         user = _user(body.username)
         if user is None:
             return fail("no_data", NO_USER, 404)
         user_id = str(user["user_id"])
+        if not account["is_admin"] and user_id == owner.user_id:
+            return fail("invalid", "That Sleeper user is the app's owner and cannot be used.", 409)
         theirs = {str(lg["league_id"]): lg for lg in _their_leagues(user_id)}
         if body.league_id not in theirs:
             return fail("no_data", "That league is not one of that user's current leagues.", 404)
@@ -231,14 +254,15 @@ def add_league(body: AddRequest, request: Request) -> Any:
     name = str(theirs[body.league_id].get("name") or body.league_id)
     with accounts.open_db(request.app.state.data_dir) as conn:
         try:
-            row = leagues.add(
+            row, created = leagues.add(
                 conn, account["id"], body.league_id, name, datetime.now(UTC), body.roster_id
             )
         except leagues.LeagueLimit as err:
             return fail("invalid", str(err), 409)
         if not linked:
             accounts.set_sleeper_user(conn, account["id"], user_id)
-    refresh_queue.request_refresh(f"league added: {body.league_id}", request.app.state.data_dir)
+    if created:  # a repeat of a registered league has nothing new for a refresh to read
+        refresh_queue.request_refresh(f"league added: {body.league_id}", request.app.state.data_dir)
     return ok(row)
 
 
@@ -260,6 +284,8 @@ def remove_league(league_id: str, request: Request) -> Any:
     account = _account(request)
     if account is None:
         return no_account()
+    if _limited(account):
+        return fail("busy", BUSY, 429)
     with accounts.open_db(request.app.state.data_dir) as conn:
         if not leagues.release(conn, account["id"], league_id):
             return fail("no_data", "You have not added that league.", 404)
@@ -275,7 +301,7 @@ def league_teams(
     if account is None:
         return no_account()
     if _limited(account):
-        return fail("busy", "Too many lookups. Wait a minute and try again.", 429)
+        return fail("busy", BUSY, 429)
     try:
         return ok(_teams(league_id))
     except SleeperUnreachable as err:
@@ -288,6 +314,8 @@ def set_team(league_id: str, body: TeamRequest, request: Request) -> Any:
     account = _account(request)
     if account is None:
         return no_account()
+    if _limited(account):
+        return fail("busy", BUSY, 429)
     with accounts.open_db(request.app.state.data_dir) as conn:
         held = {row["league_id"] for row in leagues.mine(conn, account["id"])}
     if league_id not in held:

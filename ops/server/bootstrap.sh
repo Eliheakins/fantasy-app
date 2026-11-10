@@ -45,6 +45,8 @@ rm "$keys_tmp"
 [ -x "$APP_HOME/.local/bin/uv" ] ||
   runuser -l "$APP_USER" -c 'curl -LsSf https://astral.sh/uv/install.sh | sh'
 ln -sf "$APP_HOME/.local/bin/uv" /usr/local/bin/uv # on the PATH of a non-interactive ssh command too
+# The units make the home read-only except these, so they must exist before the first run.
+install -d -m 700 -o "$APP_USER" -g "$APP_USER" "$APP_HOME/.cache" "$APP_HOME/fantasy-app-backups"
 
 # FANTASY_AUTH=required: sign-in is demanded even before the first account exists, so a freshly
 # deployed public server is locked, not open, until the admin is created (see the last message).
@@ -62,8 +64,11 @@ if ! command -v caddy >/dev/null; then
 fi
 
 # Caddy only terminates HTTPS and adds headers; who may sign in is the app's own login.
-printf '%s {\n\tencode zstd gzip\n\theader {\n\t\tStrict-Transport-Security "max-age=31536000"\n\t\tX-Content-Type-Options nosniff\n\t\tX-Frame-Options DENY\n\t\tReferrer-Policy strict-origin-when-cross-origin\n\t}\n\treverse_proxy 127.0.0.1:8000\n}\n' \
-  "$SITE_HOST" >/etc/caddy/Caddyfile
+# Inline styles: charts set React `style` attributes. https: images: player headshots. The intent
+# body cap stops a large paid-model request before the app buffers it.
+CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+printf '%s {\n\tencode zstd gzip\n\theader {\n\t\tStrict-Transport-Security "max-age=31536000"\n\t\tX-Content-Type-Options nosniff\n\t\tX-Frame-Options DENY\n\t\tReferrer-Policy strict-origin-when-cross-origin\n\t\tContent-Security-Policy "%s"\n\t}\n\trequest_body /api/stat/nlq/intent {\n\t\tmax_size 32KB\n\t}\n\treverse_proxy 127.0.0.1:8000\n}\n' \
+  "$SITE_HOST" "$CSP" >/etc/caddy/Caddyfile
 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
 systemctl enable caddy
 systemctl restart caddy

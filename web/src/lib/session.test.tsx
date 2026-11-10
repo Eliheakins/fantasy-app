@@ -112,3 +112,61 @@ describe("signOut", () => {
     expect(client.getQueryData(ME_KEY)).toMatchObject({ error: { code: "unauthorized" } });
   });
 });
+
+describe("browser storage follows the account", () => {
+  const OWN = { "fantasy.league": "L1", "fantasy.lastVisit.L1": "{}", "fantasy.savedSearches": "[]", "bridge.askLog.v1": "[]", "bridge.intentCache.v1": "{}" };
+  beforeEach(() => {
+    window.localStorage.clear();
+    for (const [key, value] of Object.entries(OWN)) window.localStorage.setItem(key, value);
+    window.localStorage.setItem("theme", "dark");
+  });
+  afterEach(() => window.localStorage.clear());
+
+  const keys = () => Object.keys(window.localStorage).sort();
+
+  it("clears the fantasy.* and bridge.* keys when a different account signs in", async () => {
+    window.localStorage.setItem("fantasy.account", "someone.else@example.com");
+    stubApi(() => okReply(ME));
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.kind).toBe("signedIn"));
+    expect(keys()).toEqual(["fantasy.account", "theme"]);
+    expect(window.localStorage.getItem("fantasy.account")).toBe(ME.email);
+  });
+
+  it("keeps them for the same account", async () => {
+    window.localStorage.setItem("fantasy.account", ME.email);
+    stubApi(() => okReply(ME));
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.kind).toBe("signedIn"));
+    expect(keys()).toEqual([...Object.keys(OWN), "fantasy.account", "theme"].sort());
+  });
+
+  it("keeps them on a browser that has no account stored yet", async () => {
+    stubApi(() => okReply(ME));
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.kind).toBe("signedIn"));
+    expect(keys()).toEqual([...Object.keys(OWN), "fantasy.account", "theme"].sort());
+    expect(window.localStorage.getItem("fantasy.account")).toBe(ME.email);
+  });
+
+  it("clears them when someone else signs in on the same browser", async () => {
+    window.localStorage.setItem("fantasy.account", "someone.else@example.com");
+    stubApi(() => okReply(ME));
+    expect(await signIn(setup().client, ME.email, "a long enough password")).toBeNull();
+    expect(keys()).toEqual(["fantasy.account", "theme"]);
+  });
+
+  it("still signs in when storage is blocked", async () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    stubApi(() => okReply(ME));
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useSession(), { wrapper });
+    await waitFor(() => expect(result.current.kind).toBe("signedIn"));
+    vi.restoreAllMocks();
+  });
+});

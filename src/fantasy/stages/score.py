@@ -7,11 +7,14 @@ Run: uv run python -m fantasy.stages.score
 """
 
 import json
+from pathlib import Path
+from typing import Any
 
 import polars as pl
 
 from fantasy import store
-from fantasy.scoring import score_player_stats
+from fantasy.auth import leagues
+from fantasy.scoring import UnmappedScoring, score_player_stats
 
 SKILL_POSITIONS = ["QB", "RB", "WR", "TE", "K"]
 CONTEXT = ["is_home", "team_implied", "opp_implied", "total_line", "roof", "temp", "wind"]
@@ -59,17 +62,32 @@ def player_points_frame(
     )
 
 
-def run() -> dict[str, int]:
-    games = team_games_frame(store.read_table("nfl_schedules", "raw")).select(
+def _league_points(
+    league: dict[str, Any], stats: pl.DataFrame, games: pl.DataFrame, data_dir: Path | None
+) -> pl.DataFrame | None:
+    """The league's points, or None for a league someone added whose scoring we cannot map: it is
+    marked and left out. The same failure in a config.toml league still stops the run."""
+    try:
+        scoring = json.loads(league["scoring_settings"])
+        return player_points_frame(stats, games, scoring, league["league_id"])
+    except UnmappedScoring as err:
+        if leagues.is_configured(league["league_id"]):
+            raise
+        leagues.skip_added(league["league_id"], league["league_key"], "score", err, data_dir)
+        return None
+
+
+def run(data_dir: Path | None = None) -> dict[str, int]:
+    games = team_games_frame(store.read_table("nfl_schedules", "raw", data_dir)).select(
         *store.SCHEMAS["team_games"]
     )
-    stats = store.read_table("nfl_player_stats", "raw")
-    frames = [
-        player_points_frame(stats, games, json.loads(r["scoring_settings"]), r["league_id"])
-        for r in store.read_table("leagues", "raw").iter_rows(named=True)
+    stats = store.read_table("nfl_player_stats", "raw", data_dir)
+    scored = [
+        _league_points(r, stats, games, data_dir)
+        for r in store.read_table("leagues", "raw", data_dir).iter_rows(named=True)
     ]
-    points = pl.concat(frames)
-    store.write_tables({"team_games": games, "player_points": points})
+    points = pl.concat([frame for frame in scored if frame is not None])
+    store.write_tables({"team_games": games, "player_points": points}, data_dir=data_dir)
     return {"team_games": games.height, "player_points": points.height}
 
 

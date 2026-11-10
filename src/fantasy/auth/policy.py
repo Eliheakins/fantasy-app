@@ -14,7 +14,7 @@ Decision = Literal["allow", "unauthorized", "forbidden"]
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 PUBLIC = frozenset({("POST", "/api/auth/login"), ("POST", "/api/auth/redeem")})
 FRIEND_WRITES = (
-    re.compile(r"^/api/auth/logout$"),
+    re.compile(r"^/api/auth/logout(-everywhere)?$"),
     re.compile(r"^/api/leagues/[^/]+/trades/(evaluate|find)$"),
     re.compile(r"^/api/stat/nlq/intent$"),
     re.compile(r"^/api/me/sleeper/lookup$"),  # add and remove your own leagues

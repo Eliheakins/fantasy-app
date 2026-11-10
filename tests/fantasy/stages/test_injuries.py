@@ -44,7 +44,7 @@ def test_curve_uses_the_most_specific_cell_and_falls_back() -> None:
     assert model.curve(("Questionable", "Toe", None))[0][0] == 0.7  # type: ignore[index]
     assert model.curve(("Out", "Hamstring", None))[0][:4] == (0.0, 0.3, 0.5, 0.6)  # type: ignore[index]
     assert model.curve(("Healthy-ish", None, None)) is None
-    assert model.curve(("IR", None, None))[0] == (0.0, 0.0, 0.0, 0.0, 1.0)  # type: ignore[index]
+    assert model.curve(("PUP", None, None))[0] == (0.0, 0.0, 0.0, 0.0, 1.0)  # type: ignore[index]
 
 
 def test_projections_follow_the_players_own_games_and_leave_others_alone() -> None:
@@ -78,7 +78,7 @@ def test_a_table_chance_of_playing_replaces_the_stat_line_chance() -> None:
     q = {(g, w): 0.9 for g, w, _ in rows} | {("fine", 7): 0.9}  # E is 10 everywhere
     flag = ("Questionable", "Hamstring", None)
     flags, model, first = {"hurt": flag, "snaps": flag}, InjuryModel(_effects()), {"snaps": 0.8}
-    blended = stat_line_blend(frame, [], flags, model, 7, first, q)
+    blended = stat_line_blend(frame, {}, flags, model, 7, first, q)
     out = injury_projections(blended, flags, model, 7, first_game_chance=first).sort(
         "gsis_id", "week"
     )
@@ -93,11 +93,12 @@ def test_a_table_chance_of_playing_replaces_the_stat_line_chance() -> None:
     assert out.filter(pl.col("gsis_id") == "fine")["projection"].item() == pytest.approx(9.0)
 
 
-def _sources(sleeper: float) -> list[pl.DataFrame]:
+def _sources(sleeper: float) -> dict[str, pl.DataFrame]:
     """Sleeper, FFToday and prop points for one player-week (ours is E * q = 10 * 0.8)."""
-    return [
-        pl.DataFrame({"gsis_id": ["p"], "week": [7], "other": [v]}) for v in (sleeper, 14.0, 16.0)
-    ]
+    return {
+        name: pl.DataFrame({"gsis_id": ["p"], "week": [7], "other": [v]})
+        for name, v in (("sleeper", sleeper), ("fftoday", 14.0), ("props", 16.0))
+    }
 
 
 OURS = pl.DataFrame({"gsis_id": ["p"], "week": [7], "projection": [8.0]})
@@ -132,7 +133,7 @@ def test_a_table_chance_takes_no_q_and_never_divides_an_outside_source() -> None
 
 def test_a_game_without_a_stat_line_chance_is_warned_about_and_kept() -> None:
     with pytest.warns(UserWarning, match="no stat-line chance"):
-        out = stat_line_blend(OURS, [], {}, InjuryModel(_effects()), 7, None, {("x", 7): 0.8})
+        out = stat_line_blend(OURS, {}, {}, InjuryModel(_effects()), 7, None, {("x", 7): 0.8})
     assert out["projection"].item() == 8.0
 
 
@@ -223,10 +224,9 @@ def test_a_root_cell_with_no_games_at_a_horizon_takes_the_previous_rate() -> Non
     assert stage.shrink(cell, None).p == (0.8, 0.6, 0.6, 0.6)
 
 
-def test_ir_follows_the_measured_return_curve_when_given_one() -> None:
-    curve = (0.0, 0.04, 0.08, 0.13, 0.18, 0.2)
-    model = InjuryModel(_effects(), ir_curve=curve)
-    assert model.curve(("IR", "Knee", None)) == ((*curve, 1.0), 1.0)
+def test_ir_follows_the_measured_return_curve() -> None:
+    model = InjuryModel(_effects())
+    assert model.curve(("IR", "Knee", None)) == ((*IR_RETURN_CURVE, 1.0), 1.0)
     assert model.curve(("PUP", None, None))[0] == (0.0, 0.0, 0.0, 0.0, 1.0)  # type: ignore[index]
 
 

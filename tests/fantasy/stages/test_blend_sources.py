@@ -9,6 +9,7 @@ from test_simulate_load import LEAGUE, build_store, week_projection
 from fantasy import data_api
 from fantasy.config import load_config
 from fantasy.sim import league_data as sim
+from fantasy.sim import league_projections
 from fantasy.sim.blend import SLEEPER_WEIGHT, blend_all
 
 
@@ -16,14 +17,24 @@ def test_blend_all_is_the_equal_mean_of_the_sources_each_row_has() -> None:
     ours = pl.DataFrame({"gsis_id": ["a", "b", "c"], "week": [7] * 3, "projection": [10.0] * 3})
     sleeper = pl.DataFrame({"gsis_id": ["a", "b"], "week": [7, 7], "other": [14.0, 0.0]})
     props = pl.DataFrame({"gsis_id": ["a", "b"], "week": [7, 7], "other": [12.0, 0.0]})
-    out = blend_all(ours, [sleeper, props], "gsis_id", frozenset({"b"}))
+    out = blend_all(ours, {"sleeper": sleeper, "props": props}, "gsis_id", frozenset({"b"}))
     # a: (10 + 14 + 12) / 3; b is Questionable, so every source's 0 counts as missing; c: ours only
     assert out.sort("gsis_id")["projection"].to_list() == pytest.approx([12.0, 10.0, 10.0])
+
+
+def test_the_sleeper_weight_applies_only_where_sleeper_is_the_only_other_source() -> None:
+    ours = pl.DataFrame({"gsis_id": ["a", "b", "c"], "week": [7] * 3, "projection": [10.0] * 3})
+    sleeper = pl.DataFrame({"gsis_id": ["a", "b"], "week": [7, 7], "other": [20.0, 20.0]})
+    props = pl.DataFrame({"gsis_id": ["b"], "week": [7], "other": [16.0]})
+    out = blend_all(ours, {"sleeper": sleeper, "props": props}, "gsis_id", sleeper_weight=0.8)
+    # a: 0.2 * 10 + 0.8 * 20; b has a second source, so the equal mean (10 + 20 + 16) / 3; c: ours
+    assert out.sort("gsis_id")["projection"].to_list() == pytest.approx([18.0, 46 / 3, 10.0])
 
 
 def use_sources(monkeypatch: pytest.MonkeyPatch, sources: tuple[str, ...]) -> None:
     config = dataclasses.replace(load_config(), blend_sources=sources)
     monkeypatch.setattr(sim, "load_config", lambda: config)
+    monkeypatch.setattr(league_projections, "load_config", lambda: config)
 
 
 def add_outside_tables(tmp_path: Path) -> None:
@@ -58,12 +69,16 @@ def add_outside_tables(tmp_path: Path) -> None:
     )
 
 
+# week 4: only Sleeper projects it (16), so its weight applies
+LATER_SLEEPER_ONLY = (1 - SLEEPER_WEIGHT) * 10.0 + SLEEPER_WEIGHT * 16.0
+
+
 @pytest.mark.parametrize(
     ("sources", "week3", "week4"),
     [
         ((), 10.0, 10.0),
-        (("sleeper",), (1 - SLEEPER_WEIGHT) * 10.0 + SLEEPER_WEIGHT * 16.0, 13.0),
-        (("sleeper", "fftoday", "props"), (10.0 + 16.0 + 13.0 + 7.0) / 4, 13.0),
+        (("sleeper",), (1 - SLEEPER_WEIGHT) * 10.0 + SLEEPER_WEIGHT * 16.0, LATER_SLEEPER_ONLY),
+        (("sleeper", "fftoday", "props"), (10.0 + 16.0 + 13.0 + 7.0) / 4, LATER_SLEEPER_ONLY),
         (("fftoday", "props"), (10.0 + 13.0 + 7.0) / 3, 10.0),
     ],
 )

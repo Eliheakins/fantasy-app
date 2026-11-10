@@ -83,6 +83,16 @@ def league_ideas(
     )
 
 
+def _previous_ideas(league_ids: list[str], data_dir: Path | None) -> list[pl.DataFrame]:
+    if not league_ids:
+        return []
+    try:
+        old = store.read_table("move_ideas", "derived", data_dir)
+    except FileNotFoundError:
+        return []
+    return [old.filter(pl.col("league_id").is_in(league_ids))]
+
+
 def run(
     data_dir: Path | None = None,
     waivers: Finder | None = None,
@@ -94,6 +104,7 @@ def run(
     trades = trades or data_api.find_trades
     created = now or datetime.now(UTC).isoformat(timespec="seconds")
     frames = []
+    failed: list[str] = []
     for league in data_api.leagues(data_dir).iter_rows(named=True):
         if league["roster_id"] is None:  # a league added by someone else: no team of mine in it
             log.info("no ideas for %s: no team of mine", league["league_key"])
@@ -103,6 +114,8 @@ def run(
         except Exception as err:  # noqa: BLE001 - one league must not drop everyone's ideas
             log.exception("no ideas for %s", league["league_key"])
             note_soft_failure(f"digest skipped {league['league_key']}: {err!r}")
+            failed.append(league["league_id"])
+    frames.extend(_previous_ideas(failed, data_dir))  # a failed league keeps its last ideas
     table = pl.concat(frames) if frames else pl.DataFrame(schema=store.SCHEMAS["move_ideas"])
     store.write_table("move_ideas", table, "derived", data_dir)
     return table.height

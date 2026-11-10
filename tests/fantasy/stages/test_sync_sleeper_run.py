@@ -176,3 +176,15 @@ def test_with_nothing_registered_the_result_is_what_it_was_before(
     counts = run(FakeSleeper(), monkeypatch)
     assert table("leagues")["league_key"].to_list() == ["colgate"]
     assert counts["leagues"] == 1
+
+
+def test_a_swallowed_league_error_logs_its_traceback(
+    world: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    run(
+        FakeSleeper(broken={FRIEND_LEAGUE}),
+        monkeypatch,
+        registered=[("sl-L-friend", FRIEND_LEAGUE)],
+    )
+    [record] = [r for r in caplog.records if FRIEND_LEAGUE in r.getMessage()]
+    assert record.exc_info is not None

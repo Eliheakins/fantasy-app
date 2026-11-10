@@ -75,3 +75,12 @@ def test_the_length_rules() -> None:
     assert passwords.check_length("a" * passwords.MIN_PASSWORD_LENGTH) is None
     assert "at least" in (passwords.check_length("short") or "")
     assert "at most" in (passwords.check_length("a" * (passwords.MAX_PASSWORD_LENGTH + 1)) or "")
+
+
+def test_a_malformed_stored_value_is_logged_apart_from_a_wrong_password(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level("ERROR", logger=passwords.log.name):
+        assert not passwords.verify_password("anything at all", "scrypt$1024$8$1$!!$!!")
+    assert "malformed" in caplog.text
+    assert "anything at all" not in caplog.text

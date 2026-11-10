@@ -24,6 +24,7 @@ function open() {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+  return router;
 }
 
 async function fill(password: string, again: string) {
@@ -67,6 +68,15 @@ describe("RedeemInvite", () => {
     expect(calls).toEqual([
       { url: "/api/auth/redeem", method: "POST", body: { token: TOKEN, password: GOOD } },
     ]);
+  });
+
+  it("replaces the invite address after signing in, so the token leaves the history", async () => {
+    stubApi(() => okReply(ME));
+    const router = open();
+    await fill(GOOD, GOOD);
+    expect(await screen.findByText("the app")).toBeInTheDocument();
+    expect(router.state.historyAction).toBe("REPLACE");
+    expect(router.state.location.pathname).toBe("/");
   });
 
   it("shows why a used or expired link failed and stays on the page", async () => {

@@ -6,13 +6,20 @@ simulated once). `account_leagues` says who may see it. The owner's own leagues 
 come from config.toml.
 """
 
+import logging
 import sqlite3
-from datetime import datetime
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
+from fantasy._runs import note_soft_failure
 from fantasy.auth import accounts
+from fantasy.config import load_config
+
+log = logging.getLogger(__name__)
 
 MAX_ADDED_LEAGUES = 2
+MAX_REASON_CHARS = 300
 QUEUED, READY, ERROR = "queued", "ready", "error"
 
 
@@ -79,9 +86,10 @@ def add(
     name: str,
     now: datetime,
     roster_id: int | None = None,
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], bool]:
     """Register the league (if nobody has) and let the account see it, with `roster_id` as its
-    team. Safe to repeat; a repeat with a roster changes the team."""
+    team. Safe to repeat; a repeat with a roster changes the team. Returns the account's row and
+    whether the registry row is new (only then is a refresh worth asking for)."""
     held = {row["league_id"] for row in mine(conn, account_id)}
     if league_id not in held and len(held) >= MAX_ADDED_LEAGUES:
         raise LeagueLimit(
@@ -89,11 +97,14 @@ def add(
         )
     stamp = accounts.stamp(now)
     with conn:
-        conn.execute(
-            "INSERT INTO league_registry"
-            " (league_id, league_key, name, status, added_at, updated_at)"
-            " VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(league_id) DO NOTHING",
-            (league_id, key_for(league_id), name, QUEUED, stamp, stamp),
+        created = (
+            conn.execute(
+                "INSERT INTO league_registry"
+                " (league_id, league_key, name, status, added_at, updated_at)"
+                " VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(league_id) DO NOTHING",
+                (league_id, key_for(league_id), name, QUEUED, stamp, stamp),
+            ).rowcount
+            == 1
         )
         conn.execute(
             "INSERT INTO account_leagues (account_id, league_id, added_at, roster_id)"
@@ -101,7 +112,7 @@ def add(
             " SET roster_id = coalesce(excluded.roster_id, roster_id)",
             (account_id, league_id, stamp, roster_id),
         )
-    return next(row for row in mine(conn, account_id) if row["league_id"] == league_id)
+    return next(row for row in mine(conn, account_id) if row["league_id"] == league_id), created
 
 
 def release(conn: sqlite3.Connection, account_id: int, league_id: str) -> bool:
@@ -123,3 +134,22 @@ def mark(conn: sqlite3.Connection, league_id: str, error: str | None, now: datet
             "UPDATE league_registry SET status = ?, error = ?, updated_at = ? WHERE league_id = ?",
             (ERROR if error else READY, error, accounts.stamp(now), league_id),
         )
+
+
+def is_configured(league_id: str) -> bool:
+    """Whether the league is one of the owner's, from config.toml (its failure stops a run)."""
+    return league_id in load_config().leagues.values()
+
+
+def skip_added(
+    league_id: str, league_key: str, stage: str, err: Exception, data_dir: Path | None = None
+) -> None:
+    """A stage cannot handle a league someone added: log it, count it as a soft failure so the run
+    is recorded as failed, and mark the league `error` so its owner sees why. The stage goes on."""
+    reason = f"{stage} left out this league: {err}"[:MAX_REASON_CHARS]
+    log.warning("%s left out %s: %s", stage, league_key, err)
+    note_soft_failure(f"{stage} left out {league_key}: {err}")
+    if not accounts.db_path(data_dir).exists():
+        return
+    with accounts.open_db(data_dir) as conn:
+        mark(conn, league_id, reason, datetime.now(UTC))

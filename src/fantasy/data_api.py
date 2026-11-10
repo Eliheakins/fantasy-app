@@ -26,6 +26,7 @@ from fantasy._engine import _league, _read
 from fantasy._engine import _tier as _tier  # re-exported: tests import it from here
 from fantasy._engine import _tier_edges as _tier_edges
 from fantasy._engine import data_version as data_version
+from fantasy._engine import file_stamp as file_stamp
 from fantasy._engine import pinned_version as pinned_version
 from fantasy._leagues import TEAM_COLUMNS, leagues, my_league, scoring_labels
 from fantasy._lineup import lineup, win_probability
@@ -57,6 +58,7 @@ __all__ = [
     "actions",
     "clear_league_cache",
     "data_version",
+    "file_stamp",
     "pinned_version",
     "evaluate_trade",
     "find_trades",

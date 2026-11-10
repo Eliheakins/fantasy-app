@@ -40,7 +40,11 @@ def sign_in(store_dir: Path, email: str, *, admin: bool = False, grant: bool = F
         token = accounts.create_invite(conn, email, datetime.now(UTC))
         accounts.redeem_invite(conn, token, GOOD, datetime.now(UTC))
     if grant:
-        accounts.grant_league(conn, account_id_of(conn, email), LEAGUE_ID)
+        conn.execute(
+            "INSERT INTO account_leagues (account_id, league_id, added_at) VALUES (?, ?, ?)",
+            (account_id_of(conn, email), LEAGUE_ID, accounts.stamp(datetime.now(UTC))),
+        )
+        conn.commit()
     conn.close()
     client = TestClient(
         api.create_app(data_dir=store_dir), base_url="http://localhost", headers=CSRF

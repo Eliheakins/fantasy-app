@@ -15,7 +15,6 @@ MIN_GAIN = 0.05  # expected points below this are not worth a roster move
 
 def waivers(
     league_key: str,
-    week: int = 0,
     loaded: tuple[LeagueData, int] | None = None,
     data_dir: Path | None = None,
     team: int | None = None,
@@ -73,7 +72,6 @@ def player_points(
     gsis_id: str | None,
     season: int,
     data_dir: Path | None = None,
-    team: int | None = None,
 ) -> pl.DataFrame:
     """Regular-season points per week under this league's scoring: one player's, or everyone's."""
     league_id = _league_id(league_key, data_dir)

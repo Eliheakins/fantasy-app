@@ -1,5 +1,7 @@
 import json
 
+import polars as pl
+
 from fantasy.stages.sleeper_projections import snapshot_frame
 
 
@@ -56,3 +58,31 @@ def test_blend_ignores_a_sleeper_zero_only_for_keys_marked_zero_is_missing() -> 
     theirs = pl.DataFrame({"gsis_id": ["a", "b"], "week": [8, 8], "other": [0.0, 0.0]})
     out = blend(ours, theirs, "gsis_id", frozenset({"a"}))
     assert out.sort("gsis_id")["projection"].to_list() == [10.0, 5.0]
+
+
+def snaps(*stat_lines: dict[str, float]) -> pl.DataFrame:
+    items = [{"player_id": str(i), "stats": s} for i, s in enumerate(stat_lines)]
+    return snapshot_frame(7, "2026-10-23T18:00:00+00:00", items)
+
+
+def test_a_scored_stat_sleeper_no_longer_sends_is_named_and_flagged() -> None:
+    from fantasy import _runs
+    from fantasy.stages.sleeper_projections import scored_latest
+
+    scoring = {"rec": 1.0, "rec_yd": 0.1, "bonus_rec_te": 0.5, "pass_td": 0.0}
+    _runs._soft_failures.clear()
+    scored_latest(snaps({"rec": 5.0, "rec_yd": 50.0}), scoring)
+    assert len(_runs._soft_failures) == 1
+    assert "bonus_rec_te" in _runs._soft_failures[0]
+    assert "pass_td" not in _runs._soft_failures[0]  # zero weight: nothing lost
+    _runs._soft_failures.clear()
+
+
+def test_keys_sleeper_never_projects_for_offense_stay_quiet() -> None:
+    from fantasy import _runs
+    from fantasy.stages.sleeper_projections import scored_latest
+
+    scoring = {"rec": 1.0, "pts_allow_0": 10.0, "sack": 1.0, "fgm_50_59": 5.0, "fgmiss": -1.0}
+    _runs._soft_failures.clear()
+    scored_latest(snaps({"rec": 5.0}), scoring)  # defense and kicker keys are bucketed elsewhere
+    assert _runs._soft_failures == []

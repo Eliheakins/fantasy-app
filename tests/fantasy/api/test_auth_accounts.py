@@ -21,14 +21,6 @@ def db(tmp_path: Path):  # noqa: ANN201 - a sqlite3 connection
     conn.close()
 
 
-def test_there_is_no_auth_until_the_first_account_exists(tmp_path: Path) -> None:
-    assert accounts.has_accounts(tmp_path) is False
-    conn = accounts.connect(tmp_path)
-    accounts.create_admin(conn, "Boss@Example.com", GOOD)
-    conn.close()
-    assert accounts.has_accounts(tmp_path) is True
-
-
 def test_an_admin_can_log_in_with_any_email_casing(db) -> None:  # noqa: ANN001
     accounts.create_admin(db, "Boss@Example.com", GOOD)
     account = accounts.login(db, "  boss@EXAMPLE.com ", GOOD)
@@ -149,3 +141,31 @@ def test_listing_accounts_never_includes_hashes(db) -> None:  # noqa: ANN001
         "boss@example.com": True,
         "friend@example.com": False,
     }
+
+
+def test_a_new_auth_db_and_its_wal_files_are_owner_only(tmp_path: Path) -> None:
+    data_dir = tmp_path / "fresh" / "data"
+    conn = accounts.connect(data_dir)
+    try:
+        accounts.create_admin(conn, "boss@example.com", GOOD)
+        files = [accounts.db_path(data_dir), *data_dir.glob("auth.db-*")]
+        assert {f.name for f in files} >= {"auth.db", "auth.db-wal", "auth.db-shm"}
+        assert [oct(f.stat().st_mode & 0o777) for f in files] == ["0o600"] * len(files)
+        assert oct(data_dir.stat().st_mode & 0o777) == "0o700"
+    finally:
+        conn.close()
+
+
+def test_a_db_file_owned_by_another_user_still_opens_with_a_warning(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    def refuse(self: Path, mode: int) -> None:
+        raise PermissionError(f"not the owner of {self}")
+
+    monkeypatch.setattr(Path, "chmod", refuse)
+    conn = accounts.connect(tmp_path)
+    try:
+        assert conn.execute("SELECT count(*) FROM accounts").fetchone()[0] == 0
+    finally:
+        conn.close()
+    assert "cannot make" in caplog.text

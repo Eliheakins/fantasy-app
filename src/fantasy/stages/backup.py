@@ -2,8 +2,11 @@
 Neither can be regenerated.
 
 `make refresh` runs it first. The folder is `~/fantasy-app-backups` unless FANTASY_BACKUP_DIR is
-set; the newest KEEP copies stay. The archive holds private-use data and the accounts file holds
-password hashes, so keep the folder out of any repository or shared drive.
+set; the newest KEEP copies stay. A copy is checked against the source (file count and bytes)
+before it is kept, and no older copy is deleted when the new one holds fewer files or bytes than the
+previous one, because that means the archive itself lost data. The archive holds private-use data
+and the accounts file holds password hashes, so keep the folder out of any repository or shared
+drive.
 """
 
 import logging
@@ -36,6 +39,12 @@ def copy_database(source: Path, destination: Path) -> None:
     destination.chmod(0o600)
 
 
+def tree_size(path: Path, skip: str = "") -> tuple[int, int]:
+    """(file count, bytes) under `path`, leaving out a top-level file named `skip`."""
+    files = [p for p in path.rglob("*") if p.is_file() and p.relative_to(path) != Path(skip)]
+    return len(files), sum(p.stat().st_size for p in files)
+
+
 def run(data_dir: Path | None = None, target: Path | None = None, keep: int = KEEP) -> Path | None:
     """The new copy's path, or None when there is nothing yet to back up. Older copies past `keep`
     go."""
@@ -58,8 +67,24 @@ def run(data_dir: Path | None = None, target: Path | None = None, keep: int = KE
         partial.mkdir()
     if auth.exists():
         copy_database(auth, partial / accounts.DB_NAME)
+    copied = tree_size(
+        partial, accounts.DB_NAME
+    )  # the accounts file is a SQLite copy, not a file copy
+    if copied != (tree_size(source) if source.is_dir() else (0, 0)):
+        shutil.rmtree(partial)
+        raise RuntimeError(f"backup of {source} is incomplete (files, bytes): {copied}; discarded")
+    earlier = sorted(p for p in root.iterdir() if p.is_dir() and COPY_NAME.match(p.name))
     partial.rename(copy)  # a copy that failed halfway never carries a real name
-    stamped = sorted(p for p in root.iterdir() if p.is_dir() and COPY_NAME.match(p.name))
+    previous = tree_size(earlier[-1], accounts.DB_NAME) if earlier else (0, 0)
+    if copied[0] < previous[0] or copied[1] < previous[1]:
+        log.warning(
+            "archive shrank since %s (files, bytes: %s -> %s); keeping every backup",
+            earlier[-1].name,
+            previous,
+            copied,
+        )
+        return copy
+    stamped = [*earlier, copy]
     for old in stamped[: max(len(stamped) - keep, 0)]:
         shutil.rmtree(old)
     return copy

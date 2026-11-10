@@ -24,9 +24,9 @@ from pathlib import Path
 from typing import Any
 
 from fantasy import refresh_queue, releases, store
-from fantasy._lock import RUN_ID_ENV, new_run_id
+from fantasy._lock import NOT_PUBLISHED_EXIT, RUN_ID_ENV, new_run_id
+from fantasy._runs import SOFT_EXIT_ENV, SOFT_FAILURE_EXIT, read_runs, record_run
 from fantasy._runs import TABLE as RUNS_TABLE
-from fantasy._runs import record_run
 from fantasy.stages import refresh_report
 
 # The whole refresh took about 95 s on the Mac; a hung download must not hold the lock for long.
@@ -34,10 +34,10 @@ STAGE_TIMEOUT_S = 600.0
 RUN_TIMEOUT_S = 20 * 60.0
 NETWORK_RETRIES = 2
 RETRY_BACKOFF_S = 30.0
-# EX_TEMPFAIL: a required stage failed and nothing was published. The server's service retries on
-# this code only; exit 1 (an optional stage failed, the data was published) is not retried,
-# because a second run would append to data/archive again.
-NOT_PUBLISHED_EXIT = 75
+# NOT_PUBLISHED_EXIT (EX_TEMPFAIL, in _lock): a required stage failed and nothing was published.
+# The server's service retries on this code only; exit 1 (an optional stage failed, the data was
+# published) is not retried, because the run is done. A retry keeps the run id (_lock), so
+# store.with_archive replaces the failed run's archive rows instead of adding to them.
 
 
 @dataclass(frozen=True)
@@ -53,6 +53,7 @@ class Stage:
 class Outcome:
     ok: bool
     error: str | None = None
+    soft: bool = False  # the stage recorded a soft failure itself: retry it, then let the run go on
 
 
 Runner = Callable[[Stage], Outcome]
@@ -76,7 +77,6 @@ STAGES: tuple[Stage, ...] = (
     Stage("distributions", "fantasy.stages.distributions"),
     Stage("injuries", "fantasy.stages.injuries", required=False),
     Stage("outlook", "fantasy.stages.outlook", required=False),
-    Stage("environment", "fantasy.stages.environment", required=False),
     Stage("simulate", "fantasy.stages.simulate"),
     Stage("digest", "fantasy.stages.digest", required=False),
     Stage("market_values", "fantasy.stages.market_values", False, True),
@@ -92,16 +92,16 @@ def argv_for(stage: Stage) -> list[str]:
 def run_command(argv: Sequence[str], timeout: float = STAGE_TIMEOUT_S) -> Outcome:
     """Run one command; a timeout kills it and counts as a failure."""
     try:
-        done = subprocess.run(list(argv), timeout=timeout, check=False)
+        done = subprocess.run(
+            list(argv), timeout=timeout, check=False, env={**os.environ, SOFT_EXIT_ENV: "1"}
+        )
     except subprocess.TimeoutExpired:
         return Outcome(False, f"timed out after {timeout:g}s")
     if done.returncode == 0:
         return Outcome(True)
+    if done.returncode == SOFT_FAILURE_EXIT:
+        return Outcome(False, "soft failure", soft=True)
     return Outcome(False, f"exit code {done.returncode}")
-
-
-def run_stage_process(stage: Stage) -> Outcome:
-    return run_command(argv_for(stage))
 
 
 def _attempt(stage: Stage, runner: Runner, sleep: Callable[[float], None]) -> Outcome:
@@ -114,8 +114,27 @@ def _attempt(stage: Stage, runner: Runner, sleep: Callable[[float], None]) -> Ou
     return outcome
 
 
-def _note(stage: Stage, error: str | None, data_dir: Path | None, duration_s: float | None) -> None:
-    """Record a failure the stage itself could not (killed, timed out, never started)."""
+def _child_recorded(stage: Stage, since: str, data_dir: Path | None) -> bool:
+    """Whether run_recorded already wrote a failed row for this stage since `since`."""
+    try:
+        table = read_runs(data_dir)
+    except FileNotFoundError:
+        return False
+    mine = table.filter((table["stage"] == stage.name) & (table["finished_at"] >= since))
+    return bool((mine["status"] == "failed").any())
+
+
+def _note(
+    stage: Stage,
+    error: str | None,
+    data_dir: Path | None,
+    duration_s: float | None,
+    since: str | None = None,
+) -> None:
+    """Record a failure the stage itself could not (killed, timed out, never started); a failure
+    the child recorded keeps its own, more exact error."""
+    if since and _child_recorded(stage, since, data_dir):
+        return
     record_run(
         stage.name,
         "failed",
@@ -146,11 +165,12 @@ def execute(
             results[stage.name] = "skipped"
             continue
         began = clock()
+        began_at = datetime.now(UTC).isoformat(timespec="seconds")
         outcome = _attempt(stage, runner, sleep)
-        if outcome.ok:
+        if outcome.ok or outcome.soft:  # a soft failure is already recorded and never stops the run
             results[stage.name] = "ok"
             continue
-        _note(stage, outcome.error, data_dir, clock() - began)
+        _note(stage, outcome.error, data_dir, clock() - began, began_at)
         results[stage.name] = "failed"
         if stage.required:
             stopped_because = f"{stage.name} failed"
@@ -191,9 +211,9 @@ def refresh(stages: Sequence[Stage], runner: Runner, **options: Any) -> tuple[di
     return results, published
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main() -> int:
     started = datetime.now(UTC).isoformat(timespec="seconds")
-    _, published = refresh(STAGES, run_stage_process)
+    _, published = refresh(STAGES, lambda stage: run_command(argv_for(stage)))
     code = refresh_report.main(["--since", started])
     if published:
         return code
@@ -202,4 +222,4 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1:]))
+    raise SystemExit(main())

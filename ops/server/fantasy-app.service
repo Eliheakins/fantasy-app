@@ -6,6 +6,18 @@ Wants=network-online.target
 [Service]
 User=fantasy
 WorkingDirectory=/home/fantasy/fantasy-app
+# Sandbox: the app writes only its checkout (data/, .venv) and uv's cache; new files are private.
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+ReadWritePaths=/home/fantasy/fantasy-app /home/fantasy/.cache
 EnvironmentFile=-/etc/fantasy-app.env
 # push.sh syncs the environment; a sync on every start would hit the network each restart.
 Environment=UV_NO_SYNC=1

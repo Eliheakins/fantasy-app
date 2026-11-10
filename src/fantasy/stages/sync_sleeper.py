@@ -4,6 +4,7 @@ Run: uv run python -m fantasy.stages.sync_sleeper
 """
 
 import json
+import logging
 import time
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
@@ -18,6 +19,7 @@ from fantasy.config import Config, load_config
 from fantasy.sources.sleeper import SleeperError, fetch
 from nfl_stat.pipeline.atomic import atomic_path
 
+log = logging.getLogger(__name__)
 PLAYERS_CACHE = store.DATA_DIR / "raw" / "sleeper_players_cache.json"
 PLAYERS_TTL_SECONDS = 24 * 3600  # Sleeper asks for at most one players pull a day
 FANTASY_POSITIONS = {"QB", "RB", "WR", "TE", "K", "DEF"}
@@ -299,6 +301,14 @@ def record_outcomes(outcomes: Sequence[tuple[str, str | None]]) -> None:
 def run(
     cfg: Config, registered: Registered | None = None, report: Report | None = None
 ) -> dict[str, int]:
+    """Pull every configured and registered league, trending adds/drops and the players file.
+
+    Needs the network (Sleeper, read-only); no earlier stage. A failing configured league stops
+    the run, a failing registered one is recorded through `report` (default `record_outcomes`) and
+    skipped. Writes the league tables (`leagues`, teams, rosters, matchups, transactions),
+    `trending` and `sleeper_players` to the raw area, each replaced whole. Returns row counts by
+    table.
+    """
     fetched_at = datetime.now(UTC).isoformat(timespec="seconds")
     out: dict[str, list[pl.DataFrame]] = {name: [] for name in LEAGUE_TABLES}
     outcomes: list[tuple[str, str | None]] = []
@@ -317,6 +327,7 @@ def run(
         try:
             take(_league_frames(key, league_id, cfg.user_id, strict=False))
         except ISOLATED_ERRORS as err:  # one bad league must not stop everyone else's refresh
+            log.exception("league %s not synced", league_id)  # the traceback shows a code bug
             outcomes.append((league_id, _reason(err)))
         else:
             outcomes.append((league_id, None))

@@ -5,6 +5,8 @@ data/<area>/<name>.parquet, where area is raw, derived or archive. Stages regist
 tables in SCHEMAS; reads and writes assert the columns and dtypes match.
 """
 
+import json
+import logging
 import os
 import re
 from contextlib import ExitStack
@@ -15,6 +17,8 @@ import polars as pl
 from fantasy.config import ROOT, load_config
 from nfl_stat.pipeline.atomic import atomic_path
 
+log = logging.getLogger(__name__)
+
 DATA_DIR = ROOT / "data"
 AREAS = ("raw", "derived", "archive")
 # raw and derived tables live in a release: data/current -> data/releases/<id> (fantasy/releases).
@@ -22,6 +26,8 @@ AREAS = ("raw", "derived", "archive")
 RELEASE_AREAS = ("raw", "derived")
 CURRENT = "current"
 RELEASE_ENV = "FANTASY_RELEASE_DIR"  # set by the pipeline for its stages: the release being built
+RUN_ID_ENV = "FANTASY_RUN_ID"  # one id per `make refresh`, kept across a retry of a failed run
+RUNS_DIR = ".runs"  # inside data/archive: which rows of each table the current run appended
 SKILL = ["QB", "RB", "WR", "TE"]  # positions the projection and simulation layers cover
 WEEK_STRIDE = 25  # weeks per season in the running index; playoffs reach week 22
 _NAME = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -223,8 +229,6 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     "availability": _cols(strings="gsis_id", ints="season week", floats="p_play"),
     # written by outlook (area: derived): return-from-absence ratios and teammate-vacancy slopes
     "outlook_effects": _cols(strings="position kind", ints="n", floats="value"),
-    # written by environment (area: derived): offense efficiency and opposing-corner effects
-    "environment_effects": _cols(strings="position kind", ints="n", floats="value t"),
     "sim_seeds": _cols(strings="league_id", ints="roster_id seed", floats="p"),
     # written by simulate with sim_season: a team's expected score (mean plus mean shift) and spread
     # in each remaining regular-season week
@@ -329,9 +333,6 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "fg_made_0_19 fg_made_20_29 fg_made_30_39 fg_made_40_49 fg_made_50_59 fg_made_60_ "
         "fg_missed_0_19 fg_missed_20_29 fg_missed_30_39 fg_missed_40_49 fg_missed_50_59 "
         "fg_missed_60_ pat_made pat_att pat_missed fantasy_points fantasy_points_ppr",
-    ),
-    "nfl_team_efficiency": _cols(
-        strings="team opponent", ints="season week", floats="pass_epa sack_rate"
     ),
     "nfl_team_stats": _cols(
         strings="team season_type opponent_team",
@@ -445,14 +446,60 @@ def write_table(
     return table_path(name, area, data_dir)
 
 
+class ArchiveMissing(RuntimeError):
+    """An archive table is missing while its siblings exist (wrong dir, lost file, bad restore)"""
+
+
+def read_archive(name: str, data_dir: Path | None = None) -> pl.DataFrame:
+    """The archive table. A missing file counts as a first run only when the archive folder holds
+    no tables at all; otherwise it raises, because starting a fresh one-snapshot table would hide
+    the loss of history that cannot be regenerated."""
+    path = table_path(name, "archive", data_dir)
+    if path.exists():
+        return read_table(name, "archive", data_dir)
+    siblings = sorted(p.stem for p in path.parent.glob("*.parquet"))
+    if siblings:
+        raise ArchiveMissing(
+            f"archive table {name!r} is missing from {path.parent} but {siblings} exist: a wrong "
+            "data dir, a deleted file or a bad restore. Restore it from a backup; to start it "
+            "fresh on purpose, write an empty table with store.write_table(..., 'archive')"
+        )
+    log.warning("archive %s has no tables yet; starting %r as a first run", path.parent, name)
+    return pl.DataFrame(schema=SCHEMAS[name])
+
+
+def _rows_before_this_run(
+    name: str, old: pl.DataFrame, run_id: str | None, data_dir: Path | None
+) -> pl.DataFrame:
+    """`old` without the rows an earlier append of the same run (a retry after exit 75) added.
+    A small file per table records the run id and the row count before that run's first append;
+    archive tables only ever grow at the end, so the first rows_before rows are earlier runs."""
+    ledger = table_path(name, "archive", data_dir).parent / RUNS_DIR / f"{name}.json"
+    if run_id is None:  # a stage run alone: plain append, and forget the run so rows are not cut
+        ledger.unlink(missing_ok=True)
+        return old
+    if ledger.exists():
+        recorded = json.loads(ledger.read_text())
+        if recorded["run_id"] == run_id:
+            if recorded["rows_before"] > old.height:
+                raise ValueError(
+                    f"{name}: the archive has {old.height} rows, fewer than the "
+                    f"{recorded['rows_before']} before run {run_id}; it was changed or restored"
+                )
+            return old.head(recorded["rows_before"])
+    ledger.parent.mkdir(parents=True, exist_ok=True)
+    with atomic_path(ledger) as tmp:
+        tmp.write_text(json.dumps({"run_id": run_id, "rows_before": old.height}))
+    return old
+
+
 def with_archive(name: str, new: pl.DataFrame, data_dir: Path | None = None) -> pl.DataFrame:
-    """The archive table with `new` appended, or `new` alone when no archive exists yet.
-    Reads only; the caller writes."""
-    try:
-        old = read_table(name, "archive", data_dir)
-    except FileNotFoundError:
-        return new
-    return pl.concat([old, new])
+    """The archive table with `new` appended. Appending twice under one FANTASY_RUN_ID (a retry
+    after a failed run) replaces the run's earlier rows instead of adding to them. Reads only
+    (apart from the run's ledger file); the caller writes."""
+    old = read_archive(name, data_dir)
+    base = _rows_before_this_run(name, old, os.environ.get(RUN_ID_ENV) or None, data_dir)
+    return pl.concat([base, new])
 
 
 def read_table(name: str, area: str = "derived", data_dir: Path | None = None) -> pl.DataFrame:

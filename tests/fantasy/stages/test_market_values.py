@@ -302,3 +302,21 @@ def test_find_route_rows_carry_the_market_summary(
     out = wait_ok(client, lambda: client.post("/api/leagues/t/trades/find"))
     market = out["data"][0]["market"]
     assert market["give_value"] == 7000.0 and market["hint"].endswith("no value for 1 player")
+
+
+@pytest.mark.parametrize(
+    "body", [[], [item(None), item("9", position="PICK")]], ids=["empty", "all dropped"]
+)
+def test_a_response_with_no_usable_rows_is_a_soft_failure_that_keeps_the_values(
+    tmp_path: Path, body: list[Any]
+) -> None:
+    from fantasy import _runs
+
+    write_leagues(tmp_path)
+    stage.run(tmp_path, lambda s: [item("1")], YESTERDAY)
+    before = store.read_table("market_values", "raw", tmp_path)
+    _runs._soft_failures.clear()
+    stage.run(tmp_path, lambda s: body, TODAY)
+    assert store.read_table("market_values", "raw", tmp_path).equals(before)
+    assert len(_runs._soft_failures) == 2  # one per setting
+    _runs._soft_failures.clear()

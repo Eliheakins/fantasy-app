@@ -554,7 +554,7 @@ def test_trade_evaluate_says_busy_when_all_slots_are_taken(
 ) -> None:
     full = threading.BoundedSemaphore(1)
     full.acquire()
-    monkeypatch.setattr(api_routes, "TRADE_SLOTS", full)
+    monkeypatch.setattr(api_routes.jobs, "TRADE_SLOTS", full)
     payload = {"partner_roster_id": 2, "give_ids": ["G_QB"], "get_ids": ["G_OPP"]}
     out = body(client.post("/api/leagues/t/trades/evaluate", json=payload))
     assert out["error"]["code"] == "busy"
@@ -608,7 +608,7 @@ def test_a_job_builds_its_league_under_the_version_in_its_key(
 ) -> None:
     seen: list[str] = []
     versions = iter(["v1", "v2"])
-    monkeypatch.setattr(api_routes, "data_version", lambda data_dir: next(versions))
+    monkeypatch.setattr(api_routes.common, "data_version", lambda data_dir: next(versions))
     monkeypatch.setattr(
         _engine, "_league_cached", lambda key, version, d: seen.append(version) or (None, 1)
     )
@@ -653,7 +653,9 @@ def test_unexpected_exceptions_become_a_server_error_without_the_text(
         raise RuntimeError("secret detail")
 
     monkeypatch.setattr(data_api, "lineup", boom)
-    out = body(client.get("/api/leagues/t/lineup"))
+    response = client.get("/api/leagues/t/lineup")
+    out = response.json()
+    assert response.status_code == 500
     assert out["error"]["code"] == "server" and "secret" not in out["error"]["message"]
 
 
@@ -765,11 +767,15 @@ def test_data_version_parses_the_schedule_once_per_file_state(
 
 
 def test_known_league_treats_missing_tables_as_before(store_dir: Path, tmp_path: Path) -> None:
-    assert api_routes.known_league("t", store_dir)
-    assert not api_routes.known_league("zzz", store_dir)
-    assert not api_routes.known_league("t", tmp_path / "empty")  # old read gave an empty frame
+    assert api_routes.common.known_league("t", store_dir)
+    assert not api_routes.common.known_league("zzz", store_dir)
+    assert not api_routes.common.known_league(
+        "t", tmp_path / "empty"
+    )  # old read gave an empty frame
     (store_dir / "raw" / "league_teams.parquet").unlink()
-    assert api_routes.known_league("t", store_dir)  # old join read the missing table as empty
+    assert api_routes.common.known_league(
+        "t", store_dir
+    )  # old join read the missing table as empty
 
 
 def test_data_version_without_a_schedule_has_no_clock_bucket_until_it_appears(
@@ -822,3 +828,16 @@ def test_status_returns_the_latest_run_per_stage(client: TestClient, store_dir: 
         ("score", "ok", None),
     }
     assert set(runs[0]) == {"stage", "finished_at", "status", "error"}
+
+
+def test_serving_keeps_the_access_log_off_so_invite_tokens_stay_out_of_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import uvicorn
+
+    from fantasy import api
+
+    seen: dict[str, Any] = {}
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kwargs: seen.update(kwargs))
+    api.main([])
+    assert seen["access_log"] is False

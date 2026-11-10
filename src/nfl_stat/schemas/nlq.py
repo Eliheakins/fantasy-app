@@ -10,13 +10,17 @@ Granularity = Literal["total", "per_game", "per_play"]
 MAX_INTENT_STATS = 5
 
 
-# The client sends the catalog with each ask and it goes into the prompt, so bound its size.
-MAX_CATALOG_STATS = 200
-MAX_CATALOG_FILTERS = 400
-MAX_ALIASES = 20
+# The client sends the catalog with each ask and it goes into a paid model call, so bound it
+# at 1.5x what the app sends (2026-11-10: 76 stats, 42 filters, 7 aliases of 35 characters at
+# most, text up to 29 characters, 13.0 KB serialized). Refresh the measure with
+# tests/stat/eval/catalog.json when the catalog grows.
+MAX_CATALOG_STATS = 114
+MAX_CATALOG_FILTERS = 63
+MAX_ALIASES = 11
+MAX_INTENT_BODY_BYTES = 20_000
 
-ShortText = Annotated[str, Field(max_length=100)]
-Alias = Annotated[str, Field(max_length=60)]
+ShortText = Annotated[str, Field(max_length=44)]
+Alias = Annotated[str, Field(max_length=52)]
 
 
 class CatalogStat(BaseModel):

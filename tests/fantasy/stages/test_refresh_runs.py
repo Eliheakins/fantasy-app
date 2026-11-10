@@ -183,3 +183,32 @@ def test_a_stage_run_outside_a_pipeline_has_no_run_id(
     _runs.run_stage("alone", mod, data_dir=tmp_path / "d")
     [row] = runs(tmp_path / "d")
     assert row["run_id"] is None
+
+
+def test_a_system_exit_message_is_the_recorded_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mod = module(tmp_path, monkeypatch, "stage_msg", "raise SystemExit('league 9 has no teams')\n")
+    assert _runs.run_stage("msg", mod, data_dir=tmp_path) == 1
+    [row] = runs(tmp_path)
+    assert (row["status"], row["error"]) == ("failed", "league 9 has no teams")
+
+
+def test_a_soft_failure_exits_with_the_soft_code_only_when_the_pipeline_asks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    body = "from fantasy._runs import note_soft_failure\nnote_soft_failure('x')\n"
+    mod = module(tmp_path, monkeypatch, "stage_soft2", body)
+    assert _runs.run_stage("soft", mod, data_dir=tmp_path) == 0
+    monkeypatch.setenv(_runs.SOFT_EXIT_ENV, "1")
+    assert _runs.run_stage("soft", mod, data_dir=tmp_path) == _runs.SOFT_FAILURE_EXIT
+    assert [r["status"] for r in runs(tmp_path)] == ["failed", "failed"]
+
+
+def test_report_fails_when_no_stage_recorded_since_the_start(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _runs.record_run("score", "ok", None, tmp_path, now=datetime(2026, 11, 1, tzinfo=UTC))
+    code = refresh_report.main(["--since", "2026-11-05T11:00:00Z"], data_dir=tmp_path)
+    assert code == 1
+    assert "REFRESH FAILED: no stage recorded since" in capsys.readouterr().out

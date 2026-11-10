@@ -94,3 +94,25 @@ def test_a_child_of_the_holder_does_not_wait_for_its_parent(
 def test_main_needs_a_command_and_passes_the_exit_code_through(tmp_path: Path) -> None:
     assert _lock.main([]) == 2
     assert _lock.hold_and_run([sys.executable, "-c", "import sys; sys.exit(4)"], tmp_path) == 4
+
+
+def _ids_seen(tmp_path: Path, code: int) -> str:
+    child = (
+        "import os, sys\n"
+        "open(sys.argv[1], 'w').write(os.environ['FANTASY_RUN_ID'])\n"
+        f"sys.exit({code})\n"
+    )
+    out = tmp_path / "id.txt"
+    hold_and_run([sys.executable, "-c", child, str(out)], tmp_path)
+    return out.read_text().strip()
+
+
+def test_a_run_that_was_not_published_is_retried_under_the_same_run_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv(_lock.RUN_ID_ENV, raising=False)
+    first = _ids_seen(tmp_path, _lock.NOT_PUBLISHED_EXIT)
+    assert _ids_seen(tmp_path, _lock.NOT_PUBLISHED_EXIT) == first
+    assert _ids_seen(tmp_path, 0) == first  # the retry that publishes still shares the id
+    monkeypatch.setattr(_lock, "new_run_id", lambda: "next")
+    assert _ids_seen(tmp_path, 0) == "next"  # a published run ends the chain

@@ -112,3 +112,62 @@ def test_write_tables_keeps_the_old_files_when_a_later_table_fails_to_write(
     assert store.read_table("demo_a", data_dir=tmp_path)["x"].to_list() == [1]
     assert not store.table_path("demo_b", data_dir=tmp_path).exists()
     assert not list(tmp_path.rglob("*.tmp"))
+
+
+def archive_append(df: pl.DataFrame, data_dir: Path) -> pl.DataFrame:
+    result = store.with_archive("demo", df, data_dir)
+    store.write_table("demo", result, "archive", data_dir)
+    return result
+
+
+def test_a_retry_under_the_same_run_id_replaces_the_runs_earlier_rows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(store.RUN_ID_ENV, "run-1")
+    archive_append(pl.DataFrame({"player_id": ["old"], "points": [0.5]}), tmp_path)
+    monkeypatch.setenv(store.RUN_ID_ENV, "run-2")
+    archive_append(demo_frame(), tmp_path)
+
+    again = archive_append(demo_frame().with_columns(points=pl.col("points") + 1), tmp_path)
+
+    assert again["player_id"].to_list() == ["old", "a", "b"]  # one set of run-2 rows
+    assert again["points"].to_list() == [0.5, 2.5, 3.5]
+
+
+def test_a_different_run_id_appends(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(store.RUN_ID_ENV, "run-1")
+    archive_append(demo_frame(), tmp_path)
+    monkeypatch.setenv(store.RUN_ID_ENV, "run-2")
+    assert archive_append(demo_frame(), tmp_path).height == 4
+
+
+def test_without_a_run_id_every_append_adds_and_forgets_the_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(store.RUN_ID_ENV, "run-1")
+    archive_append(demo_frame(), tmp_path)
+    monkeypatch.delenv(store.RUN_ID_ENV)
+    assert archive_append(demo_frame(), tmp_path).height == 4
+    monkeypatch.setenv(store.RUN_ID_ENV, "run-1")  # the standalone rows are not cut off
+    assert archive_append(demo_frame(), tmp_path).height == 6
+
+
+def test_a_missing_table_with_siblings_present_raises_and_names_the_table(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setitem(store.SCHEMAS, "other", store.SCHEMAS["demo"])
+    store.write_table("other", demo_frame(), "archive", tmp_path)
+
+    with pytest.raises(store.ArchiveMissing, match="'demo'"):
+        store.with_archive("demo", demo_frame(), tmp_path)
+
+
+def test_a_completely_empty_archive_bootstraps_with_a_warning(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    (tmp_path / "archive" / "odds").mkdir(parents=True)  # folders are not tables
+
+    result = store.with_archive("demo", demo_frame(), tmp_path)
+
+    assert result.equals(demo_frame())
+    assert "first run" in caplog.text

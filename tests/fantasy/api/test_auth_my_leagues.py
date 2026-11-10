@@ -38,6 +38,22 @@ class FakeSleeper:
                 {"league_id": "222", "name": "Second", "total_rosters": 12, "settings": STANDARD},
                 {"league_id": "333", "name": "Third", "total_rosters": 8, "settings": STANDARD},
                 {"league_id": "444", "name": "Chopped", "total_rosters": 16, "settings": CHOPPED},
+                {
+                    "league_id": "555",
+                    "name": "Bonus",
+                    "total_rosters": 10,
+                    "settings": STANDARD,
+                    "scoring_settings": {"rec": 1.0, "bonus_rec_te": 0.5},
+                    "roster_positions": ["QB", "RB", "WR", "BN"],
+                },
+                {
+                    "league_id": "666",
+                    "name": "Odd lineup",
+                    "total_rosters": 10,
+                    "settings": STANDARD,
+                    "scoring_settings": {"rec": 1.0},
+                    "roster_positions": ["QB", "RB", "WRRB_FLEX", "BN"],
+                },
             ],
             "u-other": [
                 {
@@ -56,6 +72,8 @@ class FakeSleeper:
             "222": [{"roster_id": 1, "owner_id": "u-friend"}],
             "333": [{"roster_id": 1, "owner_id": "u-friend"}],
             "444": [{"roster_id": 1, "owner_id": "u-friend"}],
+            "555": [{"roster_id": 1, "owner_id": "u-friend"}],
+            "666": [{"roster_id": 1, "owner_id": "u-friend"}],
         }
         self.down = False
         self.calls: list[str] = []
@@ -141,6 +159,8 @@ def test_lookup_lists_the_users_current_leagues_and_which_are_already_added(
         "222": False,
         "333": False,
         "444": False,
+        "555": False,
+        "666": False,
     }
     assert data["leagues"][0]["num_teams"] == 10
 
@@ -319,3 +339,98 @@ def test_changing_the_team_needs_your_league_and_a_team_in_it(friend: TestClient
     refused = friend.put("/api/me/leagues/111/team", json={"roster_id": 9})
     assert refused.status_code == 409
     assert friend.get("/api/me/leagues").json()["data"][0]["roster_id"] == 1
+
+
+@pytest.mark.parametrize(("league_id", "words"), [("555", "bonus_rec_te"), ("666", "WRRB_FLEX")])
+def test_a_league_with_scoring_or_a_slot_the_app_cannot_handle_is_refused_at_add_time(
+    friend: TestClient, store_dir: Path, league_id: str, words: str
+) -> None:
+    flagged = {lg["league_id"]: lg for lg in lookup(friend).json()["data"]["leagues"]}
+    assert words in flagged[league_id]["problem"]
+    response = add(friend, league_id)
+    assert response.status_code == 409
+    assert words in response.json()["error"]["message"]
+    assert friend.get("/api/me/leagues").json()["data"] == []
+    assert refresh_queue.status(store_dir)["state"] == "idle"
+
+
+def sign_in_admin(store_dir: Path) -> TestClient:
+    conn = accounts.connect(store_dir)
+    accounts.create_admin(conn, "boss@example.com", GOOD)
+    conn.close()
+    client = TestClient(
+        api.create_app(data_dir=store_dir), base_url="http://localhost", headers=CSRF
+    )
+    body = {"email": "boss@example.com", "password": GOOD}
+    assert client.post("/api/auth/login", json=body).status_code == 200
+    return client
+
+
+def owner_in_sleeper(sleeper: FakeSleeper) -> str:
+    """Put the app owner's Sleeper user and one of the config.toml leagues into the fake."""
+    cfg = load_config()
+    config_league = next(iter(cfg.leagues.values()))
+    sleeper.users["OwnerName"] = {"user_id": cfg.user_id, "display_name": "Owner"}
+    sleeper.leagues[cfg.user_id] = [
+        {"league_id": config_league, "name": "Mine", "total_rosters": 10, "settings": STANDARD}
+    ]
+    sleeper.rosters[config_league] = [{"roster_id": 1, "owner_id": cfg.user_id}]
+    return config_league
+
+
+def test_a_friend_cannot_add_a_league_from_config_toml(
+    friend: TestClient, sleeper: FakeSleeper
+) -> None:
+    config_league = owner_in_sleeper(sleeper)
+    sleeper.leagues["u-friend"].append(
+        {"league_id": config_league, "name": "Mine", "total_rosters": 10, "settings": STANDARD}
+    )
+    response = add(friend, config_league)
+    assert response.status_code == 409
+    assert "owner" in response.json()["error"]["message"]
+    assert friend.get("/api/me/leagues").json()["data"] == []
+
+
+def test_a_friend_cannot_claim_the_owners_sleeper_identity(
+    friend: TestClient, sleeper: FakeSleeper
+) -> None:
+    config_league = owner_in_sleeper(sleeper)
+    sleeper.leagues[load_config().user_id].append(
+        {"league_id": "777", "name": "Owner side league", "total_rosters": 10, "settings": STANDARD}
+    )
+    sleeper.rosters["777"] = [{"roster_id": 1, "owner_id": load_config().user_id}]
+    response = add(friend, "777", username="OwnerName")
+    assert response.status_code == 409
+    assert "owner" in response.json()["error"]["message"]
+    assert config_league not in {
+        lg["league_id"] for lg in friend.get("/api/me/leagues").json()["data"]
+    }
+
+
+def test_the_admin_may_add_the_owners_league(store_dir: Path, sleeper: FakeSleeper) -> None:
+    config_league = owner_in_sleeper(sleeper)
+    admin = sign_in_admin(store_dir)
+    response = add(admin, config_league, username="OwnerName")
+    assert response.status_code == 200, response.text
+
+
+def test_adding_removing_and_changing_teams_share_the_lookup_limit(friend: TestClient) -> None:
+    add(friend, "111")
+    for _ in range(9):  # the add above was the first of ten
+        assert lookup(friend).status_code == 200
+    assert add(friend, "111").status_code == 429
+    assert friend.delete("/api/me/leagues/111").status_code == 429
+    assert friend.put("/api/me/leagues/111/team", json={"roster_id": 2}).status_code == 429
+    assert len(friend.get("/api/me/leagues").json()["data"]) == 1  # nothing was removed
+
+
+def test_posting_a_league_that_is_already_registered_queues_no_refresh(
+    store_dir: Path, sleeper: FakeSleeper
+) -> None:
+    first = sign_in(store_dir, "a@example.com")
+    second = sign_in(store_dir, "b@example.com")
+    assert add(first, "111").status_code == 200
+    assert refresh_queue.consume(store_dir) == ["league added: 111"]
+    assert add(first, "111").status_code == 200  # a repeat
+    assert add(second, "111", username="OtherUser", roster_id=2).status_code == 200  # a league-mate
+    assert refresh_queue.status(store_dir)["state"] == "idle"

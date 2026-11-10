@@ -71,6 +71,7 @@ export function QueryBuilderSidebarScroll({
             <div className="relative">
               <Input
                 type="search"
+                aria-label="Search players"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search players…"

@@ -108,6 +108,27 @@
         }
       }
     },
+    "/api/auth/logout-everywhere": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout Everywhere",
+        "operationId": "logout_everywhere_api_auth_logout_everywhere_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_SignedOut_"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/me": {
       "get": {
         "tags": [
@@ -3028,17 +3049,17 @@
         "properties": {
           "id": {
             "type": "string",
-            "maxLength": 100,
+            "maxLength": 44,
             "title": "Id"
           },
           "label": {
             "type": "string",
-            "maxLength": 100,
+            "maxLength": 44,
             "title": "Label"
           },
           "group": {
             "type": "string",
-            "maxLength": 100,
+            "maxLength": 44,
             "title": "Group"
           }
         },
@@ -3054,26 +3075,26 @@
         "properties": {
           "id": {
             "type": "string",
-            "maxLength": 100,
+            "maxLength": 44,
             "title": "Id"
           },
           "label": {
             "type": "string",
-            "maxLength": 100,
+            "maxLength": 44,
             "title": "Label"
           },
           "category": {
             "type": "string",
-            "maxLength": 100,
+            "maxLength": 44,
             "title": "Category"
           },
           "aliases": {
             "items": {
               "type": "string",
-              "maxLength": 60
+              "maxLength": 52
             },
             "type": "array",
-            "maxItems": 20,
+            "maxItems": 11,
             "title": "Aliases",
             "description": "Other phrases for this stat"
           }
@@ -6506,7 +6527,7 @@
               "$ref": "#/components/schemas/CatalogStat"
             },
             "type": "array",
-            "maxItems": 200,
+            "maxItems": 114,
             "minItems": 1,
             "title": "Stats"
           },
@@ -6515,7 +6536,7 @@
               "$ref": "#/components/schemas/CatalogFilter"
             },
             "type": "array",
-            "maxItems": 400,
+            "maxItems": 63,
             "title": "Filters"
           }
         },

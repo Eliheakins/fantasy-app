@@ -150,7 +150,6 @@ def test_the_stage_list_is_what_make_refresh_ran_before() -> None:
         "distributions",
         "injuries",
         "outlook",
-        "environment",
         "simulate",
         "digest",
         "market_values",
@@ -252,4 +251,44 @@ def test_the_exit_code_tells_the_service_whether_a_retry_is_worth_it(
 ) -> None:
     monkeypatch.setattr(pipeline, "refresh", lambda stages, runner, **kw: ({}, published))
     monkeypatch.setattr(pipeline.refresh_report, "main", lambda argv: report_code)
-    assert pipeline.main([]) == expected
+    assert pipeline.main() == expected
+
+
+def test_the_childs_own_error_survives_the_parents_exit_code_row(tmp_path: Path) -> None:
+    def runner(stage: Stage) -> Outcome:
+        pipeline.record_run(stage.name, "failed", "RuntimeError('disk full')", tmp_path)
+        return Outcome(False, "exit code 1")  # what run_command says after the child exits 1
+
+    run(stages("a?"), runner, tmp_path)
+    table = store.read_table("refresh_runs", "derived", tmp_path).to_dicts()
+    assert [(r["stage"], r["error"]) for r in table] == [("a", "RuntimeError('disk full')")]
+
+
+def test_a_failure_the_child_could_not_record_is_still_recorded(tmp_path: Path) -> None:
+    run(stages("a?"), Script({"a": [Outcome(False, "timed out after 600s")]}), tmp_path)
+    assert rows(tmp_path)["a"]["error"] == "timed out after 600s"
+
+
+SOFT = Outcome(False, "soft failure", soft=True)
+
+
+def test_a_soft_failure_exit_code_is_told_apart_from_a_failure() -> None:
+    code = f"raise SystemExit({pipeline.SOFT_FAILURE_EXIT})"
+    assert pipeline.run_command([sys.executable, "-c", code], timeout=10) == SOFT
+
+
+def test_a_network_stage_that_soft_fails_is_retried(tmp_path: Path) -> None:
+    runner = Script({"a": [SOFT, OK]})
+    result = run(stages("a@?"), runner, tmp_path)
+    assert runner.calls == ["a", "a"]
+    assert result == {"a": "ok"}
+
+
+def test_a_soft_failure_after_the_last_retry_does_not_stop_the_run_or_record_twice(
+    tmp_path: Path,
+) -> None:
+    runner = Script({"a": [SOFT] * 5})
+    result = run(stages("a@", "b"), runner, tmp_path)  # a is required
+    assert runner.calls == ["a"] * (1 + pipeline.NETWORK_RETRIES) + ["b"]
+    assert result == {"a": "ok", "b": "ok"}
+    assert not (tmp_path / "derived" / "refresh_runs.parquet").exists()  # the child recorded it

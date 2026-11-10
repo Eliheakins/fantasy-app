@@ -25,8 +25,8 @@ stage take q back out there.
 
 import numpy as np
 import polars as pl
-from sklearn.ensemble import HistGradientBoostingClassifier
 
+from fantasy.stages.gbm import make_classifier
 from fantasy.stages.lags import lag_asof, latest_asof, train_seasons
 from fantasy.stages.project import FIRST_PROJECTED_SEASON, POSITIONS
 
@@ -166,14 +166,7 @@ def fit_predict(
     x_train, x_test = design(train), design(test)
     preds = []
     for seed in seeds:
-        model = HistGradientBoostingClassifier(
-            max_iter=300,
-            learning_rate=0.05,
-            max_leaf_nodes=15,
-            min_samples_leaf=80,
-            l2_regularization=5.0,
-            random_state=seed,
-        )
+        model = make_classifier(seed)
         preds.append(model.fit(x_train, y).predict_proba(x_test)[:, 1])
     return np.clip(np.mean(preds, axis=0), Q_FLOOR, 1.0)
 
