@@ -14,7 +14,5 @@ function columns(who: Who): Column<ScheduleRow>[] {
 }
 
 export function ScheduleTable({ rows, who }: { rows: readonly ScheduleRow[]; who: Who }) {
-  return (
-    <ResponsiveTable caption="Remaining schedule" columns={columns(who)} rows={rows} rowKey={(r) => String(r.week)} />
-  );
+  return <ResponsiveTable caption="Remaining schedule" columns={columns(who)} rows={rows} rowKey={(r) => String(r.week)} />;
 }

@@ -1,7 +1,6 @@
 import type { OddsHistoryRow, SeasonOddsRow } from "@/lib/outlookTypes";
 
-export const HISTORY_WAIT_MESSAGE =
-  "The odds-over-time chart appears once the simulation has run in two different weeks.";
+export const HISTORY_WAIT_MESSAGE = "The odds-over-time chart appears once the simulation has run in two different weeks.";
 
 /** My team exists and saved runs cover at least two weeks (the chart has one point per week). */
 export function canShowHistory(odds: readonly SeasonOddsRow[], history: readonly OddsHistoryRow[]): boolean {

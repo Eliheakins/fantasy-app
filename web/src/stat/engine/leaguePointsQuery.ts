@@ -33,8 +33,7 @@ function playLevelGroups(params: StatQueryParams): string[] {
   return params.chipGroups
     .filter(
       (g: FilterChipGroup) =>
-        !(GAME_LEVEL_GROUP_IDS as readonly string[]).includes(g.id) &&
-        g.options.some((o) => params.filterChipState[o.id]),
+        !(GAME_LEVEL_GROUP_IDS as readonly string[]).includes(g.id) && g.options.some((o) => params.filterChipState[o.id]),
     )
     .map((g) => g.label);
 }
@@ -68,9 +67,7 @@ export function runLeaguePointsQuery(params: StatQueryParams, statIds: string[])
   }
 
   const notices =
-    params.filterChipState["stype-post"] && !params.filterChipState["stype-reg"]
-      ? ["League points are regular season only."]
-      : [];
+    params.filterChipState["stype-post"] && !params.filterChipState["stype-reg"] ? ["League points are regular season only."] : [];
   const points = params.leaguePoints ?? [];
   const cols = {
     gsis_id: points.map((r) => r.gsis_id),

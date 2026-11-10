@@ -28,20 +28,43 @@ export function SavedSearches() {
             setName("");
           }}
         >
-          <label htmlFor="saved-search-name" className="text-body">Name this search</label>
-          <input id="saved-search-name" value={name} maxLength={MAX_NAME_LENGTH} onChange={(e) => setName(e.target.value)} className="min-h-[44px] rounded-full border border-panel-line bg-surface px-4 text-body" />
-          <button type="submit" disabled={empty || !name.trim() || full} className="min-h-[44px] rounded-full border border-panel-line bg-surface px-4 text-body disabled:opacity-50">
+          <label htmlFor="saved-search-name" className="text-body">
+            Name this search
+          </label>
+          <input
+            id="saved-search-name"
+            value={name}
+            maxLength={MAX_NAME_LENGTH}
+            onChange={(e) => setName(e.target.value)}
+            className="min-h-[44px] rounded-full border border-panel-line bg-surface px-4 text-body"
+          />
+          <button
+            type="submit"
+            disabled={empty || !name.trim() || full}
+            className="min-h-[44px] rounded-full border border-panel-line bg-surface px-4 text-body disabled:opacity-50"
+          >
             Save search
           </button>
         </form>
         {full && <p className="text-caption text-muted">You can keep {MAX_SAVED} searches. Delete one to save another.</p>}
         {empty && <p className="text-caption text-muted">Pick players or stats first; the current query is empty.</p>}
-        {!kept && <p role="status" className="text-caption text-warning">This browser blocked storage, so the search could not be stored and will be gone after you leave.</p>}
+        {!kept && (
+          <p role="status" className="text-caption text-warning">
+            This browser blocked storage, so the search could not be stored and will be gone after you leave.
+          </p>
+        )}
         <ul>
           {saved.map((s) => (
             <li key={s.name} className="flex items-center justify-between gap-2 border-t border-line first:border-t-0">
-              <Link to={savedHref(s, search)} className="inline-flex min-h-[44px] items-center underline">{s.name}</Link>
-              <button type="button" aria-label={`Delete ${s.name}`} onClick={() => update(removeSaved(saved, s.name))} className="min-h-[44px] px-3 text-body text-muted underline">
+              <Link to={savedHref(s, search)} className="inline-flex min-h-[44px] items-center underline">
+                {s.name}
+              </Link>
+              <button
+                type="button"
+                aria-label={`Delete ${s.name}`}
+                onClick={() => update(removeSaved(saved, s.name))}
+                className="min-h-[44px] px-3 text-body text-muted underline"
+              >
                 Delete
               </button>
             </li>

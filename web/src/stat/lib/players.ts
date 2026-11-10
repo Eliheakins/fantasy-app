@@ -23,8 +23,7 @@ export function searchPlayers(players: readonly Player[], query: string, limit =
 }
 
 /** Same file name after every rebuild, so the key is the file plus the manifest's build time. */
-const buildKey = (manifest: Manifest | null): string | null =>
-  manifest?.players ? `${manifest.players.path}|${manifest.built_at}` : null;
+const buildKey = (manifest: Manifest | null): string | null => (manifest?.players ? `${manifest.players.path}|${manifest.built_at}` : null);
 
 /** Remembers the latest load per build; a failed load is dropped so the next use retries. */
 function cachePerBuild<T>(load: (manifest: Manifest | null) => Promise<T>): (manifest: Manifest | null) => Promise<T> {

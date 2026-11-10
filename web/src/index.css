@@ -217,7 +217,9 @@ thead th {
 
 /* Tabs */
 nav a {
-  transition: background-color 120ms, color 120ms;
+  transition:
+    background-color 120ms,
+    color 120ms;
 }
 nav[aria-label="Main tabs"] {
   padding-bottom: env(safe-area-inset-bottom);

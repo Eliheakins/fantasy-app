@@ -2,12 +2,22 @@ import { canPitch, copyText, pitchText } from "./builder";
 import type { TradeEvaluation } from "./types";
 
 const side = (name: string, before: number, after: number, who: "me" | "them") => ({
-  side: who, roster_id: 1, team_name: name, playoff_before: before, playoff_after: after,
-  title_before: 0.1, title_after: 0.1, wins_before: 8, wins_after: 8,
+  side: who,
+  roster_id: 1,
+  team_name: name,
+  playoff_before: before,
+  playoff_after: after,
+  title_before: 0.1,
+  title_after: 0.1,
+  wins_before: 8,
+  wins_after: 8,
 });
 const result = (mine: number, theirs: number): TradeEvaluation => ({
   odds: [side("Mine", 0.5, 0.5 + mine, "me"), side("Rivals", 0.4, 0.4 + theirs, "them")],
-  roster_changes: [], warning: null, trade_deadline: null, market: null,
+  roster_changes: [],
+  warning: null,
+  trade_deadline: null,
+  market: null,
 });
 
 describe("canPitch", () => {

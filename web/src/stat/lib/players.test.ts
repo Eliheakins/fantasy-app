@@ -2,13 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Manifest } from "./schemas/manifest";
 
-import {
-  getPlayerDictionary,
-  getPlayers,
-  getPlayersByIds,
-  playerDictionary,
-  searchPlayers,
-} from "./players";
+import { getPlayerDictionary, getPlayers, getPlayersByIds, playerDictionary, searchPlayers } from "./players";
 
 const MAHOMES = {
   gsis_id: "00-0033873",
@@ -137,11 +131,7 @@ describe("getPlayers", () => {
   it("rejects a players file with the wrong shape", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockImplementation(
-          async () => new Response(JSON.stringify({ schema_version: 1, players: [{ gsis_id: "" }] })),
-        ),
+      vi.fn().mockImplementation(async () => new Response(JSON.stringify({ schema_version: 1, players: [{ gsis_id: "" }] }))),
     );
 
     await expect(getPlayers(MANIFEST)).rejects.toThrow(/unexpected shape/);

@@ -150,9 +150,7 @@ export function parseQuery(params: URLSearchParams, knownFilterIds?: ReadonlySet
   return {
     players: unique(params.getAll(KEYS.players).filter((id) => PLAYER_ID.test(id))).slice(0, MAX_PINNED_PLAYERS),
     stats,
-    filters: unique(
-      params.getAll(KEYS.filters).filter((id) => FILTER_ID.test(id) && (!knownFilterIds || knownFilterIds.has(id))),
-    ),
+    filters: unique(params.getAll(KEYS.filters).filter((id) => FILTER_ID.test(id) && (!knownFilterIds || knownFilterIds.has(id)))),
     granularity: clampGranularity(stats, granularity),
     minPlays: clampMinPlays(Number(params.get(KEYS.minPlays) ?? 0)),
     order,
@@ -275,11 +273,7 @@ export function setMinPlays(state: QueryState, minPlays: number): QueryState {
 }
 
 /** Ranks the rows by a selected stat and keeps the first `limit`; null clears both. */
-export function setRanking(
-  state: QueryState,
-  order: QueryOrder | null,
-  limit = state.limit ?? DEFAULT_LIMIT,
-): QueryState {
+export function setRanking(state: QueryState, order: QueryOrder | null, limit = state.limit ?? DEFAULT_LIMIT): QueryState {
   if (order === null) {
     return { ...state, order: null, limit: null };
   }
@@ -322,11 +316,7 @@ export function toggleFilter(state: QueryState, id: string): QueryState {
 }
 
 /** Sets the chips of one group to exactly `selectedIds`; chips of other groups stay as they are. */
-export function applyFilterGroup(
-  state: QueryState,
-  groupOptionIds: readonly string[],
-  selectedIds: readonly string[],
-): QueryState {
+export function applyFilterGroup(state: QueryState, groupOptionIds: readonly string[], selectedIds: readonly string[]): QueryState {
   const others = state.filters.filter((f) => !groupOptionIds.includes(f));
   return { ...state, filters: [...others, ...selectedIds.filter((id) => groupOptionIds.includes(id))] };
 }

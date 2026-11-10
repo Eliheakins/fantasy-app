@@ -50,7 +50,9 @@ export function waiverDeadlineDay(dayOfWeek: number | null, now: Date): string |
 
 /** Day of the next kickoff still to come: lineups can still change until then. */
 export function lineupDeadlineDay(kickoffs: readonly Kickoff[], now: Date): string | null {
-  const ahead = timed(kickoffs).map((k) => new Date(k.kickoff)).filter((t) => t.getTime() > now.getTime());
+  const ahead = timed(kickoffs)
+    .map((k) => new Date(k.kickoff))
+    .filter((t) => t.getTime() > now.getTime());
   if (ahead.length === 0) return null;
   return etDay(new Date(Math.min(...ahead.map((t) => t.getTime()))));
 }
@@ -86,7 +88,11 @@ export function buildStrip(now: Date, calendar: WeekCalendar): StripDay[] {
   add(days[FRIDAY_POSITION], { kind: "injury", text: "Injury report" });
   for (const [day, group] of byDay) add(day, kickoffEvent(group));
   return days.map((day) => ({
-    day, label: weekdayLabel(day), dayOfMonth: Number(day.slice(8)), isToday: day === today, isPast: day < today,
+    day,
+    label: weekdayLabel(day),
+    dayOfMonth: Number(day.slice(8)),
+    isToday: day === today,
+    isPast: day < today,
     events: onDay.get(day) ?? [],
   }));
 }
@@ -106,7 +112,9 @@ export function stripNotes(now: Date, calendar: WeekCalendar): string[] {
   const week = calendar.week === null ? "the current week" : `week ${calendar.week}`;
   const notes: string[] = [];
   if (known.length > 0 && outside === known.length) {
-    notes.push(`All kickoffs for ${week} are outside this Tuesday to Monday strip, so none are shown. The data may be behind: run make refresh.`);
+    notes.push(
+      `All kickoffs for ${week} are outside this Tuesday to Monday strip, so none are shown. The data may be behind: run make refresh.`,
+    );
   } else if (outside > 0) {
     notes.push(`${outside} kickoffs for ${week} fall outside this strip and are not shown.`);
   }

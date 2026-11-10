@@ -10,7 +10,14 @@ import { useTeam } from "@/lib/teamContext";
 
 const ok = (data: unknown) => ({ status: "ok", data, error: null, started_at: null });
 const team = (roster_id: number, team_name: string, is_me: boolean) => ({
-  roster_id, team_name, is_me, wins: 1, losses: 0, ties: 0, points_for: 10, record: "1-0",
+  roster_id,
+  team_name,
+  is_me,
+  wins: 1,
+  losses: 0,
+  ties: 0,
+  points_for: 10,
+  record: "1-0",
 });
 const routes: Record<string, unknown> = {
   "/api/leagues": ok([{ league_key: "a", name: "A" }]),
@@ -20,10 +27,13 @@ const routes: Record<string, unknown> = {
 
 function mockFetch(): string[] {
   const urls: string[] = [];
-  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-    urls.push(url);
-    return Response.json(routes[url.split("?")[0] ?? url] ?? ok([]));
-  }));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) => {
+      urls.push(url);
+      return Response.json(routes[url.split("?")[0] ?? url] ?? ok([]));
+    }),
+  );
   return urls;
 }
 
@@ -34,8 +44,12 @@ function Probe() {
   return (
     <>
       <p data-testid="search">{search}</p>
-      <button type="button" onClick={() => setTeam(2)}>pick</button>
-      <button type="button" onClick={() => setTeam(null)}>reset</button>
+      <button type="button" onClick={() => setTeam(2)}>
+        pick
+      </button>
+      <button type="button" onClick={() => setTeam(null)}>
+        reset
+      </button>
     </>
   );
 }

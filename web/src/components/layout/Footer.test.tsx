@@ -43,18 +43,14 @@ describe("Footer sign-in", () => {
   });
 
   it("offers nothing to sign out of on a run with no accounts", async () => {
-    stubApi((call) =>
-      okReply(call.url === "/api/auth/me" ? { email: LOCAL_EMAIL, is_admin: true, sleeper_user_id: null } : status),
-    );
+    stubApi((call) => okReply(call.url === "/api/auth/me" ? { email: LOCAL_EMAIL, is_admin: true, sleeper_user_id: null } : status));
     open();
     expect(await screen.findByText(/data from sleeper and nflverse/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Sign out" })).not.toBeInTheDocument();
   });
 
   it("links an admin to the admin page and a member to nothing extra", async () => {
-    stubApi((call) =>
-      okReply(call.url === "/api/auth/me" ? { email: "boss@example.com", is_admin: true, sleeper_user_id: null } : status),
-    );
+    stubApi((call) => okReply(call.url === "/api/auth/me" ? { email: "boss@example.com", is_admin: true, sleeper_user_id: null } : status));
     open();
     expect(await screen.findByRole("link", { name: "Admin" })).toHaveAttribute("href", "/admin");
   });

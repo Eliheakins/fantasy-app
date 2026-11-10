@@ -29,9 +29,7 @@ export function TradeAnswer(props: Props) {
   const tradesLink = `/moves?${params.toString()}`;
   return (
     <section aria-label="Trade" className="space-y-3 border-t border-line pt-3">
-      <ApiBoundary state={owners}>
-        {(o) => <Plan {...props} owners={o.rows} tradesLink={tradesLink} />}
-      </ApiBoundary>
+      <ApiBoundary state={owners}>{(o) => <Plan {...props} owners={o.rows} tradesLink={tradesLink} />}</ApiBoundary>
       <p className="text-caption text-muted">
         <Link to={tradesLink} className="font-medium text-ink underline-offset-2 hover:underline">
           Open the Trades page
@@ -48,7 +46,10 @@ function Plan({ owners, tradesLink, ...trade }: Props & { owners: Owners["rows"]
     return (
       <Callout variant="info">
         {plan.text} Build this trade on the{" "}
-        <Link to={tradesLink} className="underline">Trades page</Link>.
+        <Link to={tradesLink} className="underline">
+          Trades page
+        </Link>
+        .
       </Callout>
     );
   }
@@ -62,7 +63,12 @@ function Evaluation({ request }: { request: TradeRequest }) {
     `/api/leagues/${encodeURIComponent(league ?? "")}/trades/evaluate`,
     request,
   );
-  if (state?.kind === "loading" || state === null) return <p role="status" className="text-muted">Simulating the trade…</p>;
+  if (state?.kind === "loading" || state === null)
+    return (
+      <p role="status" className="text-muted">
+        Simulating the trade…
+      </p>
+    );
   if (state.kind === "error") return <FailureNotice error={state.error} onRetry={refetch} />;
   return <ApiBoundary state={state}>{(result) => <Result result={result} />}</ApiBoundary>;
 }

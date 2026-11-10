@@ -42,16 +42,11 @@ export function canServeFromPlayerGame(params: StatQueryParams): boolean {
   if (!params.playerGame || !tierOneStats(params) || params.split === "location") {
     return false;
   }
-  return !params.chipGroups.some(
-    (g) => !PLAYER_GAME_GROUP_IDS.has(g.id) && g.options.some((o) => params.filterChipState[o.id]),
-  );
+  return !params.chipGroups.some((g) => !PLAYER_GAME_GROUP_IDS.has(g.id) && g.options.some((o) => params.filterChipState[o.id]));
 }
 
 /** Who a query reports on: the named players (everyone when none are named), narrowed to the player set. */
-export const wantedPlayers = (
-  gsisIds: string[] | null,
-  playerSet?: PlayerSet | null,
-): ((id: string) => boolean) => {
+export const wantedPlayers = (gsisIds: string[] | null, playerSet?: PlayerSet | null): ((id: string) => boolean) => {
   const named = gsisIds === null ? null : new Set(gsisIds);
   const inSet = playerSet ? new Set(playerSet.ids) : null;
   return (id) => (named === null || named.has(id)) && (!playerSet || inSet!.has(id) !== playerSet.exclude);
@@ -77,12 +72,7 @@ export async function runPlayerGameQuery(
 
   const groupColumns = splitColumns(params.split);
   const lastN = params.lastGames ?? null;
-  const needed = new Set([
-    "gsis_id",
-    ...groupColumns,
-    ...(whereNode ? columnsIn(whereNode) : []),
-    ...(lastN ? ["season", "week"] : []),
-  ]);
+  const needed = new Set(["gsis_id", ...groupColumns, ...(whereNode ? columnsIn(whereNode) : []), ...(lastN ? ["season", "week"] : [])]);
   for (const [role, roleStats] of byRole) {
     needed.add(VOLUME_COLUMN[role]);
     roleStats.forEach((s) => needed.add(s.playerGameColumn!));

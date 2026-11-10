@@ -12,7 +12,11 @@ import { capitalize, useWho } from "@/lib/who";
 /** Optional blocks show only when they have rows; an error says so. */
 function Optional<T>({ state, children }: { state: ApiState<T[]>; children: (rows: T[]) => ReactNode }) {
   if (state.kind === "error") {
-    return <p role="alert" className="mt-6 text-caption text-warning">Could not load this section: {state.error.message}</p>;
+    return (
+      <p role="alert" className="mt-6 text-caption text-warning">
+        Could not load this section: {state.error.message}
+      </p>
+    );
   }
   if (state.kind !== "ready" || state.data.length === 0) return null;
   return <>{children(state.data)}</>;
@@ -37,7 +41,9 @@ export function OutlookView() {
         ) : (
           <>
             <Section title="Season odds" caption="Ranked by chance to make the playoffs." howCalculated={ODDS_METHOD}>
-              <div className="max-w-4xl"><OddsTable rows={oddsRows} who={who} /></div>
+              <div className="max-w-4xl">
+                <OddsTable rows={oddsRows} who={who} />
+              </div>
             </Section>
             <Optional state={seeds}>
               {(rows) => (
@@ -51,8 +57,14 @@ export function OutlookView() {
             </Optional>
             <Optional state={schedule}>
               {(rows) => (
-                <Section title={`${capitalize(who.your)} remaining schedule`} caption="Best-lineup points each side, and the chance to win." howCalculated={SCHEDULE_METHOD}>
-                  <div className="max-w-4xl"><ScheduleTable rows={rows} who={who} /></div>
+                <Section
+                  title={`${capitalize(who.your)} remaining schedule`}
+                  caption="Best-lineup points each side, and the chance to win."
+                  howCalculated={SCHEDULE_METHOD}
+                >
+                  <div className="max-w-4xl">
+                    <ScheduleTable rows={rows} who={who} />
+                  </div>
                 </Section>
               )}
             </Optional>

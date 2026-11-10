@@ -25,9 +25,7 @@ function memoryStorage(initial: Record<string, string> = {}) {
 
 describe("normalizeQuestion", () => {
   it("ignores case, punctuation and extra spaces", () => {
-    expect(normalizeQuestion("  Mahomes' passing   YARDS, 2023?! ")).toBe(
-      normalizeQuestion("mahomes passing yards 2023"),
-    );
+    expect(normalizeQuestion("  Mahomes' passing   YARDS, 2023?! ")).toBe(normalizeQuestion("mahomes passing yards 2023"));
   });
 
   it("keeps different questions apart", () => {

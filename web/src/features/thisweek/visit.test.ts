@@ -22,16 +22,24 @@ describe("last visit storage", () => {
   });
 
   it("works when storage throws", () => {
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
     expect(readVisit("a")).toBeNull();
     expect(() => writeVisit("a", { at: "2026-11-01T10:00:00.000Z", adds: [] })).not.toThrow();
   });
 });
 
 describe("oddsSince", () => {
-  const run = (run_at: string, p_playoffs: number | null, p_title: number | null, roster_id = 1): OddsRun =>
-    ({ run_at, roster_id, p_playoffs, p_title });
+  const run = (run_at: string, p_playoffs: number | null, p_title: number | null, roster_id = 1): OddsRun => ({
+    run_at,
+    roster_id,
+    p_playoffs,
+    p_title,
+  });
   const history = [run("2026-10-30T10:00:00", 0.5, 0.1), run("2026-10-30T10:00:00", 0.9, 0.5, 2), run("2026-11-02T10:00:00", 0.58, 0.09)];
 
   it("compares my latest run with my last run at or before the last visit, in percentage points", () => {

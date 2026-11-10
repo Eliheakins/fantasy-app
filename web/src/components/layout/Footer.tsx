@@ -16,7 +16,10 @@ export function Footer() {
   const account = session.kind === "signedIn" && session.me.email !== LOCAL_EMAIL ? session.me : null;
   return (
     <footer className="mx-auto w-full max-w-[1200px] border-t border-line px-4 py-3 text-caption text-muted">
-      <Link to={{ pathname: "/model", search: navSearch("/model", search, pathname) }} className="mr-4 inline-flex min-h-[44px] items-center underline">
+      <Link
+        to={{ pathname: "/model", search: navSearch("/model", search, pathname) }}
+        className="mr-4 inline-flex min-h-[44px] items-center underline"
+      >
         Model scorecard
       </Link>
       {rows.map((r) => (
@@ -36,18 +39,10 @@ export function Footer() {
               Admin
             </Link>
           )}
-          <button
-            type="button"
-            className="inline-flex min-h-[44px] items-center underline"
-            onClick={() => void signOut(queryClient)}
-          >
+          <button type="button" className="inline-flex min-h-[44px] items-center underline" onClick={() => void signOut(queryClient)}>
             Sign out
           </button>
-          <button
-            type="button"
-            className="inline-flex min-h-[44px] items-center underline"
-            onClick={() => void signOut(queryClient, true)}
-          >
+          <button type="button" className="inline-flex min-h-[44px] items-center underline" onClick={() => void signOut(queryClient, true)}>
             Sign out everywhere
           </button>
         </span>

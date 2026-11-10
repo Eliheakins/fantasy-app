@@ -6,8 +6,13 @@ describe("Select", () => {
   it("styles the highlighted item so it stands out from the open list", async () => {
     render(
       <Select defaultValue="a">
-        <SelectTrigger aria-label="Pick"><SelectValue /></SelectTrigger>
-        <SelectContent><SelectItem value="a">Alpha</SelectItem><SelectItem value="b">Beta</SelectItem></SelectContent>
+        <SelectTrigger aria-label="Pick">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="a">Alpha</SelectItem>
+          <SelectItem value="b">Beta</SelectItem>
+        </SelectContent>
       </Select>,
     );
     await userEvent.click(screen.getByRole("combobox", { name: "Pick" }));

@@ -11,8 +11,7 @@ import { showIntent, showModelRanking } from "./queryStates";
 import type { AskInput, AskPath } from "./types";
 
 /** The cache key for a question under the catalog as it is now. */
-export const keyFor = (seasons: readonly number[], question: string) =>
-  cacheKey(catalogSignature(buildIntentCatalog(seasons)), question);
+export const keyFor = (seasons: readonly number[], question: string) => cacheKey(catalogSignature(buildIntentCatalog(seasons)), question);
 
 function rolesOf(intent: QueryIntent): PlayerRole[] {
   const roles = intent.stat_ids.flatMap((id) => {
@@ -77,9 +76,7 @@ export const modelPath: AskPath<Interpretation> = {
       }
     }
     if (unsure.length > 0) {
-      actions.choose(sure, unsure, (players, asked) =>
-        showIntent(players, intent, asked, path, unrecognized, actions, scope),
-      );
+      actions.choose(sure, unsure, (players, asked) => showIntent(players, intent, asked, path, unrecognized, actions, scope));
       return;
     }
     showIntent(sure, intent, question, path, unrecognized, actions, scope);

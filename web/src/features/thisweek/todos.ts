@@ -41,12 +41,7 @@ type Deadlines = { lineup: string | null; waiver: string | null };
 const hrefFor = (page: "lineup" | "moves", leagueKey: string) => `/${page}?league=${encodeURIComponent(leagueKey)}`;
 
 /** One league's to-dos: lineup and injury actions plus the best stored waiver add. Effects come from the responses as given. */
-export function leagueTodos(
-  league: LeagueRef,
-  actions: readonly ActionRow[],
-  waivers: readonly MoveIdea[],
-  deadlines: Deadlines,
-): Todo[] {
+export function leagueTodos(league: LeagueRef, actions: readonly ActionRow[], waivers: readonly MoveIdea[], deadlines: Deadlines): Todo[] {
   const leagueName = league.name?.trim() || league.league_key;
   const base = { leagueKey: league.league_key, leagueName };
   const fromActions = actions
@@ -68,17 +63,19 @@ export function leagueTodos(
   );
   const add: Todo[] =
     top !== undefined && top.playoff_delta !== null && top.playoff_delta >= MIN_PLAYOFF_GAIN
-      ? [{
-          ...base,
-          id: `${league.league_key}-waiver-${top.get}`,
-          kind: "waiver",
-          title: `Add ${top.get}, drop ${top.give}`,
-          detail: "Best free agent for your odds",
-          href: hrefFor("moves", league.league_key),
-          effect: { playoffPoints: top.playoff_delta * PERCENT, points: top.delta_points },
-          why: waiverWhy(top.get, top.give),
-          deadlineDay: deadlines.waiver,
-        }]
+      ? [
+          {
+            ...base,
+            id: `${league.league_key}-waiver-${top.get}`,
+            kind: "waiver",
+            title: `Add ${top.get}, drop ${top.give}`,
+            detail: "Best free agent for your odds",
+            href: hrefFor("moves", league.league_key),
+            effect: { playoffPoints: top.playoff_delta * PERCENT, points: top.delta_points },
+            why: waiverWhy(top.get, top.give),
+            deadlineDay: deadlines.waiver,
+          },
+        ]
       : [];
   return [...fromActions, ...add];
 }

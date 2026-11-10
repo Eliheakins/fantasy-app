@@ -5,7 +5,11 @@ import type { PlayerDictionaryRow } from "@/stat/lib/schemas/players";
 import { parseStartSit, readStartSit } from "./startSit";
 
 const row = (gsis_id: string, display_name: string, position = "WR", team = "KC"): PlayerDictionaryRow => ({
-  gsis_id, display_name, search_key: display_name.toLowerCase(), position, team,
+  gsis_id,
+  display_name,
+  search_key: display_name.toLowerCase(),
+  position,
+  team,
 });
 const DICT = [
   row("kelce", "Travis Kelce", "TE"),

@@ -4,10 +4,7 @@ import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { formatNumber } from "@/viz";
 import { Advice } from "./Advice";
 import { leagueUrl, useRefreshScores } from "@/lib/league";
-import {
-  type LiveScore, type RosterRow, type SeasonOdds, type Unmatched,
-  liveScoreParts, myOdds, oddsPercent, recordLine,
-} from "./logic";
+import { type LiveScore, type RosterRow, type SeasonOdds, type Unmatched, liveScoreParts, myOdds, oddsPercent, recordLine } from "./logic";
 import { Block, Stat } from "./parts";
 import { RosterList } from "./RosterList";
 
@@ -42,7 +39,11 @@ function LiveScoreSection({ leagueKey }: { leagueKey: string }) {
   );
   return (
     <Block title="Live score" action={button}>
-      {refresh.isError && <p role="alert" className="text-body text-warning">Warning: {refresh.error.message}</p>}
+      {refresh.isError && (
+        <p role="alert" className="text-body text-warning">
+          Warning: {refresh.error.message}
+        </p>
+      )}
       {state.kind === "ready" && state.data.length > 0 && (
         <dl className="grid grid-cols-2 gap-3">
           {state.data.map((r) => {
@@ -74,7 +75,9 @@ export function LeagueCard({ league, mine = true }: CardProps) {
   return (
     <article className="@container min-w-0 border-t border-line pt-5">
       <header>
-        <h2 className="text-section font-semibold">{league.name} · {league.team_name}</h2>
+        <h2 className="text-section font-semibold">
+          {league.name} · {league.team_name}
+        </h2>
         <p className="text-caption text-muted">{recordLine(league)}</p>
         <p className="text-caption text-muted">{league.scoring_labels}</p>
       </header>

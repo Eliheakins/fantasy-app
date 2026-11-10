@@ -5,8 +5,20 @@ type Option = WinProbability["options"][number];
 
 const BAR_WIDTH = 360;
 
-function Line({ label, p10, p50, p90, domain, muted }: {
-  label: string; p10: number; p50: number; p90: number; domain: NonNullable<ReturnType<typeof sharedDomain>>; muted?: boolean;
+function Line({
+  label,
+  p10,
+  p50,
+  p90,
+  domain,
+  muted,
+}: {
+  label: string;
+  p10: number;
+  p50: number;
+  p90: number;
+  domain: NonNullable<ReturnType<typeof sharedDomain>>;
+  muted?: boolean;
 }) {
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1 py-1">

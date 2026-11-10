@@ -31,13 +31,41 @@ import {
 } from "@/features/lineup/logic";
 
 /** `shown` is the team total with K and DEF, like the range bars; without the simulation it is the skill slots only. */
-function Answer({ shown, skillOnly, win, sleeperWin, option }: { shown: number; skillOnly: boolean; win: number | null; sleeperWin: number | null; option: WinProbability["options"][number] | undefined }) {
+function Answer({
+  shown,
+  skillOnly,
+  win,
+  sleeperWin,
+  option,
+}: {
+  shown: number;
+  skillOnly: boolean;
+  win: number | null;
+  sleeperWin: number | null;
+  option: WinProbability["options"][number] | undefined;
+}) {
   const change = win !== null && sleeperWin !== null ? (win - sleeperWin) * 100 : null;
   return (
     <>
-      This lineup projects <strong className="font-semibold">{formatNumber(shown)} points</strong>{skillOnly && " from the skill slots"}
-      {win !== null && <> and has a <Explain why={winChanceWhy(option)}><strong className="font-semibold">{formatPercent(win)}</strong></Explain> chance to win</>}
-      {change !== null && <> (<ExplainDelta points={change} noise={NOISE_PERCENT} why={SLEEPER_WIN_WHY} /> points against what is set in Sleeper now)</>}.
+      This lineup projects <strong className="font-semibold">{formatNumber(shown)} points</strong>
+      {skillOnly && " from the skill slots"}
+      {win !== null && (
+        <>
+          {" "}
+          and has a{" "}
+          <Explain why={winChanceWhy(option)}>
+            <strong className="font-semibold">{formatPercent(win)}</strong>
+          </Explain>{" "}
+          chance to win
+        </>
+      )}
+      {change !== null && (
+        <>
+          {" "}
+          (<ExplainDelta points={change} noise={NOISE_PERCENT} why={SLEEPER_WIN_WHY} /> points against what is set in Sleeper now)
+        </>
+      )}
+      .
     </>
   );
 }
@@ -51,9 +79,7 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
     return (
       <>
         <PageHeader title="Lineup" eyebrow={eyebrow} />
-        <p className="py-6 text-body text-muted">
-          No projections for week {week}: either a past week or your players are on bye.
-        </p>
+        <p className="py-6 text-body text-muted">No projections for week {week}: either a past week or your players are on bye.</p>
       </>
     );
   }
@@ -75,9 +101,19 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
       <PageHeader
         title={over ?? startAnswer(rows, known)}
         eyebrow={eyebrow}
-        answer={over
-          ? "Every game is final, so there is nothing left to set."
-          : <Answer shown={shownOption?.expected_points ?? h.shown} skillOnly={!shownOption} win={h.win} sleeperWin={sleeperOption?.win_prob ?? null} option={shownOption} />}
+        answer={
+          over ? (
+            "Every game is final, so there is nothing left to set."
+          ) : (
+            <Answer
+              shown={shownOption?.expected_points ?? h.shown}
+              skillOnly={!shownOption}
+              win={h.win}
+              sleeperWin={sleeperOption?.win_prob ?? null}
+              option={shownOption}
+            />
+          )
+        }
       />
       <ResultPanel result={result} option={shownOption} win={hasOdds ? h.win : null} shown={h.shown} now={h.now} gap={h.gap} />
       <CloseCalls calls={slotCalls(odds, objective)} rows={rows} objective={objective} />
@@ -87,9 +123,14 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
             Other ways to pick
             <ChevronDown aria-hidden size={16} className="text-forest transition-transform group-open:rotate-180" />
           </summary>
-          <p className="mt-2 text-caption text-muted">Optimize for expected points, win chance, ceiling or floor, and compare what each would start.</p>
+          <p className="mt-2 text-caption text-muted">
+            Optimize for expected points, win chance, ceiling or floor, and compare what each would start.
+          </p>
           {odds.script && (
-            <p className="mt-4 text-body">{odds.script}. We start from {labelOf(recommended)}{chosen ? ` (showing ${labelOf(chosen)})` : ""}.</p>
+            <p className="mt-4 text-body">
+              {odds.script}. We start from {labelOf(recommended)}
+              {chosen ? ` (showing ${labelOf(chosen)})` : ""}.
+            </p>
           )}
           {differ && (
             <RadioGroup
@@ -98,14 +139,20 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
               value={objective}
               onChange={(key) => setPicked({ key, under: recommended })}
               className="mt-3 flex flex-wrap gap-2"
-              optionClassName={(on) => `rounded-full border px-3 text-body ${on ? "border-forest bg-forest font-medium text-white" : "border-panel-line bg-surface text-forest hover:border-forest"}`}
+              optionClassName={(on) =>
+                `rounded-full border px-3 text-body ${on ? "border-forest bg-forest font-medium text-white" : "border-panel-line bg-surface text-forest hover:border-forest"}`
+              }
             />
           )}
           {odds.swap?.differs && odds.swap.text && (
-            <p role="note" className="mt-4 rounded-xl border border-line p-4 text-body text-label">{odds.swap.text}</p>
+            <p role="note" className="mt-4 rounded-xl border border-line p-4 text-body text-label">
+              {odds.swap.text}
+            </p>
           )}
           {odds.swap && !odds.swap.differs && <p className="mt-4 text-caption text-muted">{NO_SWAP_TEXT}</p>}
-          <div className="mt-4"><Comparison rows={odds.comparison} /></div>
+          <div className="mt-4">
+            <Comparison rows={odds.comparison} />
+          </div>
         </details>
       )}
       <div className="mt-10">
@@ -114,7 +161,11 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
           rows={start}
           known={known}
           final={result !== null}
-          caption={result ? "Every game is final: points scored this week." : "Points are for this week; the bar is the 10 to 90% range with the median marked."}
+          caption={
+            result
+              ? "Every game is final: points scored this week."
+              : "Points are for this week; the bar is the 10 to 90% range with the median marked."
+          }
           howCalculated={CAVEAT_BASE + (known ? "" : CAVEAT_UNKNOWN)}
         />
       </div>
@@ -142,7 +193,14 @@ export default function Lineup() {
                 Win probabilities are still being simulated. Showing expected points for now.
               </p>
             )}
-            <LineupView key={`${league}|${team}|${week}`} base={base} odds={odds.kind === "ready" ? odds.data : null} week={week} eyebrow={eyebrow} board={board.kind === "ready" ? board.data : null} />
+            <LineupView
+              key={`${league}|${team}|${week}`}
+              base={base}
+              odds={odds.kind === "ready" ? odds.data : null}
+              week={week}
+              eyebrow={eyebrow}
+              board={board.kind === "ready" ? board.data : null}
+            />
           </>
         )}
       </ApiBoundary>

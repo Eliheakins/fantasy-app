@@ -47,9 +47,7 @@ describe("parseMetricsFile", () => {
         ],
       }),
     ).toThrow(/Duplicate category/);
-    expect(() =>
-      parseMetricsFile(file(metric({ aliases: Array.from({ length: 21 }, (_, i) => `alias ${i}`) }))),
-    ).toThrow();
+    expect(() => parseMetricsFile(file(metric({ aliases: Array.from({ length: 21 }, (_, i) => `alias ${i}`) })))).toThrow();
     expect(() => parseMetricsFile(file(metric({ aliases: ["two  spaces"] })))).toThrow(/single spaces/);
   });
 

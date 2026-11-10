@@ -215,9 +215,7 @@ export function describeQuery(params: {
       `${stat.playerRole} ${stat.playType === "all" ? "plays" : `${stat.playType} plays`}`,
       stat.playFilter ? `only where ${stat.playFilter}` : null,
     ].filter(Boolean);
-    return [
-      `${stat.label} (${effectiveGranularity(stat, params.granularity)}): ${stat.base_sql}\n    over ${rows.join(", ")}`,
-    ];
+    return [`${stat.label} (${effectiveGranularity(stat, params.granularity)}): ${stat.base_sql}\n    over ${rows.join(", ")}`];
   });
   const where = buildFilterWhereSql(params.filterChipState, { groups: params.chipGroups });
   lines.push(where ? `Filters: ${where}` : "Filters: none");

@@ -40,11 +40,14 @@ export function ExploreMobileBuilderDrawer({ sidebarScrollProps, running, onExec
               <QueryBuilderSidebarScroll {...sidebarScrollProps} />
             </div>
           </div>
-          <QueryBuilderSidebarExecuteFooter running={running}
+          <QueryBuilderSidebarExecuteFooter
+            running={running}
             onExecute={() => {
               setOpen(false);
               onExecute();
-            }} className="border-t border-line p-3 pt-2" />
+            }}
+            className="border-t border-line p-3 pt-2"
+          />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

@@ -2,7 +2,15 @@ import { describe, expect, test } from "vitest";
 import { leftOutText, positionLines, weekLines, weeksText, type ScorecardRow } from "./logic";
 
 const r = (o: Partial<ScorecardRow>): ScorecardRow => ({
-  week: 7, position: "ALL", tier: -1, model: "learned", n: 100, mae: 5, rmse: 6, bias: 0, ...o,
+  week: 7,
+  position: "ALL",
+  tier: -1,
+  model: "learned",
+  n: 100,
+  mae: 5,
+  rmse: 6,
+  bias: 0,
+  ...o,
 });
 
 describe("scorecard lines", () => {

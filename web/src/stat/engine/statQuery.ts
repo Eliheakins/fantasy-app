@@ -186,11 +186,7 @@ function gamesPlayed(
  * Runs the stat query in memory: loads only the columns it reads, filters plays by role, play
  * type, the stat's row filter and the active chips, then aggregates per player.
  */
-export async function runStatQuery(
-  params: StatQueryParams,
-  store: ColumnStore,
-  signal?: AbortSignal,
-): Promise<QueryResult> {
+export async function runStatQuery(params: StatQueryParams, store: ColumnStore, signal?: AbortSignal): Promise<QueryResult> {
   const chipYears = [...seasonsSelectedByChips(params)];
   const rookieSeason = chipYears.length === 1 ? chipYears[0]! : Math.max(...params.sources.map((s) => s.year));
   const fits = params.teams ? null : await playersFitting(params, rookieSeason, store, signal);
@@ -217,8 +213,7 @@ async function runUnordered(params: StatQueryParams, store: ColumnStore, signal?
   const plays = await runPlayAndDerived({ ...params, statIds: playIds }, store, signal);
   // The play rows are the base (a left join): minimum plays and role already cut them, and a player
   // with points but no play rows must not pad the table.
-  const rowKey = (r: Record<string, unknown>) =>
-    ["player_id", ...splitColumns(params.split)].map((c) => String(r[c])).join("|");
+  const rowKey = (r: Record<string, unknown>) => ["player_id", ...splitColumns(params.split)].map((c) => String(r[c])).join("|");
   const base = new Set(plays.rows.map(rowKey));
   const kept = { ...league, rows: league.rows.filter((r) => base.has(rowKey(r))) };
   const merged = mergeStatQueryResults([plays, kept], params.statIds, params.split, params.teams ? "team_id" : "player_id");
@@ -231,9 +226,7 @@ async function runPlayAndDerived(params: StatQueryParams, store: ColumnStore, si
   if (derivedIds.length === 0) {
     return runPlayStats(params, store, signal);
   }
-  const derived = await runDerivedStats({ ...params, statIds: derivedIds }, store, signal, (parts) =>
-    runUnordered(parts, store, signal),
-  );
+  const derived = await runDerivedStats({ ...params, statIds: derivedIds }, store, signal, (parts) => runUnordered(parts, store, signal));
   const plainIds = params.statIds.filter((id) => !isDerivedStat(id));
   if (plainIds.length === 0) {
     return derived;
@@ -300,11 +293,10 @@ function planPlayStats(params: StatQueryParams, target: PlayTarget): PlayPlan {
   const lastN = params.lastGames ?? null;
   const needGames = groups.some((g) => g.some((s) => usesGameCount(s, params.granularity)));
   const chipNode = parseOptional(buildFilterWhereSql(params.filterChipState, { groups: params.chipGroups }));
-  const scopeNode = needGames || lastN
-    ? parseOptional(
-        buildFilterWhereSql(params.filterChipState, { groups: params.chipGroups, groupIds: GAME_SCOPE_GROUP_IDS }),
-      )
-    : null;
+  const scopeNode =
+    needGames || lastN
+      ? parseOptional(buildFilterWhereSql(params.filterChipState, { groups: params.chipGroups, groupIds: GAME_SCOPE_GROUP_IDS }))
+      : null;
   const filterNodes = groups.map((g) => (g[0]!.playFilter ? parseExpression(g[0]!.playFilter) : null));
 
   const needed = new Set<string>();
@@ -386,9 +378,7 @@ async function scanPlays(
         }
       })
     : null;
-  const games = plan.needGames
-    ? gamesPlayed(table.cols, table.rowCount, wanted, scope, keyOf, idColumns, last)
-    : new Map<string, number>();
+  const games = plan.needGames ? gamesPlayed(table.cols, table.rowCount, wanted, scope, keyOf, idColumns, last) : new Map<string, number>();
   return { table, wanted, keyOf, chip, last, games };
 }
 

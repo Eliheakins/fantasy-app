@@ -1,10 +1,40 @@
 import { describe, expect, test } from "vitest";
-import { type ComparisonRow, type LineupRow, collapseComparison, collapsedNote, headline, injuryLabel, rowsFor, splitLineup } from "./logic";
+import {
+  type ComparisonRow,
+  type LineupRow,
+  collapseComparison,
+  collapsedNote,
+  headline,
+  injuryLabel,
+  rowsFor,
+  splitLineup,
+} from "./logic";
 
-const cmp = (option: string, win: number): ComparisonRow => ({ option, win_prob: win, expected_points: 100, floor: 80, median: 100, ceiling: 120 });
+const cmp = (option: string, win: number): ComparisonRow => ({
+  option,
+  win_prob: win,
+  expected_points: 100,
+  floor: 80,
+  median: 100,
+  ceiling: 120,
+});
 const row = (id: string, o: Partial<LineupRow> = {}): LineupRow => ({
-  slot: "RB", gsis_id: id, full_name: id, position: "RB", projection: 10, p10: 4, p90: 18,
-  starting_now: false, recommended: true, injury: null, injury_note: null, locked: false, actual: 0, game: "", change: "", ...o,
+  slot: "RB",
+  gsis_id: id,
+  full_name: id,
+  position: "RB",
+  projection: 10,
+  p10: 4,
+  p90: 18,
+  starting_now: false,
+  recommended: true,
+  injury: null,
+  injury_note: null,
+  locked: false,
+  actual: 0,
+  game: "",
+  change: "",
+  ...o,
 });
 
 describe("lineup logic", () => {

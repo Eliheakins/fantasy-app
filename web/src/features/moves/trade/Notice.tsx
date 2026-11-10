@@ -4,7 +4,9 @@ import type { ReactNode } from "react";
 export function Notice({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div role="alert" className="my-2 flex flex-wrap items-center gap-3 rounded border border-warning-edge p-3 text-warning">
-      <p className="min-w-0 flex-1"><strong>Warning:</strong> {children}</p>
+      <p className="min-w-0 flex-1">
+        <strong>Warning:</strong> {children}
+      </p>
       {action}
     </div>
   );

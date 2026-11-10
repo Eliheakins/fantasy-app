@@ -3,9 +3,11 @@ import type { ReactNode } from "react";
 import { useFilterChipGroups } from "./filterChipGroups";
 import { ManifestContext } from "./manifest";
 
-const withSeasons = (seasons: number[]) => ({ children }: { children: ReactNode }) => (
-  <ManifestContext.Provider value={{ manifest: null, seasons }}>{children}</ManifestContext.Provider>
-);
+const withSeasons =
+  (seasons: number[]) =>
+  ({ children }: { children: ReactNode }) => (
+    <ManifestContext.Provider value={{ manifest: null, seasons }}>{children}</ManifestContext.Provider>
+  );
 
 const seasonIds = (seasons: number[]) =>
   renderHook(() => useFilterChipGroups(), { wrapper: withSeasons(seasons) })

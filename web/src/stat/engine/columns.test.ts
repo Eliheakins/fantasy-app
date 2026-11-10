@@ -60,8 +60,7 @@ describe("ColumnStore.table", () => {
   });
 
   it("keeps typed arrays typed when every source returns the same kind", async () => {
-    const load: ColumnLoader = async (source) =>
-      source.year === 2022 ? new Float64Array([1, 2]) : new Float64Array([3]);
+    const load: ColumnLoader = async (source) => (source.year === 2022 ? new Float64Array([1, 2]) : new Float64Array([3]));
 
     const table = await new ColumnStore(load).table([S22, S23], ["a"]);
 

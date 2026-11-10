@@ -15,7 +15,17 @@ describe("PageHeader", () => {
 
 describe("PageHeader eyebrow and answer", () => {
   it("shows the eyebrow above the h1 and the answer sentence below it", () => {
-    render(<PageHeader title="Moves" eyebrow="Moves · Week 9 · Colgate" answer={<>Add Cook for <b>+1.2</b></>} />);
+    render(
+      <PageHeader
+        title="Moves"
+        eyebrow="Moves · Week 9 · Colgate"
+        answer={
+          <>
+            Add Cook for <b>+1.2</b>
+          </>
+        }
+      />,
+    );
     expect(screen.getByText("Moves · Week 9 · Colgate")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Moves" })).toBeInTheDocument();
     expect(screen.getByText(/Add Cook for/)).toBeInTheDocument();
@@ -29,7 +39,11 @@ describe("PageHeader eyebrow and answer", () => {
 
 describe("Section", () => {
   it("labels the region by its h2 and folds the method note", () => {
-    render(<Section title="Adds" caption="Best pickups" howCalculated="Method text">body</Section>);
+    render(
+      <Section title="Adds" caption="Best pickups" howCalculated="Method text">
+        body
+      </Section>,
+    );
     expect(screen.getByRole("region", { name: "Adds" })).toBeInTheDocument();
     expect(screen.getByText("Best pickups")).toBeInTheDocument();
     const toggle = screen.getByRole("button", { name: "How this is calculated" });
@@ -38,7 +52,11 @@ describe("Section", () => {
   });
 
   it("puts the method link on the heading row and opens the note below", async () => {
-    render(<Section title="Adds" howCalculated="Method text">body</Section>);
+    render(
+      <Section title="Adds" howCalculated="Method text">
+        body
+      </Section>,
+    );
     const toggle = screen.getByRole("button", { name: "How this is calculated" });
     expect(toggle.parentElement).toContainElement(screen.getByRole("heading", { name: "Adds" }));
     await userEvent.click(toggle);

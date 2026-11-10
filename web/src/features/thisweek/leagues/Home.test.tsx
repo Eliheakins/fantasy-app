@@ -5,11 +5,24 @@ import { HomeLeagues as Home } from "./HomeLeagues";
 
 const ok = (data: unknown) => ({ status: "ok", data, error: null, started_at: null });
 const league = {
-  league_key: "colgate", name: "Colgate", team_name: "Mine", wins: 4, losses: 2, ties: 0, record: "4-2",
-  points_for: 800, current_week: 7, scoring_labels: "1 PPR",
+  league_key: "colgate",
+  name: "Colgate",
+  team_name: "Mine",
+  wins: 4,
+  losses: 2,
+  ties: 0,
+  record: "4-2",
+  points_for: 800,
+  current_week: 7,
+  scoring_labels: "1 PPR",
 };
 const option = (o: string, w: number) => ({
-  option: o, win_prob: w, share_better: 0.8, floor: 90, median: 110, ceiling: 130,
+  option: o,
+  win_prob: w,
+  share_better: 0.8,
+  floor: 90,
+  median: 110,
+  ceiling: 130,
 });
 const routes: Record<string, unknown> = {
   "/api/leagues": ok([league]),
@@ -24,18 +37,25 @@ const routes: Record<string, unknown> = {
 function mockFetch(overrides: Record<string, unknown> = {}) {
   const all = { ...routes, ...overrides };
   const calls: { url: string; method: string }[] = [];
-  vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-    calls.push({ url, method: init?.method ?? "GET" });
-    if (url === "/api/live/refresh") return Response.json(ok({ player_rows: 1 }));
-    const key = Object.keys(all).find((k) => url === k || url.endsWith(k));
-    return Response.json(key ? all[key] : ok([]));
-  }));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, method: init?.method ?? "GET" });
+      if (url === "/api/live/refresh") return Response.json(ok({ player_rows: 1 }));
+      const key = Object.keys(all).find((k) => url === k || url.endsWith(k));
+      return Response.json(key ? all[key] : ok([]));
+    }),
+  );
   return calls;
 }
 
 function renderHome() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(<QueryClientProvider client={client}><Home /></QueryClientProvider>);
+  render(
+    <QueryClientProvider client={client}>
+      <Home />
+    </QueryClientProvider>,
+  );
 }
 
 afterEach(() => vi.unstubAllGlobals());
@@ -52,7 +72,9 @@ describe("Home", () => {
     expect(await screen.findByText(/Working/)).toHaveAttribute("role", "status");
   });
   it("shows the no-data state", async () => {
-    mockFetch({ "/api/leagues": { status: "error", data: null, error: { code: "no_data", message: "Run make refresh first." }, started_at: null } });
+    mockFetch({
+      "/api/leagues": { status: "error", data: null, error: { code: "no_data", message: "Run make refresh first." }, started_at: null },
+    });
     renderHome();
     expect(await screen.findByText("Run make refresh first.")).toBeInTheDocument();
   });

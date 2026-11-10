@@ -1,12 +1,4 @@
-import {
-  appendEntry,
-  type AskLogEntry,
-  loadLog,
-  type LoggedQuery,
-  recordCorrection,
-  saveLog,
-  type StorageLike,
-} from "./askLog";
+import { appendEntry, type AskLogEntry, loadLog, type LoggedQuery, recordCorrection, saveLog, type StorageLike } from "./askLog";
 
 /** The browser's storage, or null where it is blocked; the log then simply stays empty. */
 function browserStorage(): StorageLike | null {

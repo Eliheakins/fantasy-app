@@ -5,10 +5,30 @@ import type { ApiState } from "@/api/envelope";
 import Moves from "./Moves";
 
 const waiver = (name: string, over = {}) => ({
-  gsis_id: `id-${name}`, full_name: name, position: "RB", drop_name: "Bernard", delta_points: 5,
-  playoff_delta: 0.023, title_delta: 0.01, se_title: 0.002, trending_adds: null, ...over,
+  gsis_id: `id-${name}`,
+  full_name: name,
+  position: "RB",
+  drop_name: "Bernard",
+  delta_points: 5,
+  playoff_delta: 0.023,
+  title_delta: 0.01,
+  se_title: 0.002,
+  trending_adds: null,
+  ...over,
 });
-const trade = { kind: "trade", partner: "Rivals", give: "A", get: "B", give_ids: ["a"], get_ids: ["b"], rank: 1, playoff_delta: 0.03, title_delta: 0.01, se_title: 0.003, delta_points: 3 };
+const trade = {
+  kind: "trade",
+  partner: "Rivals",
+  give: "A",
+  get: "B",
+  give_ids: ["a"],
+  get_ids: ["b"],
+  rank: 1,
+  playoff_delta: 0.03,
+  title_delta: 0.01,
+  se_title: 0.003,
+  delta_points: 3,
+};
 
 let waivers: ApiState<unknown>;
 let digest: ApiState<unknown>;
@@ -59,7 +79,7 @@ describe("Moves page", () => {
     expect(small).not.toHaveTextContent("Likely gone");
     expect(small).toHaveTextContent("Bernard");
     expect(small).toHaveTextContent("~0.1"); // a playoff change under the worth bar reads as noise, not a signed number
-        expect(screen.getByText(/Coleman/).closest("li")).not.toHaveTextContent("Likely gone");
+    expect(screen.getByText(/Coleman/).closest("li")).not.toHaveTextContent("Likely gone");
   });
 
   it("says no move is worth it when nothing clears the bar", () => {

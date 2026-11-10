@@ -31,14 +31,13 @@ export function GranularitySelector({ embedded = false }: GranularitySelectorPro
         <h3 className="text-caption font-semibold uppercase tracking-wide text-focus">Granularity</h3>
       )}
       <p className="mt-0.5 text-caption text-muted">
-        How the stat is aggregated. Per game divides by the <span className="font-medium text-ink">games played</span>{" "}
-        (any role) within the season, season type, week and home/away filters. Down, quarter and other situational
-        filters do not shrink it.
+        How the stat is aggregated. Per game divides by the <span className="font-medium text-ink">games played</span> (any role) within the
+        season, season type, week and home/away filters. Down, quarter and other situational filters do not shrink it.
       </p>
       {rateLocked && (
         <p className="mt-2 text-caption text-warning">
-          At least one selected metric is <strong className="font-medium">rate_only</strong> (fixed formula). Total /
-          Per game are disabled for all columns in this view.
+          At least one selected metric is <strong className="font-medium">rate_only</strong> (fixed formula). Total / Per game are disabled
+          for all columns in this view.
         </p>
       )}
       <ToggleGroup

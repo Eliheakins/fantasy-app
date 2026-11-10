@@ -3,13 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildFilterChipGroups } from "@/stat/config/queryBuilderOptions";
 import { STAT_DEFINITIONS } from "@/stat/config/statDictionary";
 
-import {
-  columnsIn,
-  compileAggregateExpression,
-  compileRowExpression,
-  parseExpression,
-  type Columns,
-} from "./expression";
+import { columnsIn, compileAggregateExpression, compileRowExpression, parseExpression, type Columns } from "./expression";
 
 const range = (n: number) => Array.from({ length: n }, (_, i) => i);
 

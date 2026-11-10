@@ -19,8 +19,8 @@ export function ParticipationNotice() {
   }
   return (
     <Callout variant="warn">
-      Personnel, box and pass-rusher filters need participation data, which is not published yet for{" "}
-      {gap.seasons.join(", ")}. Those seasons return no plays with these filters on.
+      Personnel, box and pass-rusher filters need participation data, which is not published yet for {gap.seasons.join(", ")}. Those seasons
+      return no plays with these filters on.
     </Callout>
   );
 }

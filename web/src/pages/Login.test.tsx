@@ -57,9 +57,7 @@ describe("Login", () => {
   });
 
   it("says what went wrong, announces it, clears the password and returns focus to it", async () => {
-    stubApi((call) =>
-      call.url === "/api/auth/login" ? errorReply("invalid", "Wrong email or password.", 401) : signedOut(),
-    );
+    stubApi((call) => (call.url === "/api/auth/login" ? errorReply("invalid", "Wrong email or password.", 401) : signedOut()));
     open();
     const user = userEvent.setup();
     await user.type(await screen.findByLabelText("Email"), "friend@example.com");

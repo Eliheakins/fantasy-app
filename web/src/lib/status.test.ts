@@ -1,7 +1,12 @@
 import type { StatHealth, Status } from "@/api/types";
 import { bannerMessages, liveLabel } from "./status";
 
-const base: Status = { freshness: [], missing_layers: [], data_version: "v1", simulation_behind_inputs: null, refresh_runs: [],
+const base: Status = {
+  freshness: [],
+  missing_layers: [],
+  data_version: "v1",
+  simulation_behind_inputs: null,
+  refresh_runs: [],
   live_refresh: { enabled: true, active: false, last_ok_at: null, last_error: null, interval_minutes: 10 },
 };
 
@@ -28,9 +33,17 @@ describe("bannerMessages", () => {
 });
 
 describe("bannerMessages with refresh runs", () => {
-  const run = (stage: string, status: "ok" | "failed", error: string | null = null) => ({ stage, finished_at: "2026-11-05T06:00:00+00:00", status, error });
+  const run = (stage: string, status: "ok" | "failed", error: string | null = null) => ({
+    stage,
+    finished_at: "2026-11-05T06:00:00+00:00",
+    status,
+    error,
+  });
   it("gives one notice per stage whose latest run failed", () => {
-    const status: Status = { ...base, refresh_runs: [run("score", "ok"), run("digest", "failed", "RuntimeError('boom')"), run("market_values", "failed", "down")] };
+    const status: Status = {
+      ...base,
+      refresh_runs: [run("score", "ok"), run("digest", "failed", "RuntimeError('boom')"), run("market_values", "failed", "down")],
+    };
     expect(bannerMessages(status)).toEqual([
       "Refresh step digest failed: RuntimeError('boom'). Run `make refresh`.",
       "Refresh step market_values failed: down. Run `make refresh`.",
@@ -54,7 +67,12 @@ describe("bannerMessages with refresh runs", () => {
 describe("bannerMessages with stat data", () => {
   const now = new Date("2026-11-05T12:00:00Z");
   const health = (patch: Partial<StatHealth>): StatHealth => ({
-    status: "ok", data_ready: true, data_through: "2026 week 9", built_at: "2026-11-05T00:00:00Z", seasons: [2026], ...patch,
+    status: "ok",
+    data_ready: true,
+    data_through: "2026 week 9",
+    built_at: "2026-11-05T00:00:00Z",
+    seasons: [2026],
+    ...patch,
   });
   it("is quiet when the stat shards are recent or health is unknown", () => {
     expect(bannerMessages(base, health({}), now)).toEqual([]);

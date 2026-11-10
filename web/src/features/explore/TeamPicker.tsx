@@ -36,10 +36,7 @@ export function TeamPicker() {
         value={state.teams}
         onValueChange={(next) => {
           // One click changes one team; find it and toggle it through the URL.
-          const changed = [
-            ...next.filter((id) => !state.teams.includes(id)),
-            ...state.teams.filter((id) => !next.includes(id)),
-          ];
+          const changed = [...next.filter((id) => !state.teams.includes(id)), ...state.teams.filter((id) => !next.includes(id))];
           changed.forEach((id) => toggleTeamId(id));
         }}
         className="grid grid-cols-4 gap-1.5"

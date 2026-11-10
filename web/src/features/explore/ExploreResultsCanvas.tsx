@@ -26,14 +26,7 @@ export interface ExploreResultsCanvasProps {
   namedPlayers?: NFLPlayer[];
 }
 
-export function ExploreResultsCanvas({
-  result,
-  error,
-  details,
-  running,
-  pinnedPlayers,
-  namedPlayers,
-}: ExploreResultsCanvasProps) {
+export function ExploreResultsCanvas({ result, error, details, running, pinnedPlayers, namedPlayers }: ExploreResultsCanvasProps) {
   const { state } = useQueryState();
   const selectedStatIds = state.stats;
   const activeGranularity = state.granularity;
@@ -164,12 +157,7 @@ export function ExploreResultsCanvas({
               </ToggleGroupItem>
             </ToggleGroup>
             {canvasView === "scatter" ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                                onClick={() => setSwapScatterAxes((s) => !s)}
-              >
+              <Button type="button" variant="outline" size="sm" onClick={() => setSwapScatterAxes((s) => !s)}>
                 Swap axes
               </Button>
             ) : null}

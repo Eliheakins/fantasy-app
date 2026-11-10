@@ -24,11 +24,14 @@ export function useWeek(): { week: number; setWeek: (week: number) => void } {
   const week = params.get("week") !== null && isWeek(asked) ? asked : current;
   const setWeek = useCallback(
     (next: number) =>
-      setParams((prev) => {
-        const out = new URLSearchParams(prev);
-        out.set("week", String(next));
-        return out;
-      }, { replace: true }),
+      setParams(
+        (prev) => {
+          const out = new URLSearchParams(prev);
+          out.set("week", String(next));
+          return out;
+        },
+        { replace: true },
+      ),
     [setParams],
   );
   return { week, setWeek };

@@ -11,7 +11,11 @@ import PlayersCompare from "./PlayersCompare";
 
 vi.mock("@/api/useEnvelope", () => ({ useEnvelopeQuery: vi.fn() }));
 vi.mock("@/stat/lib/api", () => ({ fetchManifest: vi.fn() }));
-vi.mock("@/stat/lib/players", async (orig) => ({ ...(await orig<typeof import("@/stat/lib/players")>()), getPlayers: vi.fn(), getPlayersByIds: vi.fn() }));
+vi.mock("@/stat/lib/players", async (orig) => ({
+  ...(await orig<typeof import("@/stat/lib/players")>()),
+  getPlayers: vi.fn(),
+  getPlayersByIds: vi.fn(),
+}));
 
 const PEOPLE = [
   { gsis_id: "a", full_name: "Ann Alpha", position: "WR", team: "KC", headshot_url: null },
@@ -20,19 +24,43 @@ const PEOPLE = [
   { gsis_id: "d", full_name: "Dee Delta", position: "QB", team: "DAL", headshot_url: null },
 ];
 const profileOf = (id: string) => ({
-  gsis_id: id, full_name: id, position: "WR", week: 9, result_week: null, result_points: null, is_out: false, projection: 10, p10: 4, median: 10, p90: 20, chance_to_play: 1, injury: null, injury_note: null,
-  ros_points: 50, replacement_name: "Free Guy", replacement_points: 40, ros_over_replacement: 10, outlook_label: null, why: null, role_weeks: [],
+  gsis_id: id,
+  full_name: id,
+  position: "WR",
+  week: 9,
+  result_week: null,
+  result_points: null,
+  is_out: false,
+  projection: 10,
+  p10: 4,
+  median: 10,
+  p90: 20,
+  chance_to_play: 1,
+  injury: null,
+  injury_note: null,
+  ros_points: 50,
+  replacement_name: "Free Guy",
+  replacement_points: 40,
+  ros_over_replacement: 10,
+  outlook_label: null,
+  why: null,
+  role_weeks: [],
 });
 const ready = <T,>(data: T): ApiState<T> => ({ kind: "ready", data }) as ApiState<T>;
 
 beforeEach(() => {
   vi.mocked(fetchManifest).mockResolvedValue({ built_at: "t" } as never);
   vi.mocked(getPlayers).mockResolvedValue(PEOPLE as never);
-  vi.mocked(getPlayersByIds).mockImplementation((async (_m: unknown, ids: string[]) => PEOPLE.filter((p) => ids.includes(p.gsis_id))) as never);
+  vi.mocked(getPlayersByIds).mockImplementation((async (_m: unknown, ids: string[]) =>
+    PEOPLE.filter((p) => ids.includes(p.gsis_id))) as never);
   vi.mocked(useEnvelopeQuery).mockImplementation(((path: string | null) => {
     const hit = path?.match(/players\/([^/]+)\/profile/);
     if (hit) return ready(profileOf(decodeURIComponent(hit[1] ?? "")));
-    return path?.includes("/market-values") ? ready([]) : path?.includes("/owners") ? ready({ rows: [], unmatched: 0 }) : { kind: "loading" };
+    return path?.includes("/market-values")
+      ? ready([])
+      : path?.includes("/owners")
+        ? ready({ rows: [], unmatched: 0 })
+        : { kind: "loading" };
   }) as typeof useEnvelopeQuery);
 });
 afterEach(() => vi.resetAllMocks());
@@ -41,7 +69,9 @@ function renderAt(entry: string) {
   const router = createMemoryRouter([{ path: "/players/compare", element: <PlayersCompare /> }], { initialEntries: [entry] });
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <TeamContext.Provider value={{ team: 2, league: "a", teams: [], viewed: null, setTeam: () => {}, notice: null, dismissNotice: () => {} }}>
+      <TeamContext.Provider
+        value={{ team: 2, league: "a", teams: [], viewed: null, setTeam: () => {}, notice: null, dismissNotice: () => {} }}
+      >
         <RouterProvider router={router} />
       </TeamContext.Provider>
     </QueryClientProvider>,

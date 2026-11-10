@@ -6,7 +6,8 @@ import { StatusBanner } from "./StatusBanner";
 const STATUS = {
   freshness: [{ source: "Sleeper", age_hours: 60, updated_at: "2026-11-01T00:00:00Z" }],
   missing_layers: ["odds"],
-  simulation_behind_inputs: null, refresh_runs: [],
+  simulation_behind_inputs: null,
+  refresh_runs: [],
   live_refresh: { enabled: false, active: false, last_ok_at: null },
 };
 
@@ -16,24 +17,35 @@ function mockMedia(matches: boolean) {
 
 function renderBanner() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(<QueryClientProvider client={client}><StatusBanner /></QueryClientProvider>);
+  render(
+    <QueryClientProvider client={client}>
+      <StatusBanner />
+    </QueryClientProvider>,
+  );
 }
 
 const HEALTH = { status: "ok", data_ready: true, data_through: "2026 week 9", built_at: new Date().toISOString(), seasons: [2026] };
 
 /** Answers /api/stat/health with a plain body and every other route with the envelope. */
 function stubFetch(status: unknown, health: unknown = HEALTH) {
-  vi.stubGlobal("fetch", vi.fn(async (url: string) =>
-    String(url).includes("/api/stat/health")
-      ? Response.json(health)
-      : Response.json({ status: "ok", data: status, error: null, started_at: null })));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) =>
+      String(url).includes("/api/stat/health")
+        ? Response.json(health)
+        : Response.json({ status: "ok", data: status, error: null, started_at: null }),
+    ),
+  );
 }
 
 beforeEach(() => stubFetch(STATUS));
 afterEach(() => vi.unstubAllGlobals());
 
 describe("StatusBanner", () => {
-  it.each([[false, "phone"], [true, "desktop"]])("collapses the notices into one amber line with a details disclosure (%s)", async (wide) => {
+  it.each([
+    [false, "phone"],
+    [true, "desktop"],
+  ])("collapses the notices into one amber line with a details disclosure (%s)", async (wide) => {
     mockMedia(wide);
     renderBanner();
     const toggle = await screen.findByRole("button", { name: /details/i });
@@ -47,7 +59,12 @@ describe("StatusBanner", () => {
   });
 
   it("lists a failed refresh step in the details", async () => {
-    stubFetch({ ...STATUS, freshness: [], missing_layers: [], refresh_runs: [{ stage: "digest", finished_at: "2026-11-05T06:00:00+00:00", status: "failed", error: "boom" }] });
+    stubFetch({
+      ...STATUS,
+      freshness: [],
+      missing_layers: [],
+      refresh_runs: [{ stage: "digest", finished_at: "2026-11-05T06:00:00+00:00", status: "failed", error: "boom" }],
+    });
     renderBanner();
     await userEvent.setup().click(await screen.findByRole("button", { name: /details/i }));
     expect(screen.getByText(/Refresh step digest failed: boom/)).toBeInTheDocument();
@@ -69,19 +86,25 @@ describe("StatusBanner", () => {
   });
 
   it("keeps the /api/status notices when the health call fails", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (String(url).includes("/api/stat/health")) return new Response("boom", { status: 500 });
-      return Response.json({ status: "ok", data: STATUS, error: null, started_at: null });
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (String(url).includes("/api/stat/health")) return new Response("boom", { status: 500 });
+        return Response.json({ status: "ok", data: STATUS, error: null, started_at: null });
+      }),
+    );
     renderBanner();
     expect(await screen.findByText(/2 data notices/i)).toBeInTheDocument();
   });
 
   it("shows the not-built notice even when /api/status fails", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (String(url).includes("/api/stat/health")) return Response.json({ ...HEALTH, data_ready: false, built_at: null });
-      throw new Error("status down");
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (String(url).includes("/api/stat/health")) return Response.json({ ...HEALTH, data_ready: false, built_at: null });
+        throw new Error("status down");
+      }),
+    );
     renderBanner();
     await userEvent.setup().click(await screen.findByRole("button", { name: /details/i }));
     expect(screen.getByText(/Stat data is not built/)).toBeInTheDocument();

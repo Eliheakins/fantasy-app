@@ -35,8 +35,7 @@ export interface StatWords {
   statLine: boolean;
 }
 
-const candidatePositions = (match: PlayerMatch): string[] =>
-  match.candidates.flatMap((c) => (c.position ? [c.position] : []));
+const candidatePositions = (match: PlayerMatch): string[] => match.candidates.flatMap((c) => (c.position ? [c.position] : []));
 
 /** The role a player is mainly known for, when all of a match's candidates agree on one. */
 function mainRoles(matches: readonly PlayerMatch[]): Set<PlayerRole> {
@@ -101,9 +100,7 @@ export function readStatWords(e: Entities, filters: FilterReads, used: WordMask)
     const beforeLast = sortedMatches[sortedMatches.length - 1]!.start;
     const details = [...found.map((f) => f.at), ...years.map((y) => y.at), ...generic.map((g) => g.at)];
     if (details.some((at) => at >= afterFirst && at < beforeLast)) {
-      return stop(
-        ambiguous("Details sit between the players' names, so it is unclear which player they belong to."),
-      );
+      return stop(ambiguous("Details sit between the players' names, so it is unclear which player they belong to."));
     }
   }
   return proceed({ generic, threw, statLine });
@@ -124,11 +121,7 @@ function genericStats(e: Entities, statAt: readonly StatPlace[], words: StatWord
   for (const { at, word } of words.generic) {
     // "total yards" adds up passing, rushing and receiving, which no single stat does.
     const isTotal = e.tokens[at - 1] === "total";
-    const id = role
-      ? GENERIC_STAT[role][word]
-      : fallback === "receiver" && !isTotal
-        ? GENERIC_STAT.receiver[word]
-        : null;
+    const id = role ? GENERIC_STAT[role][word] : fallback === "receiver" && !isTotal ? GENERIC_STAT.receiver[word] : null;
     if (!id) {
       return stop(ambiguous(`"${word}" could mean passing, rushing or receiving here.`));
     }
@@ -156,16 +149,12 @@ function checkPlayersFit(e: Entities, statIds: readonly string[]): Stage<null> {
   const fits = (m: PlayerMatch) =>
     statRoles.length === 0 ||
     candidatePositions(m).some((position) => (ROLES_BY_POSITION[position] ?? []).some((r) => statRoles.includes(r)));
-  return e.sortedMatches.every(fits)
-    ? proceed(null)
-    : stop(ambiguous("One of the names is not a player who could have that stat."));
+  return e.sortedMatches.every(fits) ? proceed(null) : stop(ambiguous("One of the names is not a player who could have that stat."));
 }
 
 /** The stats the question asks for, in reading order, from named stats, bare words and a stat line. */
 export function chooseStats(e: Entities, filters: FilterReads, words: StatWords): Stage<string[]> {
-  const statAt: StatPlace[] = filters.found.flatMap((f) =>
-    f.piece.kind === "stat" ? [{ at: f.at, id: f.piece.id }] : [],
-  );
+  const statAt: StatPlace[] = filters.found.flatMap((f) => (f.piece.kind === "stat" ? [{ at: f.at, id: f.piece.id }] : []));
   if (words.generic.length > 0) {
     const places = genericStats(e, statAt, words);
     if (!places.ok) {

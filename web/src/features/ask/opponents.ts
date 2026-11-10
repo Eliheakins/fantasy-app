@@ -12,10 +12,7 @@ const LEADS = new Set(["against", "vs", "versus", "facing", "v"]);
  * player named, a lone team after "against" is the question's subject ("passing yards against the
  * Chiefs" is the Chiefs' defense), so it is an opponent only next to another team.
  */
-export function readOpponents(
-  question: string,
-  playerNamed: boolean,
-): { teams: TeamMatch[]; filters: string[]; used: number[] } {
+export function readOpponents(question: string, playerNamed: boolean): { teams: TeamMatch[]; filters: string[]; used: number[] } {
   const tokens = tokenize(question.replace(/%/g, " percent "));
   const teams: TeamMatch[] = [];
   const used: number[] = [];

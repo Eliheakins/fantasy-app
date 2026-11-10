@@ -9,7 +9,8 @@ const SHARED_KEYS = ["league", "team", "week"];
  */
 export function navSearch(path: string, currentSearch: string, currentPathname: string): string {
   const current = new URLSearchParams(currentSearch);
-  const next = path !== "/players/find" ? new URLSearchParams() : currentPathname === path ? new URLSearchParams(currentSearch) : lastExploreParams();
+  const next =
+    path !== "/players/find" ? new URLSearchParams() : currentPathname === path ? new URLSearchParams(currentSearch) : lastExploreParams();
   SHARED_KEYS.forEach((key) => {
     const value = current.get(key);
     if (value !== null) next.set(key, value);

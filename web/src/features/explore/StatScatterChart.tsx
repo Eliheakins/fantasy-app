@@ -113,21 +113,8 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
         ))}
         {ticksY.map((t, i) => (
           <g key={`gy-${i}`}>
-            <line
-              x1={M.left}
-              y1={scaleY(t)}
-              x2={M.left + plotW}
-              y2={scaleY(t)}
-              stroke={GRID_COLOR}
-              strokeDasharray="3 4"
-            />
-            <text
-              x={M.left - 8}
-              y={scaleY(t)}
-              textAnchor="end"
-              dominantBaseline="middle"
-              fill={TICK_COLOR} fontSize={12}
-            >
+            <line x1={M.left} y1={scaleY(t)} x2={M.left + plotW} y2={scaleY(t)} stroke={GRID_COLOR} strokeDasharray="3 4" />
+            <text x={M.left - 8} y={scaleY(t)} textAnchor="end" dominantBaseline="middle" fill={TICK_COLOR} fontSize={12}>
               {fmt(t)}
             </text>
           </g>
@@ -141,7 +128,9 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
           x={14}
           y={M.top + plotH / 2}
           textAnchor="middle"
-          fill="var(--lf-ink)" fontSize={12} fontWeight={500}
+          fill="var(--lf-ink)"
+          fontSize={12}
+          fontWeight={500}
           transform={`rotate(-90 14 ${M.top + plotH / 2})`}
         >
           {yLabel}

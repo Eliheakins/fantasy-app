@@ -39,11 +39,14 @@ export default function Moves() {
   const top = moves[0];
   const choose = (next: string) => {
     if (!next) return; // clicking the selected item would clear a single-select group
-    setParams((prev) => {
-      const out = new URLSearchParams(prev);
-      out.set("view", next);
-      return out;
-    }, { replace: true });
+    setParams(
+      (prev) => {
+        const out = new URLSearchParams(prev);
+        out.set("view", next);
+        return out;
+      },
+      { replace: true },
+    );
   };
   const showAdds = view !== "trades"; // a part the view does not show never blocks it
   const showTrades = view !== "fa";
@@ -61,23 +64,37 @@ export default function Moves() {
       <PageHeader title={header.title} eyebrow={eyebrow} answer={header.answer} />
       <section aria-labelledby="moves-heading" className="mb-8 key-panel">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 id="moves-heading" className="text-section font-semibold">Moves, best first</h2>
+          <h2 id="moves-heading" className="text-section font-semibold">
+            Moves, best first
+          </h2>
           <ToggleGroup type="single" aria-label="Moves view" value={view} onValueChange={choose}>
             {VIEWS.map((v) => (
-              <ToggleGroupItem key={v.value} value={v.value}>{v.label}</ToggleGroupItem>
+              <ToggleGroupItem key={v.value} value={v.value}>
+                {v.label}
+              </ToggleGroupItem>
             ))}
           </ToggleGroup>
         </div>
         {listPending && moves.length === 0 ? (
-          <p role="status" className="text-muted">Simulating your moves…</p>
+          <p role="status" className="text-muted">
+            Simulating your moves…
+          </p>
         ) : (
           <MoveList moves={filterMoves(moves, view)} empty={EMPTY[view]} />
         )}
-        {showAdds && addsError !== null && <p role="alert" className="mt-3 text-caption text-warning">The free agent list did not load: {addsError}</p>}
-        {showTrades && tradesFailed && <p role="alert" className="mt-3 text-caption text-warning">Trade ideas did not load.</p>}
+        {showAdds && addsError !== null && (
+          <p role="alert" className="mt-3 text-caption text-warning">
+            The free agent list did not load: {addsError}
+          </p>
+        )}
+        {showTrades && tradesFailed && (
+          <p role="alert" className="mt-3 text-caption text-warning">
+            Trade ideas did not load.
+          </p>
+        )}
         <p className="measure mt-3 text-caption text-muted">
-          Ordered by playoff-odds change first, then fantasy points; the two are not converted. Points are net of the drop.
-          Trade ideas are your stored finds; build any other trade below.
+          Ordered by playoff-odds change first, then fantasy points; the two are not converted. Points are net of the drop. Trade ideas are
+          your stored finds; build any other trade below.
         </p>
       </section>
       <TradeBuilder />

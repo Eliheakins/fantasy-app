@@ -22,8 +22,15 @@ const run = (run_at: string, mine: number) => [
 ];
 const need = [0, 1, 2, 3].map((wins) => ({ n_games: 4, wins, n_runs: 5000, p_condition: 0.25, p_playoffs: 0.3 + 0.2 * wins }));
 const o = (winner: number, loser: number, d: number) => ({
-  winner_id: winner, loser_id: loser, winner: `Team ${winner}`, loser: `Team ${loser}`, involves_me: false,
-  p_condition: 0.5, n_runs: 9000, d_playoffs: d, d_title: 0,
+  winner_id: winner,
+  loser_id: loser,
+  winner: `Team ${winner}`,
+  loser: `Team ${loser}`,
+  involves_me: false,
+  p_condition: 0.5,
+  n_runs: 9000,
+  d_playoffs: d,
+  d_title: 0,
 });
 const events = [
   { kind: "trade", when: "2026-10-25T12:00:00+00:00", run_at: "2026-10-27T06:00:00+00:00", label: "Trade: got Ray Runner; sent nobody" },
@@ -132,10 +139,13 @@ describe("Season odds chart", () => {
     expect(screen.getByRole("list", { name: "Marked events" })).toBeInTheDocument();
   });
   it("says the marks are unavailable on an events error, not that there is nothing to mark", () => {
-    responder = (p) => (p === "season-events" ? { kind: "error", error: { message: "boom", code: null } } : by({
-      "season-odds": odds,
-      "odds-history": [...run("2026-10-20T06:00:00+00:00", 0.6), ...run("2026-10-27T06:00:00+00:00", 0.7)],
-    })(p));
+    responder = (p) =>
+      p === "season-events"
+        ? { kind: "error", error: { message: "boom", code: null } }
+        : by({
+            "season-odds": odds,
+            "odds-history": [...run("2026-10-20T06:00:00+00:00", 0.6), ...run("2026-10-27T06:00:00+00:00", 0.7)],
+          })(p);
     view(<SeasonOdds />);
     expect(screen.getByText(/Marks unavailable: boom/)).toBeInTheDocument();
     expect(screen.queryByText(/Nothing to mark yet/)).toBeNull();

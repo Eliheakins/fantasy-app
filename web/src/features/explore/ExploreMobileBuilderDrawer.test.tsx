@@ -5,7 +5,9 @@ import { ExploreMobileBuilderDrawer } from "./ExploreMobileBuilderDrawer";
 vi.mock("@/features/explore/QueryBuilderSidebarBody", () => ({
   QueryBuilderSidebarScroll: () => <p>builder body</p>,
   QueryBuilderSidebarExecuteFooter: ({ onExecute }: { onExecute: () => void }) => (
-    <button type="button" onClick={onExecute}>Execute analysis</button>
+    <button type="button" onClick={onExecute}>
+      Execute analysis
+    </button>
   ),
 }));
 

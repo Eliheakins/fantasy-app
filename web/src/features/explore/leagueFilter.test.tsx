@@ -16,7 +16,14 @@ import { useExploreQueryExecution } from "./useExploreQueryExecution";
 vi.mock("@/stat/engine/statQuery", () => ({
   runStatQuery: vi.fn(async () => ({ columns: ["player_id"], rows: [] })),
 }));
-const { sources } = vi.hoisted(() => ({ sources: { current: [{ year: 2024, url: "mem://2024" }, { year: 2025, url: "mem://2025" }] } }));
+const { sources } = vi.hoisted(() => ({
+  sources: {
+    current: [
+      { year: 2024, url: "mem://2024" },
+      { year: 2025, url: "mem://2025" },
+    ],
+  },
+}));
 vi.mock("@/stat/lib/dataSources", () => ({
   seasonSources: () => sources.current,
   playerGameSource: () => null,
@@ -27,24 +34,34 @@ vi.mock("@/stat/lib/players", () => ({ getPlayersByIds: async () => [] }));
 const ok = (data: unknown) => ({ status: "ok", data, error: null, started_at: null });
 const owner = (gsis_id: string, name: string, is_mine: boolean) => ({ gsis_id, owner: name, is_mine });
 const team = (roster_id: number, team_name: string, is_me: boolean) => ({
-  roster_id, team_name, is_me, wins: 1, losses: 0, ties: 0, points_for: 10, record: "1-0",
+  roster_id,
+  team_name,
+  is_me,
+  wins: 1,
+  losses: 0,
+  ties: 0,
+  points_for: 10,
+  record: "1-0",
 });
 const MINE = [owner("00-A", "Mine", true), owner("00-B", "Rival", false)];
 const RIVAL_VIEW = [owner("00-A", "Mine", false), owner("00-B", "Rival", true)];
 
 function mockFetch(leagues: unknown[] = [{ league_key: "a", name: "A" }], unmatched = 0) {
   const urls: string[] = [];
-  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-    urls.push(url);
-    const [path = "", query = ""] = url.split("?");
-    const routes: Record<string, unknown> = {
-      "/api/leagues": leagues,
-      "/api/leagues/a/teams": [team(1, "Mine", true), team(2, "Rival", false)],
-      "/api/leagues/a/player-points": [{ gsis_id: "00-A", week: 1, points: 12.5 }],
-      "/api/leagues/a/owners": { rows: query.includes("team=2") ? RIVAL_VIEW : MINE, unmatched },
-    };
-    return Response.json(ok(routes[path] ?? []));
-  }));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) => {
+      urls.push(url);
+      const [path = "", query = ""] = url.split("?");
+      const routes: Record<string, unknown> = {
+        "/api/leagues": leagues,
+        "/api/leagues/a/teams": [team(1, "Mine", true), team(2, "Rival", false)],
+        "/api/leagues/a/player-points": [{ gsis_id: "00-A", week: 1, points: 12.5 }],
+        "/api/leagues/a/owners": { rows: query.includes("team=2") ? RIVAL_VIEW : MINE, unmatched },
+      };
+      return Response.json(ok(routes[path] ?? []));
+    }),
+  );
   return urls;
 }
 
@@ -109,7 +126,13 @@ describe("League filter control", () => {
 
   it("says the rosters are today's and writes lg to the URL", async () => {
     mockFetch();
-    renderAt("/explore?s=rec_yards", <><LeagueFilterControl /><Search /></>);
+    renderAt(
+      "/explore?s=rec_yards",
+      <>
+        <LeagueFilterControl />
+        <Search />
+      </>,
+    );
 
     await userEvent.click(await screen.findByRole("radio", { name: "Free agents now" }));
 
@@ -125,9 +148,15 @@ function Run() {
   const { result } = useExploreQueryExecution();
   return (
     <>
-      <button type="button" onClick={() => setTeam(2)}>view rival</button>
+      <button type="button" onClick={() => setTeam(2)}>
+        view rival
+      </button>
       <Search />
-      <ul>{result?.rows.map((r) => <li key={String(r.player_id)}>{`row ${r.player_id}`}</li>)}</ul>
+      <ul>
+        {result?.rows.map((r) => (
+          <li key={String(r.player_id)}>{`row ${r.player_id}`}</li>
+        ))}
+      </ul>
     </>
   );
 }
@@ -189,10 +218,13 @@ describe("League filter in the query", () => {
   });
 
   it("does not run an unrestricted query while the rosters are loading", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (url.includes("/owners")) return new Promise<Response>(() => {});
-      return Response.json(ok(url.startsWith("/api/leagues/a") ? [team(1, "Mine", true)] : [{ league_key: "a", name: "A" }]));
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        if (url.includes("/owners")) return new Promise<Response>(() => {});
+        return Response.json(ok(url.startsWith("/api/leagues/a") ? [team(1, "Mine", true)] : [{ league_key: "a", name: "A" }]));
+      }),
+    );
     renderAt(`${RANKED}&lg=mine`, <Run />);
     await new Promise((r) => setTimeout(r, 30));
     expect(runStatQuery).not.toHaveBeenCalled();
@@ -200,10 +232,13 @@ describe("League filter in the query", () => {
 });
 
 describe("owner on result rows", () => {
-  const result = { columns: ["player_id", "m_rec_yards"], rows: [
-    { player_id: "00-A", m_rec_yards: 10 },
-    { player_id: "00-FA", m_rec_yards: 5 },
-  ] };
+  const result = {
+    columns: ["player_id", "m_rec_yards"],
+    rows: [
+      { player_id: "00-A", m_rec_yards: 10 },
+      { player_id: "00-FA", m_rec_yards: 5 },
+    ],
+  };
   const names = [
     { gsis_id: "00-A", full_name: "Ann", position: "WR", team: null, headshot_url: null },
     { gsis_id: "00-FA", full_name: "Fay", position: "WR", team: null, headshot_url: null },
@@ -234,7 +269,12 @@ describe("League points fetch cost", () => {
 
     await waitFor(() => expect(runStatQuery).toHaveBeenCalled());
     expect(pointUrls(urls)).toEqual(["/api/leagues/a/player-points?season=2025"]);
-    expect(vi.mocked(runStatQuery).mock.calls.at(-1)?.[0].leaguePoints?.every((r) => r.season === 2025)).toBe(true);
+    expect(
+      vi
+        .mocked(runStatQuery)
+        .mock.calls.at(-1)?.[0]
+        .leaguePoints?.every((r) => r.season === 2025),
+    ).toBe(true);
     expect((await screen.findByText(/only the latest season \(2025\)/)).textContent).toMatch(/pick seasons/i);
   });
 
@@ -242,10 +282,7 @@ describe("League points fetch cost", () => {
     const urls = mockFetch();
     renderAt("/explore?league=a&s=league_pts&o=league_pts&n=5&by=season", <Run />);
     await waitFor(() => expect(pointUrls(urls)).toHaveLength(2));
-    expect(pointUrls(urls).sort()).toEqual([
-      "/api/leagues/a/player-points?season=2024",
-      "/api/leagues/a/player-points?season=2025",
-    ]);
+    expect(pointUrls(urls).sort()).toEqual(["/api/leagues/a/player-points?season=2024", "/api/leagues/a/player-points?season=2025"]);
   });
 
   it("asks per pinned player instead of for everyone", async () => {
@@ -267,7 +304,10 @@ describe("League points fetch cost", () => {
       expect(runStatQuery).not.toHaveBeenCalled();
       expect(screen.queryByText("Updating…")).toBeNull();
     } finally {
-      sources.current = [{ year: 2024, url: "mem://2024" }, { year: 2025, url: "mem://2025" }];
+      sources.current = [
+        { year: 2024, url: "mem://2024" },
+        { year: 2025, url: "mem://2025" },
+      ];
     }
   });
 });

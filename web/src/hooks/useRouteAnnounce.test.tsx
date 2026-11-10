@@ -37,7 +37,11 @@ describe("route titles", () => {
 
 describe("useRouteAnnounce", () => {
   it("sets the title and focuses the new heading after navigating, but not on first load", async () => {
-    render(<MemoryRouter initialEntries={["/"]}><Shell /></MemoryRouter>);
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <Shell />
+      </MemoryRouter>,
+    );
     expect(document.title).toBe("This week · Fantasy");
     expect(screen.getByRole("heading", { name: "This week" })).not.toHaveFocus();
     await userEvent.click(screen.getByText("go"));

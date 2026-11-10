@@ -51,7 +51,10 @@ export function rootFor(rows: readonly WhatIfRow[]): RootFor[] {
 const KIND_LABEL = { trade: "Trade", injury: "Injury", big_week: "Big week" } as const;
 
 /** Events on the weekly odds chart, keyed by the week of the run they fall in; events with no run are left out. */
-export function weekMarks(events: readonly SeasonEventRow[], weeks: ReadonlyMap<string, number>): Map<number, { short: string; full: string }[]> {
+export function weekMarks(
+  events: readonly SeasonEventRow[],
+  weeks: ReadonlyMap<string, number>,
+): Map<number, { short: string; full: string }[]> {
   const out = new Map<number, { short: string; full: string }[]>();
   for (const e of events) {
     const week = e.run_at === null ? undefined : weeks.get(e.run_at);

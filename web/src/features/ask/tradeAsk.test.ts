@@ -6,7 +6,11 @@ import { parseStartSit } from "./startSit";
 import { parseTrade, planTrade, readTrade, tradeSummary } from "./tradeAsk";
 
 const row = (gsis_id: string, display_name: string, position = "WR", team = "KC"): PlayerDictionaryRow => ({
-  gsis_id, display_name, search_key: display_name.toLowerCase(), position, team,
+  gsis_id,
+  display_name,
+  search_key: display_name.toLowerCase(),
+  position,
+  team,
 });
 const DICT = [
   row("kelce", "Travis Kelce", "TE"),
@@ -89,8 +93,7 @@ const OWNERS = [
   // two teams may share a name; the roster id still tells them apart
   { gsis_id: "e", owner: "Rivals", roster_id: 9, is_mine: false },
 ];
-const plan = (give: string[], get: string[], owners = OWNERS) =>
-  planTrade({ give, get }, NAMES, owners, POSITIONS);
+const plan = (give: string[], get: string[], owners = OWNERS) => planTrade({ give, get }, NAMES, owners, POSITIONS);
 
 describe("planTrade", () => {
   it("takes the partner from the roster id of the get side's owner", () => {
@@ -111,7 +114,10 @@ describe("planTrade", () => {
   });
 
   it("says kickers and defenses are not supported, not that they are free agents", () => {
-    for (const [id, name] of [["k", "Kicker Kim"], ["d", "Denver D"]] as const) {
+    for (const [id, name] of [
+      ["k", "Kicker Kim"],
+      ["d", "Denver D"],
+    ] as const) {
       const result = plan(["a"], [id]);
       expect(result).toMatchObject({ kind: "handoff", text: expect.stringContaining(name) });
       expect(result.kind === "handoff" && result.text).toMatch(/kickers and defenses are not supported/i);
@@ -130,8 +136,16 @@ describe("planTrade", () => {
 
 describe("tradeSummary", () => {
   const me = (o: Partial<Record<string, number>>) => ({
-    side: "me", roster_id: 1, team_name: "Me", playoff_before: 0.5, playoff_after: 0.5, title_before: 0.1, title_after: 0.1,
-    wins_before: 8, wins_after: 8, ...o,
+    side: "me",
+    roster_id: 1,
+    team_name: "Me",
+    playoff_before: 0.5,
+    playoff_after: 0.5,
+    title_before: 0.1,
+    title_after: 0.1,
+    wins_before: 8,
+    wins_after: 8,
+    ...o,
   });
 
   it("states the change in playoff and title odds in points, rounded like TradeResult", () => {

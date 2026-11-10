@@ -6,8 +6,7 @@ import type { Manifest } from "@/stat/lib/schemas/manifest";
  * A shard URL carries the build time as `?v=`: a rebuilt shard keeps its file name, and the loader
  * caches footers and chunks by URL.
  */
-const shardUrl = (manifest: Manifest, path: string) =>
-  `${joinUrl(DATA_BASE_URL, path)}?v=${encodeURIComponent(manifest.built_at)}`;
+const shardUrl = (manifest: Manifest, path: string) => `${joinUrl(DATA_BASE_URL, path)}?v=${encodeURIComponent(manifest.built_at)}`;
 
 /** One Parquet file per season in the manifest, addressed from the data base URL. */
 export function seasonSources(manifest: Manifest | null): ColumnSource[] {

@@ -12,31 +12,55 @@ vi.mock("@/lib/league", () => ({
 const ready = (data: unknown): ApiState<unknown> => ({ kind: "ready", data });
 const team = (roster_id: number, team_name: string, is_me = false) => ({ roster_id, team_name, is_me });
 const power = [
-  { ...team(1, "Lisan", true), rank: 2, exp_points_week: 140, exp_wins: 7.7, p_playoffs: 0.76, p_title: 0.08, sos_remaining: 139, sos_rank: 1 },
+  {
+    ...team(1, "Lisan", true),
+    rank: 2,
+    exp_points_week: 140,
+    exp_wins: 7.7,
+    p_playoffs: 0.76,
+    p_title: 0.08,
+    sos_remaining: 139,
+    sos_rank: 1,
+  },
   { ...team(2, "Rival"), rank: 1, exp_points_week: 150, exp_wins: 7.5, p_playoffs: 0.5, p_title: 0.1, sos_remaining: 130, sos_rank: 2 },
 ];
 const luck = [
   { ...team(1, "Lisan", true), weeks: 6, wins: 4, losses: 2, ties: 0, ap_wins: 32, ap_losses: 22, ap_ties: 0, exp_wins: 3.56, luck: 0.44 },
   { ...team(2, "Rival"), weeks: 6, wins: 2, losses: 4, ties: 0, ap_wins: 34, ap_losses: 20, ap_ties: 0, exp_wins: 3.78, luck: -1.78 },
 ];
-const grades = [{ ...team(1, "Lisan", true), weeks: 6, actual_points: 854.7, optimal_points: 990.9, efficiency: 0.8625, bench_points_left: 136.2 }];
+const grades = [
+  { ...team(1, "Lisan", true), weeks: 6, actual_points: 854.7, optimal_points: 990.9, efficiency: 0.8625, bench_points_left: 136.2 },
+];
 const teamGrades = ["overall", "QB"].flatMap((position) => [
   { ...team(1, "Lisan", true), position, vor_per_week: 8, depth_per_week: 0.4, score: 1, rank: 1, grade: "A" },
   { ...team(2, "Rival"), position, vor_per_week: 4, depth_per_week: 0.1, score: -1, rank: 2, grade: "C" },
 ]);
-const outcome =(winner: string, loser: string, o: object = {}) => ({
-  winner_id: 1, loser_id: 2, winner, loser, involves_me: true, p_condition: 0.5, n_runs: 10000, d_playoffs: 0.119, d_title: -0.0142, ...o,
+const outcome = (winner: string, loser: string, o: object = {}) => ({
+  winner_id: 1,
+  loser_id: 2,
+  winner,
+  loser,
+  involves_me: true,
+  p_condition: 0.5,
+  n_runs: 10000,
+  d_playoffs: 0.119,
+  d_title: -0.0142,
+  ...o,
 });
 const whatIf = [outcome("Lisan", "Rival"), outcome("Rival", "Lisan", { n_runs: 400 })];
 
 function respond(over: Partial<Record<string, ApiState<unknown>>> = {}) {
   responder = (p) =>
     over[p] ??
-    (p === "power-rankings" ? ready(power)
-    : p === "luck" ? ready(luck)
-    : p === "manager-grades" ? ready(grades)
-    : p === "team-grades" ? ready(teamGrades)
-    : ready(whatIf));
+    (p === "power-rankings"
+      ? ready(power)
+      : p === "luck"
+        ? ready(luck)
+        : p === "manager-grades"
+          ? ready(grades)
+          : p === "team-grades"
+            ? ready(teamGrades)
+            : ready(whatIf));
 }
 
 describe("League page", () => {
@@ -57,7 +81,14 @@ describe("League page", () => {
     render(<League />);
     expect(screen.getByRole("heading", { level: 2, name: "League details" })).toBeInTheDocument();
     const tabs = screen.getAllByRole("tab").map((t) => t.textContent);
-    expect(tabs).toEqual(["Power rankings", "Schedule strength", "Positional strength", "Luck and all-play", "Lineup efficiency", "What if"]);
+    expect(tabs).toEqual([
+      "Power rankings",
+      "Schedule strength",
+      "Positional strength",
+      "Luck and all-play",
+      "Lineup efficiency",
+      "What if",
+    ]);
     expect(screen.getByRole("tab", { name: "Power rankings" })).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByRole("table", { name: "Positional strength by team" })).toBeNull();
     await userEvent.click(screen.getByRole("tab", { name: "Positional strength" }));

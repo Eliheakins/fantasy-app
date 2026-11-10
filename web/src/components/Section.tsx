@@ -19,7 +19,9 @@ export function Section({ title, caption, howCalculated, children, level = 2 }: 
   return (
     <section aria-labelledby={id} className="mt-10 border-t border-line pt-6 first:mt-0 first:border-t-0 first:pt-0">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4">
-        <Heading id={id} className={level === 3 ? "text-heading font-semibold" : "text-section font-semibold"}>{title}</Heading>
+        <Heading id={id} className={level === 3 ? "text-heading font-semibold" : "text-section font-semibold"}>
+          {title}
+        </Heading>
         {howCalculated && (
           <button
             type="button"
@@ -33,7 +35,11 @@ export function Section({ title, caption, howCalculated, children, level = 2 }: 
         )}
       </div>
       {caption && <p className="measure mt-1 text-caption text-muted">{caption}</p>}
-      {howCalculated && open && <div id={`${id}-method`} className="measure mt-2 rounded-lg border border-line p-3 text-caption text-muted">{howCalculated}</div>}
+      {howCalculated && open && (
+        <div id={`${id}-method`} className="measure mt-2 rounded-lg border border-line p-3 text-caption text-muted">
+          {howCalculated}
+        </div>
+      )}
       <div className="mt-3">{children}</div>
     </section>
   );

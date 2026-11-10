@@ -89,7 +89,9 @@ export function MyLeagueList() {
                       {l.error ? `: ${l.error}` : ""}
                     </span>
                     {l.roster_id === null && (
-                      <span className="block text-caption text-ink">No team picked yet. Pick yours to confirm which team the app shows as you.</span>
+                      <span className="block text-caption text-ink">
+                        No team picked yet. Pick yours to confirm which team the app shows as you.
+                      </span>
                     )}
                   </span>
                   <span className="flex flex-wrap gap-2">

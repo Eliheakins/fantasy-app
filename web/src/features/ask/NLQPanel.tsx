@@ -86,82 +86,78 @@ export function NLQPanel() {
   return (
     <div className="space-y-4">
       <section className="space-y-4" aria-label="Ask a question">
-          <p className="measure text-caption text-muted">
-            Names are matched in your browser. Built-in rules read what they can; the hosted model (Jev) reads the
-            rest, with a local model as the fallback. The model sees only the question. The numbers are computed in
-            your browser from play-by-play data.
-          </p>
+        <p className="measure text-caption text-muted">
+          Names are matched in your browser. Built-in rules read what they can; the hosted model (Jev) reads the rest, with a local model as
+          the fallback. The model sees only the question. The numbers are computed in your browser from play-by-play data.
+        </p>
 
-          <Textarea
-            value={ask.question}
-            onChange={(e) => ask.setQuestion(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder="e.g. Mahomes passing yards and touchdowns in 2023, or Kelce vs Kittle receptions per game"
-            className="min-h-24 max-w-3xl"
-            maxLength={MAX_QUESTION_LENGTH}
-            disabled={busy}
-            aria-label="Question"
-          />
+        <Textarea
+          value={ask.question}
+          onChange={(e) => ask.setQuestion(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder="e.g. Mahomes passing yards and touchdowns in 2023, or Kelce vs Kittle receptions per game"
+          className="min-h-24 max-w-3xl"
+          maxLength={MAX_QUESTION_LENGTH}
+          disabled={busy}
+          aria-label="Question"
+        />
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" onClick={() => void ask.onAsk()} disabled={busy}>
-              {ask.phase === "working" ? "Working…" : "Ask"}
-            </Button>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" onClick={() => void ask.onAsk()} disabled={busy}>
+            {ask.phase === "working" ? "Working…" : "Ask"}
+          </Button>
+        </div>
 
-          <div role="alert">{ask.message ? <Callout variant="error">{ask.message}</Callout> : null}</div>
-          <IgnoredFiltersNotice />
-          <ParticipationNotice />
+        <div role="alert">{ask.message ? <Callout variant="error">{ask.message}</Callout> : null}</div>
+        <IgnoredFiltersNotice />
+        <ParticipationNotice />
 
-          <PlayerChips players={showingAnswer || ask.phase === "choosing" ? matched : []} />
-          <PlayerChoices choices={ask.choices} onChoose={(p) => void ask.onChoose(p)} />
+        <PlayerChips players={showingAnswer || ask.phase === "choosing" ? matched : []} />
+        <PlayerChoices choices={ask.choices} onChoose={(p) => void ask.onChoose(p)} />
 
-          {answer ? (
-            <section aria-label="Answer" className="space-y-1 border-t border-line pt-3">
-              <p className="text-caption font-medium uppercase tracking-wide text-focus">{answer.context}</p>
-              <ul className="space-y-1 text-body text-ink">
-                {answer.parts.map((p, i) => (
-                  <li key={answer.lines[i]}>
-                    {p.before}
-                    {p.gsisId ? <PlayerLink gsisId={p.gsisId} name={p.name} position={positionByGsis.get(p.gsisId) ?? ""} /> : p.name}
-                    {p.after}
-                  </li>
-                ))}
-              </ul>
-              {ask.path ? (
-                <p className="text-caption text-muted">
-                  {ask.path === "rules"
-                    ? "Read by the built-in rules."
-                    : ask.path === "saved"
-                      ? "Using the fix you made to this question earlier."
-                      : "Read by the model (the hosted Jev, or the local model when Jev is unavailable)."}
-                </p>
-              ) : null}
-              {ask.notes.map((note) => (
-                <p key={note} className="text-caption text-muted">
-                  {note}
-                </p>
+        {answer ? (
+          <section aria-label="Answer" className="space-y-1 border-t border-line pt-3">
+            <p className="text-caption font-medium uppercase tracking-wide text-focus">{answer.context}</p>
+            <ul className="space-y-1 text-body text-ink">
+              {answer.parts.map((p, i) => (
+                <li key={answer.lines[i]}>
+                  {p.before}
+                  {p.gsisId ? <PlayerLink gsisId={p.gsisId} name={p.name} position={positionByGsis.get(p.gsisId) ?? ""} /> : p.name}
+                  {p.after}
+                </li>
               ))}
-              {ask.unrecognized.length > 0 ? (
-                <p className="text-caption text-warning">
-                  The built-in rules did not recognise: {ask.unrecognized.join(", ")}. Check that this answers what you
-                  asked.
-                </p>
-              ) : null}
-            </section>
-          ) : null}
+            </ul>
+            {ask.path ? (
+              <p className="text-caption text-muted">
+                {ask.path === "rules"
+                  ? "Read by the built-in rules."
+                  : ask.path === "saved"
+                    ? "Using the fix you made to this question earlier."
+                    : "Read by the model (the hosted Jev, or the local model when Jev is unavailable)."}
+              </p>
+            ) : null}
+            {ask.notes.map((note) => (
+              <p key={note} className="text-caption text-muted">
+                {note}
+              </p>
+            ))}
+            {ask.unrecognized.length > 0 ? (
+              <p className="text-caption text-warning">
+                The built-in rules did not recognise: {ask.unrecognized.join(", ")}. Check that this answers what you asked.
+              </p>
+            ) : null}
+          </section>
+        ) : null}
 
-          {ask.startSit && ask.phase === "idle" ? (
-            <StartSitAnswer a={ask.startSit.a} b={ask.startSit.b} names={ask.startSit.names} />
-          ) : null}
+        {ask.startSit && ask.phase === "idle" ? <StartSitAnswer a={ask.startSit.a} b={ask.startSit.b} names={ask.startSit.names} /> : null}
 
-          {ask.trade && ask.phase === "idle" ? (
-            <TradeAnswer give={ask.trade.give} get={ask.trade.get} names={ask.trade.names} positions={ask.trade.positions} />
-          ) : null}
+        {ask.trade && ask.phase === "idle" ? (
+          <TradeAnswer give={ask.trade.give} get={ask.trade.get} names={ask.trade.names} positions={ask.trade.positions} />
+        ) : null}
 
-          {ask.route && ask.phase === "idle" ? <RouteAnswer route={ask.route} /> : null}
+        {ask.route && ask.phase === "idle" ? <RouteAnswer route={ask.route} /> : null}
 
-          {showingAnswer ? <InterpretationChips /> : null}
+        {showingAnswer ? <InterpretationChips /> : null}
       </section>
 
       {showingAnswer ? (

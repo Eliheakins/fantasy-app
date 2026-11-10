@@ -22,8 +22,7 @@ export type AnswerPath = "rules" | "model" | "saved";
 
 export type Interpretation =
   /** `unrecognized` (model path only): words the rules could not place, so a misread is visible. */
-  | { kind: "intent"; intent: QueryIntent; path: AnswerPath; unrecognized?: string[] }
-  | { kind: "message"; text: string };
+  { kind: "intent"; intent: QueryIntent; path: AnswerPath; unrecognized?: string[] } | { kind: "message"; text: string };
 
 /**
  * Rules first: they are instant, free and deterministic. Only a question they cannot fully read goes

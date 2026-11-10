@@ -16,7 +16,12 @@ vi.mock("@/stat/lib/api", () => ({ fetchManifest: vi.fn() }));
 vi.mock("@/stat/lib/players", () => ({ getPlayersByIds: vi.fn() }));
 
 const manifest = {
-  schema_version: 1, built_at: "t", nflreadpy_version: "0", player_index: null, player_game: null, players: null,
+  schema_version: 1,
+  built_at: "t",
+  nflreadpy_version: "0",
+  player_index: null,
+  player_game: null,
+  players: null,
   seasons: [{ season: 2026, path: "s.parquet", rows: 1, max_week: 9, has_participation: true }],
 };
 const gameLog = {
@@ -30,20 +35,51 @@ const ready = <T,>(data: T): ApiState<T> => ({ kind: "ready", data }) as ApiStat
 const failed = { kind: "error", error: { message: "boom", code: null }, retry: () => {} } as ApiState<never>;
 
 const profile = {
-  gsis_id: "00-1", full_name: "Ja'Marr Chase", position: "WR", week: 5, result_week: null, result_points: null, is_out: false, projection: 18, p10: 6, median: 17.5, p90: 31, chance_to_play: 1,
-  injury: null, injury_note: null, ros_points: 90, replacement_name: "Free Guy", replacement_points: 60, ros_over_replacement: 30,
-  outlook_label: null, why: null, role_weeks: [],
+  gsis_id: "00-1",
+  full_name: "Ja'Marr Chase",
+  position: "WR",
+  week: 5,
+  result_week: null,
+  result_points: null,
+  is_out: false,
+  projection: 18,
+  p10: 6,
+  median: 17.5,
+  p90: 31,
+  chance_to_play: 1,
+  injury: null,
+  injury_note: null,
+  ros_points: 90,
+  replacement_name: "Free Guy",
+  replacement_points: 60,
+  ros_over_replacement: 30,
+  outlook_label: null,
+  why: null,
+  role_weeks: [],
 };
 
-function mockApi(points: ApiState<unknown>, owners: ApiState<unknown> = ready({ rows: [{ gsis_id: "00-1", owner: "Lisan Al-Caleb", is_mine: true }], unmatched: 0 })) {
+function mockApi(
+  points: ApiState<unknown>,
+  owners: ApiState<unknown> = ready({ rows: [{ gsis_id: "00-1", owner: "Lisan Al-Caleb", is_mine: true }], unmatched: 0 }),
+) {
   vi.mocked(useEnvelopeQuery).mockImplementation(((path: string | null) =>
-    path?.includes("/player-points") ? points : path?.includes("/owners") ? owners : path?.includes("/profile") ? ready(profile) : path?.includes("/market-values") ? ready([]) : { kind: "loading" }) as typeof useEnvelopeQuery);
+    path?.includes("/player-points")
+      ? points
+      : path?.includes("/owners")
+        ? owners
+        : path?.includes("/profile")
+          ? ready(profile)
+          : path?.includes("/market-values")
+            ? ready([])
+            : { kind: "loading" }) as typeof useEnvelopeQuery);
 }
 
 function renderPage(entry = "/players/00-1?league=a&team=2&week=5") {
   return render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <TeamContext.Provider value={{ team: 2, league: "a", teams: [], viewed: null, setTeam: () => {}, notice: null, dismissNotice: () => {} }}>
+      <TeamContext.Provider
+        value={{ team: 2, league: "a", teams: [], viewed: null, setTeam: () => {}, notice: null, dismissNotice: () => {} }}
+      >
         <MemoryRouter initialEntries={[entry]}>
           <Routes>
             <Route path="/players/:gsisId" element={<Player />} />
@@ -57,8 +93,16 @@ function renderPage(entry = "/players/00-1?league=a&team=2&week=5") {
 beforeEach(() => {
   vi.mocked(fetchManifest).mockResolvedValue(manifest as never);
   vi.mocked(runStatQuery).mockResolvedValue(gameLog as never);
-  vi.mocked(getPlayersByIds).mockImplementation((async (_m: unknown, ids: string[]) => ids.includes("00-1") ? [{ gsis_id: "00-1", full_name: "Ja'Marr Chase", position: "WR", team: "CIN", headshot_url: null }] : []) as never);
-  mockApi(ready([{ week: 1, points: 21.1 }, { week: 2, points: 12.4 }]));
+  vi.mocked(getPlayersByIds).mockImplementation((async (_m: unknown, ids: string[]) =>
+    ids.includes("00-1")
+      ? [{ gsis_id: "00-1", full_name: "Ja'Marr Chase", position: "WR", team: "CIN", headshot_url: null }]
+      : []) as never);
+  mockApi(
+    ready([
+      { week: 1, points: 21.1 },
+      { week: 2, points: 12.4 },
+    ]),
+  );
 });
 afterEach(() => vi.resetAllMocks());
 
@@ -70,10 +114,21 @@ describe("Player page", () => {
     expect(await screen.findByText(/Lisan Al-Caleb/)).toBeInTheDocument();
     const rows = await screen.findAllByRole("row");
     expect(rows).toHaveLength(3);
-    expect(within(rows[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["1", "7", "101", "21.1"]);
-    expect(within(rows[2]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["2", "5", "64", "12.4"]);
+    expect(
+      within(rows[1]!)
+        .getAllByRole("cell")
+        .map((c) => c.textContent),
+    ).toEqual(["1", "7", "101", "21.1"]);
+    expect(
+      within(rows[2]!)
+        .getAllByRole("cell")
+        .map((c) => c.textContent),
+    ).toEqual(["2", "5", "64", "12.4"]);
     expect(vi.mocked(runStatQuery).mock.calls[0]![0]).toMatchObject({
-      statIds: ["rec_receptions", "rec_yards"], gsisIds: ["00-1"], split: "week", granularity: "total",
+      statIds: ["rec_receptions", "rec_yards"],
+      gsisIds: ["00-1"],
+      split: "week",
+      granularity: "total",
       filterChipState: { "season-2026": true, "stype-reg": true },
     });
   });
@@ -101,7 +156,9 @@ describe("Player page", () => {
     renderPage();
     expect(await screen.findByText(/no players file/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Player" })).toBeInTheDocument();
-    vi.mocked(getPlayersByIds).mockResolvedValue([{ gsis_id: "00-1", full_name: "Ja'Marr Chase", position: "WR", team: "CIN", headshot_url: null }] as never);
+    vi.mocked(getPlayersByIds).mockResolvedValue([
+      { gsis_id: "00-1", full_name: "Ja'Marr Chase", position: "WR", team: "CIN", headshot_url: null },
+    ] as never);
     await userEvent.setup().click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByRole("heading", { level: 1, name: "Ja'Marr Chase" })).toBeInTheDocument();
   });
@@ -147,13 +204,20 @@ describe("Player page", () => {
   });
 
   it("shows league points to one decimal even below 1", async () => {
-    mockApi(ready([{ week: 1, points: 0.2 }, { week: 2, points: 12.4 }]));
+    mockApi(
+      ready([
+        { week: 1, points: 0.2 },
+        { week: 2, points: 12.4 },
+      ]),
+    );
     renderPage();
     expect(await screen.findByText("0.2")).toBeInTheDocument();
   });
 
   it("does not run the engine for a position with no stat lines", async () => {
-    vi.mocked(getPlayersByIds).mockResolvedValue([{ gsis_id: "00-1", full_name: "Some Kicker", position: "K", team: "BUF", headshot_url: null }] as never);
+    vi.mocked(getPlayersByIds).mockResolvedValue([
+      { gsis_id: "00-1", full_name: "Some Kicker", position: "K", team: "BUF", headshot_url: null },
+    ] as never);
     renderPage();
     expect(await screen.findByText("No stat lines for this position.")).toBeInTheDocument();
     expect(runStatQuery).not.toHaveBeenCalled();

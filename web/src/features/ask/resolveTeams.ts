@@ -39,10 +39,7 @@ export const resolveTeams = (question: string): TeamMatch[] => findTeams(tokeniz
  * Player matches that are not just a team's name: "Bills" is the team even though a lineman is named
  * Keaton Bills, while "Keaton Bills" in full is still the player.
  */
-export function dropTeamNames<M extends Pick<PlayerMatch, "phrase" | "start">>(
-  matches: readonly M[],
-  teams: readonly TeamMatch[],
-): M[] {
+export function dropTeamNames<M extends Pick<PlayerMatch, "phrase" | "start">>(matches: readonly M[], teams: readonly TeamMatch[]): M[] {
   return matches.filter((m) => {
     const end = m.start + tokenize(m.phrase).length;
     return !teams.some((t) => t.start <= m.start && end <= t.start + t.length);

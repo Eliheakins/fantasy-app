@@ -8,12 +8,19 @@ export function Answer() {
   const { pending, todos, leaguesError } = useTodos();
   const top = todos[0];
   const sentence =
-    leaguesError !== null ? <>The leagues did not load, so there is no answer yet.</>
-    : pending ? <>Reading both leagues…</>
-    : !top ? <>Nothing needs doing in either league right now.</>
-    : (
+    leaguesError !== null ? (
+      <>The leagues did not load, so there is no answer yet.</>
+    ) : pending ? (
+      <>Reading both leagues…</>
+    ) : !top ? (
+      <>Nothing needs doing in either league right now.</>
+    ) : (
       <>
-        First: {top.title} <span className="text-muted">({top.leagueName}{deadlineText(top) ? `, ${deadlineText(top)}` : ""})</span>{" "}
+        First: {top.title}{" "}
+        <span className="text-muted">
+          ({top.leagueName}
+          {deadlineText(top) ? `, ${deadlineText(top)}` : ""})
+        </span>{" "}
         <EffectText todo={top} inline />
       </>
     );

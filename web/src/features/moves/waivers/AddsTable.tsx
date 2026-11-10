@@ -17,8 +17,7 @@ type Props = {
   onSelect: (gsisId: string) => void;
 };
 
-const BTN =
-  "min-h-[44px] text-left font-medium underline decoration-line underline-offset-4 hover:decoration-ink lg:min-h-0";
+const BTN = "min-h-[44px] text-left font-medium underline decoration-line underline-offset-4 hover:decoration-ink lg:min-h-0";
 
 function columns(selected: string | null, onSelect: (id: string) => void): Column<WaiverRow>[] {
   return [
@@ -51,7 +50,12 @@ function columns(selected: string | null, onSelect: (id: string) => void): Colum
       role: "detail",
       render: (r) => (r.se_title == null ? "–" : `±${formatNumber(r.se_title * 100)}`),
     },
-    { label: "Sleeper adds", numeric: true, role: "detail", render: (r) => (r.trending_adds == null ? "–" : r.trending_adds.toLocaleString("en-US")) },
+    {
+      label: "Sleeper adds",
+      numeric: true,
+      role: "detail",
+      render: (r) => (r.trending_adds == null ? "–" : r.trending_adds.toLocaleString("en-US")),
+    },
   ];
 }
 

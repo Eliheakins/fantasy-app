@@ -31,7 +31,8 @@ export function WelcomeDialog() {
             </Dialog.Close>
           </div>
           <Dialog.Description className="text-body text-muted">
-            Enter your Sleeper username, then add each league and pick which team in it is yours. You can add up to 2, and change them later under My leagues.
+            Enter your Sleeper username, then add each league and pick which team in it is yours. You can add up to 2, and change them later
+            under My leagues.
           </Dialog.Description>
           <AddLeague username={username} onUsername={setUsername} />
           <Dialog.Close asChild>

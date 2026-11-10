@@ -21,7 +21,9 @@ describe("SavedSearches", () => {
     await user.click(screen.getByRole("button", { name: "Save search" }));
     const link = screen.getByRole("link", { name: "Chase yards" });
     expect(link).toHaveAttribute("href", "/players/find?p=00-1&s=rec_yards&league=a&team=2");
-    expect(JSON.parse(window.localStorage.getItem("fantasy.savedSearches") ?? "[]")).toEqual([{ name: "Chase yards", query: "p=00-1&s=rec_yards" }]);
+    expect(JSON.parse(window.localStorage.getItem("fantasy.savedSearches") ?? "[]")).toEqual([
+      { name: "Chase yards", query: "p=00-1&s=rec_yards" },
+    ]);
     await user.click(screen.getByRole("button", { name: "Delete Chase yards" }));
     expect(screen.queryByRole("link", { name: "Chase yards" })).toBeNull();
     expect(window.localStorage.getItem("fantasy.savedSearches")).toBe("[]");
@@ -41,8 +43,12 @@ describe("SavedSearches", () => {
   });
 
   it("still renders and keeps the search for this visit when storage throws, and says it was not kept", async () => {
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("denied"); });
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("full"); });
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("denied");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("full");
+    });
     const user = userEvent.setup();
     renderAt("/players/find?s=rec_yards");
     await user.type(screen.getByLabelText("Name this search"), "Temp");
@@ -59,7 +65,10 @@ describe("SavedSearches", () => {
   });
 
   it("stops at 50 searches and says so", () => {
-    window.localStorage.setItem("fantasy.savedSearches", JSON.stringify(Array.from({ length: 50 }, (_, i) => ({ name: `n${i}`, query: "s=x" }))));
+    window.localStorage.setItem(
+      "fantasy.savedSearches",
+      JSON.stringify(Array.from({ length: 50 }, (_, i) => ({ name: `n${i}`, query: "s=x" }))),
+    );
     renderAt("/players/find?s=y");
     expect(screen.getByRole("button", { name: "Save search" })).toBeDisabled();
     expect(screen.getByText(/keep 50 searches/)).toBeInTheDocument();

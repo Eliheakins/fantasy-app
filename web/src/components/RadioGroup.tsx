@@ -33,7 +33,9 @@ export function RadioGroup<K extends string>({ label, options, value, onChange, 
       {options.map((o, i) => (
         <button
           key={o.key}
-          ref={(el) => { refs.current[i] = el; }}
+          ref={(el) => {
+            refs.current[i] = el;
+          }}
           type="button"
           role="radio"
           aria-checked={o.key === value}

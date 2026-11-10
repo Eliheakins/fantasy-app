@@ -3,7 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { RadioGroup } from "./RadioGroup";
 
-const OPTIONS = [{ key: "a", label: "A" }, { key: "b", label: "B" }, { key: "c", label: "C" }] as const;
+const OPTIONS = [
+  { key: "a", label: "A" },
+  { key: "b", label: "B" },
+  { key: "c", label: "C" },
+] as const;
 
 function Harness() {
   const [v, setV] = useState<"a" | "b" | "c">("a");

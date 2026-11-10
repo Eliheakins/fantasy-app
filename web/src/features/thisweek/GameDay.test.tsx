@@ -8,15 +8,43 @@ import { WinChanceLine } from "./WinChanceLine";
 
 const ok = (data: unknown) => ({ status: "ok", data, error: null, started_at: null });
 const point = (run_at: string, win_prob: number, my_points: number) => ({
-  league_id: "L1", run_at, week: 9, roster_id: 1, win_prob, my_points, opp_points: 20, my_projected: 110, opp_projected: 100, my_left: 3, opp_left: 4,
+  league_id: "L1",
+  run_at,
+  week: 9,
+  roster_id: 1,
+  win_prob,
+  my_points,
+  opp_points: 20,
+  my_projected: 110,
+  opp_projected: 100,
+  my_left: 3,
+  opp_left: 4,
 });
 const history = [point("2026-11-08T17:10:00Z", 0.55, 10), point("2026-11-08T17:20:00Z", 0.62, 18)];
 const now = {
-  league_id: "L1", week: 9, roster_id: 1, my_team: "Mine", opp_team: "Theirs", win_prob: 0.62,
-  my_points: 18, opp_points: 20, my_projected: 110, opp_projected: 100, my_left: 3, opp_left: 4, points_needed: 82,
+  league_id: "L1",
+  week: 9,
+  roster_id: 1,
+  my_team: "Mine",
+  opp_team: "Theirs",
+  win_prob: 0.62,
+  my_points: 18,
+  opp_points: 20,
+  my_projected: 110,
+  opp_projected: 100,
+  my_left: 3,
+  opp_left: 4,
+  points_needed: 82,
 };
 const status = (active: boolean) =>
-  ok({ freshness: [], missing_layers: [], simulation_behind_inputs: null, refresh_runs: [], data_version: "v", live_refresh: { enabled: true, active, last_ok_at: null, last_error: null, interval_minutes: 10 } });
+  ok({
+    freshness: [],
+    missing_layers: [],
+    simulation_behind_inputs: null,
+    refresh_runs: [],
+    data_version: "v",
+    live_refresh: { enabled: true, active, last_ok_at: null, last_error: null, interval_minutes: 10 },
+  });
 
 let live = true;
 let gameDay: () => Response = () => Response.json(ok({ week: 9, as_of: "2026-11-08T17:20:00Z", current: now, history }));
@@ -28,16 +56,22 @@ beforeEach(() => {
   live = true;
   leaguesFail = false;
   gameDay = () => Response.json(ok({ week: 9, as_of: "2026-11-08T17:20:00Z", current: now, history }));
-  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-    urls.push(url);
-    const path = url.split("?")[0] ?? "";
-    if (path === "/api/status") return Response.json(status(live));
-    if (path === "/api/leagues") return leaguesFail ? Response.json({ status: "error", data: null, error: { code: "server", message: "down" }, started_at: null }) : Response.json(ok([{ league_key: "a", name: "Alpha", roster_id: 1 }]));
-    if (path.endsWith("/digest")) return Response.json(ok({ waivers: [], ideas: {} }));
-    if (path === "/api/week-calendar") return Response.json(ok({ week: 9, kickoffs: [], waivers: [] }));
-    if (path === "/api/leagues/a/game-day") return gameDay();
-    return Response.json(ok([]));
-  }));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) => {
+      urls.push(url);
+      const path = url.split("?")[0] ?? "";
+      if (path === "/api/status") return Response.json(status(live));
+      if (path === "/api/leagues")
+        return leaguesFail
+          ? Response.json({ status: "error", data: null, error: { code: "server", message: "down" }, started_at: null })
+          : Response.json(ok([{ league_key: "a", name: "Alpha", roster_id: 1 }]));
+      if (path.endsWith("/digest")) return Response.json(ok({ waivers: [], ideas: {} }));
+      if (path === "/api/week-calendar") return Response.json(ok({ week: 9, kickoffs: [], waivers: [] }));
+      if (path === "/api/leagues/a/game-day") return gameDay();
+      return Response.json(ok([]));
+    }),
+  );
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -45,7 +79,9 @@ function renderBoard() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter><ThisWeekBoard /></MemoryRouter>
+      <MemoryRouter>
+        <ThisWeekBoard />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
   return client;
@@ -117,7 +153,16 @@ describe("game-day block", () => {
 });
 
 describe("points needed in words", () => {
-  const base = { my_team: "Mine", opp_team: "Theirs", my_points: 100, opp_points: 90, opp_projected: 95, my_left: 2, opp_left: 2, points_needed: -5 };
+  const base = {
+    my_team: "Mine",
+    opp_team: "Theirs",
+    my_points: 100,
+    opp_points: 90,
+    opp_projected: 95,
+    my_left: 2,
+    opp_left: 2,
+    points_needed: -5,
+  };
   it("reports a finished loss, win and tie plainly", () => {
     const done = { my_left: 0, opp_left: 0 };
     expect(neededLine({ ...base, ...done, my_points: 148.5, opp_points: 160, points_needed: 11.5 })).toBe("Final: lost 148.5 to 160.0.");

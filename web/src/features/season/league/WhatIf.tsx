@@ -11,15 +11,18 @@ import type { WhatIfRow } from "./types";
 
 const WEEKS_AHEAD = 4;
 const OPTION_CLASS = (on: boolean) =>
-  cn("min-h-[44px] rounded-full border px-4 text-body", on ? "border-forest bg-forest font-semibold text-white" : "border-panel-line bg-surface text-forest hover:border-forest");
+  cn(
+    "min-h-[44px] rounded-full border px-4 text-body",
+    on ? "border-forest bg-forest font-semibold text-white" : "border-panel-line bg-surface text-forest hover:border-forest",
+  );
 
 function Outcome({ row, owner }: { row: WhatIfRow; owner: string }) {
   const runs = row.n_runs.toLocaleString("en-US");
   if (isThin(row)) {
     return (
       <p className="mt-3 text-body text-muted">
-        Hidden: {row.winner} beating {row.loser} happened in only {runs} of the simulated seasons (under{" "}
-        {MIN_RUNS.toLocaleString("en-US")}), so the odds behind it are too noisy to show.
+        Hidden: {row.winner} beating {row.loser} happened in only {runs} of the simulated seasons (under {MIN_RUNS.toLocaleString("en-US")}
+        ), so the odds behind it are too noisy to show.
       </p>
     );
   }
@@ -30,9 +33,13 @@ function Outcome({ row, owner }: { row: WhatIfRow; owner: string }) {
       </p>
       <dl className="mt-1 grid max-w-xs grid-cols-2 gap-y-1 text-body">
         <dt>Playoff odds change (pp)</dt>
-        <dd className="text-right"><Delta points={toPoints(row.d_playoffs)} /></dd>
+        <dd className="text-right">
+          <Delta points={toPoints(row.d_playoffs)} />
+        </dd>
         <dt>Title odds change (pp)</dt>
-        <dd className="text-right"><Delta points={toPoints(row.d_title)} /></dd>
+        <dd className="text-right">
+          <Delta points={toPoints(row.d_title)} />
+        </dd>
       </dl>
     </div>
   );
@@ -46,15 +53,22 @@ function Picker({ matchups, owner }: { matchups: readonly Matchup[]; owner: stri
   const outcome = matchup.outcomes[outcomeIndex] ?? matchup.outcomes[0];
   return (
     <div>
-      <label className="block text-caption text-muted" htmlFor="what-if-matchup">Matchup</label>
+      <label className="block text-caption text-muted" htmlFor="what-if-matchup">
+        Matchup
+      </label>
       <select
         id="what-if-matchup"
         value={matchup.key}
-        onChange={(e) => { setMatchupKey(e.target.value); setOutcomeIndex(0); }}
+        onChange={(e) => {
+          setMatchupKey(e.target.value);
+          setOutcomeIndex(0);
+        }}
         className="min-h-[44px] w-full max-w-md rounded border border-line bg-surface px-2 text-body"
       >
         {matchups.map((m) => (
-          <option key={m.key} value={m.key}>{m.involvesMe ? `${m.label} (you)` : m.label}</option>
+          <option key={m.key} value={m.key}>
+            {m.involvesMe ? `${m.label} (you)` : m.label}
+          </option>
         ))}
       </select>
       <RadioGroup

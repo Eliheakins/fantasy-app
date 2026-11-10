@@ -71,8 +71,7 @@ describe("elapsedSeconds", () => {
 
 describe("fetchEnvelope", () => {
   afterEach(() => vi.unstubAllGlobals());
-  const stub = (body: unknown) =>
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 200, json: async () => body }));
+  const stub = (body: unknown) => vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 200, json: async () => body }));
 
   it("returns a well-formed envelope", async () => {
     stub({ status: "ok", data: 1, error: null, started_at: null });

@@ -74,9 +74,16 @@ describe("position and rookie filters on rankings", () => {
 
     expect(r.leaderboard).toMatchObject({ position: "RB", limit: 10 });
     const answer = vi.fn();
-    showModelRanking(r.intent, "top 10 running backs by epa per play 2025", "rules", [], { answer, fail: vi.fn() } as unknown as AskActions, {
-      seasons: [2025],
-    });
+    showModelRanking(
+      r.intent,
+      "top 10 running backs by epa per play 2025",
+      "rules",
+      [],
+      { answer, fail: vi.fn() } as unknown as AskActions,
+      {
+        seasons: [2025],
+      },
+    );
     expect(answer.mock.calls[0]![0]).toMatchObject({ position: "RB", stats: ["rush_epa"], order: { metric: "rush_epa" } });
   });
 

@@ -3,7 +3,11 @@ import { weekMarks, myOddsByWeek, needSentence, needTable, rootFor } from "./log
 import type { SeasonEventRow, WinNeedRow } from "./types";
 
 const need = (wins: number, p: number, runs = 5000, games = 4): WinNeedRow => ({
-  n_games: games, wins, n_runs: runs, p_condition: runs / 20000, p_playoffs: p,
+  n_games: games,
+  wins,
+  n_runs: runs,
+  p_condition: runs / 20000,
+  p_playoffs: p,
 });
 
 describe("needTable", () => {
@@ -38,16 +42,27 @@ describe("needSentence", () => {
 });
 
 const outcome = (winner: number, loser: number, d: number, runs = 8000, me = false): WhatIfRow => ({
-  winner_id: winner, loser_id: loser, winner: `T${winner}`, loser: `T${loser}`, involves_me: me,
-  p_condition: 0.5, n_runs: runs, d_playoffs: d, d_title: 0,
+  winner_id: winner,
+  loser_id: loser,
+  winner: `T${winner}`,
+  loser: `T${loser}`,
+  involves_me: me,
+  p_condition: 0.5,
+  n_runs: runs,
+  d_playoffs: d,
+  d_title: 0,
 });
 
 describe("rootFor", () => {
   const rows = [
-    outcome(1, 9, 0.2, 8000, true), outcome(9, 1, -0.2, 8000, true),
-    outcome(2, 3, 0.01), outcome(3, 2, -0.01),
-    outcome(4, 5, -0.08), outcome(5, 4, 0.06),
-    outcome(6, 7, 0.5, 100), outcome(7, 6, -0.5, 100),
+    outcome(1, 9, 0.2, 8000, true),
+    outcome(9, 1, -0.2, 8000, true),
+    outcome(2, 3, 0.01),
+    outcome(3, 2, -0.01),
+    outcome(4, 5, -0.08),
+    outcome(5, 4, 0.06),
+    outcome(6, 7, 0.5, 100),
+    outcome(7, 6, -0.5, 100),
   ];
   it("ranks other matchups by the swing between outcomes and names the side to back", () => {
     const out = rootFor(rows);
@@ -63,16 +78,33 @@ describe("rootFor", () => {
     expect(rootFor([outcome(2, 3, 0.2, 1000), outcome(3, 2, -0.2, 1000)])).toHaveLength(1);
   });
   it("keeps at most five", () => {
-    const many = Array.from({ length: 8 }, (_, i) => [outcome(20 + 2 * i, 21 + 2 * i, 0.01 * (i + 1)), outcome(21 + 2 * i, 20 + 2 * i, -0.01 * (i + 1))]).flat();
+    const many = Array.from({ length: 8 }, (_, i) => [
+      outcome(20 + 2 * i, 21 + 2 * i, 0.01 * (i + 1)),
+      outcome(21 + 2 * i, 20 + 2 * i, -0.01 * (i + 1)),
+    ]).flat();
     expect(rootFor(many)).toHaveLength(5);
   });
 });
 
 describe("weekMarks", () => {
-  const ev = (kind: SeasonEventRow["kind"], run_at: string | null): SeasonEventRow => ({ kind, when: "2026-10-25T00:00:00+00:00", run_at, label: `${kind} label` });
+  const ev = (kind: SeasonEventRow["kind"], run_at: string | null): SeasonEventRow => ({
+    kind,
+    when: "2026-10-25T00:00:00+00:00",
+    run_at,
+    label: `${kind} label`,
+  });
   it("groups events by the week of their run and leaves out those with no run", () => {
-    const marks = weekMarks([ev("trade", "r1"), ev("injury", "r1"), ev("big_week", "r2"), ev("trade", null)], new Map([["r1", 7], ["r2", 8]]));
-    expect(marks.get(7)).toEqual([{ short: "Trade", full: "trade label" }, { short: "Injury", full: "injury label" }]);
+    const marks = weekMarks(
+      [ev("trade", "r1"), ev("injury", "r1"), ev("big_week", "r2"), ev("trade", null)],
+      new Map([
+        ["r1", 7],
+        ["r2", 8],
+      ]),
+    );
+    expect(marks.get(7)).toEqual([
+      { short: "Trade", full: "trade label" },
+      { short: "Injury", full: "injury label" },
+    ]);
     expect(marks.get(8)).toEqual([{ short: "Big week", full: "big_week label" }]);
     expect([...marks.keys()]).toEqual([7, 8]);
   });

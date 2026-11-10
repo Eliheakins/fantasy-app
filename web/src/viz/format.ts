@@ -43,9 +43,7 @@ export function formatDelta(points: number, noise: number = NOISE_POINTS): Forma
     if (Number(magnitude) < noise) return { text: `~${magnitude}`, tone: "neutral", sign: 0 };
     return { text: `${points > 0 ? "+" : "-"}${magnitude}`, tone: "neutral", sign: 0 };
   }
-  return points > 0
-    ? { text: `+${magnitude} ▲`, tone: "positive", sign: 1 }
-    : { text: `-${magnitude} ▼`, tone: "negative", sign: -1 };
+  return points > 0 ? { text: `+${magnitude} ▲`, tone: "positive", sign: 1 } : { text: `-${magnitude} ▼`, tone: "negative", sign: -1 };
 }
 
 export function confidenceFromShare(share: number): ConfidenceLevel {

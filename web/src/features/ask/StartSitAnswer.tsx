@@ -26,13 +26,12 @@ export function StartSitAnswer({ a, b, names }: Props) {
   const lineupLink = `/lineup${navSearch("/lineup", search, pathname)}`;
   return (
     <section aria-label="Start or sit" className="space-y-3 border-t border-line pt-3">
-      <ApiBoundary state={lineup}>
-        {(rows) => <Body rows={rows} a={a} b={b} names={names} />}
-      </ApiBoundary>
+      <ApiBoundary state={lineup}>{(rows) => <Body rows={rows} a={a} b={b} names={names} />}</ApiBoundary>
       <p className="text-caption text-muted">
         <Link to={compareHref([a, b], search)} className="font-medium text-ink underline-offset-2 hover:underline">
           Compare {names[a] ?? a} and {names[b] ?? b}
-        </Link>{" · "}
+        </Link>
+        {" · "}
         <Link to={lineupLink} className="font-medium text-ink underline-offset-2 hover:underline">
           Open the Lineup page
         </Link>{" "}
@@ -61,7 +60,11 @@ type Found = { name: string; row: LineupRow };
 
 function Verdict({ missing, locked, found }: { missing: string[]; locked: string[]; found: Found[] }) {
   if (missing.length === 2) {
-    return <Callout variant="warn">Neither {missing[0]} nor {missing[1]} is on this team&apos;s roster, so there is no lineup projection for them.</Callout>;
+    return (
+      <Callout variant="warn">
+        Neither {missing[0]} nor {missing[1]} is on this team&apos;s roster, so there is no lineup projection for them.
+      </Callout>
+    );
   }
   if (missing.length === 1) {
     return <Callout variant="warn">{missing[0]} is not on this team&apos;s roster, so there is nothing to compare against.</Callout>;
@@ -107,7 +110,9 @@ function Ranges({ found }: { found: Found[] }) {
     <ul className="space-y-1">
       {found.map((p) => (
         <li key={p.row.gsis_id} className="flex flex-wrap items-center gap-3 text-body">
-          <span className="w-40 text-ink"><PlayerLink gsisId={p.row.gsis_id} name={p.name} position={p.row.position} /></span>
+          <span className="w-40 text-ink">
+            <PlayerLink gsisId={p.row.gsis_id} name={p.name} position={p.row.position} />
+          </span>
           <span className="w-12 tabular-nums text-ink">{formatNumber(p.row.projection)}</span>
           <RangeBar domain={domain} width={RANGE_WIDTH} p10={p.row.p10} p50={p.row.projection} p90={p.row.p90} />
         </li>

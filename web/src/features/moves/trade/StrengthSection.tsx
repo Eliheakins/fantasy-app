@@ -31,15 +31,23 @@ export function StrengthSection() {
               <caption className="sr-only">Strength by position</caption>
               <thead>
                 <tr className="text-left text-caption text-muted">
-                  <th scope="col" className="py-1 font-normal">Position</th>
-                  <th scope="col" className="py-1 font-normal">Points a week over a free agent</th>
-                  <th scope="col" className="py-1 text-right font-normal">League rank</th>
+                  <th scope="col" className="py-1 font-normal">
+                    Position
+                  </th>
+                  <th scope="col" className="py-1 font-normal">
+                    Points a week over a free agent
+                  </th>
+                  <th scope="col" className="py-1 text-right font-normal">
+                    League rank
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {sorted.map((r) => (
                   <tr key={r.position} className="border-t border-line">
-                    <th scope="row" className="py-1 text-left font-normal">{r.position}</th>
+                    <th scope="row" className="py-1 text-left font-normal">
+                      {r.position}
+                    </th>
                     <td className="py-1">
                       <span className="flex items-center gap-2">
                         <span className="w-10 text-right">{r.vor_per_week.toFixed(1)}</span>

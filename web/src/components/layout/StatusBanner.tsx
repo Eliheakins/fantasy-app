@@ -51,7 +51,9 @@ export function StatusBanner() {
           <div className={`${INNER} flex min-h-[40px] items-center justify-between gap-3`}>
             <p>
               <span className="font-medium">{label}</span>
-              <span className="hidden sm:inline">. Run <code>make refresh</code>.</span>
+              <span className="hidden sm:inline">
+                . Run <code>make refresh</code>.
+              </span>
             </p>
             <button
               type="button"
@@ -66,7 +68,11 @@ export function StatusBanner() {
           </div>
           {open && (
             <ul id="data-notices" aria-live="off" className={`${INNER} list-disc space-y-1 pb-3 pl-[calc(var(--page-pad)+1rem)]`}>
-              {messages.map((m) => <li key={m} className="break-words"><WithCode text={m} /></li>)}
+              {messages.map((m) => (
+                <li key={m} className="break-words">
+                  <WithCode text={m} />
+                </li>
+              ))}
             </ul>
           )}
         </div>

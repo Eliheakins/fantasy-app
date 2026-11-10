@@ -24,7 +24,11 @@ describe("Explain", () => {
   });
 
   it("ExplainDelta keeps the delta's sign and arrow as the button label", async () => {
-    render(<ExplainDelta points={4.1} why="From the stored simulation.">{null}</ExplainDelta>);
+    render(
+      <ExplainDelta points={4.1} why="From the stored simulation.">
+        {null}
+      </ExplainDelta>,
+    );
     expect(screen.getByRole("button", { name: /\+4\.1 ▲.*what drives this/i })).toBeInTheDocument();
   });
 
@@ -39,7 +43,11 @@ describe("Explain", () => {
   });
 
   it("names what the number is about when asked", () => {
-    render(<Explain why="Why." about="Flex slot, 64% of paired draws">lean</Explain>);
+    render(
+      <Explain why="Why." about="Flex slot, 64% of paired draws">
+        lean
+      </Explain>,
+    );
     expect(screen.getByRole("button", { name: /lean.*Flex slot, 64% of paired draws.*what drives this/ })).toBeInTheDocument();
   });
 

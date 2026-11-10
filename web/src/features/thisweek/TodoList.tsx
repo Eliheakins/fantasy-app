@@ -12,7 +12,9 @@ export function TodoList({ todos }: { todos: readonly Todo[] }) {
     <ol className="divide-y divide-panel-line">
       {todos.map((t, i) => (
         <li key={t.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-3 first:pt-0 last:pb-0">
-          <span aria-hidden className="w-5 text-caption font-semibold text-muted tabular-nums">{i + 1}</span>
+          <span aria-hidden className="w-5 text-caption font-semibold text-muted tabular-nums">
+            {i + 1}
+          </span>
           <div className="min-w-0 flex-1">
             <Link to={t.href} className="inline-flex min-h-[44px] items-center font-semibold underline-offset-2 hover:underline">
               {t.title}

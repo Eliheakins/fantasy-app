@@ -49,11 +49,7 @@ export function useExplorePlayerSearch() {
   const suggestions = useMemo(() => searchQ.data ?? [], [searchQ.data]);
   // A failed player list (missing file, API or CDN down) must be visible, not an empty dropdown.
   const searchError =
-    debounced.trim().length >= 2 && searchQ.error
-      ? searchQ.error instanceof Error
-        ? searchQ.error.message
-        : String(searchQ.error)
-      : null;
+    debounced.trim().length >= 2 && searchQ.error ? (searchQ.error instanceof Error ? searchQ.error.message : String(searchQ.error)) : null;
 
   const isPinned = useCallback((gsisId: string) => pinnedPlayers.some((p) => p.gsis_id === gsisId), [pinnedPlayers]);
 

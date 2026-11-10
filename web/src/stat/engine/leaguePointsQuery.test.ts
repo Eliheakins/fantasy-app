@@ -60,10 +60,7 @@ describe("league points from the selected league", () => {
   });
 
   it("ranks players by points, best first, and keeps the first rows", async () => {
-    const result = await runStatQuery(
-      params({ order: { metric: "league_pts", direction: "desc" }, limit: 2 }),
-      store,
-    );
+    const result = await runStatQuery(params({ order: { metric: "league_pts", direction: "desc" }, limit: 2 }), store);
     expect(result.rows.map((r) => r.player_id)).toEqual([FA, QB]);
   });
 
@@ -81,18 +78,12 @@ describe("league points from the selected league", () => {
       [2, 20],
       [3, 0],
     ]);
-    const both = await runStatQuery(
-      params({ gsisIds: [RB], filterChipState: { "season-2022": true, "season-2023": true } }),
-      store,
-    );
+    const both = await runStatQuery(params({ gsisIds: [RB], filterChipState: { "season-2022": true, "season-2023": true } }), store);
     expect(byPlayer(both.rows)).toEqual({ [RB]: 120 });
   });
 
   it("filters by week like the other counting stats", async () => {
-    const late = await runStatQuery(
-      params({ gsisIds: [QB], filterChipState: { "season-2023": true, "week-late": true } }),
-      store,
-    );
+    const late = await runStatQuery(params({ gsisIds: [QB], filterChipState: { "season-2023": true, "week-late": true } }), store);
     expect(late.rows).toEqual([]);
   });
 
@@ -117,10 +108,7 @@ describe("league points from the selected league", () => {
 
 describe("league points and play-level filters", () => {
   it("returns no numbers and a notice naming the filter instead of unfiltered totals", async () => {
-    const result = await runStatQuery(
-      params({ filterChipState: { "season-2023": true, "down-3": true } }),
-      store,
-    );
+    const result = await runStatQuery(params({ filterChipState: { "season-2023": true, "down-3": true } }), store);
     expect(result.rows).toEqual([]);
     expect(result.notices).toHaveLength(1);
     expect(result.notices![0]).toMatch(/League points/);
@@ -140,9 +128,7 @@ describe("league points without a league or for teams", () => {
   });
 
   it("does not offer team rows", async () => {
-    await expect(
-      runStatQuery(params({ teams: { ids: null, side: "offense" } }), store),
-    ).rejects.toThrow(/players, not teams/);
+    await expect(runStatQuery(params({ teams: { ids: null, side: "offense" } }), store)).rejects.toThrow(/players, not teams/);
   });
 });
 

@@ -2,14 +2,11 @@ import { STAT_DEFINITIONS } from "@/stat/config/statDictionary";
 
 import { currentSeason, statLink } from "./statLink";
 
-const link = (position: string, gsisId: string | null = "00-0033873", search = "") =>
-  statLink({ gsisId, position, season: 2026, search });
+const link = (position: string, gsisId: string | null = "00-0033873", search = "") => statLink({ gsisId, position, season: 2026, search });
 
 describe("statLink", () => {
   it("opens a WR's weekly receiving log for the season", () => {
-    expect(link("WR")).toBe(
-      "/players/find?p=00-0033873&s=rec_receptions&s=rec_yards&f=season-2026&f=stype-reg&by=week&g=total",
-    );
+    expect(link("WR")).toBe("/players/find?p=00-0033873&s=rec_receptions&s=rec_yards&f=season-2026&f=stype-reg&by=week&g=total");
   });
   it("uses the receiving set for a TE", () => {
     expect(link("TE")).toBe(link("WR"));
@@ -52,9 +49,7 @@ describe("currentSeason", () => {
 describe("statLink stat ids", () => {
   it("only uses stat ids that exist in metrics.json", () => {
     const known = new Set(STAT_DEFINITIONS.map((s) => s.id));
-    const used = ["QB", "RB", "WR", "TE"].flatMap((pos) =>
-      [...new URL(link(pos) ?? "", "http://x").searchParams.getAll("s")],
-    );
+    const used = ["QB", "RB", "WR", "TE"].flatMap((pos) => [...new URL(link(pos) ?? "", "http://x").searchParams.getAll("s")]);
 
     expect(used.length).toBeGreaterThan(0);
     expect(used.filter((id) => !known.has(id))).toEqual([]);

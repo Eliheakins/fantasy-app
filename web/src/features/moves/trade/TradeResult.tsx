@@ -35,14 +35,14 @@ function SideCard({ title, side, sides }: { title: string; side: TradeSide; side
             <dd className="flex items-center gap-3">
               <span className="w-14 text-right font-semibold tabular-nums">{formatValue(m.after, m.percent)}</span>
               <span className="inline-block w-44">
-              <Dumbbell
-                before={m.before}
-                after={m.after}
-                domain={domainFor(i as 0 | 1 | 2, side, sides)}
-                measure={m.label}
-                percent={m.percent}
-                width={110}
-              />
+                <Dumbbell
+                  before={m.before}
+                  after={m.after}
+                  domain={domainFor(i as 0 | 1 | 2, side, sides)}
+                  measure={m.label}
+                  percent={m.percent}
+                  width={110}
+                />
               </span>
             </dd>
           </div>
@@ -74,9 +74,7 @@ export function TradeResult({ result }: { result: TradeEvaluation }) {
         <SideCard title={them.team_name} side={them} sides={[me, them]} />
       </div>
       {result.market && (
-        <p className="text-caption text-muted">
-          {`Market value (${marketDate(result.market)}): ${marketText(result.market)}.`}
-        </p>
+        <p className="text-caption text-muted">{`Market value (${marketDate(result.market)}): ${marketText(result.market)}.`}</p>
       )}
       {result.warning && (
         <div>
@@ -89,9 +87,7 @@ export function TradeResult({ result }: { result: TradeEvaluation }) {
           />
         </div>
       )}
-      {result.trade_deadline !== null && (
-        <p className="text-caption text-muted">Trade deadline: week {result.trade_deadline}.</p>
-      )}
+      {result.trade_deadline !== null && <p className="text-caption text-muted">Trade deadline: week {result.trade_deadline}.</p>}
     </div>
   );
 }

@@ -19,7 +19,12 @@ describe("sideScore", () => {
     expect(sideScore(side({ points: 148.5, win_prob: null }), "Final")).toEqual({ value: "148.5", unit: "final", win: null });
   });
   test("a live game shows points so far with the projected final and win chance", () => {
-    expect(sideScore(side({ points: 24.1, projected: 110, win_prob: 0.6 }), "Live")).toEqual({ value: "24.1", unit: "so far", win: "60%", projected: "110.0" });
+    expect(sideScore(side({ points: 24.1, projected: 110, win_prob: 0.6 }), "Live")).toEqual({
+      value: "24.1",
+      unit: "so far",
+      win: "60%",
+      projected: "110.0",
+    });
   });
   test("an upcoming game shows the projection and win chance", () => {
     expect(sideScore(side({ projected: 110, win_prob: 0.6 }), "Not started")).toEqual({ value: "110.0", unit: "proj", win: "60%" });
@@ -34,7 +39,11 @@ describe("matchupStatus", () => {
     expect(matchupStatus("Not started", new Date("2026-11-08T18:00:00Z"))).toBe("Sun 1:00 PM");
   });
   test("the first kickoff is the earliest timed one", () => {
-    const k = [{ team: "A", kickoff: "2026-11-08T18:00:00Z" }, { team: "B", kickoff: null }, { team: "C", kickoff: "2026-11-06T01:15:00Z" }];
+    const k = [
+      { team: "A", kickoff: "2026-11-08T18:00:00Z" },
+      { team: "B", kickoff: null },
+      { team: "C", kickoff: "2026-11-06T01:15:00Z" },
+    ];
     expect(firstKickoff(k)?.toISOString()).toBe("2026-11-06T01:15:00.000Z");
     expect(firstKickoff([])).toBeNull();
   });

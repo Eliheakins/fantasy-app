@@ -6,7 +6,12 @@ const odds: SeasonOddsRow[] = [
   { roster_id: 2, team_name: "Them", p_playoffs: 0.4, p_bye: 0.1, p_title: 0.05, exp_wins: 7, is_me: false },
 ];
 const h = (run_at: string, roster_id: number, p: number, as_of_week: number | null = run_at === "a" ? 7 : 8): OddsHistoryRow => ({
-  run_at, roster_id, team_name: roster_id === 1 ? "Me" : "Them", p_playoffs: p, p_title: p / 2, as_of_week,
+  run_at,
+  roster_id,
+  team_name: roster_id === 1 ? "Me" : "Them",
+  p_playoffs: p,
+  p_title: p / 2,
+  as_of_week,
 });
 
 it("ranks by playoff odds without mutating", () => {
@@ -23,14 +28,26 @@ describe("odds history logic", () => {
     expect(canShowHistory(odds, [...one, h("b", 1, 0.6)])).toBe(true);
   });
   it("keeps the last snapshot of each week, by week, and skips runs without a week", () => {
-    const rows = [h("2026-10-21", 1, 0.5, 7), h("2026-10-24", 1, 0.55, 7), h("2026-10-24", 2, 0.3, 7), h("2026-10-28", 1, 0.7, 8), h("2026-10-01", 1, 0.9, null)];
+    const rows = [
+      h("2026-10-21", 1, 0.5, 7),
+      h("2026-10-24", 1, 0.55, 7),
+      h("2026-10-24", 2, 0.3, 7),
+      h("2026-10-28", 1, 0.7, 8),
+      h("2026-10-01", 1, 0.9, null),
+    ];
     expect(weeklyHistory(rows)).toEqual([
       { week: 7, run_at: "2026-10-24", "1": 0.55, "2": 0.3 },
       { week: 8, run_at: "2026-10-28", "1": 0.7 },
     ]);
   });
   it("colours playoff seeds Forest, the rest light grey", () => {
-    expect([1, 2, 6, 7, 10].map((s) => seedFill(s))).toEqual(["var(--lf-forest)", "var(--lf-forest)", "var(--lf-forest)", "var(--lf-chart-other)", "var(--lf-chart-other)"]);
+    expect([1, 2, 6, 7, 10].map((s) => seedFill(s))).toEqual([
+      "var(--lf-forest)",
+      "var(--lf-forest)",
+      "var(--lf-forest)",
+      "var(--lf-chart-other)",
+      "var(--lf-chart-other)",
+    ]);
   });
   it("needs my team", () => {
     const rivals = odds.map((o) => ({ ...o, is_me: false }));

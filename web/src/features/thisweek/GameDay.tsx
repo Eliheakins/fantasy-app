@@ -29,25 +29,50 @@ const winWhy = (c: Now) =>
 function LeagueGameDay({ league, intervalMs }: { league: League; intervalMs: number }) {
   const { state, stale } = useEnvelopePolling<GameDayData>(leagueUrl(league.league_key, "game-day"), intervalMs);
   const name = league.name?.trim() || league.league_key;
-  if (state.kind === "error") return <p role="alert" className="text-body text-warning">{name}: game-day numbers did not load.</p>;
-  if (state.kind !== "ready") return <p role="status" className="text-muted">{name}: loading…</p>;
+  if (state.kind === "error")
+    return (
+      <p role="alert" className="text-body text-warning">
+        {name}: game-day numbers did not load.
+      </p>
+    );
+  if (state.kind !== "ready")
+    return (
+      <p role="status" className="text-muted">
+        {name}: loading…
+      </p>
+    );
   const { current: c, history, as_of } = state.data;
   if (!c) return <p className="text-body text-muted">{name}: no matchup in play this week.</p>;
   return (
     <div className="border-t border-panel-line pt-3">
-      <h3 className="text-body font-semibold">{name}: {c.my_team} vs {c.opp_team}</h3>
-      {stale && <p role="status" className="text-caption text-warning">The last refresh failed; these are the previous numbers.</p>}
+      <h3 className="text-body font-semibold">
+        {name}: {c.my_team} vs {c.opp_team}
+      </h3>
+      {stale && (
+        <p role="status" className="text-caption text-warning">
+          The last refresh failed; these are the previous numbers.
+        </p>
+      )}
       {!isDecided(c) && (
         <p className="mt-1 text-body">
-          <Explain why={winWhy(c)}><span className="text-heading font-semibold tabular-nums">{formatPercent(c.win_prob)}</span></Explain> chance to win
+          <Explain why={winWhy(c)}>
+            <span className="text-heading font-semibold tabular-nums">{formatPercent(c.win_prob)}</span>
+          </Explain>{" "}
+          chance to win
         </p>
       )}
       <ul className="mt-1 space-y-0.5 text-body tabular-nums">
-        <li>{c.my_team}: {formatNumber(c.my_points)} so far, projected {formatNumber(c.my_projected)}, {players(c.my_left)}</li>
-        <li>{c.opp_team}: {formatNumber(c.opp_points)} so far, projected {formatNumber(c.opp_projected)}, {players(c.opp_left)}</li>
+        <li>
+          {c.my_team}: {formatNumber(c.my_points)} so far, projected {formatNumber(c.my_projected)}, {players(c.my_left)}
+        </li>
+        <li>
+          {c.opp_team}: {formatNumber(c.opp_points)} so far, projected {formatNumber(c.opp_projected)}, {players(c.opp_left)}
+        </li>
         <li>{neededLine(c)}</li>
       </ul>
-      <div className="mt-2"><WinChanceLine history={history} now={as_of ? { at: as_of, win_prob: c.win_prob } : null} /></div>
+      <div className="mt-2">
+        <WinChanceLine history={history} now={as_of ? { at: as_of, win_prob: c.win_prob } : null} />
+      </div>
     </div>
   );
 }
@@ -58,11 +83,23 @@ export function GameDay({ intervalMs }: { intervalMs: number }) {
   const list = leagues.kind === "ready" ? leagues.data : [];
   return (
     <section aria-labelledby="gameday-heading" className="mb-6 key-panel">
-      <h2 id="gameday-heading" className="mb-3 text-section font-semibold">Game day: a game is on</h2>
-      {leagues.kind === "error" && <p role="alert" className="text-body text-warning">The leagues did not load, so there are no game-day numbers.</p>}
-      {(leagues.kind === "loading" || leagues.kind === "running") && <p role="status" className="text-muted">Loading leagues…</p>}
+      <h2 id="gameday-heading" className="mb-3 text-section font-semibold">
+        Game day: a game is on
+      </h2>
+      {leagues.kind === "error" && (
+        <p role="alert" className="text-body text-warning">
+          The leagues did not load, so there are no game-day numbers.
+        </p>
+      )}
+      {(leagues.kind === "loading" || leagues.kind === "running") && (
+        <p role="status" className="text-muted">
+          Loading leagues…
+        </p>
+      )}
       <div className="flex flex-col gap-4">
-        {list.map((l) => <LeagueGameDay key={l.league_key} league={l} intervalMs={intervalMs} />)}
+        {list.map((l) => (
+          <LeagueGameDay key={l.league_key} league={l} intervalMs={intervalMs} />
+        ))}
       </div>
       <p className="mt-3 text-caption text-muted">Chance to win is the simulation's win probability, the same as on the scoreboard.</p>
     </section>

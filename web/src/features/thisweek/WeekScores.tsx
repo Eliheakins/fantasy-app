@@ -37,7 +37,8 @@ function TeamLine({ side, row, winner }: { side: ScoreboardSide; row: Scoreboard
         <span className={cn("max-w-full truncate", side.is_me && "font-semibold")}>{sideName(side)}</span>
         {s.win && (
           <span className="whitespace-nowrap text-caption text-muted">
-            {s.projected ? `proj ${s.projected} · ` : ""}{s.win} to win
+            {s.projected ? `proj ${s.projected} · ` : ""}
+            {s.win} to win
           </span>
         )}
       </span>
@@ -62,7 +63,9 @@ function Matchup({ row, kickoff }: { row: ScoreboardRow; kickoff: Date | null })
         <TeamLine side={first} row={row} winner={winner} />
         <TeamLine side={second} row={row} winner={winner} />
       </div>
-      <span className={cn("w-14 text-right text-caption sm:w-20", row.status === "Live" ? "font-semibold text-ink" : "text-muted")}>{status}</span>
+      <span className={cn("w-14 text-right text-caption sm:w-20", row.status === "Live" ? "font-semibold text-ink" : "text-muted")}>
+        {status}
+      </span>
     </li>
   );
 }
@@ -71,19 +74,27 @@ function LeagueScores({ league, state, kickoff }: { league: League; state: ApiSt
   const id = `scores-${league.league_key}`;
   return (
     <section aria-labelledby={id} className="min-w-0">
-      <h3 id={id} className="mb-1 px-3 text-body font-semibold text-label">{leagueName(league)}</h3>
+      <h3 id={id} className="mb-1 px-3 text-body font-semibold text-label">
+        {leagueName(league)}
+      </h3>
       {state?.kind === "ready" ? (
         state.data.length ? (
           <ul className="divide-y divide-line">
-            {sortMineFirst(state.data).map((row) => <Matchup key={`${row.week}-${row.a.roster_id}`} row={row} kickoff={kickoff} />)}
+            {sortMineFirst(state.data).map((row) => (
+              <Matchup key={`${row.week}-${row.a.roster_id}`} row={row} kickoff={kickoff} />
+            ))}
           </ul>
         ) : (
           <p className="px-3 text-body text-muted">No matchups are set for this week yet.</p>
         )
       ) : state?.kind === "error" ? (
-        <p role="alert" className="px-3 text-body text-warning">The scores did not load: {state.error.message}</p>
+        <p role="alert" className="px-3 text-body text-warning">
+          The scores did not load: {state.error.message}
+        </p>
       ) : (
-        <p role="status" className="px-3 text-body text-muted">Loading scores…</p>
+        <p role="status" className="px-3 text-body text-muted">
+          Loading scores…
+        </p>
       )}
     </section>
   );
@@ -93,18 +104,25 @@ function LeagueScores({ league, state, kickoff }: { league: League; state: ApiSt
 export function WeekScores({ kickoff }: { kickoff: Date | null }) {
   const leagues = useAllLeagues();
   const list = leagues.kind === "ready" ? leagues.data : [];
-  const boards = useEachLeague<ScoreboardRow[]>(list.map((l) => l.league_key), "scoreboard");
+  const boards = useEachLeague<ScoreboardRow[]>(
+    list.map((l) => l.league_key),
+    "scoreboard",
+  );
   const rows = boards.flatMap((b) => (b.kind === "ready" ? b.data : []));
   const week = rows[0]?.week;
   if (leagues.kind !== "ready") return null; // the to-do section already reports a league list failure
   return (
     <section aria-labelledby="scores-heading" className="mb-8">
-      <h2 id="scores-heading" className="text-section font-semibold">{week ? `Scores, week ${week}` : "Scores"}</h2>
+      <h2 id="scores-heading" className="text-section font-semibold">
+        {week ? `Scores, week ${week}` : "Scores"}
+      </h2>
       <p className="measure mt-1 text-caption text-muted">
         Every matchup in both leagues.{rows.some((r) => r.status === "Live") ? ` ${LIVE_NOTE}` : ""}
       </p>
       <div className="mt-3 grid gap-x-10 gap-y-6 lg:grid-cols-2">
-        {list.map((l, i) => <LeagueScores key={l.league_key} league={l} state={boards[i]} kickoff={kickoff} />)}
+        {list.map((l, i) => (
+          <LeagueScores key={l.league_key} league={l} state={boards[i]} kickoff={kickoff} />
+        ))}
       </div>
     </section>
   );

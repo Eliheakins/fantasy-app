@@ -28,7 +28,17 @@ describe("requests", () => {
 
 describe("formatting", () => {
   it("scales probabilities to points", () => {
-    const side = { side: "me", roster_id: 1, team_name: "T", playoff_before: 0.5, playoff_after: 0.523, title_before: 0.1, title_after: 0.09, wins_before: 8, wins_after: 8.25 };
+    const side = {
+      side: "me",
+      roster_id: 1,
+      team_name: "T",
+      playoff_before: 0.5,
+      playoff_after: 0.523,
+      title_before: 0.1,
+      title_after: 0.09,
+      wins_before: 8,
+      wins_after: 8.25,
+    };
     const [playoff, title, wins] = sideMeasures(side);
     expect(formatValue(playoff.after, playoff.percent)).toBe("52.3%");
     expect(formatSigned(title.after - title.before, true)).toBe("-1.0%");

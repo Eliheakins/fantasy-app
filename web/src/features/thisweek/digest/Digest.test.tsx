@@ -16,19 +16,65 @@ vi.mock("@/lib/league", () => ({
 
 const ready = (data: unknown): ApiState<unknown> => ({ kind: "ready", data });
 
-const ideas = { is_mine: true, created_at: "2026-10-25T08:00:00+00:00", as_of_week: 7, current_week: 7, trade_deadline: 11, deadline_passed: false };
-const waiver = { kind: "waiver", partner: null, give: "DJ Moore", get: "Malik Willis", give_ids: [], get_ids: ["g"], rank: 1, playoff_delta: 0.0159, title_delta: 0.0049, se_title: 0.001, delta_points: 8.2 };
+const ideas = {
+  is_mine: true,
+  created_at: "2026-10-25T08:00:00+00:00",
+  as_of_week: 7,
+  current_week: 7,
+  trade_deadline: 11,
+  deadline_passed: false,
+};
+const waiver = {
+  kind: "waiver",
+  partner: null,
+  give: "DJ Moore",
+  get: "Malik Willis",
+  give_ids: [],
+  get_ids: ["g"],
+  rank: 1,
+  playoff_delta: 0.0159,
+  title_delta: 0.0049,
+  se_title: 0.001,
+  delta_points: 8.2,
+};
 const trade = { ...waiver, kind: "trade", partner: "The Pinheads", give: "A (RB)", get: "B (WR)", delta_points: null };
 const odds = (over: object = {}) => ({
-  roster_id: 1, team_name: "Lisan", is_me: true, as_of_week: 7, prev_as_of_week: null, p_playoffs: 0.86, p_title: 0.24, d_playoffs: null, d_title: null, ...over,
+  roster_id: 1,
+  team_name: "Lisan",
+  is_me: true,
+  as_of_week: 7,
+  prev_as_of_week: null,
+  p_playoffs: 0.86,
+  p_title: 0.24,
+  d_playoffs: null,
+  d_title: null,
+  ...over,
 });
 const base: DigestData = {
-  last_week: { week: 6, roster_id: 1, team_name: "Lisan", opponent: "Eggplant", points: 137.8, opp_points: 76.4, result: "W", bench_points_left: 33.3, luck: 0.22 },
+  last_week: {
+    week: 6,
+    roster_id: 1,
+    team_name: "Lisan",
+    opponent: "Eggplant",
+    points: 137.8,
+    opp_points: 76.4,
+    result: "W",
+    bench_points_left: 33.3,
+    luck: 0.22,
+  },
   performance: [
     { gsis_id: "a", full_name: "Cook", position: "RB", points: 24.3, projection: 15, diff: 9.3 },
     { gsis_id: "b", full_name: "Darnold", position: "QB", points: 13, projection: null, diff: null },
   ],
-  watch: [{ gsis_id: "w", full_name: "Hampton", position: "RB", ros_points: 100, reasons: ["snap share 54% before, 38% in the last 3 games", "market value down 67% in 30 days"] }],
+  watch: [
+    {
+      gsis_id: "w",
+      full_name: "Hampton",
+      position: "RB",
+      ros_points: 100,
+      reasons: ["snap share 54% before, 38% in the last 3 games", "market value down 67% in 30 days"],
+    },
+  ],
   odds_change: [odds()],
   waivers: [waiver],
   trades: [trade],

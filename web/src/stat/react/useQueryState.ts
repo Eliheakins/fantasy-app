@@ -75,14 +75,10 @@ export function useQueryState() {
     setActiveGranularity: useCallback((g: GranularityMode) => update((s) => setGranularity(s, g)), [update]),
     setMinPlays: useCallback((n: number) => update((s) => setMinPlays(s, n), { replace: true }), [update]),
     applyFilterGroup: useCallback(
-      (optionIds: readonly string[], selectedIds: readonly string[]) =>
-        update((s) => applyFilterGroup(s, optionIds, selectedIds)),
+      (optionIds: readonly string[], selectedIds: readonly string[]) => update((s) => applyFilterGroup(s, optionIds, selectedIds)),
       [update],
     ),
-    setRanking: useCallback(
-      (order: QueryOrder | null, limit?: number) => update((s) => setRanking(s, order, limit)),
-      [update],
-    ),
+    setRanking: useCallback((order: QueryOrder | null, limit?: number) => update((s) => setRanking(s, order, limit)), [update]),
     setSplit: useCallback((split: Split | null) => update((s) => setSplit(s, split)), [update]),
     setSubject: useCallback((subject: QueryState["subject"]) => update((s) => setSubject(s, subject)), [update]),
     setRoster: useCallback((roster: RosterFilter | null) => update((s) => setRoster(s, roster)), [update]),

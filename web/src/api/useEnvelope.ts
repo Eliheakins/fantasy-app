@@ -41,8 +41,7 @@ export function useEnvelopeQuery<T>(path: string | null, refetchMs?: number): Ap
 export function useEnvelopeQueries<T>(urls: readonly (string | null)[]): ApiState<T>[] {
   return useQueries({
     queries: urls.map((url) => ({ ...apiQueryOptions<T>(url ?? ""), enabled: url !== null })),
-    combine: (results) =>
-      results.map((r, i): ApiState<T> => (urls[i] === null ? { kind: "loading" } : resolveState(r.data, r.error))),
+    combine: (results) => results.map((r, i): ApiState<T> => (urls[i] === null ? { kind: "loading" } : resolveState(r.data, r.error))),
   });
 }
 

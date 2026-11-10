@@ -207,7 +207,12 @@ export async function runDerivedStats(
   const perGame = stats.some((s) => !s.rate_only) && params.granularity !== "total";
   const extra =
     parts.team.length > 0 || parts.games || perGame
-      ? await teamTotalsAndGames(params, parts.team.map((id) => getStatById(id)!), store, signal)
+      ? await teamTotalsAndGames(
+          params,
+          parts.team.map((id) => getStatById(id)!),
+          store,
+          signal,
+        )
       : { team: new Map<string, Record<string, number>>(), games: new Map<string, number>() };
 
   const keyOf = (row: Record<string, unknown>) => [row[idColumn], ...groupColumns.map((c) => row[c])].join("|");
@@ -233,8 +238,7 @@ export async function runDerivedStats(
       }
       const value = values[k]!(i);
       const games = extra.games.get(keys[i]!) ?? 0;
-      out[aliases[k]!] =
-        typeof value !== "number" ? null : !stat.rate_only && perGame ? (games > 0 ? value / games : null) : value;
+      out[aliases[k]!] = typeof value !== "number" ? null : !stat.rate_only && perGame ? (games > 0 ? value / games : null) : value;
       kept = true;
     });
     return kept ? [out] : [];

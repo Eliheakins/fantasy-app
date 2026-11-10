@@ -3,13 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildFilterChipGroups } from "@/stat/config/queryBuilderOptions";
 import { FIXTURE_SEASONS } from "@/stat/testing/seasons";
 
-import {
-  buildFilterWhereSql,
-  describeQuery,
-  groupStatsByRows,
-  mergeStatQueryResults,
-  metricSelectAlias,
-} from "./queryBuilder";
+import { buildFilterWhereSql, describeQuery, groupStatsByRows, mergeStatQueryResults, metricSelectAlias } from "./queryBuilder";
 
 const groups = buildFilterChipGroups(FIXTURE_SEASONS);
 
@@ -54,9 +48,7 @@ describe("groupStatsByRows", () => {
   });
 
   it("keeps stats that share role, play type and filter together, in the order asked", () => {
-    expect(ids(groupStatsByRows(["pass_yards", "cmp_pct", "pass_tds"]))).toEqual([
-      ["pass_yards", "cmp_pct", "pass_tds"],
-    ]);
+    expect(ids(groupStatsByRows(["pass_yards", "cmp_pct", "pass_tds"]))).toEqual([["pass_yards", "cmp_pct", "pass_tds"]]);
   });
 
   it("separates roles and ignores unknown ids", () => {

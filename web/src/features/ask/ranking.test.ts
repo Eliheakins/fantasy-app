@@ -40,7 +40,9 @@ describe("leaderboardFor", () => {
   it("takes a floor in words only when it counts the ranked stat's plays", () => {
     expect(readMinimum(tokens("best ypc min 100 carries"))).toMatchObject({ min: 100, role: "rusher" });
     expect(readMinimum(tokens("catch rate at least 50 targets"))).toMatchObject({ min: 50, role: "receiver" });
-    expect(leaderboardFor(tokens("best ypc min 50 targets"), "ypc", "per_play", { teams: false, defense: false, weekly: false })).toHaveProperty("reason");
+    expect(
+      leaderboardFor(tokens("best ypc min 50 targets"), "ypc", "per_play", { teams: false, defense: false, weekly: false }),
+    ).toHaveProperty("reason");
   });
 
   it("ranks a defense's allowed stat best when it allows least", () => {
@@ -80,7 +82,8 @@ describe("rules vocabulary for rankings", () => {
 
 describe("rankings the model read", () => {
   const SCOPE = { seasons: [2025, 2026], maxWeeks: { 2026: 8 } };
-  const actions = () => ({ fail: vi.fn(), answer: vi.fn() }) as unknown as AskActions & { fail: ReturnType<typeof vi.fn>; answer: ReturnType<typeof vi.fn> };
+  const actions = () =>
+    ({ fail: vi.fn(), answer: vi.fn() }) as unknown as AskActions & { fail: ReturnType<typeof vi.fn>; answer: ReturnType<typeof vi.fn> };
   const intent = { stat_ids: ["rush_yards"], filter_ids: [], granularity: "total" as const };
 
   it("ranks by the first stat when the words ask for a ranking", () => {
@@ -110,6 +113,11 @@ describe("rankings the model read", () => {
     const a = actions();
     showModelRanking(intent, "which team allowed the most rushing yards this season", "model", [], a, SCOPE);
 
-    expect(a.answer.mock.calls[0]![0]).toMatchObject({ subject: "teams", teams: [], side: "defense", filters: ["season-2026", "stype-reg"] });
+    expect(a.answer.mock.calls[0]![0]).toMatchObject({
+      subject: "teams",
+      teams: [],
+      side: "defense",
+      filters: ["season-2026", "stype-reg"],
+    });
   });
 });

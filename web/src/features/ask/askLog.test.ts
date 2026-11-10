@@ -162,9 +162,7 @@ describe("toEvalCases", () => {
 
     const cases = toEvalCases([entry("a", { question: "Mahomes TDs 2022", corrected }), entry("b")]);
 
-    expect(cases).toEqual([
-      { q: "Mahomes TDs 2022", stats: ["pass_tds"], filters: ["season-2022"], granularity: "per_game" },
-    ]);
+    expect(cases).toEqual([{ q: "Mahomes TDs 2022", stats: ["pass_tds"], filters: ["season-2022"], granularity: "per_game" }]);
   });
 
   it("skips team questions, which the eval format cannot express", () => {
@@ -182,7 +180,14 @@ describe("toEvalCases", () => {
 
 describe("start/sit entries", () => {
   it("survive a save and load", () => {
-    const entry = { id: "1", at: "t", question: "start A or B", path: "rules" as const, outcome: { kind: "start_sit" as const, text: "A or B" }, corrected: null };
+    const entry = {
+      id: "1",
+      at: "t",
+      question: "start A or B",
+      path: "rules" as const,
+      outcome: { kind: "start_sit" as const, text: "A or B" },
+      corrected: null,
+    };
     const store = new Map<string, string>();
     const storage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) };
     saveLog(storage, [entry]);

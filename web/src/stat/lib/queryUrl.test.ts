@@ -281,9 +281,7 @@ describe("leaderboard parts of the URL", () => {
 
   it("writes the order as o and the limit as n", () => {
     expect(serializeQuery(board).toString()).toBe("s=pass_yards&f=season-2023&o=pass_yards&n=10");
-    expect(serializeQuery({ ...board, order: { metric: "pass_yards", direction: "asc" } }).toString()).toContain(
-      "o=pass_yards%3Aasc",
-    );
+    expect(serializeQuery({ ...board, order: { metric: "pass_yards", direction: "asc" } }).toString()).toContain("o=pass_yards%3Aasc");
   });
 
   it("round-trips an order and a limit", () => {

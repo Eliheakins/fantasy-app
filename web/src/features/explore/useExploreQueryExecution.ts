@@ -38,8 +38,7 @@ export function useExploreQueryExecution() {
   const [running, setRunning] = useState(false);
   const runLatest = useRef(createLatestRunner()).current;
 
-  const { players, stats, granularity, minPlays, order, limit, split, subject, teams, side, lastGames, position, rookie } =
-    state;
+  const { players, stats, granularity, minPlays, order, limit, split, subject, teams, side, lastGames, position, rookie } = state;
   const league = isLeagueQuery(state);
   const forTeams = subject === "teams";
   // Whoever the rows are about is named, or the query ranks everyone.
@@ -89,11 +88,7 @@ export function useExploreQueryExecution() {
     };
 
     if (!hasSubject) {
-      invalid(
-        forTeams
-          ? "Pick at least one team in The Who, then run again."
-          : "Pin at least one player in The Who, then run again.",
-      );
+      invalid(forTeams ? "Pick at least one team in The Who, then run again." : "Pin at least one player in The Who, then run again.");
       return;
     }
     if (sources.length === 0) {
@@ -126,9 +121,7 @@ export function useExploreQueryExecution() {
     }
 
     setRunning(true);
-    setDetails(
-      describeQuery({ statIds: stats, granularity, filterChipState, chipGroups, minPlays, lastGames, position, rookie }),
-    );
+    setDetails(describeQuery({ statIds: stats, granularity, filterChipState, chipGroups, minPlays, lastGames, position, rookie }));
     let stale = false;
     try {
       const outcome = await runLatest((signal) =>

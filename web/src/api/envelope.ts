@@ -22,10 +22,7 @@ export class ApiFailure extends Error {
 }
 
 /** Pure state machine: what the UI shows for the query's current envelope or failure. */
-export function resolveState<T>(
-  envelope: Envelope<T> | undefined,
-  failure: Error | null,
-): ApiState<T> {
+export function resolveState<T>(envelope: Envelope<T> | undefined, failure: Error | null): ApiState<T> {
   if (failure) {
     const code = failure instanceof ApiFailure ? failure.code : null;
     return code === "no_data"
@@ -40,9 +37,7 @@ export function resolveState<T>(
     const error: ApiError = envelope.error
       ? { message: envelope.error.message, code: envelope.error.code }
       : { message: "Unknown error", code: null };
-    return error.code === "no_data"
-      ? { kind: "no_data", message: error.message }
-      : { kind: "error", error };
+    return error.code === "no_data" ? { kind: "no_data", message: error.message } : { kind: "error", error };
   }
   if (envelope.data === null) return { kind: "error", error: { message: "Response had no data", code: null } };
   return { kind: "ready", data: envelope.data };
@@ -83,12 +78,7 @@ export async function fetchEnvelope<T>(url: string, init?: RequestInit): Promise
   } catch {
     throw new ApiFailure(`Server returned HTTP ${response.status} without JSON`);
   }
-  if (
-    typeof body !== "object" ||
-    body === null ||
-    !("status" in body) ||
-    !ENVELOPE_STATUSES.includes(body.status as EnvelopeStatus)
-  ) {
+  if (typeof body !== "object" || body === null || !("status" in body) || !ENVELOPE_STATUSES.includes(body.status as EnvelopeStatus)) {
     throw new ApiFailure(errorMessage(body) ?? `Unexpected response from ${url}`);
   }
   // the sign-in routes answer "unauthorized" for their own reasons; anything else means the session is gone

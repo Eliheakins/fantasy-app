@@ -17,7 +17,10 @@ const METHOD =
 const WHY_MIN_WIDTH = "block min-w-[14rem]";
 
 const radioClass = (on: boolean) =>
-  cn("rounded-full border border-panel-line px-4 text-body", on ? "border-forest bg-forest font-semibold text-white" : "bg-surface text-forest hover:border-forest");
+  cn(
+    "rounded-full border border-panel-line px-4 text-body",
+    on ? "border-forest bg-forest font-semibold text-white" : "bg-surface text-forest hover:border-forest",
+  );
 
 function columns(showOwner: boolean): Column<OutlookRow>[] {
   return [
@@ -26,7 +29,8 @@ function columns(showOwner: boolean): Column<OutlookRow>[] {
       role: "primary",
       render: (r) => (
         <>
-          <PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} /> <span className="text-caption font-normal text-muted">{r.position}</span>
+          <PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} />{" "}
+          <span className="text-caption font-normal text-muted">{r.position}</span>
         </>
       ),
     },
@@ -59,7 +63,10 @@ function PlayerTable({ rows, scope }: { rows: readonly OutlookRow[]; scope: Scop
           label="Position"
           options={positions.map((p) => ({ key: p, label: p === ALL_POSITIONS ? "All positions" : p }))}
           value={position}
-          onChange={(p) => { setPosition(p); setShown(PAGE_SIZE); }}
+          onChange={(p) => {
+            setPosition(p);
+            setShown(PAGE_SIZE);
+          }}
           className="mb-3 flex flex-wrap gap-2"
           optionClassName={radioClass}
         />
@@ -79,7 +86,9 @@ function PlayerTable({ rows, scope }: { rows: readonly OutlookRow[]; scope: Scop
           >
             Show more
           </button>
-          <span className="text-caption text-muted">Showing {visible.length} of {filtered.length}</span>
+          <span className="text-caption text-muted">
+            Showing {visible.length} of {filtered.length}
+          </span>
         </div>
       )}
     </>

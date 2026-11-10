@@ -5,15 +5,32 @@ import { Confidence, DataTableFallback, Delta, RangeBar, formatNumber, formatPer
 import { Block, Stat } from "./parts";
 import { leagueUrl } from "@/lib/league";
 import {
-  type ActionRow, type WinProbability,
-  actionGain, actionSentence, actionShare, myRange, opponentRange, winChance, worthActing,
+  type ActionRow,
+  type WinProbability,
+  actionGain,
+  actionSentence,
+  actionShare,
+  myRange,
+  opponentRange,
+  winChance,
+  worthActing,
 } from "./logic";
 
 const BAR_WIDTH = 240;
 const BAR_HEIGHT = 24;
 
-function RangeRow({ label, p10, p50, p90, domain }: {
-  label: string; p10: number; p50: number; p90: number; domain: NonNullable<ReturnType<typeof sharedDomain>>;
+function RangeRow({
+  label,
+  p10,
+  p50,
+  p90,
+  domain,
+}: {
+  label: string;
+  p10: number;
+  p50: number;
+  p90: number;
+  domain: NonNullable<ReturnType<typeof sharedDomain>>;
 }) {
   return (
     <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-0 @md:grid-cols-[5.5rem_minmax(0,1fr)_9rem]">
@@ -50,12 +67,22 @@ function RangeBars({ odds, mine }: { odds: WinProbability; mine: boolean }) {
   );
 }
 
-function ActionList({ actions, odds, mine, teamName }: {
-  actions: ActionRow[]; odds: WinProbability | null; mine: boolean; teamName: string;
+function ActionList({
+  actions,
+  odds,
+  mine,
+  teamName,
+}: {
+  actions: ActionRow[];
+  odds: WinProbability | null;
+  mine: boolean;
+  teamName: string;
 }) {
   const shown = actions.filter((a) => worthActing(a, actionShare(a, odds)));
   if (shown.length === 0) {
-    return <p className="text-muted">Nothing stands out: {mine ? "your" : possessive(teamName)} lineup is set and no add moves the odds.</p>;
+    return (
+      <p className="text-muted">Nothing stands out: {mine ? "your" : possessive(teamName)} lineup is set and no add moves the odds.</p>
+    );
   }
   return (
     <ol className="space-y-3">
@@ -93,14 +120,14 @@ export function Advice({ leagueKey, mine, teamName }: { leagueKey: string; mine:
         {(d) => (
           <Block title="This week">
             {chance !== null && <Stat label="Chance to win this week" value={formatPercent(chance)} />}
-            <div className="mt-3"><RangeBars odds={d} mine={mine} /></div>
+            <div className="mt-3">
+              <RangeBars odds={d} mine={mine} />
+            </div>
           </Block>
         )}
       </ApiBoundary>
       <Block title="Do this now">
-        <ApiBoundary state={actions}>
-          {(a) => <ActionList actions={a} odds={oddsData} mine={mine} teamName={teamName} />}
-        </ApiBoundary>
+        <ApiBoundary state={actions}>{(a) => <ActionList actions={a} odds={oddsData} mine={mine} teamName={teamName} />}</ApiBoundary>
       </Block>
     </>
   );

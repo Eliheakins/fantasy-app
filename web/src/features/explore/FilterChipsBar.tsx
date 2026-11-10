@@ -15,15 +15,15 @@ export function FilterChipsBar() {
     <section className="border-b border-line pb-5">
       <h2 className="text-body font-semibold uppercase tracking-wide text-focus">The Context</h2>
       <p className="mt-0.5 text-caption text-muted">
-        Toggle filters for the WHERE clause. Within each row, multiple selections join with{" "}
-        <span className="font-medium text-ink">OR</span> (or <span className="font-medium text-ink">AND</span> where
-        noted). Rows combine with <span className="font-medium text-ink">AND</span>.
+        Toggle filters for the WHERE clause. Within each row, multiple selections join with <span className="font-medium text-ink">OR</span>{" "}
+        (or <span className="font-medium text-ink">AND</span> where noted). Rows combine with{" "}
+        <span className="font-medium text-ink">AND</span>.
       </p>
       <p className="mt-2 text-caption leading-snug text-muted">
         Some columns (e.g. <code className="rounded bg-panel px-0.5 font-mono text-caption">posteam_type</code>,{" "}
         <code className="rounded bg-panel px-0.5 font-mono text-caption">season_type</code>,{" "}
-        <code className="rounded bg-panel px-0.5 font-mono text-caption">xyac_mean_yardage</code>) may need to be added
-        to your PBP Parquet pipeline before queries succeed.
+        <code className="rounded bg-panel px-0.5 font-mono text-caption">xyac_mean_yardage</code>) may need to be added to your PBP Parquet
+        pipeline before queries succeed.
       </p>
 
       <Accordion type="multiple" className="mt-4 w-full">
@@ -37,13 +37,9 @@ export function FilterChipsBar() {
               <AccordionTrigger className="py-2 text-body hover:no-underline">
                 <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-left">
                   <span className="font-medium text-ink">{group.label}</span>
-                  {group.description ? (
-                    <span className="text-caption font-normal text-muted">({group.description})</span>
-                  ) : null}
+                  {group.description ? <span className="text-caption font-normal text-muted">({group.description})</span> : null}
                   {activeCount > 0 ? (
-                    <span className="rounded-full bg-panel px-2 py-0.5 text-caption font-semibold text-focus">
-                      {activeCount} on
-                    </span>
+                    <span className="rounded-full bg-panel px-2 py-0.5 text-caption font-semibold text-focus">{activeCount} on</span>
                   ) : null}
                   <span className="text-caption font-normal text-muted">
                     join <span className="font-medium text-ink">{group.combine.toUpperCase()}</span>

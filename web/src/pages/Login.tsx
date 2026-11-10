@@ -60,14 +60,7 @@ export default function Login() {
           <label htmlFor="login-email" className="text-body font-medium text-ink">
             Email
           </label>
-          <Input
-            id="login-email"
-            type="email"
-            autoComplete="username"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+          <Input id="login-email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="login-password" className="text-body font-medium text-ink">

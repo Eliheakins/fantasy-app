@@ -35,7 +35,11 @@ export function PowerRankings({ rows }: { rows: readonly PowerRankingRow[] }) {
           <span className="tabular-nums text-muted">{r.rank}</span>
           <span className="truncate">{r.is_me ? `${r.team_name} (you)` : r.team_name}</span>
           <span className="col-span-3 col-start-1 row-start-2 md:col-span-1 md:col-start-3 md:row-start-1">
-            <HBar fraction={barFraction(r.exp_points_week, max)} label={`${formatNumber(r.exp_points_week)} expected points`} tone={toneOf(r.is_me)} />
+            <HBar
+              fraction={barFraction(r.exp_points_week, max)}
+              label={`${formatNumber(r.exp_points_week)} expected points`}
+              tone={toneOf(r.is_me)}
+            />
           </span>
           <span className="col-start-3 row-start-1 text-right tabular-nums md:col-start-4">{formatNumber(r.exp_points_week)}</span>
         </li>

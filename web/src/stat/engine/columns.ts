@@ -28,9 +28,7 @@ export function normalizeColumn(values: ArrayLike<unknown>): ArrayLike<unknown> 
   return values;
 }
 
-type TypedArrayConstructor = new (
-  length: number,
-) => ArrayLike<unknown> & { set(source: ArrayLike<number>, offset: number): void };
+type TypedArrayConstructor = new (length: number) => ArrayLike<unknown> & { set(source: ArrayLike<number>, offset: number): void };
 
 /** Joins arrays end to end; typed arrays of one kind stay typed. A single part is returned as is. */
 export function concatenate(parts: ArrayLike<unknown>[]): ArrayLike<unknown> {

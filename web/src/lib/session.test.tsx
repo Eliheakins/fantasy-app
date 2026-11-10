@@ -10,9 +10,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 function setup() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={client}>{children}</QueryClientProvider>
-  );
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   return { client, wrapper };
 }
 
@@ -114,7 +112,13 @@ describe("signOut", () => {
 });
 
 describe("browser storage follows the account", () => {
-  const OWN = { "fantasy.league": "L1", "fantasy.lastVisit.L1": "{}", "fantasy.savedSearches": "[]", "bridge.askLog.v1": "[]", "bridge.intentCache.v1": "{}" };
+  const OWN = {
+    "fantasy.league": "L1",
+    "fantasy.lastVisit.L1": "{}",
+    "fantasy.savedSearches": "[]",
+    "bridge.askLog.v1": "[]",
+    "bridge.intentCache.v1": "{}",
+  };
   beforeEach(() => {
     window.localStorage.clear();
     for (const [key, value] of Object.entries(OWN)) window.localStorage.setItem(key, value);

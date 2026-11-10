@@ -51,13 +51,17 @@ function toLines(rows: readonly ScorecardRow[], lineKey: (r: ScorecardRow) => { 
 
 export function weekLines(rows: readonly ScorecardRow[]): Line[] {
   const kept = rows.filter((r) => r.week != null && r.position === ALL_POSITIONS && r.tier === ALL_TIERS);
-  return toLines(kept, (r) => ({ key: `w${String(r.week).padStart(2, "0")}`, label: `Week ${r.week}` })).sort((a, b) => a.key.localeCompare(b.key));
+  return toLines(kept, (r) => ({ key: `w${String(r.week).padStart(2, "0")}`, label: `Week ${r.week}` })).sort((a, b) =>
+    a.key.localeCompare(b.key),
+  );
 }
 
 export function positionLines(rows: readonly ScorecardRow[]): Line[] {
   const kept = rows.filter((r) => r.week == null && r.tier === ALL_TIERS);
   const rank = (p: string) => (p === ALL_POSITIONS ? -1 : POSITION_ORDER.indexOf(p) === -1 ? 99 : POSITION_ORDER.indexOf(p));
-  return toLines(kept, (r) => ({ key: r.position, label: r.position === ALL_POSITIONS ? "All positions" : r.position })).sort((a, b) => rank(a.key) - rank(b.key));
+  return toLines(kept, (r) => ({ key: r.position, label: r.position === ALL_POSITIONS ? "All positions" : r.position })).sort(
+    (a, b) => rank(a.key) - rank(b.key),
+  );
 }
 
 export function tierLines(rows: readonly ScorecardRow[]): Line[] {

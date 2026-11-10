@@ -34,8 +34,7 @@ const TRADE_COLUMNS: Column<MoveIdeaRow>[] = [
   { label: "Title odds change (% pts)", numeric: true, render: (r) => <Change change={r.title_delta} error={r.se_title} /> },
 ];
 
-const asOf = (iso: string) =>
-  new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const asOf = (iso: string) => new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 /** When the ideas were made: date, age and the week of the refresh. Nothing without a stored time. */
 export function AsOf({ info }: { info: IdeasInfo }) {
@@ -57,7 +56,11 @@ export function Ideas({ kind, rows, info }: Props) {
   const noun = kind === "waiver" ? "waiver adds" : "trade ideas";
   return (
     <>
-      {notice && <p role="status" className="measure mb-2 border-l-4 border-warning-edge bg-panel px-3 py-2 text-body">{notice}</p>}
+      {notice && (
+        <p role="status" className="measure mb-2 border-l-4 border-warning-edge bg-panel px-3 py-2 text-body">
+          {notice}
+        </p>
+      )}
       {!blocked && rows.length === 0 && <p className="text-body text-muted">No {noun} cleared the bar at the last refresh.</p>}
       {!blocked && rows.length > 0 && (
         <ResponsiveTable

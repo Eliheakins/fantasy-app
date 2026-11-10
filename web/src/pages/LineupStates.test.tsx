@@ -19,29 +19,53 @@ describe("Lineup page states", () => {
   beforeEach(() => undefined);
   test("loading", () => {
     lineupState = { kind: "loading" };
-    render(<MemoryRouter><Lineup /></MemoryRouter>);
+    render(
+      <MemoryRouter>
+        <Lineup />
+      </MemoryRouter>,
+    );
     expect(screen.getByText("Loading…")).toBeTruthy();
   });
   test("running", () => {
     lineupState = { kind: "running", startedAt: null };
-    render(<MemoryRouter><Lineup /></MemoryRouter>);
+    render(
+      <MemoryRouter>
+        <Lineup />
+      </MemoryRouter>,
+    );
     expect(screen.getByRole("status")).toBeTruthy();
   });
   test("no data", () => {
     lineupState = { kind: "no_data", message: "none" };
-    render(<MemoryRouter><Lineup /></MemoryRouter>);
+    render(
+      <MemoryRouter>
+        <Lineup />
+      </MemoryRouter>,
+    );
     expect(screen.getByText("none")).toBeTruthy();
   });
   test("ok but empty", () => {
     lineupState = { kind: "ready", data: [] };
-    render(<MemoryRouter><Lineup /></MemoryRouter>);
+    render(
+      <MemoryRouter>
+        <Lineup />
+      </MemoryRouter>,
+    );
     expect(screen.getByText(/No projections/)).toBeTruthy();
   });
   test("the week comes from ?week=, else the first week when the league has no current week", () => {
     lineupState = { kind: "ready", data: [] };
-    render(<MemoryRouter initialEntries={["/lineup?week=5"]}><Lineup /></MemoryRouter>);
+    render(
+      <MemoryRouter initialEntries={["/lineup?week=5"]}>
+        <Lineup />
+      </MemoryRouter>,
+    );
     expect(requested).toContain("x/lineup?week=5");
-    render(<MemoryRouter><Lineup /></MemoryRouter>);
+    render(
+      <MemoryRouter>
+        <Lineup />
+      </MemoryRouter>,
+    );
     expect(requested).toContain("x/win-probability?week=1");
   });
   test("two leagues build different query keys for the same endpoint", () => {

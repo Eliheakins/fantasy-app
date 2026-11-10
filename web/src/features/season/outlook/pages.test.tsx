@@ -28,15 +28,30 @@ const run = (run_at: string) => [
   { run_at, roster_id: 2, team_name: "Rival", p_playoffs: 0.4, p_title: 0.1 },
 ];
 const players = [
-  { gsis_id: "g1", full_name: "Ann Back", position: "RB", owner: "Lisan", recent_ppg: 10, expected_ppg: 11, next_ppg: 12.5, change: 2.5, chance_to_play: 0.85, label: "Improving", why: "Teammate out" },
+  {
+    gsis_id: "g1",
+    full_name: "Ann Back",
+    position: "RB",
+    owner: "Lisan",
+    recent_ppg: 10,
+    expected_ppg: 11,
+    next_ppg: 12.5,
+    change: 2.5,
+    chance_to_play: 0.85,
+    label: "Improving",
+    why: "Teammate out",
+  },
 ];
 
 function outlookWith(history: unknown) {
   responder = (p) =>
-    p === "season-odds" ? ready(odds)
-    : p === "seeds" ? ready([{ seed: 1, p: 0.3 }])
-    : p === "schedule" ? ready([{ week: 9, opponent: "Rival", my_points: 100, their_points: 95, win_chance: 0.6 }])
-    : ready(history);
+    p === "season-odds"
+      ? ready(odds)
+      : p === "seeds"
+        ? ready([{ seed: 1, p: 0.3 }])
+        : p === "schedule"
+          ? ready([{ week: 9, opponent: "Rival", my_points: 100, their_points: 95, win_chance: 0.6 }])
+          : ready(history);
 }
 
 describe("Outlook page", () => {

@@ -34,7 +34,7 @@ export function PinnedPlayersBar() {
               key={p.gsis_id}
               className={cn(
                 "inline-flex max-w-full items-center gap-1 rounded-full border border-line bg-surface py-1 pl-3 pr-1 shadow-xs",
-                              )}
+              )}
             >
               <span className="min-w-0 truncate text-body font-medium text-ink">{p.full_name ?? p.gsis_id}</span>
               <span className="hidden text-caption text-muted sm:inline">

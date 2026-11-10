@@ -22,10 +22,7 @@ const SIGNED_OUT: Envelope<Me> = {
 };
 
 export type Session =
-  | { kind: "loading" }
-  | { kind: "signedOut" }
-  | { kind: "signedIn"; me: Me }
-  | { kind: "error"; message: string; retry: () => void };
+  { kind: "loading" } | { kind: "signedOut" } | { kind: "signedIn"; me: Me } | { kind: "error"; message: string; retry: () => void };
 
 /** Saved league, searches, Ask history and cache belong to one person: drop them when another account shows up. */
 function scopeStorageTo(envelope: Envelope<Me>): void {

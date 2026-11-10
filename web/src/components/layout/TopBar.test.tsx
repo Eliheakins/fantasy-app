@@ -11,7 +11,13 @@ function Where() {
 }
 
 beforeEach(() => {
-  const status = { freshness: [], missing_layers: [], simulation_behind_inputs: null, refresh_runs: [], live_refresh: { enabled: false, active: false, last_ok_at: null } };
+  const status = {
+    freshness: [],
+    missing_layers: [],
+    simulation_behind_inputs: null,
+    refresh_runs: [],
+    live_refresh: { enabled: false, active: false, last_ok_at: null },
+  };
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string) =>

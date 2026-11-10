@@ -11,7 +11,14 @@ afterEach(() => vi.unstubAllGlobals());
 
 const BOSS = { id: 1, email: "boss@example.com", is_admin: true, has_password: true, invite_pending: false, created_at: "2026-11-01" };
 const FRIEND = { id: 2, email: "friend@example.com", is_admin: false, has_password: true, invite_pending: false, created_at: "2026-11-02" };
-const WAITING = { id: 3, email: "waiting@example.com", is_admin: false, has_password: false, invite_pending: true, created_at: "2026-11-03" };
+const WAITING = {
+  id: 3,
+  email: "waiting@example.com",
+  is_admin: false,
+  has_password: false,
+  invite_pending: true,
+  created_at: "2026-11-03",
+};
 
 function open() {
   render(
@@ -84,7 +91,9 @@ describe("People", () => {
   });
 
   it("shows the server's reason when an invite is refused", async () => {
-    stubScoped("/api/admin/", (call) => (call.url === "/api/admin/invites" ? errorReply("invalid", "That email is not valid.", 422) : okReply([BOSS])));
+    stubScoped("/api/admin/", (call) =>
+      call.url === "/api/admin/invites" ? errorReply("invalid", "That email is not valid.", 422) : okReply([BOSS]),
+    );
     open();
     const user = userEvent.setup();
     await user.type(await screen.findByLabelText("Email to invite"), "friend@example.com");

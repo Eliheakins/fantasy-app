@@ -8,8 +8,16 @@ import { useLeague, useLeagueApi } from "@/lib/league";
 import { type Who, useWho, whoFor } from "@/lib/who";
 import { AddsTable } from "./AddsTable";
 import {
-  ADDS_CAPTION, ADDS_METHOD, type PlayerWeekRow, STREAM_CAPTION, STREAM_METHOD, STRENGTH_CAPTION, STRENGTH_METHOD,
-  type StreamerRow, type StrengthRow, type WaiverRow,
+  ADDS_CAPTION,
+  ADDS_METHOD,
+  type PlayerWeekRow,
+  STREAM_CAPTION,
+  STREAM_METHOD,
+  STRENGTH_CAPTION,
+  STRENGTH_METHOD,
+  type StreamerRow,
+  type StrengthRow,
+  type WaiverRow,
 } from "./logic";
 import { PlayerWeeksChart } from "./PlayerWeeksChart";
 import { StreamerTable } from "./StreamerTable";
@@ -60,7 +68,11 @@ export function WaiversView({ adds, strength, def, kickers, weeks, selected, onS
           }
         </ApiBoundary>
       </Section>
-      <Section title={`Where ${who.name ? possessive(who.name) : "your"} roster is strong or thin`} caption={STRENGTH_CAPTION} howCalculated={STRENGTH_METHOD}>
+      <Section
+        title={`Where ${who.name ? possessive(who.name) : "your"} roster is strong or thin`}
+        caption={STRENGTH_CAPTION}
+        howCalculated={STRENGTH_METHOD}
+      >
         <ApiBoundary state={strength}>{(rows) => <StrengthList rows={rows} />}</ApiBoundary>
       </Section>
       <Section title="Streaming: defense and kicker" caption={STREAM_CAPTION} howCalculated={STREAM_METHOD}>
@@ -82,14 +94,18 @@ export function WaiversContent() {
   const def = useLeagueApi<StreamerRow[]>("streamers?kind=DEF");
   const kickers = useLeagueApi<StreamerRow[]>("streamers?kind=K");
   const weeks = useEnvelopeQuery<PlayerWeekRow[]>(
-    league && selected
-      ? `/api/leagues/${encodeURIComponent(league)}/player-weeks?gsis_id=${encodeURIComponent(selected)}&n=4`
-      : null,
+    league && selected ? `/api/leagues/${encodeURIComponent(league)}/player-weeks?gsis_id=${encodeURIComponent(selected)}&n=4` : null,
   );
   return (
     <WaiversView
-      adds={adds} strength={strength} def={def} kickers={kickers} weeks={weeks}
-      selected={selected} onSelect={(id) => setSelection({ league, id })} who={who}
+      adds={adds}
+      strength={strength}
+      def={def}
+      kickers={kickers}
+      weeks={weeks}
+      selected={selected}
+      onSelect={(id) => setSelection({ league, id })}
+      who={who}
     />
   );
 }

@@ -24,7 +24,9 @@ export function PlayerGameLog({ gsisId, position, season }: Props) {
   const log = useGameLog(gsisId, statIds, season);
   const { league } = useTeam();
   const points = useEnvelopeQuery<PointsRow[]>(
-    league === null ? null : `/api/leagues/${encodeURIComponent(league)}/player-points?gsis_id=${encodeURIComponent(gsisId)}&season=${season}`,
+    league === null
+      ? null
+      : `/api/leagues/${encodeURIComponent(league)}/player-points?gsis_id=${encodeURIComponent(gsisId)}&season=${season}`,
   );
   const pointsByWeek = points.kind === "ready" ? new Map(points.data.map((p) => [p.week, p.points])) : null;
   const logByWeek = new Map((log.data?.rows ?? []).map((r) => [Number(r.week), r]));
@@ -36,24 +38,44 @@ export function PlayerGameLog({ gsisId, position, season }: Props) {
       {log.isError && <Callout variant="warn">The game log did not load: {log.error.message}</Callout>}
       {league !== null && points.kind === "error" && <Callout variant="warn">League points did not load: {points.error.message}</Callout>}
       {waiting ? (
-        <p role="status" className="text-body text-muted">Loading…</p>
+        <p role="status" className="text-body text-muted">
+          Loading…
+        </p>
       ) : weeks.length === 0 ? (
-        log.isError ? null : <p className="text-body text-muted">No games this season.</p>
+        log.isError ? null : (
+          <p className="text-body text-muted">No games this season.</p>
+        )
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full max-w-2xl border-collapse text-body">
             <thead>
               <tr className="border-b border-line text-muted">
-                <th scope="col" className={CELL}>Week</th>
-                {log.data && statIds.map((id) => <th key={id} scope="col" className={CELL}>{getStatById(id)?.label ?? id}</th>)}
-                {pointsByWeek && <th scope="col" className={CELL}>League pts</th>}
+                <th scope="col" className={CELL}>
+                  Week
+                </th>
+                {log.data &&
+                  statIds.map((id) => (
+                    <th key={id} scope="col" className={CELL}>
+                      {getStatById(id)?.label ?? id}
+                    </th>
+                  ))}
+                {pointsByWeek && (
+                  <th scope="col" className={CELL}>
+                    League pts
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
               {weeks.map((week) => (
                 <tr key={week} className="border-b border-line last:border-0">
                   <td className={CELL}>{week}</td>
-                  {log.data && statIds.map((id) => <td key={id} className={CELL}>{formatQueryValue(logByWeek.get(week)?.[metricSelectAlias(id)])}</td>)}
+                  {log.data &&
+                    statIds.map((id) => (
+                      <td key={id} className={CELL}>
+                        {formatQueryValue(logByWeek.get(week)?.[metricSelectAlias(id)])}
+                      </td>
+                    ))}
                   {pointsByWeek && <td className={CELL}>{formatPoints(pointsByWeek.get(week))}</td>}
                 </tr>
               ))}

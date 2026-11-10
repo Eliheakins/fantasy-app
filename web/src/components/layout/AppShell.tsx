@@ -75,7 +75,10 @@ function Frame() {
         </main>
         <Footer />
       </div>
-      <nav aria-label="Main tabs" className="tab-bar on-chrome fixed inset-x-0 bottom-0 z-10 flex bg-forest shadow-[0_-2px_6px_rgba(19,32,26,0.18)] md:hidden">
+      <nav
+        aria-label="Main tabs"
+        className="tab-bar on-chrome fixed inset-x-0 bottom-0 z-10 flex bg-forest shadow-[0_-2px_6px_rgba(19,32,26,0.18)] md:hidden"
+      >
         {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
           <NavLink
             key={path}

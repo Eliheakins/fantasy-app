@@ -42,8 +42,7 @@ describe("rules parser against the eval questions", () => {
 
   it("matches the stat README's rules-eval numbers", () => {
     const answerable = (set: string) => rows.filter((r) => r.set === set && !r.case.unsupported && r.case.rules !== "defer");
-    const of = (set: string, verdict: string, from = rows.filter((r) => r.set === set)) =>
-      from.filter((r) => r.verdict === verdict).length;
+    const of = (set: string, verdict: string, from = rows.filter((r) => r.set === set)) => from.filter((r) => r.verdict === verdict).length;
 
     // cases.json: 43/43 answerable correct (40/40 before the league points stat), 0 wrong.
     expect([of("cases", "correct", answerable("cases")), answerable("cases").length, of("cases", "wrong")]).toEqual([43, 43, 0]);

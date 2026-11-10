@@ -23,9 +23,21 @@ function wrap(ui: ReactNode) {
 afterEach(() => vi.unstubAllGlobals());
 
 const FOUND = {
-  partner: "Rivals", give: "A (RB)", get: "B (WR)", give_ids: ["a"], get_ids: ["b"],
-  kind: "need swap", my_fills: "WR", their_fills: "RB", my_fit: 12.5, their_fit: 4.2,
-  my_playoff: 0.021, my_title: 0.012, their_playoff: 0.013, their_title: 0.004, se_title: 0.0031,
+  partner: "Rivals",
+  give: "A (RB)",
+  get: "B (WR)",
+  give_ids: ["a"],
+  get_ids: ["b"],
+  kind: "need swap",
+  my_fills: "WR",
+  their_fills: "RB",
+  my_fit: 12.5,
+  their_fit: 4.2,
+  my_playoff: 0.021,
+  my_title: 0.012,
+  their_playoff: 0.013,
+  their_title: 0.004,
+  se_title: 0.0031,
   market: { give_value: 5000, get_value: 5700, hint: "you receive 14% more", fetched_at: "2026-10-25T08:00:00+00:00" },
 };
 
@@ -65,7 +77,11 @@ describe("find trades", () => {
   });
   it("offers a retry on busy, and retrying works", async () => {
     let calls = 0;
-    mockFetch(() => (++calls === 1 ? { status: "error", error: { code: "busy", message: "The server is busy. Try again in a moment." } } : { status: "ok", data: [FOUND] }));
+    mockFetch(() =>
+      ++calls === 1
+        ? { status: "error", error: { code: "busy", message: "The server is busy. Try again in a moment." } }
+        : { status: "ok", data: [FOUND] },
+    );
     wrap(<FindTradesSection league="L" />);
     await userEvent.click(screen.getByRole("button", { name: "Find trades" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("The server is busy");
@@ -82,10 +98,27 @@ describe("find trades", () => {
 });
 
 const PARTNERS: Partner[] = [{ roster_id: 2, team_name: "Rivals" }];
-const asset = (id: string, name: string): Asset => ({ gsis_id: id, full_name: name, position: "RB", ros_points: 100, label: `${name} (RB, 100 pts)` });
-const SIDE = { roster_id: 1, playoff_before: 0.5, playoff_after: 0.55, title_before: 0.1, title_after: 0.12, wins_before: 8, wins_after: 8.4 };
+const asset = (id: string, name: string): Asset => ({
+  gsis_id: id,
+  full_name: name,
+  position: "RB",
+  ros_points: 100,
+  label: `${name} (RB, 100 pts)`,
+});
+const SIDE = {
+  roster_id: 1,
+  playoff_before: 0.5,
+  playoff_after: 0.55,
+  title_before: 0.1,
+  title_after: 0.12,
+  wins_before: 8,
+  wins_after: 8.4,
+};
 const RESULT = {
-  odds: [{ ...SIDE, side: "me", team_name: "Mine" }, { ...SIDE, side: "them", roster_id: 2, team_name: "Rivals" }],
+  odds: [
+    { ...SIDE, side: "me", team_name: "Mine" },
+    { ...SIDE, side: "them", roster_id: 2, team_name: "Rivals" },
+  ],
   roster_changes: [{ team_name: "Rivals", action: "dropped", full_name: "Zed", position: "WR" }],
   warning: "Automatic roster moves to keep sizes equal:",
   trade_deadline: 11,
@@ -119,7 +152,9 @@ describe("trade builder", () => {
     expect(screen.getByText(/Market value \(2026-10-25\): gives 5,000, gets 5,000, even/)).toBeInTheDocument();
   });
   it("sends one request for a burst of changes, not one per click", async () => {
-    mockFetch((url) => (url.includes("trade-assets") ? { status: "ok", data: [asset("t1", "Theirs"), asset("t2", "Other")] } : { status: "ok", data: RESULT }));
+    mockFetch((url) =>
+      url.includes("trade-assets") ? { status: "ok", data: [asset("t1", "Theirs"), asset("t2", "Other")] } : { status: "ok", data: RESULT },
+    );
     const fn = vi.mocked(fetch);
     wrap(<Evaluator league="L" partners={PARTNERS} mine={[asset("m1", "Mine")]} debounceMs={300} />);
     await userEvent.click(screen.getByRole("checkbox", { name: /Mine/ }));
@@ -129,7 +164,9 @@ describe("trade builder", () => {
     expect(evaluateCalls(fn)).toHaveLength(1);
   });
   it("dims the previous result and marks it busy while the picks are still settling", async () => {
-    mockFetch((url) => (url.includes("trade-assets") ? { status: "ok", data: [asset("t1", "Theirs"), asset("t2", "Other")] } : { status: "ok", data: RESULT }));
+    mockFetch((url) =>
+      url.includes("trade-assets") ? { status: "ok", data: [asset("t1", "Theirs"), asset("t2", "Other")] } : { status: "ok", data: RESULT },
+    );
     wrap(<Evaluator league="L" partners={PARTNERS} mine={[asset("m1", "Mine")]} debounceMs={300} />);
     await userEvent.click(screen.getByRole("checkbox", { name: /Mine/ }));
     await userEvent.click(await screen.findByRole("checkbox", { name: /Theirs/ }));
@@ -146,12 +183,16 @@ describe("trade builder", () => {
     const gate = new Promise<void>((r) => (releaseFirst = r));
     const stale = { ...RESULT, trade_deadline: 3 };
     const fresh = { ...RESULT, trade_deadline: 12 };
-    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      if (url.includes("trade-assets")) return new Response(JSON.stringify(envelope({ status: "ok", data: [asset("t1", "Theirs"), asset("t2", "Other")] })));
-      const second = String(init?.body).includes("t2");
-      if (!second) await gate;
-      return new Response(JSON.stringify(envelope({ status: "ok", data: second ? fresh : stale })));
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.includes("trade-assets"))
+          return new Response(JSON.stringify(envelope({ status: "ok", data: [asset("t1", "Theirs"), asset("t2", "Other")] })));
+        const second = String(init?.body).includes("t2");
+        if (!second) await gate;
+        return new Response(JSON.stringify(envelope({ status: "ok", data: second ? fresh : stale })));
+      }),
+    );
     wrap(<Evaluator league="L" partners={PARTNERS} mine={[asset("m1", "Mine")]} debounceMs={0} />);
     await userEvent.click(screen.getByRole("checkbox", { name: /Mine/ }));
     await userEvent.click(await screen.findByRole("checkbox", { name: /Theirs/ }));

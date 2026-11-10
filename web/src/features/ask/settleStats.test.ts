@@ -20,11 +20,7 @@ describe("settleStats", () => {
   });
 
   it("reads generic EPA for a team over every play", () => {
-    expect(settleStats(["eff_epa", "eff_success", "pass_yards"], { kind: "team" })).toEqual([
-      "team_epa",
-      "team_success",
-      "pass_yards",
-    ]);
+    expect(settleStats(["eff_epa", "eff_success", "pass_yards"], { kind: "team" })).toEqual(["team_epa", "team_success", "pass_yards"]);
   });
 
   it("turns a team stat asked of a player into the player's own", () => {

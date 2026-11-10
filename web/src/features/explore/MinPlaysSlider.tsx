@@ -22,8 +22,8 @@ export function MinPlaysSlider({ className, embedded = false }: MinPlaysSliderPr
             <h3 className="text-caption font-semibold uppercase tracking-wide text-focus">Min plays</h3>
           )}
           <p className="mt-0.5 text-caption text-muted">
-            HAVING <code className="rounded bg-panel px-0.5 font-mono text-caption text-ink">COUNT(*) ≥</code>{" "}
-            threshold (0–500). Drops low-volume outliers.
+            HAVING <code className="rounded bg-panel px-0.5 font-mono text-caption text-ink">COUNT(*) ≥</code> threshold (0–500). Drops
+            low-volume outliers.
           </p>
         </div>
         <span className="text-body tabular-nums text-focus">{minPlays}</span>

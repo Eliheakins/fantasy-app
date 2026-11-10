@@ -1,22 +1,51 @@
 import { describe, expect, test } from "vitest";
 import type { LineupRow } from "./logic";
 import {
-  type SlotCall, callText, recommendedObjective, scratchFallbacks, splitCalls, startAnswer, winnerShare, weekOverText, weekResult, resultText,
+  type SlotCall,
+  callText,
+  recommendedObjective,
+  scratchFallbacks,
+  splitCalls,
+  startAnswer,
+  winnerShare,
+  weekOverText,
+  weekResult,
+  resultText,
 } from "./calls";
 import type { ScoreboardRow } from "@/lib/scoreboard";
 
 const call = (slot: string, share: number | null, o: Partial<SlotCall> = {}): SlotCall => ({
-  slot, starter: `s-${slot}`, alternative: share === null ? null : `b-${slot}`, share, ...o,
+  slot,
+  starter: `s-${slot}`,
+  alternative: share === null ? null : `b-${slot}`,
+  share,
+  ...o,
 });
 const row = (id: string, name: string, o: Partial<LineupRow> = {}): LineupRow => ({
-  slot: "FLEX", gsis_id: id, full_name: name, position: "RB", projection: 10, p10: 4, p90: 18,
-  starting_now: false, recommended: true, injury: null, injury_note: null, locked: false,
-  actual: 0, game: "", change: "", ...o,
+  slot: "FLEX",
+  gsis_id: id,
+  full_name: name,
+  position: "RB",
+  projection: 10,
+  p10: 4,
+  p90: 18,
+  starting_now: false,
+  recommended: true,
+  injury: null,
+  injury_note: null,
+  locked: false,
+  actual: 0,
+  game: "",
+  change: "",
+  ...o,
 });
 
 describe("close calls", () => {
   test("only lean and toss-up slots are close; clear slots and slots with no alternative collapse", () => {
-    const { close, clear } = splitCalls([call("QB", 0.9), call("FLEX", 0.64), call("WR", 0.5), call("TE", null), call("RB", 0.7)], new Set());
+    const { close, clear } = splitCalls(
+      [call("QB", 0.9), call("FLEX", 0.64), call("WR", 0.5), call("TE", null), call("RB", 0.7)],
+      new Set(),
+    );
     expect(close.map((c) => c.slot)).toEqual(["FLEX", "WR"]);
     expect(clear.map((c) => c.slot)).toEqual(["QB", "TE", "RB"]);
   });
@@ -30,8 +59,12 @@ describe("close calls", () => {
   });
   test("below 50% the text never says better; the confidence is for the side that wins more", () => {
     const names = { "s-FLEX": "Cook", "b-FLEX": "Bernard" };
-    expect(callText(call("FLEX", 0.4), names, "upside")).toBe("Flex: Cook over Bernard for the upside; Bernard scores more in 60% of simulations");
-    expect(callText(call("FLEX", 0.3), names, "floor")).toBe("Flex: Cook over Bernard for the floor; Bernard scores more in 70% of simulations");
+    expect(callText(call("FLEX", 0.4), names, "upside")).toBe(
+      "Flex: Cook over Bernard for the upside; Bernard scores more in 60% of simulations",
+    );
+    expect(callText(call("FLEX", 0.3), names, "floor")).toBe(
+      "Flex: Cook over Bernard for the floor; Bernard scores more in 70% of simulations",
+    );
     expect(callText(call("FLEX", 0.4), names)).toBe("Flex: Cook over Bernard; Bernard scores more in 60% of simulations");
     expect(winnerShare(call("FLEX", 0.3))).toBe(0.7);
     expect(winnerShare(call("FLEX", 0.64))).toBe(0.64);
@@ -70,8 +103,9 @@ describe("the answer", () => {
 
 describe("a finished week", () => {
   const side = (points: number, is_me: boolean) => ({ points, is_me }) as ScoreboardRow["a"];
-  const board = (status: ScoreboardRow["status"], me: number, them: number): ScoreboardRow[] =>
-    [{ week: 8, matchup_id: 1, status, a: side(them, false), b: side(me, true) } as ScoreboardRow];
+  const board = (status: ScoreboardRow["status"], me: number, them: number): ScoreboardRow[] => [
+    { week: 8, matchup_id: 1, status, a: side(them, false), b: side(me, true) } as ScoreboardRow,
+  ];
   test("states the result plainly", () => {
     expect(weekOverText(8, board("Final", 127.9, 107.5))).toBe("Week 8 is over: won 127.9 to 107.5");
     expect(weekOverText(8, board("Final", 100, 107.5))).toBe("Week 8 is over: lost 100.0 to 107.5");

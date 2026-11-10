@@ -35,7 +35,11 @@ function TableForm<T>({ caption, columns, rows, rowKey, isStrong }: FormProps<T>
         <thead>
           <tr className="border-b-[1.5px] border-forest text-left text-caption text-muted">
             {columns.map((c) => (
-              <th key={c.label} scope="col" className={cn("px-2 py-1 font-normal", c.numeric && columns.indexOf(c) !== head && "text-right")}>
+              <th
+                key={c.label}
+                scope="col"
+                className={cn("px-2 py-1 font-normal", c.numeric && columns.indexOf(c) !== head && "text-right")}
+              >
                 {c.label}
               </th>
             ))}
@@ -51,7 +55,9 @@ function TableForm<T>({ caption, columns, rows, rowKey, isStrong }: FormProps<T>
                     {c.render(row)}
                   </th>
                 ) : (
-                  <td key={c.label} className={cls}>{c.render(row)}</td>
+                  <td key={c.label} className={cls}>
+                    {c.render(row)}
+                  </td>
                 );
               })}
             </tr>
@@ -83,14 +89,18 @@ function CardForm<T>({ caption, columns, rows, rowKey, isStrong }: FormProps<T>)
           <div className={cn("text-body", isStrong?.(row) ? "font-semibold" : "font-medium")}>{head?.render(row)}</div>
           {key.length > 0 && (
             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">
-              {key.map((c) => <Field key={c.label} column={c} row={row} />)}
+              {key.map((c) => (
+                <Field key={c.label} column={c} row={row} />
+              ))}
             </dl>
           )}
           {more.length > 0 && (
             <details className="mt-1">
               <summary className="flex min-h-[44px] cursor-pointer items-center text-caption text-forest">More</summary>
               <dl className="grid grid-cols-2 gap-x-3 gap-y-2 pb-1">
-                {more.map((c) => <Field key={c.label} column={c} row={row} />)}
+                {more.map((c) => (
+                  <Field key={c.label} column={c} row={row} />
+                ))}
               </dl>
             </details>
           )}

@@ -140,9 +140,7 @@ export function showRules(
   unrecognized: string[] = [],
 ): void {
   // A ranking of one position reads generic stats as that position's own ("top running backs by EPA").
-  const subject = team
-    ? ({ kind: "team" } as const)
-    : ({ kind: "players", positions: board?.position ? [board.position] : [] } as const);
+  const subject = team ? ({ kind: "team" } as const) : ({ kind: "players", positions: board?.position ? [board.position] : [] } as const);
   const stats = settleStats(intent.stat_ids, subject);
   if (team && stats.some(isLeagueStat)) {
     actions.fail(asked, path, "League points are for players, not teams.");

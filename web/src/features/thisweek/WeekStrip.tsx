@@ -7,7 +7,9 @@ export function WeekStrip({ calendar, now }: { calendar: WeekCalendar; now: Date
   const notes = stripNotes(now, calendar);
   return (
     <section aria-labelledby="week-strip-heading" className="mb-6">
-      <h2 id="week-strip-heading" className="mb-2 text-section font-semibold">The week</h2>
+      <h2 id="week-strip-heading" className="mb-2 text-section font-semibold">
+        The week
+      </h2>
       {/* phones list only today and the days with something on, so the to-dos stay near the top */}
       <ol className="grid grid-cols-1 gap-2 sm:grid-cols-7">
         {days.map((d) => (
@@ -21,11 +23,17 @@ export function WeekStrip({ calendar, now }: { calendar: WeekCalendar; now: Date
               {d.isPast && <span className="sr-only"> (past)</span>}
               {d.isToday && <span className="ml-1 rounded bg-forest px-1 text-white">Now</span>}
             </div>
-            {d.events.map((e) => <div key={e.text}>{e.text}</div>)}
+            {d.events.map((e) => (
+              <div key={e.text}>{e.text}</div>
+            ))}
           </li>
         ))}
       </ol>
-      {notes.map((n) => <p key={n} role="status" className="measure mt-2 text-caption text-warning">{n}</p>)}
+      {notes.map((n) => (
+        <p key={n} role="status" className="measure mt-2 text-caption text-warning">
+          {n}
+        </p>
+      ))}
       <p className="measure mt-2 text-caption text-muted">
         Times are New York. Sleeper gives the waiver day, not the hour; the Friday injury report is the NFL's usual schedule.
         {unplaced.length > 0 && ` Not available: ${unplaced.join("; ")}.`}

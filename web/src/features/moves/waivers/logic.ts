@@ -16,7 +16,8 @@ export function barShare(value: number, rows: readonly StrengthRow[]): number {
   return max === 0 ? 0 : Math.min(1, Math.abs(value) / max);
 }
 
-export const STRENGTH_CAPTION = "Points a week the best lineup gains over a stand-in free agent at each position. Rank 1 is the strongest team.";
+export const STRENGTH_CAPTION =
+  "Points a week the best lineup gains over a stand-in free agent at each position. Rank 1 is the strongest team.";
 export const STRENGTH_METHOD =
   "The stand-in is the third-best or so free agent at the position, since the top ones are the adds. Thin positions are where an add helps; deep ones are where a trade can come from. Bars start at 0 and scale to the biggest position.";
 export const ADDS_CAPTION = "Free agents ranked by extra points over the rest of the season. Select a player to see the next four weeks.";

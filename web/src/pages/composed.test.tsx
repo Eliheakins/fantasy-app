@@ -25,16 +25,28 @@ describe("composed pages", () => {
     ["Season", Season],
     ["Your players", Players],
   ])("%s has exactly one h1", (title, Page) => {
-    render(<MemoryRouter><Page /></MemoryRouter>);
+    render(
+      <MemoryRouter>
+        <Page />
+      </MemoryRouter>,
+    );
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("heading", { level: 1, name: title })).toBeInTheDocument();
   });
 
   it("the eyebrow shows the current week on pages that ignore ?week= and the selected week on Season", () => {
-    const { unmount } = render(<MemoryRouter initialEntries={["/?week=4"]}><ThisWeek /></MemoryRouter>);
+    const { unmount } = render(
+      <MemoryRouter initialEntries={["/?week=4"]}>
+        <ThisWeek />
+      </MemoryRouter>,
+    );
     expect(screen.getByText("This week · Week 9 · L")).toBeInTheDocument();
     unmount();
-    render(<MemoryRouter initialEntries={["/season?week=4"]}><Season /></MemoryRouter>);
+    render(
+      <MemoryRouter initialEntries={["/season?week=4"]}>
+        <Season />
+      </MemoryRouter>,
+    );
     expect(screen.getByText("Season · Week 4 · L")).toBeInTheDocument();
   });
 });

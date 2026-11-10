@@ -17,7 +17,15 @@ export type TeamContextValue = {
   dismissNotice: () => void;
 };
 
-const NO_TEAM: TeamContextValue = { team: null, league: null, teams: [], viewed: null, setTeam: () => {}, notice: null, dismissNotice: () => {} };
+const NO_TEAM: TeamContextValue = {
+  team: null,
+  league: null,
+  teams: [],
+  viewed: null,
+  setTeam: () => {},
+  notice: null,
+  dismissNotice: () => {},
+};
 export const TeamContext = createContext<TeamContextValue>(NO_TEAM);
 
 /** Defaults to my team when there is no provider (tests, pages rendered alone). */

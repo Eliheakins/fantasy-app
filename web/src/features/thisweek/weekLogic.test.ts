@@ -25,7 +25,10 @@ describe("deadlines", () => {
     expect(waiverDeadlineDay(null, WED)).toBeNull();
   });
   it("uses the next kickoff still to come for lineups", () => {
-    const kickoffs = [{ team: "A", kickoff: "2026-11-05T20:15:00-05:00" }, { team: "B", kickoff: "2026-11-08T13:00:00-05:00" }];
+    const kickoffs = [
+      { team: "A", kickoff: "2026-11-05T20:15:00-05:00" },
+      { team: "B", kickoff: "2026-11-08T13:00:00-05:00" },
+    ];
     expect(lineupDeadlineDay(kickoffs, WED)).toBe("2026-11-05");
     expect(lineupDeadlineDay(kickoffs, new Date("2026-11-06T15:00:00Z"))).toBe("2026-11-08");
     expect(lineupDeadlineDay(kickoffs, new Date("2026-11-09T15:00:00Z"))).toBeNull();
@@ -37,8 +40,10 @@ describe("buildStrip", () => {
   const calendar = {
     week: 9,
     kickoffs: [
-      { team: "A", kickoff: "2026-11-05T20:15:00-05:00" }, { team: "B", kickoff: "2026-11-05T20:15:00-05:00" },
-      { team: "C", kickoff: "2026-11-08T13:00:00-05:00" }, { team: "D", kickoff: "2026-11-08T13:00:00-05:00" },
+      { team: "A", kickoff: "2026-11-05T20:15:00-05:00" },
+      { team: "B", kickoff: "2026-11-05T20:15:00-05:00" },
+      { team: "C", kickoff: "2026-11-08T13:00:00-05:00" },
+      { team: "D", kickoff: "2026-11-08T13:00:00-05:00" },
     ],
     waivers: [{ league_key: "a", name: "Alpha", day_of_week: 2, daily: false }],
   };
@@ -88,7 +93,13 @@ describe("daylight saving and waiver day mapping", () => {
 describe("kickoffs the strip cannot show", () => {
   const base = { week: 8, waivers: [] };
   it("explains when every kickoff is outside the strip, and counts teams with no time", () => {
-    const notes = stripNotes(WED, { ...base, kickoffs: [{ team: "A", kickoff: "2026-11-01T13:00:00-05:00" }, { team: "B", kickoff: null }] });
+    const notes = stripNotes(WED, {
+      ...base,
+      kickoffs: [
+        { team: "A", kickoff: "2026-11-01T13:00:00-05:00" },
+        { team: "B", kickoff: null },
+      ],
+    });
     expect(notes[0]).toMatch(/All kickoffs for week 8 are outside/);
     expect(notes[1]).toMatch(/1 teams have no kickoff time/);
   });

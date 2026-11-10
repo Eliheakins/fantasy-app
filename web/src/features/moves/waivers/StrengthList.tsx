@@ -12,7 +12,8 @@ export function StrengthList({ rows }: { rows: readonly StrengthRow[] }) {
             <span className="block h-3 rounded bg-muted" style={{ width: `${barShare(r.vor_per_week, sorted) * 100}%` }} />
           </span>
           <span className="text-caption tabular-nums">
-            {r.vor_per_week >= 0 ? "+" : ""}{formatNumber(r.vor_per_week)} pts/week, rank {r.rank} of {r.teams}
+            {r.vor_per_week >= 0 ? "+" : ""}
+            {formatNumber(r.vor_per_week)} pts/week, rank {r.rank} of {r.teams}
           </span>
         </li>
       ))}

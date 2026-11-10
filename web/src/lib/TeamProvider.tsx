@@ -24,11 +24,14 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!unknown && !ownTeam) return;
     if (unknown) setNotice("That team is not in this league. Showing your team.");
-    setParams((prev) => {
-      const next = new URLSearchParams(prev);
-      next.delete("team");
-      return next;
-    }, { replace: true });
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("team");
+        return next;
+      },
+      { replace: true },
+    );
   }, [unknown, ownTeam, setParams]);
   const dismissNotice = useCallback(() => setNotice(null), []);
   const setTeam = useCallback(

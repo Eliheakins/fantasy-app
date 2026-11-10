@@ -95,10 +95,7 @@ export function useAsk() {
   const answer = useCallback<AskActions["answer"]>(
     (next, asked, path, unrecognized, notes) => {
       // The URL can drop or clamp parts of a query, so compare edits against what is actually shown.
-      const shown = parseQuery(
-        writeQuery(new URLSearchParams(), next),
-        new Set(getAllFilterChipIds(chipGroups)),
-      );
+      const shown = parseQuery(writeQuery(new URLSearchParams(), next), new Set(getAllFilterChipIds(chipGroups)));
       const entryId = logAsk({ question: asked, path, outcome: { kind: "answered", query: loggedFrom(shown) } });
       setAnsweredBy({ question: asked, path, unrecognized, notes, entryId, answeredKey: editKey(shown) });
       showQuery(next, asked);
@@ -170,40 +167,39 @@ export function useAsk() {
     [],
   );
 
-  const onAsk = useCallback(async (text?: string) => {
-    const trimmed = (text ?? question).trim();
-    if (!trimmed) {
-      dispatch({ type: "needText" });
-      return;
-    }
-    const request = ++currentRequest.current;
-    controllerRef.current?.abort();
-    const controller = new AbortController();
-    controllerRef.current = controller;
-    dispatch({ type: "start" });
-    startSitFor.current = null;
-    resume.current = null;
-
-    const isStale = () => request !== currentRequest.current;
-    try {
-      const dictionary = await getPlayerDictionary(manifest);
-      if (isStale()) {
+  const onAsk = useCallback(
+    async (text?: string) => {
+      const trimmed = (text ?? question).trim();
+      if (!trimmed) {
+        dispatch({ type: "needText" });
         return;
       }
-      const maxWeeks = Object.fromEntries(
-        (manifest?.seasons ?? []).flatMap((s) => (s.max_week === null ? [] : [[s.season, s.max_week]])),
-      );
-      await dispatchAsk(
-        { question: trimmed, dictionary, seasons, maxWeeks, chipGroups, signal: controller.signal },
-        actions,
-        isStale,
-      );
-    } catch (e) {
-      if (!isStale()) {
-        fail(trimmed, "none", e instanceof Error ? e.message : String(e));
+      const request = ++currentRequest.current;
+      controllerRef.current?.abort();
+      const controller = new AbortController();
+      controllerRef.current = controller;
+      dispatch({ type: "start" });
+      startSitFor.current = null;
+      resume.current = null;
+
+      const isStale = () => request !== currentRequest.current;
+      try {
+        const dictionary = await getPlayerDictionary(manifest);
+        if (isStale()) {
+          return;
+        }
+        const maxWeeks = Object.fromEntries(
+          (manifest?.seasons ?? []).flatMap((s) => (s.max_week === null ? [] : [[s.season, s.max_week]])),
+        );
+        await dispatchAsk({ question: trimmed, dictionary, seasons, maxWeeks, chipGroups, signal: controller.signal }, actions, isStale);
+      } catch (e) {
+        if (!isStale()) {
+          fail(trimmed, "none", e instanceof Error ? e.message : String(e));
+        }
       }
-    }
-  }, [question, fail, actions, manifest, seasons, chipGroups]);
+    },
+    [question, fail, actions, manifest, seasons, chipGroups],
+  );
 
   const onChoose = useCallback(
     (player: PlayerDictionaryRow) => {

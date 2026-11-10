@@ -24,10 +24,20 @@ export function PlayerPicker({ onPick, exclude }: Props) {
   });
   const options = (found.data ?? []).filter((p) => !exclude.includes(p.gsis_id));
   const searching = query.length >= MIN_QUERY;
-  const status = !searching ? "" : found.isFetching ? "Searching…" : found.error ? "" : options.length === 0 ? "No players match." : `${options.length} ${options.length === 1 ? "player" : "players"} found.`;
+  const status = !searching
+    ? ""
+    : found.isFetching
+      ? "Searching…"
+      : found.error
+        ? ""
+        : options.length === 0
+          ? "No players match."
+          : `${options.length} ${options.length === 1 ? "player" : "players"} found.`;
   return (
     <div className="space-y-1">
-      <label className="block text-body font-semibold" htmlFor="compare-search">Add a player</label>
+      <label className="block text-body font-semibold" htmlFor="compare-search">
+        Add a player
+      </label>
       <input
         id="compare-search"
         type="search"
@@ -36,7 +46,9 @@ export function PlayerPicker({ onPick, exclude }: Props) {
         onChange={(e) => setText(e.target.value)}
         className="min-h-[44px] w-full max-w-sm rounded-full border border-panel-line bg-surface px-4 text-body"
       />
-      <p role="status" className="text-caption text-muted">{status}</p>
+      <p role="status" className="text-caption text-muted">
+        {status}
+      </p>
       {found.error && <p className="text-body text-warning">The player search failed: {found.error.message}</p>}
       {options.length > 0 && (
         <ul className="max-w-sm">
@@ -45,7 +57,11 @@ export function PlayerPicker({ onPick, exclude }: Props) {
               <button
                 type="button"
                 className="min-h-[44px] w-full px-3 text-left text-body hover:bg-panel"
-                onClick={() => { onPick(p.gsis_id); setText(""); setQuery(""); }}
+                onClick={() => {
+                  onPick(p.gsis_id);
+                  setText("");
+                  setQuery("");
+                }}
               >
                 {p.full_name} <span className="text-caption text-muted">{[p.position, p.team].filter(Boolean).join(" · ")}</span>
               </button>

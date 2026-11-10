@@ -5,15 +5,7 @@ import { readOpponents } from "../opponents";
 import { type PlayerMatch, tokenize } from "../resolvePlayers";
 import { findTeams, type TeamMatch } from "../resolveTeams";
 import { ambiguous, proceed, type RuleContext, type Stage, stop } from "./types";
-import {
-  DEFENSE_WORDS,
-  OFFENSE_WORDS,
-  TEAM_WORDS,
-  UNIT_NOUNS,
-  unique,
-  wordsOf,
-  YEAR_RANGE,
-} from "./vocab";
+import { DEFENSE_WORDS, OFFENSE_WORDS, TEAM_WORDS, UNIT_NOUNS, unique, wordsOf, YEAR_RANGE } from "./vocab";
 
 /** Who the question is about: the players, teams and opponents it names, and whether it ranks. */
 export interface Entities {
@@ -55,8 +47,7 @@ export function readEntities(question: string, context: RuleContext): Stage<Enti
   const opponents = readOpponents(question, matches.length > 0);
   const opponentWords = new Set(opponents.used);
   const teams = findTeams(tokens).filter((t) => !inPlayer(t.start) && !opponentWords.has(t.start));
-  const asksTeams =
-    teams.length > 0 || (matches.length === 0 && tokens.some((t) => TEAM_WORDS.has(t) || UNIT_NOUNS.has(t)));
+  const asksTeams = teams.length > 0 || (matches.length === 0 && tokens.some((t) => TEAM_WORDS.has(t) || UNIT_NOUNS.has(t)));
   if (teams.length > 0 && matches.length > 0) {
     // A player and a team that is not an opponent: which one the question is about is unclear. The
     // team words are listed as unread, so a model answer that ignores them says so.
@@ -72,9 +63,7 @@ export function readEntities(question: string, context: RuleContext): Stage<Enti
     return stop({ status: "unknown", reason: "The data has no seasons." });
   }
   if (YEAR_RANGE.test(question)) {
-    return stop(
-      ambiguous("It names a range of seasons, which is read as a list of years only when each is written out."),
-    );
+    return stop(ambiguous("It names a range of seasons, which is read as a list of years only when each is written out."));
   }
   const sortedMatches = [...matches].sort((a, b) => a.start - b.start);
   return proceed({ tokens, matches, sortedMatches, teams, opponents, opponentWords, asksTeams, isLeaderboard });

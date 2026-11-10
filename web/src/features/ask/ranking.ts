@@ -154,11 +154,7 @@ export function readSingleGame(tokens: readonly string[]): number[] | null {
  * Highest first unless the question asks otherwise; asking both ways, or "best" of a neutral stat, is
  * unclear. `allowed` ranks defenses, where what is allowed is better the other way round.
  */
-export function rankDirection(
-  tokens: readonly string[],
-  metric: string,
-  allowed = false,
-): "asc" | "desc" | { reason: string } {
+export function rankDirection(tokens: readonly string[], metric: string, allowed = false): "asc" | "desc" | { reason: string } {
   const stated = getStatById(metric)?.better;
   const better = stated && allowed ? (stated === "higher" ? "lower" : "higher") : stated;
   const asked = new Set<"asc" | "desc">();

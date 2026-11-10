@@ -92,9 +92,7 @@ function toStat(m: MetricDefinitionData): StatDefinition {
 
 export const STAT_CATEGORY_ORDER: StatCategory[] = file.categories.map((c) => c.id);
 
-export const STAT_CATEGORY_LABELS: Record<StatCategory, string> = Object.fromEntries(
-  file.categories.map((c) => [c.id, c.label]),
-);
+export const STAT_CATEGORY_LABELS: Record<StatCategory, string> = Object.fromEntries(file.categories.map((c) => [c.id, c.label]));
 
 export const STAT_DEFINITIONS: StatDefinition[] = file.metrics.map(toStat);
 

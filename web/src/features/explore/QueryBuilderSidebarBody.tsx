@@ -106,9 +106,7 @@ export function QueryBuilderSidebarScroll({
             </div>
             {searchError && <p className="text-body text-warning">{searchError}</p>}
             {pinMessage && <p className="text-body text-warning">{pinMessage}</p>}
-            <p className="text-caption text-muted">
-              Pin up to {MAX_PINNED_PLAYERS} players to compare
-            </p>
+            <p className="text-caption text-muted">Pin up to {MAX_PINNED_PLAYERS} players to compare</p>
             <PinnedPlayersBar />
             <LeagueFilterControl />
           </>
@@ -134,18 +132,8 @@ export function QueryBuilderSidebarExecuteFooter({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "shrink-0 border-t border-line bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
-        className,
-      )}
-    >
-      <Button
-        type="button"
-        className="w-full text-body font-semibold"
-        onClick={onExecute}
-        disabled={running}
-      >
+    <div className={cn("shrink-0 border-t border-line bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))]", className)}>
+      <Button type="button" className="w-full text-body font-semibold" onClick={onExecute} disabled={running}>
         {running ? "Running…" : "Execute analysis"}
       </Button>
     </div>

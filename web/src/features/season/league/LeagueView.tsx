@@ -13,7 +13,13 @@ import { WhatIf } from "./WhatIf";
 import type { LuckRow, ManagerGradeRow, PowerRankingRow, TeamGradeRow } from "./types";
 
 /** A table section that loads on its own; an empty result says so instead of vanishing. */
-function Rows<T>({ state, title, caption, howCalculated, children }: {
+function Rows<T>({
+  state,
+  title,
+  caption,
+  howCalculated,
+  children,
+}: {
   state: ApiState<T[]>;
   title: string;
   caption: string;
@@ -38,7 +44,8 @@ export function LeagueView() {
   const owner = viewed?.team_name ? possessive(viewed.team_name) : "your";
   const tabs: { value: string; label: string; body: ReactNode }[] = [
     {
-      value: "power", label: "Power rankings",
+      value: "power",
+      label: "Power rankings",
       body: (
         <Rows
           state={power}
@@ -51,7 +58,8 @@ export function LeagueView() {
       ),
     },
     {
-      value: "schedule", label: "Schedule strength",
+      value: "schedule",
+      label: "Schedule strength",
       body: (
         <Rows
           state={power}
@@ -64,7 +72,8 @@ export function LeagueView() {
       ),
     },
     {
-      value: "positional", label: "Positional strength",
+      value: "positional",
+      label: "Positional strength",
       body: (
         <Rows
           state={teamGrades}
@@ -77,7 +86,8 @@ export function LeagueView() {
       ),
     },
     {
-      value: "luck", label: "Luck and all-play",
+      value: "luck",
+      label: "Luck and all-play",
       body: (
         <Rows
           state={luck}
@@ -90,7 +100,8 @@ export function LeagueView() {
       ),
     },
     {
-      value: "efficiency", label: "Lineup efficiency",
+      value: "efficiency",
+      label: "Lineup efficiency",
       body: (
         <Rows
           state={grades}
@@ -103,7 +114,8 @@ export function LeagueView() {
       ),
     },
     {
-      value: "whatif", label: "What if",
+      value: "whatif",
+      label: "What if",
       body: (
         <Section
           level={3}
@@ -119,9 +131,17 @@ export function LeagueView() {
     <Section title="League details" caption="Every team in the league, one table at a time.">
       <Tabs defaultValue="power">
         <TabsList aria-label="League details" className="-mx-[var(--page-pad)] overflow-x-auto px-[var(--page-pad)] md:mx-0 md:px-0">
-          {tabs.map((t) => <TabsTrigger key={t.value} value={t.value} className="shrink-0">{t.label}</TabsTrigger>)}
+          {tabs.map((t) => (
+            <TabsTrigger key={t.value} value={t.value} className="shrink-0">
+              {t.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
-        {tabs.map((t) => <TabsContent key={t.value} value={t.value} className="mt-6">{t.body}</TabsContent>)}
+        {tabs.map((t) => (
+          <TabsContent key={t.value} value={t.value} className="mt-6">
+            {t.body}
+          </TabsContent>
+        ))}
       </Tabs>
     </Section>
   );

@@ -109,9 +109,7 @@ export function People() {
       {created && <InviteLink email={created.email} path={created.path} validDays={created.valid_days} />}
       <div className="mt-6">
         <ApiBoundary state={accounts}>
-          {(rows) => (
-            <ResponsiveTable caption="People with an account" columns={columns} rows={rows} rowKey={(a) => String(a.id)} />
-          )}
+          {(rows) => <ResponsiveTable caption="People with an account" columns={columns} rows={rows} rowKey={(a) => String(a.id)} />}
         </ApiBoundary>
       </div>
     </div>

@@ -41,7 +41,10 @@ describe("requestIntent", () => {
   it("passes the abort signal to fetch and rejects when aborted", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn((_url: string, init: RequestInit) => new Promise((_, reject) => init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))))),
+      vi.fn(
+        (_url: string, init: RequestInit) =>
+          new Promise((_, reject) => init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")))),
+      ),
     );
     const controller = new AbortController();
 

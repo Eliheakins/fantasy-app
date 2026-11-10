@@ -28,8 +28,16 @@ export function Explain({ why, children, about, row = false, inHeading = false }
   return (
     <Popover.Root>
       {/* in a heading the hint is a description, so the heading's name stays its visible text */}
-      {inHeading && <span id={hintId} hidden>{hint}</span>}
-      <Popover.Trigger ref={trigger} aria-describedby={inHeading ? hintId : undefined} className={cn("rounded text-left underline decoration-dotted underline-offset-4", row ? ROW : INLINE, FOCUS)}>
+      {inHeading && (
+        <span id={hintId} hidden>
+          {hint}
+        </span>
+      )}
+      <Popover.Trigger
+        ref={trigger}
+        aria-describedby={inHeading ? hintId : undefined}
+        className={cn("rounded text-left underline decoration-dotted underline-offset-4", row ? ROW : INLINE, FOCUS)}
+      >
         {children}
         {!inHeading && <span className="sr-only">{hint}</span>}
       </Popover.Trigger>
@@ -58,7 +66,9 @@ type ExplainDeltaProps = ComponentProps<typeof Delta> & Pick<ExplainProps, "why"
 export function ExplainDelta({ why, about, row, children, ...delta }: ExplainDeltaProps) {
   return (
     <>
-      <Explain why={why} about={about} row={row}><Delta {...delta} /></Explain>
+      <Explain why={why} about={about} row={row}>
+        <Delta {...delta} />
+      </Explain>
       {children}
     </>
   );

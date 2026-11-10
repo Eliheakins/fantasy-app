@@ -3,16 +3,21 @@ import { MIN_RUNS, barFraction, formatRecord, groupMatchups, isThin, scheduleOrd
 import type { PowerRankingRow, WhatIfRow } from "./types";
 
 const outcome = (winner_id: number, loser_id: number, o: Partial<WhatIfRow> = {}): WhatIfRow => ({
-  winner_id, loser_id, winner: `T${winner_id}`, loser: `T${loser_id}`, involves_me: false,
-  p_condition: 0.5, n_runs: 10000, d_playoffs: 0, d_title: 0, ...o,
+  winner_id,
+  loser_id,
+  winner: `T${winner_id}`,
+  loser: `T${loser_id}`,
+  involves_me: false,
+  p_condition: 0.5,
+  n_runs: 10000,
+  d_playoffs: 0,
+  d_title: 0,
+  ...o,
 });
 
 describe("groupMatchups", () => {
   it("pairs the two outcomes of a matchup in backend order and flags mine", () => {
-    const rows = [
-      outcome(1, 4, { involves_me: true }), outcome(4, 1, { involves_me: true }),
-      outcome(2, 3), outcome(3, 2),
-    ];
+    const rows = [outcome(1, 4, { involves_me: true }), outcome(4, 1, { involves_me: true }), outcome(2, 3), outcome(3, 2)];
     const groups = groupMatchups(rows);
     expect(groups.map((g) => g.label)).toEqual(["T1 vs T4", "T2 vs T3"]);
     expect(groups[0]?.involvesMe).toBe(true);

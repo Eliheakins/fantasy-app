@@ -7,7 +7,10 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("useEnvelopeMutation", () => {
   it("invalidates api queries but leaves kept POST results alone", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ status: "ok", data: { player_rows: 1 }, error: null, started_at: null })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ status: "ok", data: { player_rows: 1 }, error: null, started_at: null })),
+    );
     const client = new QueryClient();
     client.setQueryData(["api", "/api/leagues"], 1);
     client.setQueryData(["post", "find-trades", "L"], 2);

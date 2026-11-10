@@ -1,13 +1,4 @@
-import {
-  Confidence,
-  DataTableFallback,
-  Delta,
-  Dumbbell,
-  RangeBar,
-  Sparkline,
-  WinBar,
-  sharedDomain,
-} from "@/viz";
+import { Confidence, DataTableFallback, Delta, Dumbbell, RangeBar, Sparkline, WinBar, sharedDomain } from "@/viz";
 
 const ROWS = [
   { name: "Allen", p10: 14.2, p50: 24.1, p90: 33.5, form: [18, 22, 31, 12, 25, 27], win: 0.62 },
@@ -35,21 +26,33 @@ function Panel() {
           {ROWS.map((r) => (
             <tr key={r.name}>
               <td>{r.name}</td>
-              <td><RangeBar p10={r.p10} p50={r.p50} p90={r.p90} domain={DOMAIN} /></td>
-              <td><Sparkline values={r.form} /></td>
-              <td><WinBar fraction={r.win} /></td>
+              <td>
+                <RangeBar p10={r.p10} p50={r.p50} p90={r.p90} domain={DOMAIN} />
+              </td>
+              <td>
+                <Sparkline values={r.form} />
+              </td>
+              <td>
+                <WinBar fraction={r.win} />
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
       <p className="mt-4 flex flex-wrap gap-4">
-        {DELTAS.map((d) => <Delta key={d} points={d} />)}
-        <span>toss-up: <Delta points={3} confidence="toss-up" /></span>
+        {DELTAS.map((d) => (
+          <Delta key={d} points={d} />
+        ))}
+        <span>
+          toss-up: <Delta points={3} confidence="toss-up" />
+        </span>
       </p>
       <p className="mt-2 flex gap-4">
         <Confidence share={0.8} /> <Confidence share={0.6} /> <Confidence share={0.4} />
       </p>
-      <p className="mt-2"><Dumbbell before={14} after={19} domain={[0, 30]} measure="Title odds" percent /></p>
+      <p className="mt-2">
+        <Dumbbell before={14} after={19} domain={[0, 30]} measure="Title odds" percent />
+      </p>
       <DataTableFallback
         columns={["Player", "p10", "p50", "p90"]}
         rows={ROWS.map((r) => [r.name, r.p10 ?? "–", r.p50 ?? "–", r.p90 ?? "–"])}

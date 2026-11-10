@@ -26,7 +26,11 @@ function Line({ wins, games, row }: ReturnType<typeof needTable>[number]) {
               <rect width={BAR_WIDTH} height={BAR_HEIGHT} rx={2} className="fill-panel-line" />
               <rect width={row.p_playoffs * BAR_WIDTH} height={BAR_HEIGHT} rx={2} className="fill-focus" />
             </svg>
-            <span className="w-12 text-right font-semibold tabular-nums"><Explain row why={needWhy(wins, games, row)}>{formatPercent(row.p_playoffs)}</Explain></span>
+            <span className="w-12 text-right font-semibold tabular-nums">
+              <Explain row why={needWhy(wins, games, row)}>
+                {formatPercent(row.p_playoffs)}
+              </Explain>
+            </span>
           </span>
           <span className="text-caption text-muted">{formatPercent(row.p_condition)} of seasons</span>
         </>
@@ -40,7 +44,9 @@ export function WhatYouNeed() {
   const state = useLeagueApi<WinNeedRow[]>("win-needs");
   return (
     <section aria-labelledby="what-you-need" className="mb-8 key-panel">
-      <h2 id="what-you-need" className="text-section font-semibold">What you need</h2>
+      <h2 id="what-you-need" className="text-section font-semibold">
+        What you need
+      </h2>
       <ApiBoundary state={state}>
         {(rows) => {
           const sentence = needSentence(rows);
@@ -49,8 +55,14 @@ export function WhatYouNeed() {
           return (
             <>
               <p className="measure mt-1 text-body">{sentence}</p>
-              <p className="measure text-caption text-muted">Playoff odds by wins in your next games, from the same simulated seasons as the odds above.</p>
-              <ul className="mt-2">{needTable(rows).map((l) => <Line key={l.wins} {...l} />)}</ul>
+              <p className="measure text-caption text-muted">
+                Playoff odds by wins in your next games, from the same simulated seasons as the odds above.
+              </p>
+              <ul className="mt-2">
+                {needTable(rows).map((l) => (
+                  <Line key={l.wins} {...l} />
+                ))}
+              </ul>
             </>
           );
         }}

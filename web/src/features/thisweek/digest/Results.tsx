@@ -22,22 +22,20 @@ export function LastWeek({ row, currentWeek }: { row: LastWeekRow | null; curren
   if (row === null) {
     return (
       <p className="text-body text-muted">
-        {currentWeek !== null && currentWeek <= 1
-          ? "Week 1: there is no earlier week yet."
-          : "Last week's game has no final score yet."}
+        {currentWeek !== null && currentWeek <= 1 ? "Week 1: there is no earlier week yet." : "Last week's game has no final score yet."}
       </p>
     );
   }
   return (
     <div className="border-t border-line pt-3">
-      <p className="text-body font-semibold">Week {row.week}: {resultSentence(row)}</p>
+      <p className="text-body font-semibold">
+        Week {row.week}: {resultSentence(row)}
+      </p>
       <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3">
         <Figure label="Bench points left (best lineup minus started)">
           {row.bench_points_left === null ? UNKNOWN : formatNumber(row.bench_points_left)}
         </Figure>
-        <Figure label="Luck (wins, that week)">
-          {row.luck === null ? UNKNOWN : <Delta points={row.luck} noise={NOISE_WINS} />}
-        </Figure>
+        <Figure label="Luck (wins, that week)">{row.luck === null ? UNKNOWN : <Delta points={row.luck} noise={NOISE_WINS} />}</Figure>
       </dl>
     </div>
   );
@@ -61,7 +59,8 @@ function columns(max: number): Column<ProjectionMissRow>[] {
       role: "primary",
       render: (r) => (
         <>
-          {r.full_name ? <PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} /> : r.gsis_id} <span className="text-caption font-normal text-muted">{r.position}</span>
+          {r.full_name ? <PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} /> : r.gsis_id}{" "}
+          <span className="text-caption font-normal text-muted">{r.position}</span>
         </>
       ),
     },
@@ -91,12 +90,7 @@ export function Performance({ rows }: { rows: readonly ProjectionMissRow[] }) {
           No saved projections for this week, so there is nothing to compare. Projections were first saved in week 7.
         </p>
       )}
-      <ResponsiveTable
-        caption="Starters: points against projection"
-        columns={shown}
-        rows={rows}
-        rowKey={(r) => r.gsis_id}
-      />
+      <ResponsiveTable caption="Starters: points against projection" columns={shown} rows={rows} rowKey={(r) => r.gsis_id} />
     </>
   );
 }
@@ -118,7 +112,12 @@ const ODDS_COLUMNS: Column<OddsChangeRow>[] = [
 
 export function OddsChange({ rows, mineLabel }: { rows: readonly OddsChangeRow[]; mineLabel: boolean }) {
   const cmp = oddsComparison(rows);
-  if (cmp === null) return <p className="text-body text-muted">No simulation runs saved yet. Run <code>make refresh</code>.</p>;
+  if (cmp === null)
+    return (
+      <p className="text-body text-muted">
+        No simulation runs saved yet. Run <code>make refresh</code>.
+      </p>
+    );
   return (
     <>
       <p className="mb-2 text-caption text-muted">

@@ -5,15 +5,33 @@ type Waiver = components["schemas"]["WaiverRow"];
 type Idea = components["schemas"]["MoveIdeaRow"];
 
 const waiver = (name: string, over: Partial<Waiver> = {}): Waiver => ({
-  gsis_id: `id-${name}`, full_name: name, position: "RB", drop_name: "Bernard", delta_points: 5,
-  playoff_delta: 0.01, title_delta: 0.005, se_title: 0.002, trending_adds: null, ...over,
+  gsis_id: `id-${name}`,
+  full_name: name,
+  position: "RB",
+  drop_name: "Bernard",
+  delta_points: 5,
+  playoff_delta: 0.01,
+  title_delta: 0.005,
+  se_title: 0.002,
+  trending_adds: null,
+  ...over,
 });
 const idea = (over: Partial<Idea> = {}): Idea => ({
-  kind: "trade", partner: "Rivals", give: "A", get: "B", give_ids: ["a"], get_ids: ["b"], rank: 1,
-  playoff_delta: 0.02, title_delta: 0.01, se_title: 0.003, delta_points: 3, ...over,
+  kind: "trade",
+  partner: "Rivals",
+  give: "A",
+  get: "B",
+  give_ids: ["a"],
+  get_ids: ["b"],
+  rank: 1,
+  playoff_delta: 0.02,
+  title_delta: 0.01,
+  se_title: 0.003,
+  delta_points: 3,
+  ...over,
 });
 
-const must = <T,>(x: T | undefined): T => {
+const must = <T>(x: T | undefined): T => {
   if (x === undefined) throw new Error("missing");
   return x;
 };

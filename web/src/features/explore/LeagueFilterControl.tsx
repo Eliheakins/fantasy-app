@@ -51,8 +51,7 @@ export function LeagueFilterControl() {
       </ToggleGroup>
       {unmatched > 0 && (
         <p className="text-caption text-muted">
-          {unmatched} rostered {unmatched === 1 ? "player" : "players"} could not be matched and may appear as free
-          agents.
+          {unmatched} rostered {unmatched === 1 ? "player" : "players"} could not be matched and may appear as free agents.
         </p>
       )}
     </div>

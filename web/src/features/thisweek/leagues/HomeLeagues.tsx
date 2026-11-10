@@ -15,10 +15,14 @@ export function HomeLeagues() {
           // roster ids belong to one league: while viewing a team, show only its league
           const list = team === null ? all : all.filter((l) => l.league_key === league);
           return list.length === 0 ? (
-            <p className="text-muted">No data yet. Run <code>make refresh</code>, then reload this page.</p>
+            <p className="text-muted">
+              No data yet. Run <code>make refresh</code>, then reload this page.
+            </p>
           ) : (
             <div className="grid gap-4 xl:grid-cols-2">
-              {list.map((l) => <LeagueCard key={l.league_key} league={asViewedTeam(l, viewed)} mine={viewed === null} />)}
+              {list.map((l) => (
+                <LeagueCard key={l.league_key} league={asViewedTeam(l, viewed)} mine={viewed === null} />
+              ))}
             </div>
           );
         }}

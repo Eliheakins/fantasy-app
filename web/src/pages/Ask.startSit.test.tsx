@@ -16,11 +16,28 @@ vi.mock("@/features/explore/useExploreQueryExecution", () => ({
 }));
 
 const player = (gsis_id: string, display_name: string, position = "TE") => ({
-  gsis_id, display_name, search_key: display_name.toLowerCase(), position, team: "KC",
+  gsis_id,
+  display_name,
+  search_key: display_name.toLowerCase(),
+  position,
+  team: "KC",
 });
 const lineupRow = (id: string, projection: number, recommended = true) => ({
-  slot: "TE", gsis_id: id, full_name: id, position: "TE", projection, p10: projection - 5, p90: projection + 6,
-  starting_now: true, recommended, injury: null, injury_note: null, locked: false, actual: 0, game: "Sun", change: "",
+  slot: "TE",
+  gsis_id: id,
+  full_name: id,
+  position: "TE",
+  projection,
+  p10: projection - 5,
+  p90: projection + 6,
+  starting_now: true,
+  recommended,
+  injury: null,
+  injury_note: null,
+  locked: false,
+  actual: 0,
+  game: "Sun",
+  change: "",
 });
 let fetchMock: ReturnType<typeof vi.fn>;
 
@@ -39,9 +56,13 @@ function renderAsk(entry: string) {
 beforeEach(() => {
   window.localStorage.clear();
   vi.mocked(fetchManifest).mockResolvedValue({
-    schema_version: 1, built_at: "2026-11-04T12:00:00+00:00", nflreadpy_version: "0.1.0",
+    schema_version: 1,
+    built_at: "2026-11-04T12:00:00+00:00",
+    nflreadpy_version: "0.1.0",
     seasons: FIXTURE_SEASONS.map((season) => ({ season, path: `p${season}.parquet`, rows: 1, max_week: 9, has_participation: true })),
-    player_index: null, player_game: null, players: null,
+    player_index: null,
+    player_game: null,
+    players: null,
   });
   vi.mocked(getPlayerDictionary).mockResolvedValue([
     player("kelce", "Travis Kelce"),
@@ -50,7 +71,9 @@ beforeEach(() => {
     player("allen-lb", "Josh Allen", "LB"),
   ]);
   fetchMock = vi.fn(async (url: string) => {
-    const data = url.includes("/lineup") ? [lineupRow("kelce", 9, false), lineupRow("kittle", 12.5, true)] : [{ league_key: "a", name: "A", current_week: 9 }];
+    const data = url.includes("/lineup")
+      ? [lineupRow("kelce", 9, false), lineupRow("kittle", 12.5, true)]
+      : [{ league_key: "a", name: "A", current_week: 9 }];
     return Response.json({ status: "ok", data, error: null, started_at: null });
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -89,7 +112,9 @@ describe("Ask start/sit", () => {
 
   it("asks which player for a namesake, then answers", async () => {
     vi.mocked(getPlayerDictionary).mockResolvedValue([
-      player("kelce", "Travis Kelce"), player("allen-qb", "Josh Allen", "QB"), player("allen-lb", "Josh Allen", "LB"),
+      player("kelce", "Travis Kelce"),
+      player("allen-qb", "Josh Allen", "QB"),
+      player("allen-lb", "Josh Allen", "LB"),
     ]);
     renderAsk("/ask?league=a&q=start+Josh+Allen+or+Kelce");
 

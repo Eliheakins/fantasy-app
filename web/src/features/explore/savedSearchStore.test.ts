@@ -17,11 +17,21 @@ describe("saved searches", () => {
   });
 
   it("deletes by name", () => {
-    expect(removeSaved([{ name: "A", query: "s=x" }, { name: "B", query: "s=y" }], "A")).toEqual([{ name: "B", query: "s=y" }]);
+    expect(
+      removeSaved(
+        [
+          { name: "A", query: "s=x" },
+          { name: "B", query: "s=y" },
+        ],
+        "A",
+      ),
+    ).toEqual([{ name: "B", query: "s=y" }]);
   });
 
   it("re-runs on Find players with the current league, team and week", () => {
-    expect(savedHref({ name: "A", query: "s=x&p=1" }, "?league=L&team=3&week=7&s=other")).toBe("/players/find?s=x&p=1&league=L&team=3&week=7");
+    expect(savedHref({ name: "A", query: "s=x&p=1" }, "?league=L&team=3&week=7&s=other")).toBe(
+      "/players/find?s=x&p=1&league=L&team=3&week=7",
+    );
   });
 
   it("round-trips through localStorage and drops malformed entries", () => {
@@ -34,8 +44,12 @@ describe("saved searches", () => {
   });
 
   it("works without storage: reads empty and reports a failed write instead of throwing", () => {
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("denied"); });
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("full"); });
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("denied");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("full");
+    });
     expect(readSaved()).toEqual([]);
     expect(writeSaved([{ name: "A", query: "s=x" }])).toBe(false);
   });
@@ -50,7 +64,13 @@ describe("saved searches", () => {
     expect(addSaved(fifty, "n3", "?s=y")).toHaveLength(50); // replacing one is fine
     expect(addSaved([], "x".repeat(61), "?s=x")).toEqual([]);
     expect(addSaved([], "A", `?s=${"x".repeat(2001)}`)).toEqual([]);
-    window.localStorage.setItem("fantasy.savedSearches", JSON.stringify([{ name: "x".repeat(61), query: "s=x" }, { name: "ok", query: "s=x" }]));
+    window.localStorage.setItem(
+      "fantasy.savedSearches",
+      JSON.stringify([
+        { name: "x".repeat(61), query: "s=x" },
+        { name: "ok", query: "s=x" },
+      ]),
+    );
     expect(readSaved()).toEqual([{ name: "ok", query: "s=x" }]);
   });
 });

@@ -10,10 +10,30 @@ import type { PlayerProfile } from "./profile";
 vi.mock("@/api/useEnvelope", () => ({ useEnvelopeQuery: vi.fn() }));
 
 const profile: PlayerProfile = {
-  gsis_id: "a", full_name: "Ann", position: "WR", week: 9, result_week: null, result_points: null, is_out: false, projection: 11, p10: 4, median: 12, p90: 21, chance_to_play: 0.76,
-  injury: "Questionable", injury_note: "Questionable (hamstring)", ros_points: 80, replacement_name: "Free Guy", replacement_points: 62.5,
-  ros_over_replacement: 17.5, outlook_label: "Improving", why: "teammates who carry targets are out",
-  role_weeks: [{ week: 1, snap_share: 0.8, target_share: 0.2 }, { week: 2, snap_share: 0.6, target_share: 0.3 }],
+  gsis_id: "a",
+  full_name: "Ann",
+  position: "WR",
+  week: 9,
+  result_week: null,
+  result_points: null,
+  is_out: false,
+  projection: 11,
+  p10: 4,
+  median: 12,
+  p90: 21,
+  chance_to_play: 0.76,
+  injury: "Questionable",
+  injury_note: "Questionable (hamstring)",
+  ros_points: 80,
+  replacement_name: "Free Guy",
+  replacement_points: 62.5,
+  ros_over_replacement: 17.5,
+  outlook_label: "Improving",
+  why: "teammates who carry targets are out",
+  role_weeks: [
+    { week: 1, snap_share: 0.8, target_share: 0.2 },
+    { week: 2, snap_share: 0.6, target_share: 0.3 },
+  ],
 };
 const market = [{ gsis_id: "a", value: 4200, overall_rank: 12, position_rank: 5, trend_30_day: -150, fetched_at: "2026-11-04" }];
 const owners = { rows: [{ gsis_id: "a", owner: "Theirs", roster_id: 3, is_mine: false }], unmatched: 0 };
@@ -21,13 +41,21 @@ const ready = <T,>(data: T): ApiState<T> => ({ kind: "ready", data }) as ApiStat
 
 function mock(p: ApiState<unknown>, m: ApiState<unknown> = ready(market), o: ApiState<unknown> = ready(owners)) {
   vi.mocked(useEnvelopeQuery).mockImplementation(((path: string | null) =>
-    path?.includes("/profile") ? p : path?.includes("/market-values") ? m : path?.includes("/owners") ? o : { kind: "loading" }) as typeof useEnvelopeQuery);
+    path?.includes("/profile")
+      ? p
+      : path?.includes("/market-values")
+        ? m
+        : path?.includes("/owners")
+          ? o
+          : { kind: "loading" }) as typeof useEnvelopeQuery);
 }
 
 function renderSections(level: 2 | 3 = 2) {
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <TeamContext.Provider value={{ team: 2, league: "a", teams: [], viewed: null, setTeam: () => {}, notice: null, dismissNotice: () => {} }}>
+      <TeamContext.Provider
+        value={{ team: 2, league: "a", teams: [], viewed: null, setTeam: () => {}, notice: null, dismissNotice: () => {} }}
+      >
         <MemoryRouter>
           <PlayerSections gsisId="a" level={level} name="Ann" />
         </MemoryRouter>
@@ -42,7 +70,15 @@ describe("PlayerSections", () => {
   it("shows every section in the plan's order when the data exists", () => {
     mock(ready(profile));
     renderSections();
-    expect(headings()).toEqual(["Next game", "Rest of season", "Role", "Why the model expects change", "Injury and chance to play", "Market value", "Owner"]);
+    expect(headings()).toEqual([
+      "Next game",
+      "Rest of season",
+      "Role",
+      "Why the model expects change",
+      "Injury and chance to play",
+      "Market value",
+      "Owner",
+    ]);
     expect(screen.getByText(/12\.0/)).toBeInTheDocument();
     expect(screen.getByText(/\+17\.5/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /\+17\.5.*what drives this/ })).toBeInTheDocument();
@@ -57,8 +93,27 @@ describe("PlayerSections", () => {
   });
 
   it("says not available for the next game and rest of season, and hides role, why and injury, when the data is missing", () => {
-    mock(ready({ ...profile, median: null, p10: null, p90: null, projection: null, ros_points: null, ros_over_replacement: null, replacement_name: null, replacement_points: null,
-      role_weeks: [], why: null, outlook_label: null, injury: null, injury_note: null, chance_to_play: null }), ready([]), ready({ rows: [], unmatched: 0 }));
+    mock(
+      ready({
+        ...profile,
+        median: null,
+        p10: null,
+        p90: null,
+        projection: null,
+        ros_points: null,
+        ros_over_replacement: null,
+        replacement_name: null,
+        replacement_points: null,
+        role_weeks: [],
+        why: null,
+        outlook_label: null,
+        injury: null,
+        injury_note: null,
+        chance_to_play: null,
+      }),
+      ready([]),
+      ready({ rows: [], unmatched: 0 }),
+    );
     renderSections();
     expect(headings()).toEqual(["Next game", "Rest of season", "Market value", "Owner"]);
     expect(screen.getAllByText(/Not available/).length).toBe(3);

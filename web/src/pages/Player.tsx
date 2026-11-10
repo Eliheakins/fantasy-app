@@ -18,7 +18,10 @@ function NotFound() {
     <section>
       <PageHeader title="Player not found" eyebrow="Players" />
       <p className="measure text-muted">No player in the stat data has that id.</p>
-      <Link to={{ pathname: "/players", search: navSearch("/players", search, pathname) }} className="mt-2 inline-flex min-h-[44px] items-center underline">
+      <Link
+        to={{ pathname: "/players", search: navSearch("/players", search, pathname) }}
+        className="mt-2 inline-flex min-h-[44px] items-center underline"
+      >
         Back to Players
       </Link>
     </section>

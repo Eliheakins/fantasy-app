@@ -8,9 +8,9 @@ vi.mock("@/lib/league", () => ({
   useLeague: () => ({ league: "a", leagues: { kind: "ready", data: [{ league_key: "a", name: "Colgate ", current_week: 9 }] } }),
 }));
 
-const wrap = (entry: string) => ({ children }: { children: ReactNode }) => (
-  <MemoryRouter initialEntries={[entry]}>{children}</MemoryRouter>
-);
+const wrap =
+  (entry: string) =>
+  ({ children }: { children: ReactNode }) => <MemoryRouter initialEntries={[entry]}>{children}</MemoryRouter>;
 
 function renderWeek(entry: string) {
   return renderHook(() => ({ ...useWeek(), location: useLocation() }), { wrapper: wrap(entry) });

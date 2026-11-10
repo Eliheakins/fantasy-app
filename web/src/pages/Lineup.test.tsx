@@ -10,12 +10,38 @@ import type { LineupRow, WinProbability } from "@/features/lineup/logic";
 const render = (ui: ReactElement): RenderResult => rtlRender(<MemoryRouter>{ui}</MemoryRouter>);
 
 const row = (id: string, o: Partial<LineupRow> = {}): LineupRow => ({
-  slot: "RB", gsis_id: id, full_name: `Player ${id}`, position: "RB", projection: 10, p10: 4, p90: 18,
-  starting_now: true, recommended: true, injury: "Q", injury_note: "Questionable", locked: false, actual: 0, game: "Sun", change: "", ...o,
+  slot: "RB",
+  gsis_id: id,
+  full_name: `Player ${id}`,
+  position: "RB",
+  projection: 10,
+  p10: 4,
+  p90: 18,
+  starting_now: true,
+  recommended: true,
+  injury: "Q",
+  injury_note: "Questionable",
+  locked: false,
+  actual: 0,
+  game: "Sun",
+  change: "",
+  ...o,
 });
 const cmp = (option: string) => ({ option, win_prob: 0.5, expected_points: 100, floor: 80, median: 100, ceiling: 120 });
 const option = (name: string, o: Partial<WinProbability["options"][number]> = {}) =>
-  ({ option: name, win_prob: 0.5, expected_points: 131.2, floor: 90, median: 120, ceiling: 150, opp_floor: 85, opp_median: 115, opp_ceiling: 145, slot_calls: [], ...o }) as WinProbability["options"][number];
+  ({
+    option: name,
+    win_prob: 0.5,
+    expected_points: 131.2,
+    floor: 90,
+    median: 120,
+    ceiling: 150,
+    opp_floor: 85,
+    opp_median: 115,
+    opp_ceiling: 145,
+    slot_calls: [],
+    ...o,
+  }) as WinProbability["options"][number];
 const odds: WinProbability = {
   script: "You are a slight favourite",
   swap: { differs: false, players_in: [], players_out: [], text: null },
@@ -119,9 +145,17 @@ describe("LineupView answer and evidence", () => {
     const { rerender } = render(<LineupView base={cookRows} odds={underdog} week={3} />);
     await userEvent.click(screen.getByRole("radio", { name: "Max floor" }));
     expect(screen.getByRole("radio", { name: "Max floor" })).toBeChecked();
-    rerender(<MemoryRouter><LineupView base={cookRows} odds={{ ...withCalls, script: "Favorite (70% to win): protect the floor" }} week={3} /></MemoryRouter>);
+    rerender(
+      <MemoryRouter>
+        <LineupView base={cookRows} odds={{ ...withCalls, script: "Favorite (70% to win): protect the floor" }} week={3} />
+      </MemoryRouter>,
+    );
     expect(screen.getByRole("radio", { name: "Max floor" })).toBeChecked();
-    rerender(<MemoryRouter><LineupView base={cookRows} odds={{ ...withCalls, script: "Even matchup (50% to win)" }} week={3} /></MemoryRouter>);
+    rerender(
+      <MemoryRouter>
+        <LineupView base={cookRows} odds={{ ...withCalls, script: "Even matchup (50% to win)" }} week={3} />
+      </MemoryRouter>,
+    );
     expect(screen.getByRole("radio", { name: "Max floor" })).toBeChecked();
   });
   test("range bars show both teams", () => {

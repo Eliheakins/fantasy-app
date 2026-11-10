@@ -52,11 +52,7 @@ async function errorDetail(res: Response): Promise<string | null> {
  * Fetches JSON and checks it against a schema. Every failure becomes one readable sentence that
  * says what failed, where, and what to do, rather than "Failed to fetch" or a raw parse error.
  */
-export async function requestJson<S extends z.ZodType>(
-  url: string,
-  schema: S,
-  options: RequestJsonOptions,
-): Promise<z.output<S>> {
+export async function requestJson<S extends z.ZodType>(url: string, schema: S, options: RequestJsonOptions): Promise<z.output<S>> {
   const { what, unreachableHint, notFoundHint = "", shapeHint = "", init } = options;
 
   let res: Response;
@@ -66,9 +62,7 @@ export async function requestJson<S extends z.ZodType>(
     if (e instanceof DOMException && e.name === "AbortError") {
       throw e;
     }
-    throw new Error(
-      `${capitalize(what)} is not reachable at ${originOf(url)}. ${unreachableHint}`,
-    );
+    throw new Error(`${capitalize(what)} is not reachable at ${originOf(url)}. ${unreachableHint}`);
   }
 
   if (res.status === 404) {
@@ -89,11 +83,7 @@ export async function requestJson<S extends z.ZodType>(
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     const where = issue?.path.join(".") || "(root)";
-    throw new Error(
-      oneLine(
-        `${capitalize(what)} has an unexpected shape at "${where}": ${issue?.message ?? "invalid"}. ${shapeHint}`,
-      ),
-    );
+    throw new Error(oneLine(`${capitalize(what)} has an unexpected shape at "${where}": ${issue?.message ?? "invalid"}. ${shapeHint}`));
   }
   return parsed.data;
 }

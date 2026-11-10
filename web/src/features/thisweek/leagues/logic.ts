@@ -110,4 +110,3 @@ export function worthActing(a: ActionRow, share: number | null): boolean {
 export function splitRoster(rows: readonly RosterRow[]) {
   return { starters: rows.filter((r) => r.is_starter), bench: rows.filter((r) => !r.is_starter) };
 }
-;

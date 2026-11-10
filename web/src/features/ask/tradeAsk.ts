@@ -127,7 +127,9 @@ export function planTrade(
   }
   const unowned = trade.get.filter((id) => !byId.has(id));
   if (unowned.length > 0) {
-    return handoff(`${unowned.map(name).join(" and ")} ${unowned.length > 1 ? "are" : "is"} a free agent or not on any roster in this league.`);
+    return handoff(
+      `${unowned.map(name).join(" and ")} ${unowned.length > 1 ? "are" : "is"} a free agent or not on any roster in this league.`,
+    );
   }
   const mine = trade.get.filter((id) => byId.get(id)?.is_mine);
   if (mine.length > 0) {

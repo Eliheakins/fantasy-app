@@ -16,9 +16,7 @@ function filterIds(e: Entities, filters: FilterReads, split: SplitRead): string[
   const byLocation = splitsByLocation(split);
   const filterAt: { at: number; id: string }[] = [
     ...found.flatMap((f) =>
-      f.piece.kind === "chips"
-        ? f.piece.ids.filter((id) => !(byLocation && id.startsWith("loc-"))).map((id) => ({ at: f.at, id }))
-        : [],
+      f.piece.kind === "chips" ? f.piece.ids.filter((id) => !(byLocation && id.startsWith("loc-"))).map((id) => ({ at: f.at, id })) : [],
     ),
     ...years.map((y) => ({ at: y.at, id: `season-${y.year}` })),
     ...time.filters.map((id) => ({ at: time.used[0] ?? 0, id })),

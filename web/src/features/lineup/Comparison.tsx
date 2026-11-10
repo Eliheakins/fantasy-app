@@ -36,8 +36,12 @@ export function Comparison({ rows }: { rows: readonly ComparisonRow[] }) {
         <tbody>
           {groups.map(({ labels, row }) => (
             <tr key={labels.join("|")} className="border-b border-line">
-              <th scope="row" className="py-2 pr-3 text-left font-normal">{labels[0]}</th>
-              <td className="pr-3"><WinBar fraction={row.win_prob} /></td>
+              <th scope="row" className="py-2 pr-3 text-left font-normal">
+                {labels[0]}
+              </th>
+              <td className="pr-3">
+                <WinBar fraction={row.win_prob} />
+              </td>
               <td className="pr-3 text-right tabular-nums">{formatNumber(row.floor, 0)}</td>
               <td className="pr-3 text-right tabular-nums">{formatNumber(row.median, 0)}</td>
               <td className="text-right tabular-nums">{formatNumber(row.ceiling, 0)}</td>

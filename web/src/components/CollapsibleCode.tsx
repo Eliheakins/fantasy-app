@@ -8,13 +8,7 @@ export interface CollapsibleCodeProps {
   maxHeightClass?: string;
 }
 
-export function CollapsibleCode({
-  title,
-  code,
-  className,
-  preClassName,
-  maxHeightClass = "max-h-40",
-}: CollapsibleCodeProps) {
+export function CollapsibleCode({ title, code, className, preClassName, maxHeightClass = "max-h-40" }: CollapsibleCodeProps) {
   return (
     <details className={cn("text-caption text-muted", className)}>
       <summary className="cursor-pointer hover:text-ink">{title}</summary>

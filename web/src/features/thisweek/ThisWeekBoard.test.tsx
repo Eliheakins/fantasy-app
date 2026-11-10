@@ -14,7 +14,10 @@ const idea = { kind: "waiver", get: "Coleman", give: "Bernard", rank: 1, playoff
 const digest = (waivers: unknown[]) => ok({ waivers, ideas: {} });
 const calendar = {
   week: 9,
-  kickoffs: [{ team: "A", kickoff: "2026-11-08T13:00:00-05:00" }, { team: "B", kickoff: "2026-11-08T13:00:00-05:00" }],
+  kickoffs: [
+    { team: "A", kickoff: "2026-11-08T13:00:00-05:00" },
+    { team: "B", kickoff: "2026-11-08T13:00:00-05:00" },
+  ],
   waivers: [
     { league_key: "a", name: "Alpha", day_of_week: 2, daily: false },
     { league_key: "b", name: "Beta", day_of_week: 2, daily: false },
@@ -25,10 +28,13 @@ const routes: [string, unknown][] = [
   ["/api/leagues/b/actions", ok([{ kind: "Lineup", text: "Start A over B (+4.1 points)", delta_points: 4.1 }])],
   ["/api/leagues/a/digest", digest([idea])],
   ["/api/leagues/b/digest", digest([])],
-  ["/api/leagues/a/odds-history", ok([
-    { run_at: "2026-10-30T10:00:00", roster_id: 1, p_playoffs: 0.5, p_title: 0.1 },
-    { run_at: "2026-11-03T10:00:00", roster_id: 1, p_playoffs: 0.58, p_title: 0.1 },
-  ])],
+  [
+    "/api/leagues/a/odds-history",
+    ok([
+      { run_at: "2026-10-30T10:00:00", roster_id: 1, p_playoffs: 0.5, p_title: 0.1 },
+      { run_at: "2026-11-03T10:00:00", roster_id: 1, p_playoffs: 0.58, p_title: 0.1 },
+    ]),
+  ],
   ["/api/leagues/b/odds-history", ok([])],
   ["/api/leagues/a/status-changes", ok([{ sleeper_id: "s1", full_name: "James Cook III", before: null, after: "Out" }])],
   ["/api/leagues/b/status-changes", ok([])],
@@ -42,11 +48,14 @@ beforeEach(() => {
   window.localStorage.clear();
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-11-04T15:00:00Z")); // Wednesday morning in New York
-  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-    urls.push(url);
-    const hit = routes.find(([prefix]) => url.split("?")[0] === prefix);
-    return Response.json(hit ? hit[1] : ok([]));
-  }));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) => {
+      urls.push(url);
+      const hit = routes.find(([prefix]) => url.split("?")[0] === prefix);
+      return Response.json(hit ? hit[1] : ok([]));
+    }),
+  );
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -58,7 +67,12 @@ function renderBoard() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter><p data-testid="answer"><Answer /></p><ThisWeekBoard /></MemoryRouter>
+      <MemoryRouter>
+        <p data-testid="answer">
+          <Answer />
+        </p>
+        <ThisWeekBoard />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -113,8 +127,12 @@ describe("Since you last looked", () => {
   });
 
   it("works when storage throws", async () => {
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("blocked"); });
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
     renderBoard();
     expect((await screen.findAllByText("First visit: we'll show changes from next time.")).length).toBe(2);
     expect(await screen.findByText("Add Coleman, drop Bernard")).toBeInTheDocument();
@@ -152,7 +170,17 @@ describe("failures and a stale calendar", () => {
   });
 
   it("tells you when every kickoff of the data's week is outside the strip", async () => {
-    routes.unshift(["/api/week-calendar", ok({ ...calendar, week: 8, kickoffs: [{ team: "A", kickoff: "2026-11-01T13:00:00-05:00" }, { team: "B", kickoff: null }] })]);
+    routes.unshift([
+      "/api/week-calendar",
+      ok({
+        ...calendar,
+        week: 8,
+        kickoffs: [
+          { team: "A", kickoff: "2026-11-01T13:00:00-05:00" },
+          { team: "B", kickoff: null },
+        ],
+      }),
+    ]);
     renderBoard();
     expect(await screen.findByText(/All kickoffs for week 8 are outside/)).toBeInTheDocument();
     expect(screen.getByText(/1 teams have no kickoff time/)).toBeInTheDocument();

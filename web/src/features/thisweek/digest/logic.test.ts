@@ -1,12 +1,16 @@
-import {
-  barSpan, formatAge, ideasNotice, maxAbsDiff, nextLineupAction, oddsComparison, resultSentence,
-} from "./logic";
+import { barSpan, formatAge, ideasNotice, maxAbsDiff, nextLineupAction, oddsComparison, resultSentence } from "./logic";
 import { toPoints } from "@/viz";
 import type { ActionRow, IdeasInfo, LastWeekRow, OddsChangeRow, ProjectionMissRow } from "@/lib/digestTypes";
 
 const NOW = Date.parse("2026-10-25T12:00:00Z");
 const ideas = (over: Partial<IdeasInfo> = {}): IdeasInfo => ({
-  is_mine: true, created_at: "2026-10-25T08:00:00+00:00", as_of_week: 7, current_week: 7, trade_deadline: 11, deadline_passed: false, ...over,
+  is_mine: true,
+  created_at: "2026-10-25T08:00:00+00:00",
+  as_of_week: 7,
+  current_week: 7,
+  trade_deadline: 11,
+  deadline_passed: false,
+  ...over,
 });
 
 describe("formatAge", () => {

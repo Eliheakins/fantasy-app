@@ -26,9 +26,7 @@ export function participationGap(args: {
   if (!manifest) {
     return null;
   }
-  const participationChips = new Set(
-    chipGroups.filter((g) => PARTICIPATION_GROUPS.has(g.id)).flatMap((g) => g.options.map((o) => o.id)),
-  );
+  const participationChips = new Set(chipGroups.filter((g) => PARTICIPATION_GROUPS.has(g.id)).flatMap((g) => g.options.map((o) => o.id)));
   const chips = filters.filter((id) => participationChips.has(id));
   if (chips.length === 0) {
     return null;
@@ -39,8 +37,6 @@ export function participationGap(args: {
     return match ? [Number(match[1])] : [];
   });
   const covered = chosen.length > 0 ? chosen : manifest.seasons.map((s) => s.season);
-  const seasons = manifest.seasons
-    .filter((s) => !s.has_participation && covered.includes(s.season))
-    .map((s) => s.season);
+  const seasons = manifest.seasons.filter((s) => !s.has_participation && covered.includes(s.season)).map((s) => s.season);
   return seasons.length > 0 ? { seasons, chips } : null;
 }

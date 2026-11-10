@@ -20,9 +20,5 @@ type DeltaProps = {
 export function Delta({ points, confidence, noise, className }: DeltaProps) {
   const { text, tone } = formatDelta(points, noise);
   const shown = confidence === "toss-up" ? "neutral" : tone;
-  return (
-    <span className={cn("tabular-nums whitespace-nowrap", TONE_CLASS[shown], className)}>
-      {text}
-    </span>
-  );
+  return <span className={cn("tabular-nums whitespace-nowrap", TONE_CLASS[shown], className)}>{text}</span>;
 }

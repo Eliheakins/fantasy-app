@@ -3,7 +3,19 @@ import type { OutlookRow } from "@/lib/outlookTypes";
 import { ALL_POSITIONS, filterByPosition, isOut, positionsIn, sortByChange } from "./logic";
 
 const row = (position: string, change: number | null, chance: number | null = 1) =>
-  ({ gsis_id: `${position}${change}`, full_name: "x", position, owner: "o", recent_ppg: 1, expected_ppg: 1, next_ppg: 1, change, chance_to_play: chance, label: "Steady", why: "" }) as OutlookRow;
+  ({
+    gsis_id: `${position}${change}`,
+    full_name: "x",
+    position,
+    owner: "o",
+    recent_ppg: 1,
+    expected_ppg: 1,
+    next_ppg: 1,
+    change,
+    chance_to_play: chance,
+    label: "Steady",
+    why: "",
+  }) as OutlookRow;
 
 describe("players logic", () => {
   const rows = [row("WR", 1), row("QB", null), row("RB", 3), row("K", -2)];

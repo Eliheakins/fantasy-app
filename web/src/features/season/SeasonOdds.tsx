@@ -20,10 +20,20 @@ function placement(e: SeasonEventRow, mine: ReadonlyMap<number, number>, weeks: 
   return `week ${week}, your odds ${formatPercent(mine.get(week))} at the end of it`;
 }
 
-function EventList({ events, mine, weeks }: { events: readonly SeasonEventRow[]; mine: ReadonlyMap<number, number>; weeks: ReadonlyMap<string, number> }) {
+function EventList({
+  events,
+  mine,
+  weeks,
+}: {
+  events: readonly SeasonEventRow[];
+  mine: ReadonlyMap<number, number>;
+  weeks: ReadonlyMap<string, number>;
+}) {
   return (
     <div className="mt-2">
-      <h3 id={EVENTS_ID} className="text-body font-semibold">Marked events</h3>
+      <h3 id={EVENTS_ID} className="text-body font-semibold">
+        Marked events
+      </h3>
       {events.length === 0 ? (
         <p className="text-caption text-muted">Nothing to mark yet.</p>
       ) : (
@@ -40,7 +50,15 @@ function EventList({ events, mine, weeks }: { events: readonly SeasonEventRow[];
   );
 }
 
-function Chart({ odds, history, events }: { odds: SeasonOddsRow[]; history: OddsHistoryRow[]; events: ReturnType<typeof useLeagueApi<SeasonEventRow[]>> }) {
+function Chart({
+  odds,
+  history,
+  events,
+}: {
+  odds: SeasonOddsRow[];
+  history: OddsHistoryRow[];
+  events: ReturnType<typeof useLeagueApi<SeasonEventRow[]>>;
+}) {
   const list = useMemo(() => (events.kind === "ready" ? events.data : []), [events]);
   const weeks = useMemo(() => runWeeks(history), [history]);
   const marks = useMemo(() => weekMarks(list, weeks), [list, weeks]);
@@ -50,11 +68,15 @@ function Chart({ odds, history, events }: { odds: SeasonOddsRow[]; history: Odds
     <>
       <OddsHistoryChart odds={odds} history={history} marks={marks} describedBy={EVENTS_ID} />
       {events.kind === "error" ? (
-        <p role="alert" id={EVENTS_ID} className="mt-2 text-caption text-warning">Marks unavailable: {events.error.message}</p>
+        <p role="alert" id={EVENTS_ID} className="mt-2 text-caption text-warning">
+          Marks unavailable: {events.error.message}
+        </p>
       ) : events.kind === "ready" ? (
         <EventList events={list} mine={mine} weeks={weeks} />
       ) : (
-        <p id={EVENTS_ID} className="mt-2 text-caption text-muted">Loading marks…</p>
+        <p id={EVENTS_ID} className="mt-2 text-caption text-muted">
+          Loading marks…
+        </p>
       )}
     </>
   );
@@ -66,7 +88,11 @@ export function SeasonOdds() {
   const history = useLeagueApi<OddsHistoryRow[]>("odds-history");
   const events = useLeagueApi<SeasonEventRow[]>("season-events");
   return (
-    <Section title="Playoff odds over the season" caption="Chance to make the playoffs at the end of each week. Your team is the Forest line; dots mark your trades, starter injuries and big weeks." howCalculated={MISSING}>
+    <Section
+      title="Playoff odds over the season"
+      caption="Chance to make the playoffs at the end of each week. Your team is the Forest line; dots mark your trades, starter injuries and big weeks."
+      howCalculated={MISSING}
+    >
       <ApiBoundary state={odds}>
         {(o) => <ApiBoundary state={history}>{(h) => <Chart odds={o} history={h} events={events} />}</ApiBoundary>}
       </ApiBoundary>

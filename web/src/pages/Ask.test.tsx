@@ -41,9 +41,13 @@ async function ask(question: string) {
 beforeEach(() => {
   window.localStorage.clear();
   vi.mocked(fetchManifest).mockResolvedValue({
-    schema_version: 1, built_at: "2026-11-04T12:00:00+00:00", nflreadpy_version: "0.1.0",
+    schema_version: 1,
+    built_at: "2026-11-04T12:00:00+00:00",
+    nflreadpy_version: "0.1.0",
     seasons: FIXTURE_SEASONS.map((season) => ({ season, path: `p${season}.parquet`, rows: 1, max_week: 9, has_participation: true })),
-    player_index: null, player_game: null, players: null,
+    player_index: null,
+    player_game: null,
+    players: null,
   });
   vi.mocked(getPlayerDictionary).mockResolvedValue([MAHOMES]);
 });
@@ -76,7 +80,10 @@ describe("Ask page", () => {
   });
 
   it("shows the model's unsupported reason as text, never as HTML", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ outcome: "unsupported", reason: "Not here <b>x</b> <img src=x onerror=alert(1)>" })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ outcome: "unsupported", reason: "Not here <b>x</b> <img src=x onerror=alert(1)>" })),
+    );
     renderAsk();
 
     await ask("Mahomes flurbnozzle in 2023");
@@ -87,7 +94,10 @@ describe("Ask page", () => {
   });
 
   it("keeps an alert region in the page so a message is announced, and limits the question to the backend's 2000 characters", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ outcome: "unsupported", reason: "No." })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ outcome: "unsupported", reason: "No." })),
+    );
     renderAsk();
 
     expect(await screen.findByRole("alert")).toBeEmptyDOMElement();
@@ -119,7 +129,10 @@ describe("Ask page", () => {
   });
 
   it("keeps the history as a tab inside Ask, with each ask logged", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ outcome: "unsupported", reason: "No." })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ outcome: "unsupported", reason: "No." })),
+    );
     renderAsk();
     await ask("Mahomes flurbnozzle in 2023");
     await screen.findByRole("alert");

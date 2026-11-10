@@ -61,9 +61,7 @@ const sameQuery = (a: LoggedQuery, b: LoggedQuery) => JSON.stringify(a) === JSON
 /** Records what the query became after the user edited the answer; putting it back clears the correction. */
 export function recordCorrection(entries: readonly AskLogEntry[], id: string, query: LoggedQuery): AskLogEntry[] {
   return entries.map((e) =>
-    e.id === id && e.outcome.kind === "answered"
-      ? { ...e, corrected: sameQuery(e.outcome.query, query) ? null : query }
-      : e,
+    e.id === id && e.outcome.kind === "answered" ? { ...e, corrected: sameQuery(e.outcome.query, query) ? null : query } : e,
   );
 }
 
@@ -71,12 +69,7 @@ export function recordCorrection(entries: readonly AskLogEntry[], id: string, qu
  * True when the query on screen (`key`) is an edit not yet logged for entry `id`. `last` is the last
  * edit logged in this session; it may belong to an earlier entry, so it only counts for the same id.
  */
-export function isNewEdit(
-  last: { id: string; key: string } | null,
-  id: string,
-  answeredKey: string,
-  key: string,
-): boolean {
+export function isNewEdit(last: { id: string; key: string } | null, id: string, answeredKey: string, key: string): boolean {
   return last?.id === id ? last.key !== key : key !== answeredKey;
 }
 

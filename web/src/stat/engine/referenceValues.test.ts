@@ -28,9 +28,7 @@ const PLAYER_GAME_PATH = `${DATA_DIR}player_game.parquet`;
 
 const store = new ColumnStore(createParquetLoader((source) => asyncBufferFromFile(source.url), compressors));
 
-const cases = parseMetricsFile(rawMetrics).metrics.flatMap((m) =>
-  m.reference_values.map((ref) => ({ metric: m, ref })),
-);
+const cases = parseMetricsFile(rawMetrics).metrics.flatMap((m) => m.reference_values.map((ref) => ({ metric: m, ref })));
 
 describe("reference values", () => {
   it("has reference values to check", () => {
@@ -73,35 +71,32 @@ describe("reference values served from the player-game table", () => {
   for (const { metric, ref } of tierOne) {
     const name = `${metric.id} for ${ref.player} ${ref.season} ${ref.season_type}`;
 
-    it.skipIf(!existsSync(PLAYER_GAME_PATH))(
-      `${name} matches ${ref.value} without reading any play shard`,
-      async () => {
-        const reads: string[] = [];
-        const tierStore = new ColumnStore(async (source, column) => {
-          reads.push(source.url);
-          return createParquetLoader((s) => asyncBufferFromFile(s.url), compressors)(source, column);
-        });
-        const result = await runStatQuery(
-          {
-            statIds: [metric.id],
-            filterChipState: {
-              [`season-${ref.season}`]: true,
-              [ref.season_type === "REG" ? "stype-reg" : "stype-post"]: true,
-            },
-            gsisIds: [ref.gsis_id],
-            sources: [{ year: ref.season, url: shardPath(ref.season) }],
-            playerGame: { year: 0, url: PLAYER_GAME_PATH },
-            granularity: "total",
-            minPlays: 0,
-            chipGroups: buildFilterChipGroups([ref.season]),
+    it.skipIf(!existsSync(PLAYER_GAME_PATH))(`${name} matches ${ref.value} without reading any play shard`, async () => {
+      const reads: string[] = [];
+      const tierStore = new ColumnStore(async (source, column) => {
+        reads.push(source.url);
+        return createParquetLoader((s) => asyncBufferFromFile(s.url), compressors)(source, column);
+      });
+      const result = await runStatQuery(
+        {
+          statIds: [metric.id],
+          filterChipState: {
+            [`season-${ref.season}`]: true,
+            [ref.season_type === "REG" ? "stype-reg" : "stype-post"]: true,
           },
-          tierStore,
-        );
+          gsisIds: [ref.gsis_id],
+          sources: [{ year: ref.season, url: shardPath(ref.season) }],
+          playerGame: { year: 0, url: PLAYER_GAME_PATH },
+          granularity: "total",
+          minPlays: 0,
+          chipGroups: buildFilterChipGroups([ref.season]),
+        },
+        tierStore,
+      );
 
-        const value = Number(result.rows[0]?.[`m_${metric.id}`]);
-        expect(Math.abs(value - ref.value)).toBeLessThanOrEqual(Math.abs(ref.value) * ref.tolerance);
-        expect(new Set(reads)).toEqual(new Set([PLAYER_GAME_PATH]));
-      },
-    );
+      const value = Number(result.rows[0]?.[`m_${metric.id}`]);
+      expect(Math.abs(value - ref.value)).toBeLessThanOrEqual(Math.abs(ref.value) * ref.tolerance);
+      expect(new Set(reads)).toEqual(new Set([PLAYER_GAME_PATH]));
+    });
   }
 });

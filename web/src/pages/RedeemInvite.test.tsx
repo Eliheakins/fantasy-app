@@ -65,9 +65,7 @@ describe("RedeemInvite", () => {
     open();
     await fill(GOOD, GOOD);
     expect(await screen.findByText("the app")).toBeInTheDocument();
-    expect(calls).toEqual([
-      { url: "/api/auth/redeem", method: "POST", body: { token: TOKEN, password: GOOD } },
-    ]);
+    expect(calls).toEqual([{ url: "/api/auth/redeem", method: "POST", body: { token: TOKEN, password: GOOD } }]);
   });
 
   it("replaces the invite address after signing in, so the token leaves the history", async () => {

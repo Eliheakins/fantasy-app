@@ -35,22 +35,7 @@ interface Token {
   text: string;
 }
 
-const KEYWORDS = new Set([
-  "AND",
-  "OR",
-  "NOT",
-  "LIKE",
-  "CASE",
-  "WHEN",
-  "THEN",
-  "ELSE",
-  "END",
-  "CAST",
-  "AS",
-  "TRUE",
-  "FALSE",
-  "NULL",
-]);
+const KEYWORDS = new Set(["AND", "OR", "NOT", "LIKE", "CASE", "WHEN", "THEN", "ELSE", "END", "CAST", "AS", "TRUE", "FALSE", "NULL"]);
 const FUNCTIONS = new Set(["SUM", "AVG", "COUNT", "NULLIF"]);
 const TWO_CHAR_OPS = new Set(["<=", ">=", "<>", "!="]);
 const ONE_CHAR_OPS = new Set(["=", "<", ">", "+", "-", "*", "/", "(", ")", ","]);
@@ -354,8 +339,7 @@ type Fn<C> = (ctx: C) => Value;
 const asNumber = (v: Value): number | null =>
   v === null ? null : typeof v === "boolean" ? Number(v) : typeof v === "number" ? v : Number.NaN;
 
-const asBoolean = (v: Value): boolean | null =>
-  v === null ? null : typeof v === "boolean" ? v : typeof v === "number" ? v !== 0 : true;
+const asBoolean = (v: Value): boolean | null => (v === null ? null : typeof v === "boolean" ? v : typeof v === "number" ? v !== 0 : true);
 
 function arithmetic(op: "+" | "-" | "*" | "/", a: Value, b: Value): Value {
   const x = asNumber(a);
@@ -412,9 +396,7 @@ const likeCache = new Map<string, RegExp>();
 function likeRegex(pattern: string): RegExp {
   let re = likeCache.get(pattern);
   if (!re) {
-    const body = [...pattern]
-      .map((ch) => (ch === "%" ? ".*" : ch === "_" ? "." : ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))
-      .join("");
+    const body = [...pattern].map((ch) => (ch === "%" ? ".*" : ch === "_" ? "." : ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))).join("");
     re = new RegExp(`^${body}$`, "s");
     likeCache.set(pattern, re);
   }

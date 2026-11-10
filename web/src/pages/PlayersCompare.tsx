@@ -19,8 +19,13 @@ function Column({ gsisId, onRemove }: { gsisId: string; onRemove: () => void }) 
     <div role="group" aria-label={name} className="min-w-0 space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-section font-semibold">
-          {unknown ? name : (
-            <Link to={{ pathname: `/players/${encodeURIComponent(gsisId)}`, search: navSearch("/players/:gsisId", search, pathname) }} className="inline-flex min-h-[44px] items-center underline">
+          {unknown ? (
+            name
+          ) : (
+            <Link
+              to={{ pathname: `/players/${encodeURIComponent(gsisId)}`, search: navSearch("/players/:gsisId", search, pathname) }}
+              className="inline-flex min-h-[44px] items-center underline"
+            >
               {name}
             </Link>
           )}
@@ -58,15 +63,13 @@ export default function PlayersCompare() {
   }, [raw]);
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Compare players"
-        eyebrow="Players"
-        answer={ids.length < 2 ? "Pick two or three players to compare." : undefined}
-      />
+      <PageHeader title="Compare players" eyebrow="Players" answer={ids.length < 2 ? "Pick two or three players to compare." : undefined} />
       {ids.length < MAX_COMPARE && <PlayerPicker exclude={ids} onPick={(id) => setIds(withPlayer(ids, id))} />}
       {ids.length > 0 && (
         <div className={`grid grid-cols-1 gap-8 ${GRID_BY_COUNT[ids.length] ?? ""}`}>
-          {ids.map((id) => <Column key={id} gsisId={id} onRemove={() => setIds(withoutPlayer(ids, id))} />)}
+          {ids.map((id) => (
+            <Column key={id} gsisId={id} onRemove={() => setIds(withoutPlayer(ids, id))} />
+          ))}
         </div>
       )}
     </div>

@@ -5,7 +5,10 @@ import { row } from "@/lib/scoreboardFixtures";
 import { WeekScores } from "./WeekScores";
 
 const ok = (data: unknown) => ({ status: "ok", data, error: null, started_at: null });
-const leagues = [{ league_key: "a", name: "Alpha", roster_id: 1 }, { league_key: "b", name: "Beta", roster_id: 2 }];
+const leagues = [
+  { league_key: "a", name: "Alpha", roster_id: 1 },
+  { league_key: "b", name: "Beta", roster_id: 2 },
+];
 const final = (a: object, b: object, o: object = {}) => row({ win_prob: null, ...a }, { win_prob: null, ...b }, { status: "Final", ...o });
 const routes: Record<string, unknown> = {
   "/api/leagues": ok(leagues),
@@ -13,18 +16,28 @@ const routes: Record<string, unknown> = {
     final({ team_name: "Seals", points: 120 }, { team_name: "tsd", points: 99.3 }, { matchup_id: 2 }),
     final({ team_name: "Lisan", is_me: true, points: 148.5 }, { team_name: "Flowers", points: 160 }),
   ]),
-  "/api/leagues/b/scoreboard": ok([row({ team_name: "Potty", is_me: true, points: 30, projected: 118, win_prob: 0.64 }, { team_name: "Bears", points: 22, projected: 104, win_prob: 0.36 })]),
+  "/api/leagues/b/scoreboard": ok([
+    row(
+      { team_name: "Potty", is_me: true, points: 30, projected: 118, win_prob: 0.64 },
+      { team_name: "Bears", points: 22, projected: 104, win_prob: 0.36 },
+    ),
+  ]),
 };
 
 beforeEach(() => {
-  vi.stubGlobal("fetch", vi.fn(async (url: string) => Response.json(routes[url.split("?")[0] ?? ""] ?? ok([]))));
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) => Response.json(routes[url.split("?")[0] ?? ""] ?? ok([]))),
+  );
 });
 afterEach(() => vi.unstubAllGlobals());
 
 function renderScores() {
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter><WeekScores kickoff={null} /></MemoryRouter>
+      <MemoryRouter>
+        <WeekScores kickoff={null} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }

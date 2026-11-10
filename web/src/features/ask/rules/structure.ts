@@ -5,14 +5,7 @@ import { NAME_SUFFIXES, tokenize } from "../resolvePlayers";
 import type { Entities } from "./entities";
 import { findSplit, type SplitRead } from "./split";
 import { ambiguous, proceed, type Stage, stop, type WordMask } from "./types";
-import {
-  COMPARE_WORDS,
-  DEFENSE_WORDS,
-  NAMED_COMPARE_WORDS,
-  OFFENSE_WORDS,
-  TEAM_FILLER,
-  TEAM_WORDS,
-} from "./vocab";
+import { COMPARE_WORDS, DEFENSE_WORDS, NAMED_COMPARE_WORDS, OFFENSE_WORDS, TEAM_FILLER, TEAM_WORDS } from "./vocab";
 
 /** The question's frame: which words are names or framing, the side of the ball, and the split asked for. */
 export interface Structure {
@@ -81,8 +74,7 @@ export function claimStructure(e: Entities): Stage<Structure> {
     }
     side = defense ? "defense" : "offense";
     tokens.forEach((token, at) => {
-      used[at] ||=
-        TEAM_WORDS.has(token) || DEFENSE_WORDS.has(token) || OFFENSE_WORDS.has(token) || TEAM_FILLER.has(token);
+      used[at] ||= TEAM_WORDS.has(token) || DEFENSE_WORDS.has(token) || OFFENSE_WORDS.has(token) || TEAM_FILLER.has(token);
     });
   }
   claimComparisons(e, used, [...used]);

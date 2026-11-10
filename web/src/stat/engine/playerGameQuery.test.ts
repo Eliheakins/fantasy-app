@@ -118,13 +118,9 @@ describe("runPlayerGameQuery", () => {
   it("leaves out players outside the player set before ranking", async () => {
     const { store } = memoryStore();
     const rows = async (exclude: string) =>
-      (
-        await runPlayerGameQuery(
-          params({ gsisIds: null, playerSet: { ids: [exclude], exclude: true } }),
-          TABLE,
-          store,
-        )
-      ).rows.map((r) => r.player_id);
+      (await runPlayerGameQuery(params({ gsisIds: null, playerSet: { ids: [exclude], exclude: true } }), TABLE, store)).rows.map(
+        (r) => r.player_id,
+      );
 
     expect(await rows(QB)).toEqual([]); // the RB has no passing yards, so nobody is left
     expect(await rows(RB)).toEqual([QB]); // the other player stays
@@ -165,11 +161,7 @@ describe("runPlayerGameQuery", () => {
   it("measures a back's volume in carries and a receiver's in targets", async () => {
     const { store } = memoryStore();
 
-    const rush = await runPlayerGameQuery(
-      params({ statIds: ["rush_yards"], gsisIds: [RB], minPlays: 20 }),
-      TABLE,
-      store,
-    );
+    const rush = await runPlayerGameQuery(params({ statIds: ["rush_yards"], gsisIds: [RB], minPlays: 20 }), TABLE, store);
     const rec = await runPlayerGameQuery(params({ statIds: ["rec_yards"], gsisIds: [RB], minPlays: 5 }), TABLE, store);
 
     expect(rush.rows[0]?.m_rush_yards).toBe(100);
@@ -187,11 +179,7 @@ describe("runPlayerGameQuery", () => {
   it("returns no rows, not an error, when the chips match no data", async () => {
     const { store } = memoryStore();
 
-    const result = await runPlayerGameQuery(
-      params({ filterChipState: { "season-2022": true, "stype-post": true } }),
-      TABLE,
-      store,
-    );
+    const result = await runPlayerGameQuery(params({ filterChipState: { "season-2022": true, "stype-post": true } }), TABLE, store);
 
     expect(result.rows).toEqual([]);
   });
@@ -202,9 +190,7 @@ describe("runPlayerGameQuery", () => {
     await runPlayerGameQuery(params(), TABLE, store);
 
     expect(new Set(reads.map((r) => r.url))).toEqual(new Set([TABLE.url]));
-    expect(reads.map((r) => r.column).sort()).toEqual(
-      ["attempts", "gsis_id", "passing_yards", "season", "season_type"].sort(),
-    );
+    expect(reads.map((r) => r.column).sort()).toEqual(["attempts", "gsis_id", "passing_yards", "season", "season_type"].sort());
   });
 
   it("merges stats of different roles into one row per player", async () => {

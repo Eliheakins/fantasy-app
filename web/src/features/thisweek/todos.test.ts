@@ -2,8 +2,16 @@ import { rankTodos } from "@/features/effects/effect";
 import { type Todo, leagueTodos, orderByDeadline } from "./todos";
 
 const todo = (id: string, over: Partial<Todo> = {}): Todo => ({
-  id, leagueKey: "a", leagueName: "A", kind: "lineup", title: id, detail: "", href: "/lineup?league=a",
-  effect: { playoffPoints: null, points: null }, deadlineDay: null, ...over,
+  id,
+  leagueKey: "a",
+  leagueName: "A",
+  kind: "lineup",
+  title: id,
+  detail: "",
+  href: "/lineup?league=a",
+  effect: { playoffPoints: null, points: null },
+  deadlineDay: null,
+  ...over,
 });
 
 describe("rankTodos", () => {
@@ -24,7 +32,10 @@ describe("rankTodos", () => {
   });
 
   it("ranks a negative effect below a positive one and handles an empty list", () => {
-    const ranked = rankTodos([todo("neg", { effect: { playoffPoints: -1, points: null } }), todo("pos", { effect: { playoffPoints: 0.5, points: null } })]);
+    const ranked = rankTodos([
+      todo("neg", { effect: { playoffPoints: -1, points: null } }),
+      todo("pos", { effect: { playoffPoints: 0.5, points: null } }),
+    ]);
     expect(ranked.map((t) => t.id)).toEqual(["pos", "neg"]);
     expect(rankTodos([])).toEqual([]);
   });
@@ -48,9 +59,7 @@ const deadlines = { lineup: "2026-11-08", waiver: "2026-11-04" };
 describe("orderByDeadline edge cases", () => {
   it("keeps the effect ranking for two to-dos with no deadline, ties and negative effects", () => {
     const e = (playoffPoints: number | null, points: number | null = null) => ({ playoffPoints, points });
-    const out = orderByDeadline([
-      todo("n1", { effect: e(-2) }), todo("n2", { effect: e(1) }), todo("t1", { effect: e(1) }), todo("none"),
-    ]);
+    const out = orderByDeadline([todo("n1", { effect: e(-2) }), todo("n2", { effect: e(1) }), todo("t1", { effect: e(1) }), todo("none")]);
     expect(out.map((t) => t.id)).toEqual(["n2", "t1", "n1", "none"]);
   });
   it("mixes tiers on one day: odds, then points, then no number", () => {
@@ -80,7 +89,14 @@ describe("leagueTodos", () => {
 
   it("turns a stored waiver add into a Moves to-do with its playoff effect in points", () => {
     const [t] = leagueTodos(league, [], [waiver], deadlines);
-    expect(t).toMatchObject({ kind: "waiver", title: "Add Coleman, drop Bernard", leagueKey: "a", leagueName: "Alpha", href: "/moves?league=a", deadlineDay: "2026-11-04" });
+    expect(t).toMatchObject({
+      kind: "waiver",
+      title: "Add Coleman, drop Bernard",
+      leagueKey: "a",
+      leagueName: "Alpha",
+      href: "/moves?league=a",
+      deadlineDay: "2026-11-04",
+    });
     expect(t?.effect.playoffPoints).toBeCloseTo(2.3);
     expect(t?.effect.points).toBe(3.1);
   });
@@ -106,7 +122,9 @@ describe("leagueTodos", () => {
   });
 
   it("drops a toss-up win-probability action", () => {
-    const actions = [{ kind: "Win probability", text: "Toss-up: start A over B (50.0% vs 50.1% to win)", delta_points: null, share_better: 0.51 }];
+    const actions = [
+      { kind: "Win probability", text: "Toss-up: start A over B (50.0% vs 50.1% to win)", delta_points: null, share_better: 0.51 },
+    ];
     expect(leagueTodos(league, actions as never, [], deadlines)).toEqual([]);
   });
 

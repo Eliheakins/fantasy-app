@@ -3,7 +3,11 @@ import { type ApiState, elapsedSeconds } from "@/api/envelope";
 
 /** Plain muted line, for states that have no extra chrome. */
 function Message({ children, role }: { children: ReactNode; role?: "status" | "alert" }) {
-  return <p role={role} className="measure py-6 text-body text-muted">{children}</p>;
+  return (
+    <p role={role} className="measure py-6 text-body text-muted">
+      {children}
+    </p>
+  );
 }
 
 /** The no-data copy, with the command set in code. */
@@ -35,11 +39,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry?: () => voi
       <p className="text-body font-semibold">This did not load.</p>
       <p className="text-caption text-muted">{message}</p>
       {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-2 min-h-[44px] rounded border border-line bg-page px-4 text-body text-ink"
-        >
+        <button type="button" onClick={onRetry} className="mt-2 min-h-[44px] rounded border border-line bg-page px-4 text-body text-ink">
           Try again
         </button>
       )}
@@ -54,11 +54,7 @@ function Running({ startedAt }: { startedAt: string | null }) {
     return () => window.clearInterval(id);
   }, []);
   const seconds = elapsedSeconds(startedAt, now);
-  return (
-    <Message role="status">
-      Working{seconds === null ? "" : `, ${seconds} s so far`}. This page updates when it finishes.
-    </Message>
-  );
+  return <Message role="status">Working{seconds === null ? "" : `, ${seconds} s so far`}. This page updates when it finishes.</Message>;
 }
 
 type ApiBoundaryProps<T> = { state: ApiState<T>; children: (data: T) => ReactNode };

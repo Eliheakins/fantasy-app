@@ -49,7 +49,9 @@ describe("ManifestProvider", () => {
   });
 
   it("shows the error with a retry that fetches again", async () => {
-    vi.mocked(fetchManifest).mockRejectedValueOnce(new Error("No data manifest found.")).mockResolvedValueOnce(manifest([2025]));
+    vi.mocked(fetchManifest)
+      .mockRejectedValueOnce(new Error("No data manifest found."))
+      .mockResolvedValueOnce(manifest([2025]));
     renderProvider();
     expect(await screen.findByRole("alert")).toHaveTextContent("No data manifest found.");
 

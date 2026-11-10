@@ -16,9 +16,22 @@ function SideChange({ side }: { side: Side }) {
     <div className="min-w-0">
       <h3 className="font-semibold">{side.team_name}</h3>
       <p className="flex flex-wrap items-baseline gap-x-3">
-        <span className="whitespace-nowrap"><ExplainDelta points={points(side.playoff_after - side.playoff_before)} noise={NOISE_PERCENT} why={sideWhy(side, "chance to make the playoffs")} /> <span className="text-caption text-muted">playoff pts</span></span>
-        <span className="whitespace-nowrap"><ExplainDelta points={points(side.title_after - side.title_before)} noise={NOISE_PERCENT} why={sideWhy(side, "title chance")} /> <span className="text-caption text-muted">title pts</span></span>
-        <span className="whitespace-nowrap"><ExplainDelta points={side.wins_after - side.wins_before} noise={NOISE_WINS} why={sideWhy(side, "expected wins", true)} /> <span className="text-caption text-muted">wins</span></span>
+        <span className="whitespace-nowrap">
+          <ExplainDelta
+            points={points(side.playoff_after - side.playoff_before)}
+            noise={NOISE_PERCENT}
+            why={sideWhy(side, "chance to make the playoffs")}
+          />{" "}
+          <span className="text-caption text-muted">playoff pts</span>
+        </span>
+        <span className="whitespace-nowrap">
+          <ExplainDelta points={points(side.title_after - side.title_before)} noise={NOISE_PERCENT} why={sideWhy(side, "title chance")} />{" "}
+          <span className="text-caption text-muted">title pts</span>
+        </span>
+        <span className="whitespace-nowrap">
+          <ExplainDelta points={side.wins_after - side.wins_before} noise={NOISE_WINS} why={sideWhy(side, "expected wins", true)} />{" "}
+          <span className="text-caption text-muted">wins</span>
+        </span>
       </p>
     </div>
   );
@@ -33,16 +46,16 @@ function Pitch({ text }: { text: string }) {
   }, [copied]);
   return (
     <div className="mt-4">
-      <p className="mb-1 text-caption text-muted">This trade helps both teams. A message you can send, built from the numbers above; nothing is sent from here.</p>
+      <p className="mb-1 text-caption text-muted">
+        This trade helps both teams. A message you can send, built from the numbers above; nothing is sent from here.
+      </p>
       <textarea readOnly aria-label="Message to copy" value={text} rows={4} className="w-full rounded border border-line bg-page p-2" />
-      <button
-        type="button"
-        onClick={() => void copyText(text).then(setCopied)}
-        className="min-h-[44px] rounded bg-focus px-4 text-white"
-      >
+      <button type="button" onClick={() => void copyText(text).then(setCopied)} className="min-h-[44px] rounded bg-focus px-4 text-white">
         Copy message
       </button>
-      <span role="status" className="ml-3 text-caption text-muted">{copied === null ? "" : copied ? "Copied." : "Could not copy; select the text and copy it."}</span>
+      <span role="status" className="ml-3 text-caption text-muted">
+        {copied === null ? "" : copied ? "Copied." : "Could not copy; select the text and copy it."}
+      </span>
     </div>
   );
 }
@@ -51,8 +64,10 @@ function Pitch({ text }: { text: string }) {
 type Props = { result: TradeEvaluation; give: readonly string[] | null; get: readonly string[] | null };
 
 function PitchOrNote({ result, give, get }: Props) {
-  if (!canPitch(result)) return <p className="text-caption text-muted">No message offered: the trade does not raise both teams' playoff odds.</p>;
-  if (!give?.length || !get?.length) return <p className="text-caption text-muted">No message offered: the players' names are not loaded yet.</p>;
+  if (!canPitch(result))
+    return <p className="text-caption text-muted">No message offered: the trade does not raise both teams' playoff odds.</p>;
+  if (!give?.length || !get?.length)
+    return <p className="text-caption text-muted">No message offered: the players' names are not loaded yet.</p>;
   const text = pitchText(result, give, get);
   return <Pitch key={text} text={text} />;
 }

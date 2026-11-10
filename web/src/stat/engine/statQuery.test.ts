@@ -82,9 +82,7 @@ const FILES: Record<string, Record<string, unknown[]>> = {
     { ...game("g1", 1, "home"), play_type: "run", rusher_player_id: R1, down: 1, yards_gained: 5, ...NOT_A_FLAG },
     { ...game("g2", 2, "away"), play_type: "run", rusher_player_id: R1, down: 2, yards_gained: 7, ...NOT_A_FLAG },
   ]),
-  "mem://2022": shard([
-    pass({ ...game("g3", 3, "home", 2022), passer_player_id: Q1, down: 1, complete_pass: 1, yards_gained: 30 }),
-  ]),
+  "mem://2022": shard([pass({ ...game("g3", 3, "home", 2022), passer_player_id: Q1, down: 1, complete_pass: 1, yards_gained: 30 })]),
 };
 
 function store() {
@@ -221,10 +219,7 @@ describe("runStatQuery filters and thresholds", () => {
   it("applies situational chips to the rows", async () => {
     const { store: s } = store();
 
-    const result = await runStatQuery(
-      base({ filterChipState: { "season-2023": true, "stype-reg": true, "down-3": true } }),
-      s,
-    );
+    const result = await runStatQuery(base({ filterChipState: { "season-2023": true, "stype-reg": true, "down-3": true } }), s);
 
     expect(valueOf(result, Q1, "pass_yards")).toBe(20);
   });
@@ -333,10 +328,7 @@ describe("league queries, ordering and limits", () => {
   it("limits a query with named players too", async () => {
     const { store: s } = store();
 
-    const result = await runStatQuery(
-      base({ gsisIds: [Q1, Q2], order: { metric: "pass_yards", direction: "desc" }, limit: 1 }),
-      s,
-    );
+    const result = await runStatQuery(base({ gsisIds: [Q1, Q2], order: { metric: "pass_yards", direction: "desc" }, limit: 1 }), s);
 
     expect(ids(result)).toEqual([Q2]);
   });
@@ -409,10 +401,7 @@ describe("splitting by season or week", () => {
   it("counts games played within each season for per game", async () => {
     const { store: s } = store();
 
-    const result = await runStatQuery(
-      base({ filterChipState: { "stype-reg": true }, split: "season", granularity: "per_game" }),
-      s,
-    );
+    const result = await runStatQuery(base({ filterChipState: { "stype-reg": true }, split: "season", granularity: "per_game" }), s);
 
     const bySeason = Object.fromEntries(result.rows.map((r) => [r.season, r.m_pass_yards]));
     expect(bySeason).toEqual({ 2022: 30, 2023: 15 });
@@ -427,18 +416,13 @@ describe("splitting by season or week", () => {
     );
 
     expect(result.rows).toHaveLength(2);
-    expect(result.rows.every((r) => typeof r.m_pass_yards === "number" && typeof r.m_pass_sack_rate === "number")).toBe(
-      true,
-    );
+    expect(result.rows.every((r) => typeof r.m_pass_yards === "number" && typeof r.m_pass_sack_rate === "number")).toBe(true);
   });
 
   it("lists split rows in season order, then by the first stat", async () => {
     const { store: s } = store();
 
-    const result = await runStatQuery(
-      base({ gsisIds: [Q1, Q2], filterChipState: { "stype-reg": true }, split: "season" }),
-      s,
-    );
+    const result = await runStatQuery(base({ gsisIds: [Q1, Q2], filterChipState: { "stype-reg": true }, split: "season" }), s);
 
     expect(result.rows.map((r) => [r.season, r.player_id])).toEqual([
       [2022, Q1],
@@ -466,8 +450,7 @@ describe("splitting by season or week", () => {
 });
 
 describe("team subjects", () => {
-  const teams = (over: Partial<StatQueryParams> = {}) =>
-    base({ gsisIds: null, teams: { ids: ["KC", "BUF"], side: "offense" }, ...over });
+  const teams = (over: Partial<StatQueryParams> = {}) => base({ gsisIds: null, teams: { ids: ["KC", "BUF"], side: "offense" }, ...over });
   const teamValue = (result: { rows: Record<string, unknown>[] }, id: string, stat: string) =>
     result.rows.find((r) => r.team_id === id)?.[`m_${stat}`];
 

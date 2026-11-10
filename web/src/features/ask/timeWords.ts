@@ -102,8 +102,7 @@ const WORD_READERS: readonly WordReader[] = [
   },
   {
     // last year
-    pattern: (c, s) =>
-      (c.t === "last" || c.t === "previous" || c.t === "prior") && SEASON_WORDS.has(c.next) && s.current !== null,
+    pattern: (c, s) => (c.t === "last" || c.t === "previous" || c.t === "prior") && SEASON_WORDS.has(c.next) && s.current !== null,
     apply: (c, s) => {
       s.seasons.add(s.current! - 1);
       take(s, c.i, c.i + 1);
@@ -111,8 +110,7 @@ const WORD_READERS: readonly WordReader[] = [
   },
   {
     // two seasons ago
-    pattern: (c, s) =>
-      numberAt(s.tokens, c.i) === 2 && SEASON_WORDS.has(c.next) && c.after === "ago" && s.current !== null,
+    pattern: (c, s) => numberAt(s.tokens, c.i) === 2 && SEASON_WORDS.has(c.next) && c.after === "ago" && s.current !== null,
     apply: (c, s) => {
       s.seasons.add(s.current! - 2);
       take(s, c.i, c.i + 1, c.i + 2);
@@ -143,8 +141,7 @@ const WORD_READERS: readonly WordReader[] = [
   },
   {
     // last game, last 3 games
-    pattern: (c) =>
-      (c.t === "last" || c.t === "past" || c.t === "previous") && (GAME_WORDS.has(c.next) || GAME_WORDS.has(c.after)),
+    pattern: (c) => (c.t === "last" || c.t === "past" || c.t === "previous") && (GAME_WORDS.has(c.next) || GAME_WORDS.has(c.after)),
     apply: (c, s) => {
       const n = GAME_WORDS.has(c.next) ? 1 : numberAt(s.tokens, c.i + 1);
       if (n !== null && n >= 1 && n <= MAX_LAST_GAMES) {
@@ -201,10 +198,7 @@ function readWeekSpan(c: Cursor, s: TimeState): void {
   } else if (c.t.endsWith("s") && (numberAt(tokens, k) ?? -1) >= from) {
     to = numberAt(tokens, k)!;
     at.push(k);
-  } else if (
-    ONWARD_WORDS.includes(tokens[k] ?? "") ||
-    (tokens[k] === "or" && ["later", "after"].includes(tokens[k + 1] ?? ""))
-  ) {
+  } else if (ONWARD_WORDS.includes(tokens[k] ?? "") || (tokens[k] === "or" && ["later", "after"].includes(tokens[k + 1] ?? ""))) {
     s.sinceWeek = { from, at: tokens[k] === "or" ? [...at, k, k + 1] : [...at, k] };
     take(s, ...s.sinceWeek.at);
     return;
@@ -234,8 +228,7 @@ export function readTime(question: string, scope: TimeScope, skip: ReadonlySet<n
     career: false,
     problem: null,
     sinceWeek: null,
-    lastWeekOf: (season) =>
-      (season !== null ? scope.maxWeeks?.[season] : undefined) ?? (season === current ? null : MAX_WEEK),
+    lastWeekOf: (season) => (season !== null ? scope.maxWeeks?.[season] : undefined) ?? (season === current ? null : MAX_WEEK),
   };
   const years = tokens.filter((t) => YEAR.test(t)).map(Number);
 
@@ -266,10 +259,7 @@ export function readTime(question: string, scope: TimeScope, skip: ReadonlySet<n
   if ([...s.weeks].some((w) => w < 1 || w > MAX_WEEK || (latest !== null && w > latest))) {
     s.problem = `The data for ${weekSeason} reaches week ${latest ?? MAX_WEEK}.`;
   }
-  const filters = [
-    ...[...s.seasons].sort().map((x) => `season-${x}`),
-    ...[...s.weeks].sort((a, b) => a - b).map((w) => `wk-${w}`),
-  ];
+  const filters = [...[...s.seasons].sort().map((x) => `season-${x}`), ...[...s.weeks].sort((a, b) => a - b).map((w) => `wk-${w}`)];
   return {
     filters,
     lastGames: s.lastGames,
@@ -285,9 +275,7 @@ export function readTime(question: string, scope: TimeScope, skip: ReadonlySet<n
 export function withTime(filters: readonly string[], time: TimeRead): string[] {
   const named = (prefix: string) => time.filters.some((f) => f.startsWith(prefix));
   const kept = filters.filter(
-    (f) =>
-      !(named("season-") && f.startsWith("season-")) &&
-      !(named("wk-") && (f.startsWith("wk-") || f.startsWith("week-"))),
+    (f) => !(named("season-") && f.startsWith("season-")) && !(named("wk-") && (f.startsWith("wk-") || f.startsWith("week-"))),
   );
   return [...new Set([...kept, ...time.filters])];
 }

@@ -11,8 +11,15 @@ const render = (ui: ReactElement): RenderResult => rtlRender(<MemoryRouter>{ui}<
 
 const ready = <T,>(data: T): ApiState<T> => ({ kind: "ready", data });
 const add = {
-  gsis_id: "g1", full_name: "Jane Doe", position: "WR", drop_name: "Bob Low",
-  delta_points: 12.34, playoff_delta: 0.05, title_delta: 0.004, se_title: 0.005, trending_adds: 900,
+  gsis_id: "g1",
+  full_name: "Jane Doe",
+  position: "WR",
+  drop_name: "Bob Low",
+  delta_points: 12.34,
+  playoff_delta: 0.05,
+  title_delta: 0.004,
+  se_title: 0.005,
+  trending_adds: 900,
 };
 const base = {
   adds: ready([add]),
@@ -43,20 +50,12 @@ describe("WaiversView", () => {
     expect(onSelect).toHaveBeenCalledWith("g1");
   });
   it("shows the chart data table for a selected row", () => {
-    render(
-      <WaiversView {...base} selected="g1" weeks={ready([{ week: 8, projection: 11.2 }])} />,
-    );
+    render(<WaiversView {...base} selected="g1" weeks={ready([{ week: 8, projection: 11.2 }])} />);
     expect(screen.getByText("Jane Doe: next four weeks")).toBeInTheDocument();
     expect(screen.getByText("11.2")).toBeInTheDocument();
   });
   it("renders empty, running and missing-stage states", () => {
-    render(
-      <WaiversView
-        {...base}
-        adds={ready([])}
-        strength={{ kind: "no_data", message: "Nothing here" }}
-      />,
-    );
+    render(<WaiversView {...base} adds={ready([])} strength={{ kind: "no_data", message: "Nothing here" }} />);
     expect(screen.getByText("No free agent adds expected points for your team.")).toBeInTheDocument();
     expect(screen.getByText("Nothing here")).toBeInTheDocument();
   });

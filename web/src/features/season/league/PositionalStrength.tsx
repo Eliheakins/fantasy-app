@@ -7,8 +7,7 @@ import type { TeamGradeRow } from "./types";
 const HEADINGS: Record<GradePosition, string> = { overall: "Overall", QB: "QB", RB: "RB", WR: "WR", TE: "TE" };
 const POSITIONS = GRADE_POSITIONS.filter((p) => p !== "overall");
 
-const detail = (c: TeamGradeRow) =>
-  `starters ${formatNumber(c.vor_per_week)} pts/wk, depth ${formatNumber(c.depth_per_week)} pts/wk`;
+const detail = (c: TeamGradeRow) => `starters ${formatNumber(c.vor_per_week)} pts/wk, depth ${formatNumber(c.depth_per_week)} pts/wk`;
 
 /** Grade and rank in text, the starter bar for length, the starters/depth split behind a tap. */
 function Cell({ cell, max, mine }: { cell: TeamGradeRow | undefined; max: number; mine: boolean }) {
@@ -47,6 +46,12 @@ export function PositionalStrength({ rows }: { rows: readonly TeamGradeRow[] }) 
     ...POSITIONS.map((p) => ({ label: HEADINGS[p], render: (t: GradeTeam) => <Cell cell={t.cells[p]} max={max(p)} mine={t.is_me} /> })),
   ];
   return (
-    <ResponsiveTable caption="Positional strength by team" columns={columns} rows={teams} rowKey={(t) => String(t.roster_id)} isStrong={(t) => t.is_me} />
+    <ResponsiveTable
+      caption="Positional strength by team"
+      columns={columns}
+      rows={teams}
+      rowKey={(t) => String(t.roster_id)}
+      isStrong={(t) => t.is_me}
+    />
   );
 }

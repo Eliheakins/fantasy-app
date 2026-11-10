@@ -27,9 +27,13 @@ export function MoveList({ moves, empty }: { moves: readonly Move[]; empty: stri
     <ol className="divide-y divide-panel-line">
       {moves.map((m, i) => (
         <li key={m.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-3 first:pt-0 last:pb-0">
-          <span aria-hidden className="w-5 text-caption font-semibold text-muted tabular-nums">{i + 1}</span>
+          <span aria-hidden className="w-5 text-caption font-semibold text-muted tabular-nums">
+            {i + 1}
+          </span>
           <div className="min-w-0 flex-1">
-            <span className="font-semibold"><MoveTitle move={m} /></span>
+            <span className="font-semibold">
+              <MoveTitle move={m} />
+            </span>
             <MoveNotes move={m} />
           </div>
           <EffectText todo={m} playoffNoise={MOVE_NOISE_PERCENT} />

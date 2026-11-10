@@ -30,7 +30,11 @@ export function parseStartSit(question: string): { a: string; b: string; hasVerb
   if (!hasVerb && !hasWeek) {
     return null;
   }
-  const sides = text.replace(LEAD, "").replace(THIS_WEEK, "").split(SEPARATOR).map((s) => s.trim());
+  const sides = text
+    .replace(LEAD, "")
+    .replace(THIS_WEEK, "")
+    .split(SEPARATOR)
+    .map((s) => s.trim());
   const [a, b] = sides;
   return sides.length === 2 && a && b ? { a, b, hasVerb } : null;
 }

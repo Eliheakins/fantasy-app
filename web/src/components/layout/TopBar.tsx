@@ -24,7 +24,8 @@ function useNow(): Date {
 
 const WEEKS = Array.from({ length: LAST_WEEK - FIRST_WEEK + 1 }, (_, i) => i + FIRST_WEEK);
 /** Selects on the Forest band: a darker-green pill with white text, 44 px high. */
-const PILL = "min-h-[44px] w-full border-white/15 bg-focus text-white shadow-none hover:bg-chrome-tabs md:w-auto md:min-w-32 [&_svg]:text-chrome-text";
+const PILL =
+  "min-h-[44px] w-full border-white/15 bg-focus text-white shadow-none hover:bg-chrome-tabs md:w-auto md:min-w-32 [&_svg]:text-chrome-text";
 
 /** The Forest brand row: team name over "Updated …", league, team and week selects, and the Ask field. */
 export function TopBar() {
@@ -51,10 +52,14 @@ export function TopBar() {
           </p>
         </div>
         <div className="order-last grid w-full grid-cols-3 gap-2 md:order-none md:ml-auto md:flex md:w-auto">
-          <Select value={league ?? ""} onValueChange={(key) => {
+          <Select
+            value={league ?? ""}
+            onValueChange={(key) => {
               setLeague(key);
               setTeam(null); // roster ids belong to one league
-            }} disabled={list.length === 0}>
+            }}
+            disabled={list.length === 0}
+          >
             <SelectTrigger aria-label="Choose league" className={PILL}>
               <SelectValue placeholder="No leagues" />
             </SelectTrigger>

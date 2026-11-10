@@ -26,9 +26,7 @@ const chipClass =
 export function InterpretationChips() {
   const { state, toggleStatId, toggleFilterId, setActiveGranularity } = useQueryState();
   const chipGroups = useFilterChipGroups();
-  const filterLabels = new Map(
-    chipGroups.flatMap((g) => g.options.map((o): [string, string] => [o.id, `${g.label}: ${o.label}`])),
-  );
+  const filterLabels = new Map(chipGroups.flatMap((g) => g.options.map((o): [string, string] => [o.id, `${g.label}: ${o.label}`])));
   const leagueName = useLeagueName();
   const nameOf = (id: string) => {
     const stat = getStatById(id);
@@ -38,9 +36,7 @@ export function InterpretationChips() {
 
   return (
     <div className="space-y-2" aria-label="How this was read">
-      <p className="text-caption font-medium uppercase tracking-wide text-focus">
-        How this was read (click × to remove)
-      </p>
+      <p className="text-caption font-medium uppercase tracking-wide text-focus">How this was read (click × to remove)</p>
       <div className="flex flex-wrap gap-1.5">
         {state.stats.map((id) => (
           <button

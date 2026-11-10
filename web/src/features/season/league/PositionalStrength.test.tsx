@@ -3,12 +3,30 @@ import { PositionalStrength } from "./PositionalStrength";
 import { gradeGrid, ordinal } from "./logic";
 import type { TeamGradeRow } from "./types";
 
-const cell = (roster_id: number, team_name: string, position: string, rank: number, grade: string, over: Partial<TeamGradeRow> = {}): TeamGradeRow => ({
-  roster_id, team_name, is_me: roster_id === 2, position, vor_per_week: 10 - rank, depth_per_week: 0.5, score: 1, rank, grade, ...over,
+const cell = (
+  roster_id: number,
+  team_name: string,
+  position: string,
+  rank: number,
+  grade: string,
+  over: Partial<TeamGradeRow> = {},
+): TeamGradeRow => ({
+  roster_id,
+  team_name,
+  is_me: roster_id === 2,
+  position,
+  vor_per_week: 10 - rank,
+  depth_per_week: 0.5,
+  score: 1,
+  rank,
+  grade,
+  ...over,
 });
 const rows = [
-  cell(1, "Alpha", "overall", 2, "C"), cell(1, "Alpha", "QB", 1, "A"),
-  cell(2, "Bravo", "overall", 1, "A"), cell(2, "Bravo", "QB", 3, "B", { vor_per_week: 5.5, depth_per_week: 1.25 }),
+  cell(1, "Alpha", "overall", 2, "C"),
+  cell(1, "Alpha", "QB", 1, "A"),
+  cell(2, "Bravo", "overall", 1, "A"),
+  cell(2, "Bravo", "QB", 3, "B", { vor_per_week: 5.5, depth_per_week: 1.25 }),
 ];
 
 describe("gradeGrid", () => {
@@ -23,7 +41,16 @@ describe("gradeGrid", () => {
 });
 
 describe("ordinal", () => {
-  it.each([[1, "1st"], [2, "2nd"], [3, "3rd"], [4, "4th"], [11, "11th"], [12, "12th"], [21, "21st"], [112, "112th"]])("%i -> %s", (n, text) => {
+  it.each([
+    [1, "1st"],
+    [2, "2nd"],
+    [3, "3rd"],
+    [4, "4th"],
+    [11, "11th"],
+    [12, "12th"],
+    [21, "21st"],
+    [112, "112th"],
+  ])("%i -> %s", (n, text) => {
     expect(ordinal(n)).toBe(text);
   });
 });

@@ -24,9 +24,7 @@ function PartnerKind({ r }: { r: FoundTrade }) {
   return (
     <>
       {r.partner}
-      <span className="block whitespace-nowrap text-caption font-normal text-muted">
-        {kind}
-      </span>
+      <span className="block whitespace-nowrap text-caption font-normal text-muted">{kind}</span>
     </>
   );
 }
@@ -60,7 +58,9 @@ const COLUMNS: readonly Column<FoundTrade>[] = [
 
 function FoundTradesTable({ rows }: { rows: readonly FoundTrade[] }) {
   if (rows.length === 0) {
-    return <p className="measure py-2 text-muted">No trade fills a need for both teams right now. Try again after rosters or waivers change.</p>;
+    return (
+      <p className="measure py-2 text-muted">No trade fills a need for both teams right now. Try again after rosters or waivers change.</p>
+    );
   }
   return (
     <ResponsiveTable
@@ -79,21 +79,21 @@ function HowToRead() {
       <summary className="flex min-h-[44px] cursor-pointer items-center">How to read this</summary>
       <div className="space-y-2 pb-2">
         <p>
-          Trades are one or two players each way, using players the other side can spare, best need fit first.
-          pp is percentage points: +1.2 means the chance went from, say, 40.0% to 41.2%.
+          Trades are one or two players each way, using players the other side can spare, best need fit first. pp is percentage points: +1.2
+          means the chance went from, say, 40.0% to 41.2%.
         </p>
         <p>
-          "win-win" raises both teams' playoff plus title odds. "need swap" costs a side up to one point of those
-          odds for a need filled, so one side may give up a little to fix a hole.
+          "win-win" raises both teams' playoff plus title odds. "need swap" costs a side up to one point of those odds for a need filled, so
+          one side may give up a little to fix a hole.
         </p>
         <p>
-          A side left with an open roster spot is compared with itself after its own best waiver move. The
-          title odds error is the simulation error of the title change.
+          A side left with an open roster spot is compared with itself after its own best waiver move. The title odds error is the
+          simulation error of the title change.
         </p>
         <p>
-          Market value sums FantasyCalc values for each side and says only which side the market favors. It
-          ignores the premium paid to turn two players into one. Managers accept trades based on how they value
-          players, which is not modeled, so nothing here says a partner will accept.
+          Market value sums FantasyCalc values for each side and says only which side the market favors. It ignores the premium paid to turn
+          two players into one. Managers accept trades based on how they value players, which is not modeled, so nothing here says a partner
+          will accept.
         </p>
       </div>
     </details>
@@ -114,21 +114,21 @@ export function FindTradesSection({ league, scope = league }: { league: string; 
       caption="Looks for trades of one or two players each way that fill a position where each team is thin. A run takes up to a minute and the result is kept if you leave this page."
     >
       <div className="space-y-3">
-      <button
-        type="button"
-        disabled={running}
-        aria-busy={running}
-        onClick={() => (requested ? refetch() : setRequested(true))}
-        className="min-h-[44px] rounded bg-focus px-4 text-white"
-      >
-        {running ? "Searching…" : state?.kind === "ready" ? "Find trades again" : "Find trades"}
-      </button>
-      {state?.kind === "error" ? (
-        <FailureNotice error={state.error} onRetry={refetch} />
-      ) : state ? (
-        <ApiBoundary state={state}>{(rows) => <FoundTradesTable rows={rows} />}</ApiBoundary>
-      ) : null}
-      <HowToRead />
+        <button
+          type="button"
+          disabled={running}
+          aria-busy={running}
+          onClick={() => (requested ? refetch() : setRequested(true))}
+          className="min-h-[44px] rounded bg-focus px-4 text-white"
+        >
+          {running ? "Searching…" : state?.kind === "ready" ? "Find trades again" : "Find trades"}
+        </button>
+        {state?.kind === "error" ? (
+          <FailureNotice error={state.error} onRetry={refetch} />
+        ) : state ? (
+          <ApiBoundary state={state}>{(rows) => <FoundTradesTable rows={rows} />}</ApiBoundary>
+        ) : null}
+        <HowToRead />
       </div>
     </Section>
   );

@@ -96,10 +96,7 @@ describe("buildAnswer for a leaderboard", () => {
       ranked: true,
     });
 
-    expect(answer.lines).toEqual([
-      "1. Patrick Mahomes — Pass yards (total): 4183",
-      "2. Travis Kelce — Pass yards (total): 3000",
-    ]);
+    expect(answer.lines).toEqual(["1. Patrick Mahomes — Pass yards (total): 4183", "2. Travis Kelce — Pass yards (total): 3000"]);
   });
 });
 

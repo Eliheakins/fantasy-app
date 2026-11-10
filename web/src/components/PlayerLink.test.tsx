@@ -11,7 +11,9 @@ const renderLink = (ui: React.ReactElement, entry = "/") =>
   render(
     <MemoryRouter initialEntries={[entry]}>
       {ui}
-      <Routes><Route path="*" element={<Where />} /></Routes>
+      <Routes>
+        <Route path="*" element={<Where />} />
+      </Routes>
     </MemoryRouter>,
   );
 
@@ -30,8 +32,12 @@ describe("PlayerLink", () => {
   it("is plain text for a DEF or a missing id", () => {
     renderLink(
       <>
-        <p><PlayerLink gsisId="00-2" name="Bills" position="DEF" /></p>
-        <p><PlayerLink gsisId={null} name="Nobody" position="WR" /></p>
+        <p>
+          <PlayerLink gsisId="00-2" name="Bills" position="DEF" />
+        </p>
+        <p>
+          <PlayerLink gsisId={null} name="Nobody" position="WR" />
+        </p>
       </>,
     );
     expect(screen.queryByRole("link")).toBeNull();

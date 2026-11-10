@@ -72,7 +72,9 @@ describe("RefreshPanel", () => {
   });
 
   it("shows why a refresh request failed", async () => {
-    stubScoped("/api/admin/", (call) => (call.method === "POST" ? errorReply("server", "Could not write the request", 500) : okReply(overview())));
+    stubScoped("/api/admin/", (call) =>
+      call.method === "POST" ? errorReply("server", "Could not write the request", 500) : okReply(overview()),
+    );
     open();
     await userEvent.setup().click(await screen.findByRole("button", { name: "Refresh now" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not write the request");

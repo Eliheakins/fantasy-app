@@ -17,8 +17,10 @@ export function sideName(side: ScoreboardSide): string {
 }
 
 /** My matchup first, the rest in the order Sleeper gives them; returns a new array. */
-export const sortMineFirst = (rows: readonly ScoreboardRow[]): ScoreboardRow[] =>
-  [...rows.filter(isMine), ...rows.filter((r) => !isMine(r))];
+export const sortMineFirst = (rows: readonly ScoreboardRow[]): ScoreboardRow[] => [
+  ...rows.filter(isMine),
+  ...rows.filter((r) => !isMine(r)),
+];
 
 export type SideScore = { value: string; unit: "final" | "so far" | "proj"; win: string | null; projected?: string };
 
@@ -39,8 +41,9 @@ export function firstKickoff(kickoffs: readonly { kickoff: string | null }[]): D
 /** "Final", "Live", or the week's first kickoff (New York time) for a matchup still to start. */
 export function matchupStatus(status: ScoreboardRow["status"], kickoff: Date | null): string {
   if (status !== "Not started" || kickoff === null) return status;
-  return kickoff.toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit" }).replace(",", "");
+  return kickoff
+    .toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit" })
+    .replace(",", "");
 }
 
-export const LIVE_NOTE =
-  "Live points are only as fresh as the last refresh; win chances count the points already scored.";
+export const LIVE_NOTE = "Live points are only as fresh as the last refresh; win chances count the points already scored.";

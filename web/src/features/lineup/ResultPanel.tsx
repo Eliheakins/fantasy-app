@@ -28,10 +28,19 @@ type Props = {
 
 /** The page's one tinted panel: both team totals, the chance to win (or the final result), the lineup against Sleeper. */
 export function ResultPanel({ result, option, win, shown, now, gap }: Props) {
-  const sleeperNote = gap === null ? null : gapIsNoise(gap) ? "Sleeper's lineup is the same" : <>Sleeper's lineup: <ExplainDelta points={gap} why={SLEEPER_POINTS_WHY} /></>;
+  const sleeperNote =
+    gap === null ? null : gapIsNoise(gap) ? (
+      "Sleeper's lineup is the same"
+    ) : (
+      <>
+        Sleeper's lineup: <ExplainDelta points={gap} why={SLEEPER_POINTS_WHY} />
+      </>
+    );
   return (
     <section aria-labelledby="matchup-heading" className="key-panel">
-      <h2 id="matchup-heading" className="text-caption font-semibold uppercase tracking-wide text-focus">Your matchup</h2>
+      <h2 id="matchup-heading" className="text-caption font-semibold uppercase tracking-wide text-focus">
+        Your matchup
+      </h2>
       <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
         {result ? (
           <>
@@ -44,7 +53,11 @@ export function ResultPanel({ result, option, win, shown, now, gap }: Props) {
             <>
               <Stat label="You, median">{formatNumber(option.median)}</Stat>
               <Stat label="Opponent, median">{formatNumber(option.opp_median)}</Stat>
-              {win !== null && <Stat label="Chance to win"><Explain why={winChanceWhy(option)}>{formatPercent(win)}</Explain></Stat>}
+              {win !== null && (
+                <Stat label="Chance to win">
+                  <Explain why={winChanceWhy(option)}>{formatPercent(win)}</Explain>
+                </Stat>
+              )}
             </>
           )
         )}

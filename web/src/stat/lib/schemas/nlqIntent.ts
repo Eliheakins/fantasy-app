@@ -21,8 +21,7 @@ export type IntentOutcome = z.infer<typeof intentOutcomeSchema>;
 // Compile-time pin to the generated backend types: a pydantic change breaks `tsc` here.
 type Api = import("@/api/schema").components["schemas"];
 // Strict identity: an added optional field or an optional/required flip is not equal.
-type Equal<A, B> =
-  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 type ApiIntent = Api["QueryIntent"];
 // filter_ids has a pydantic default, so the generated type has it optional and zod's output has it
 // required. Pin that exact gap: if the backend makes it required (or drops it) this line breaks.
@@ -31,8 +30,7 @@ const _filterIdsOptionalInApi: {} extends Pick<ApiIntent, "filter_ids"> ? true :
 // and saved intents have none.
 const _rankingOptionalHere: {} extends Pick<QueryIntent, "ranking"> ? true : false = true;
 const _intentMatchesApi: Equal<Required<QueryIntent>, Required<ApiIntent>> = true;
-const _outcomeMatchesApi: Equal<IntentOutcome, { outcome: "query"; intent: QueryIntent } | Api["UnsupportedOutcome"]> =
-  true;
+const _outcomeMatchesApi: Equal<IntentOutcome, { outcome: "query"; intent: QueryIntent } | Api["UnsupportedOutcome"]> = true;
 
 void _rankingOptionalHere;
 void _filterIdsOptionalInApi;

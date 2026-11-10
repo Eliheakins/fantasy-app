@@ -17,13 +17,22 @@ vi.mock("@/pages/Season", async () => ({ default: (await import("@/test/stubPage
 vi.mock("@/pages/ThisWeek", async () => ({ default: (await import("@/test/stubPage")).stubPage("ThisWeek") }));
 
 beforeEach(() => {
-  const status = { freshness: [], missing_layers: [], simulation_behind_inputs: null, refresh_runs: [], live_refresh: { enabled: false, active: false, last_ok_at: null } };
+  const status = {
+    freshness: [],
+    missing_layers: [],
+    simulation_behind_inputs: null,
+    refresh_runs: [],
+    live_refresh: { enabled: false, active: false, last_ok_at: null },
+  };
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string) =>
       url.startsWith("/api/me/")
         ? // no account (login off), so the first-visit dialog stays shut and the nav can be clicked
-          Response.json({ status: "error", data: null, error: { code: "unauthorized", message: "Sign in" }, started_at: null }, { status: 401 })
+          Response.json(
+            { status: "error", data: null, error: { code: "unauthorized", message: "Sign in" }, started_at: null },
+            { status: 401 },
+          )
         : Response.json({ status: "ok", data: url.startsWith("/api/status") ? status : [], error: null, started_at: null }),
     ),
   );
@@ -72,7 +81,10 @@ describe("route config", () => {
   });
 
   it("mounts /players/compare and /players/find ahead of /players/:gsisId", async () => {
-    for (const [path, name] of [["/players/compare?p=a&p=b", "Compare"], ["/players/find", "Explore"]] as const) {
+    for (const [path, name] of [
+      ["/players/compare?p=a&p=b", "Compare"],
+      ["/players/find", "Explore"],
+    ] as const) {
       const router = createMemoryRouter(routes, { initialEntries: [path] });
       const view = render(
         <QueryClientProvider client={new QueryClient()}>
@@ -88,7 +100,10 @@ describe("route config", () => {
   });
 
   it("mounts /players/:gsisId on the player page and keeps the Players tab active there and on /players/find", async () => {
-    for (const [path, name] of [["/players/00-0012345?league=a", "Player"], ["/players/find", "Explore"]] as const) {
+    for (const [path, name] of [
+      ["/players/00-0012345?league=a", "Player"],
+      ["/players/find", "Explore"],
+    ] as const) {
       const router = createMemoryRouter(routes, { initialEntries: [path] });
       const view = render(
         <QueryClientProvider client={new QueryClient()}>
@@ -104,7 +119,15 @@ describe("route config", () => {
   });
 
   it("mounts each tab and the non-tab routes", async () => {
-    for (const [path, name] of [["/", "ThisWeek"], ["/lineup", "Lineup"], ["/moves", "Moves"], ["/season", "Season"], ["/players", "Players"], ["/ask", "Ask"], ["/model", "Model"]] as const) {
+    for (const [path, name] of [
+      ["/", "ThisWeek"],
+      ["/lineup", "Lineup"],
+      ["/moves", "Moves"],
+      ["/season", "Season"],
+      ["/players", "Players"],
+      ["/ask", "Ask"],
+      ["/model", "Model"],
+    ] as const) {
       const router = createMemoryRouter(routes, { initialEntries: [path] });
       const view = render(
         <QueryClientProvider client={new QueryClient()}>

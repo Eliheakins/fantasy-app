@@ -52,8 +52,7 @@ export function judge(c: EvalCase, result: RuleResult): Verdict {
     return reads ? "correct" : "wrong";
   }
   if (c.rules === "leaderboard") {
-    const reads =
-      result.leaderboard && sameSet(intent.stat_ids, c.stats ?? []) && sameSet(intent.filter_ids, c.filters ?? []);
+    const reads = result.leaderboard && sameSet(intent.stat_ids, c.stats ?? []) && sameSet(intent.filter_ids, c.filters ?? []);
     return reads ? "correct" : "wrong";
   }
   if (c.unsupported || c.rules === "defer") {

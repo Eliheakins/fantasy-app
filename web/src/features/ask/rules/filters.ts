@@ -25,8 +25,7 @@ function readYears(tokens: readonly string[], used: WordMask, seasons: readonly 
       return;
     }
     const year = Number(token);
-    const readsAsSeason =
-      seasons.includes(year) || SEASON_CONTEXT.has(tokens[at - 1] ?? "") || tokens[at + 1] === "season";
+    const readsAsSeason = seasons.includes(year) || SEASON_CONTEXT.has(tokens[at - 1] ?? "") || tokens[at + 1] === "season";
     // An unrelated number is left alone, so it counts as a word the parser did not understand.
     if (!readsAsSeason) {
       return;
@@ -56,12 +55,7 @@ function readYears(tokens: readonly string[], used: WordMask, seasons: readonly 
 }
 
 /** Reads the phrases and the time and season words, marking each as read. */
-export function readFilters(
-  question: string,
-  context: RuleContext,
-  e: Entities,
-  used: WordMask,
-): Stage<FilterReads> {
+export function readFilters(question: string, context: RuleContext, e: Entities, used: WordMask): Stage<FilterReads> {
   const { tokens } = e;
   const { seasons, chipGroups } = context;
   const chipIds = new Set(chipGroups.flatMap((g) => g.options.map((o) => o.id)));
@@ -71,11 +65,7 @@ export function readFilters(
   }
 
   // "this season", "week 3", "since week 5", "last 3 games": read after the chip phrases ("week 13 or later").
-  const time = readTime(
-    question,
-    { seasons, maxWeeks: context.maxWeeks },
-    new Set(used.flatMap((u, at) => (u ? [at] : []))),
-  );
+  const time = readTime(question, { seasons, maxWeeks: context.maxWeeks }, new Set(used.flatMap((u, at) => (u ? [at] : []))));
   if (time.problem) {
     return stop({ status: "unsupported", reason: time.problem });
   }

@@ -8,10 +8,7 @@ import type { LeaguePointsRow } from "@/stat/engine/leaguePointsQuery";
 type PointsRow = components["schemas"]["PlayerPointsRow"];
 
 export type LeaguePointsState =
-  | { kind: "idle" }
-  | { kind: "loading" }
-  | { kind: "error"; message: string }
-  | { kind: "ready"; rows: LeaguePointsRow[] };
+  { kind: "idle" } | { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; rows: LeaguePointsRow[] };
 
 /** Points change only when `make refresh` rebuilds `player_points`, so five minutes is fresh enough. */
 const POINTS_STALE_MS = 5 * 60 * 1000;
@@ -46,7 +43,11 @@ export function useLeaguePoints(
     })),
   });
   // The state is rebuilt only when a query's data or error changes, so callers can depend on it.
-  const signature = [league, ...wanted.map((w) => `${w.season}:${w.id}`), ...queries.map((q) => `${q.dataUpdatedAt}:${q.errorUpdatedAt}`)].join("|");
+  const signature = [
+    league,
+    ...wanted.map((w) => `${w.season}:${w.id}`),
+    ...queries.map((q) => `${q.dataUpdatedAt}:${q.errorUpdatedAt}`),
+  ].join("|");
   return useMemo((): LeaguePointsState => {
     if (queries.length === 0) return { kind: "idle" };
     const failed = queries.find((q) => q.error);

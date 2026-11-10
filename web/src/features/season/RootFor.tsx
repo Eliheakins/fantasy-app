@@ -20,9 +20,21 @@ export function RootForSection() {
           return (
             <ol className="max-w-xl">
               {list.map((r) => (
-                <li key={r.key} className="flex min-h-[44px] flex-wrap items-center justify-between gap-x-3 border-t border-line first:border-t-0">
-                  <span>Root for <strong>{r.root}</strong> <span className="text-muted">over {r.against}</span></span>
-                  <span className="whitespace-nowrap"><Explain why={swingWhy(r)}><span className="tabular-nums">{formatNumber(r.swing * 100)}</span></Explain> <span className="text-caption text-muted">pp swing in your playoff odds, from {r.runs.toLocaleString("en-US")} simulated seasons</span></span>
+                <li
+                  key={r.key}
+                  className="flex min-h-[44px] flex-wrap items-center justify-between gap-x-3 border-t border-line first:border-t-0"
+                >
+                  <span>
+                    Root for <strong>{r.root}</strong> <span className="text-muted">over {r.against}</span>
+                  </span>
+                  <span className="whitespace-nowrap">
+                    <Explain why={swingWhy(r)}>
+                      <span className="tabular-nums">{formatNumber(r.swing * 100)}</span>
+                    </Explain>{" "}
+                    <span className="text-caption text-muted">
+                      pp swing in your playoff odds, from {r.runs.toLocaleString("en-US")} simulated seasons
+                    </span>
+                  </span>
                 </li>
               ))}
             </ol>

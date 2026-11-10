@@ -9,8 +9,22 @@ import type { LineupRow } from "@/features/lineup/logic";
 import { StartSitAnswer } from "./StartSitAnswer";
 
 const row = (id: string, o: Partial<LineupRow> = {}): LineupRow => ({
-  slot: "TE", gsis_id: id, full_name: `Player ${id}`, position: "TE", projection: 10, p10: 4, p90: 18,
-  starting_now: true, recommended: true, injury: null, injury_note: null, locked: false, actual: 0, game: "Sun", change: "", ...o,
+  slot: "TE",
+  gsis_id: id,
+  full_name: `Player ${id}`,
+  position: "TE",
+  projection: 10,
+  p10: 4,
+  p90: 18,
+  starting_now: true,
+  recommended: true,
+  injury: null,
+  injury_note: null,
+  locked: false,
+  actual: 0,
+  game: "Sun",
+  change: "",
+  ...o,
 });
 const NAMES = { a: "Travis Kelce", b: "George Kittle" };
 let lineup: LineupRow[] = [];

@@ -16,14 +16,29 @@ vi.mock("@/features/explore/useExploreQueryExecution", () => ({
 }));
 
 const player = (gsis_id: string, display_name: string, position = "TE") => ({
-  gsis_id, display_name, search_key: display_name.toLowerCase(), position, team: "KC",
+  gsis_id,
+  display_name,
+  search_key: display_name.toLowerCase(),
+  position,
+  team: "KC",
 });
 const side = (s: string, team_name: string, playoff_after: number) => ({
-  side: s, roster_id: 1, team_name, playoff_before: 0.5, playoff_after, title_before: 0.1, title_after: 0.12, wins_before: 8, wins_after: 8.4,
+  side: s,
+  roster_id: 1,
+  team_name,
+  playoff_before: 0.5,
+  playoff_after,
+  title_before: 0.1,
+  title_after: 0.12,
+  wins_before: 8,
+  wins_after: 8.4,
 });
 const EVALUATION = {
   odds: [side("me", "My Team", 0.56), side("them", "Rivals", 0.45)],
-  roster_changes: [], warning: null, trade_deadline: null, market: null,
+  roster_changes: [],
+  warning: null,
+  trade_deadline: null,
+  market: null,
 };
 const OWNERS = {
   rows: [
@@ -52,19 +67,30 @@ beforeEach(() => {
   window.localStorage.clear();
   evaluateReply = { status: "ok", data: EVALUATION };
   vi.mocked(fetchManifest).mockResolvedValue({
-    schema_version: 1, built_at: "2026-11-04T12:00:00+00:00", nflreadpy_version: "0.1.0",
+    schema_version: 1,
+    built_at: "2026-11-04T12:00:00+00:00",
+    nflreadpy_version: "0.1.0",
     seasons: FIXTURE_SEASONS.map((season) => ({ season, path: `p${season}.parquet`, rows: 1, max_week: 9, has_participation: true })),
-    player_index: null, player_game: null, players: null,
+    player_index: null,
+    player_game: null,
+    players: null,
   });
   vi.mocked(getPlayerDictionary).mockResolvedValue([
-    player("kelce", "Travis Kelce"), player("kittle", "George Kittle"), player("hill", "Tyreek Hill", "WR"),
-    player("free", "Free Agent"), player("kicker", "Kicker Kim", "K"), player("allen-qb", "Josh Allen", "QB"), player("allen-lb", "Josh Allen", "LB"),
+    player("kelce", "Travis Kelce"),
+    player("kittle", "George Kittle"),
+    player("hill", "Tyreek Hill", "WR"),
+    player("free", "Free Agent"),
+    player("kicker", "Kicker Kim", "K"),
+    player("allen-qb", "Josh Allen", "QB"),
+    player("allen-lb", "Josh Allen", "LB"),
   ]);
   fetchMock = vi.fn(async (url: string) => {
     const path = String(url);
-    const data = path.includes("/owners") ? OWNERS
-      : path.includes("/trades/evaluate") ? evaluateReply.data
-      : [{ league_key: "a", name: "A", current_week: 9 }];
+    const data = path.includes("/owners")
+      ? OWNERS
+      : path.includes("/trades/evaluate")
+        ? evaluateReply.data
+        : [{ league_key: "a", name: "A", current_week: 9 }];
     const status = path.includes("/trades/evaluate") ? evaluateReply.status : "ok";
     return Response.json({ status, data: data ?? null, error: null, started_at: evaluateReply.started_at ?? null });
   });
@@ -115,7 +141,9 @@ describe("Ask trade", () => {
   it("states the change in odds in one sentence above the result", async () => {
     renderAsk("/ask?league=a&q=trade+Kelce+for+Kittle");
 
-    expect(await screen.findByText("This trade raises your playoff odds by 6.0 points and your title odds by 2.0 points.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("This trade raises your playoff odds by 6.0 points and your title odds by 2.0 points."),
+    ).toBeInTheDocument();
   });
 
   it("says kickers are not supported rather than calling them free agents", async () => {

@@ -33,7 +33,9 @@ export function AskBox() {
         <MessageCircleQuestion aria-hidden size={20} />
       </Link>
       <form role="search" onSubmit={submit} className="hidden items-center gap-2 md:flex">
-        <span aria-hidden className="font-display text-heading italic text-chrome-text">Ask</span>
+        <span aria-hidden className="font-display text-heading italic text-chrome-text">
+          Ask
+        </span>
         <input
           type="text"
           aria-label="Ask a question"

@@ -10,7 +10,14 @@ afterEach(() => vi.unstubAllGlobals());
 
 const QUEUED = { league_id: "111", league_key: "sl-111", name: "Waiting League", status: "queued", error: null, roster_id: 1 };
 const READY = { league_id: "222", league_key: "sl-222", name: "Ready League", status: "ready", error: null, roster_id: 1 };
-const BROKEN = { league_id: "333", league_key: "sl-333", name: "Broken League", status: "error", error: "Sleeper refused this league or did not answer.", roster_id: 1 };
+const BROKEN = {
+  league_id: "333",
+  league_key: "sl-333",
+  name: "Broken League",
+  status: "error",
+  error: "Sleeper refused this league or did not answer.",
+  roster_id: 1,
+};
 const TEAMS = [
   { roster_id: 1, team_name: "Boss FC", owner_id: "u-boss", owner_name: "Boss" },
   { roster_id: 2, team_name: "Friend FC", owner_id: "u-friend", owner_name: "Friend" },
@@ -88,7 +95,9 @@ describe("MyLeagueList", () => {
   });
 
   it("shows why a removal failed", async () => {
-    stubScoped("/api/me/", (call) => (call.method === "DELETE" ? errorReply("no_data", "You have not added that league.", 404) : okReply([QUEUED])));
+    stubScoped("/api/me/", (call) =>
+      call.method === "DELETE" ? errorReply("no_data", "You have not added that league.", 404) : okReply([QUEUED]),
+    );
     open();
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Remove Waiting League" }));

@@ -1,9 +1,4 @@
-import {
-  STAT_CATEGORY_LABELS,
-  STAT_CATEGORY_ORDER,
-  getStatById,
-  getStatsByCategory,
-} from "@/stat/config/statDictionary";
+import { STAT_CATEGORY_LABELS, STAT_CATEGORY_ORDER, getStatById, getStatsByCategory } from "@/stat/config/statDictionary";
 import { describeStat } from "@/stat/lib/queryBuilder";
 import { cn } from "@/lib/utils";
 import { MAX_SELECTED_STATS } from "@/stat/lib/queryUrl";
@@ -64,8 +59,8 @@ export function StatDictionaryPanel({ className }: StatDictionaryPanelProps) {
             <AccordionContent>
               <div className="space-y-3 border-t border-line pt-3">
                 <p className="text-caption text-muted">
-                  Select up to {MAX_SELECTED_STATS} metrics (same role/play-type bucket are computed in one pass). Hover
-                  “?” for definitions.
+                  Select up to {MAX_SELECTED_STATS} metrics (same role/play-type bucket are computed in one pass). Hover “?” for
+                  definitions.
                 </p>
 
                 <div className="flex min-h-0 flex-1 flex-col">
@@ -86,9 +81,7 @@ export function StatDictionaryPanel({ className }: StatDictionaryPanelProps) {
                                       key={s.id}
                                       className={cn(
                                         "flex items-start gap-3 rounded-lg border px-3 py-2 transition",
-                                        checked
-                                          ? "border-focus/40 bg-panel"
-                                          : "border-transparent hover:border-line hover:bg-panel/80",
+                                        checked ? "border-focus/40 bg-panel" : "border-transparent hover:border-line hover:bg-panel/80",
                                         disableSelect && "opacity-60",
                                       )}
                                     >

@@ -51,9 +51,7 @@ describe("requestJson", () => {
 
     const error = await requestJson(URL, schema, options).catch((e: Error) => e);
 
-    expect((error as Error).message).toBe(
-      `The widget list is not reachable at ${ORIGIN}. Start it with: make serve`,
-    );
+    expect((error as Error).message).toBe(`The widget list is not reachable at ${ORIGIN}. Start it with: make serve`);
   });
 
   it("lets an aborted request through untouched so callers can tell it from a failure", async () => {
@@ -68,9 +66,7 @@ describe("requestJson", () => {
       "fetch",
       respond(
         {
-          detail: [
-            { type: "string_too_long", loc: ["body", "question"], msg: "String should have at most 2000 characters" },
-          ],
+          detail: [{ type: "string_too_long", loc: ["body", "question"], msg: "String should have at most 2000 characters" }],
         },
         { status: 422 },
       ),

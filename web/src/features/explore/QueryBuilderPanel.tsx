@@ -7,10 +7,7 @@ import { ExploreResultsCanvas } from "@/features/explore/ExploreResultsCanvas";
 import { IgnoredFiltersNotice } from "@/features/explore/IgnoredFiltersNotice";
 import { useManifest } from "@/stat/react/manifest";
 import { ParticipationNotice } from "@/features/explore/ParticipationNotice";
-import {
-  QueryBuilderSidebarExecuteFooter,
-  QueryBuilderSidebarScroll,
-} from "@/features/explore/QueryBuilderSidebarBody";
+import { QueryBuilderSidebarExecuteFooter, QueryBuilderSidebarScroll } from "@/features/explore/QueryBuilderSidebarBody";
 import { SavedSearches } from "@/features/explore/SavedSearches";
 import { rememberExplore } from "@/stat/react/routeMemory";
 import { useExplorePlayerSearch } from "@/features/explore/useExplorePlayerSearch";
@@ -52,7 +49,9 @@ export function QueryBuilderPanel() {
           </>
         }
       />
-      <div className="mb-6"><SavedSearches /></div>
+      <div className="mb-6">
+        <SavedSearches />
+      </div>
       <div className="lg:grid lg:grid-cols-[360px_1fr] lg:items-start lg:gap-6">
         <aside
           aria-label="Query builder"
