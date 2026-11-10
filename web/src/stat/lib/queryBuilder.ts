@@ -169,26 +169,6 @@ export function buildFilterWhereSql(
   return parts.join(" AND ");
 }
 
-export function describeStat(stat: StatDefinition | undefined): string {
-  if (!stat) {
-    return "";
-  }
-  if (stat.source === "league") {
-    return "points under the selected league's scoring · weekly regular-season rows";
-  }
-  if (stat.source === "derived") {
-    return `${stat.formula ?? ""} · from other stats' totals`;
-  }
-  const role = stat.playerRole;
-  const pt = stat.playType === "all" ? "all plays" : stat.playType;
-  const sqlPreview = stat.base_sql.length > 72 ? `${stat.base_sql.slice(0, 72)}…` : stat.base_sql;
-  let s = `${sqlPreview} · ${role} · ${pt}`;
-  if (stat.rate_only) {
-    s += " · rate_only";
-  }
-  return s;
-}
-
 /** What a query counts, in plain terms, for the "Query details" panel. */
 export function describeQuery(params: {
   statIds: string[];

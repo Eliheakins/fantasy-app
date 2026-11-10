@@ -1192,3 +1192,10 @@ Plan: `.plans/accounts-and-refresh-20261109-2155.md`. Supersedes the Caddy-passw
 - **Compare.** A "Side by side" table above the columns: verdict line, best value per row in bold, season totals, and one range axis shared by every bar.
 - **Ask.** A ranking answers with one line ("<name> leads with N") above the table instead of a numbered list repeating it; example chips replace the developer note, which moved into a "How Ask reads a question" disclosure (a native `<details>`, not a popover); the header Ask box is hidden on `/ask`; the footer links to Ask and to Ask history (`/ask?tab=history`).
 - **Dropped from this issue, filed as follow-ups:** league-aware stat questions in Ask, a weekly chart in single-player answers, a "why" link from start/sit to the Lineup page's win probability.
+
+## 2026-11-10: Find players query bar (issue 75)
+
+- **Replaced the 360 px left sidebar and the phone drawer with a bar of chips over full-width results.** Each chip opens a popover; the controls inside are the old ones (ranking, min plays, split, league, team picker) with the SQL and pipeline wording removed. Deleted `QueryBuilderSidebarBody`, `ExploreMobileBuilderDrawer`, `StatDictionaryPanel`, `AggregationSection`, `FilterChipsBar`, `GranularitySelector` and `PinnedPlayersBar`. The URL keys are unchanged, so old links and saved searches work. Position is now a chip (it was only settable from Ask).
+- **No "Execute analysis" button**: results already refreshed on every change.
+- **Default query**: a bare page replaces its URL once with the latest season's WRs by targets per game, top 25, at least 20 plays. The issue suggested league points per game; league points need a chosen league and carry no position, so targets per game is the default that always works.
+- **Not done yet**: phone popovers open as normal popovers, not bottom sheets; Ask's answer chips are not this bar yet; "Games" is not a results column (the engine does not return it).

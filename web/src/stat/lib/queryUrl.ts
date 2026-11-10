@@ -296,6 +296,10 @@ export function setRoster(state: QueryState, roster: RosterFilter | null): Query
   return { ...state, roster };
 }
 
+export function setPosition(state: QueryState, position: Position | null): QueryState {
+  return { ...state, position };
+}
+
 export function toggleTeam(state: QueryState, id: string): QueryState {
   if (state.teams.includes(id)) {
     return { ...state, teams: state.teams.filter((t) => t !== id) };

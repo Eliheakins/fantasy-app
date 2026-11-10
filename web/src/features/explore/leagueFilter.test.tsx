@@ -244,7 +244,7 @@ describe("owner on result rows", () => {
     { gsis_id: "00-FA", full_name: "Fay", position: "WR", team: null, headshot_url: null },
   ];
 
-  it("shows the owning team for a rostered player and nothing for a free agent", async () => {
+  it("shows the owning team for a rostered player and a Free agent marker for a free agent", async () => {
     mockFetch();
     renderAt(
       "/explore?league=a&s=rec_yards&o=rec_yards&n=5",
@@ -253,9 +253,10 @@ describe("owner on result rows", () => {
 
     const owner = await screen.findByText("Mine");
     expect(owner).toHaveClass("text-muted");
-    expect(screen.getByText("Ann").closest("tr")!.textContent).toBe("Ann, owned by Mine10"); // separator for screen readers
+    expect(screen.getByText("Ann").closest("tr")!.textContent).toContain("Ann, owned by Mine"); // separator for screen readers
     const faRow = screen.getByText("Fay").closest("tr")!;
-    expect(faRow.textContent).toBe("Fay5");
+    expect(faRow.textContent).toContain("Free agent");
+    expect(faRow.textContent).not.toContain("owned by");
   });
 });
 

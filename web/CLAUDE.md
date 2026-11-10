@@ -7,7 +7,7 @@ Vite and React. Commands: `npm run typecheck`, `npm run lint` (ESLint: typescrip
 - `architecture.test.ts` enforces the layers. Pages do not import other pages. `lib/` and `components/` import no features or pages. `stat/` (engine, lib, config) imports no UI and no fantasy API, except the generated types in `api/schema`. `features/moves/trade/` does not import the rest of moves.
 - Each tab has a folder under `features/`: `thisweek/{leagues,digest}`, `season/{outlook,league}`, `moves/{waivers,trade}`, `lineup/`, `players/`. Other features: `ask/`, `explore/`, `scorecard/`.
 - Shared helpers: `lib/` (`week`, `scoreboard`, `digestTypes`, `outlookTypes`, `who`, `league.tsx`).
-- `components/ui/`: primitives (button, input, textarea, select, tabs, toggle-group, tooltip, accordion). The Radix-based ones use `radix-ui`. Dialogs (the phone builder) are Radix Dialogs.
+- `components/ui/`: primitives (button, input, textarea, select, tabs, toggle-group, tooltip, popover). The Radix-based ones use `radix-ui`. Popovers (the Find players chips) are Radix Popovers.
 - Stat engine and kernel: `web/src/stat/`, see `stat/CLAUDE.md`.
 
 ## Navigation

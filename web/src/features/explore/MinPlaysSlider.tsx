@@ -22,8 +22,7 @@ export function MinPlaysSlider({ className, embedded = false }: MinPlaysSliderPr
             <h3 className="text-caption font-semibold uppercase tracking-wide text-focus">Min plays</h3>
           )}
           <p className="mt-0.5 text-caption text-muted">
-            HAVING <code className="rounded bg-panel px-0.5 font-mono text-caption text-ink">COUNT(*) ≥</code> threshold (0–500). Drops
-            low-volume outliers.
+            Leave out players with fewer plays than this (0 to 500), so one-play outliers do not top a list.
           </p>
         </div>
         <span className="text-body tabular-nums text-focus">{minPlays}</span>

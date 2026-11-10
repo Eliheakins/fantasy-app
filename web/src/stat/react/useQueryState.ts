@@ -9,11 +9,13 @@ import {
   ignoredFilterIds,
   parseQuery,
   pinPlayer,
+  type Position,
   type QueryOrder,
   type QueryState,
   type RosterFilter,
   setGranularity,
   setMinPlays,
+  setPosition,
   setRanking,
   setRoster,
   setSide,
@@ -65,8 +67,12 @@ export function useQueryState() {
     [setParams],
   );
 
+  /** Swap in a whole query without adding a history entry (the default query on a bare page). */
+  const replaceQuery = useCallback((next: QueryState) => setParams((prev) => writeQuery(prev, next), { replace: true }), [setParams]);
+
   return {
     state,
+    replaceQuery,
     question: params.get("q") ?? "",
     filterChipState,
     ignoredFilters,
@@ -82,6 +88,7 @@ export function useQueryState() {
     setSplit: useCallback((split: Split | null) => update((s) => setSplit(s, split)), [update]),
     setSubject: useCallback((subject: QueryState["subject"]) => update((s) => setSubject(s, subject)), [update]),
     setRoster: useCallback((roster: RosterFilter | null) => update((s) => setRoster(s, roster)), [update]),
+    setPosition: useCallback((position: Position | null) => update((s) => setPosition(s, position)), [update]),
     setSide: useCallback((side: Side) => update((s) => setSide(s, side)), [update]),
     toggleTeamId: useCallback((id: string) => update((s) => toggleTeam(s, id)), [update]),
     toggleFilterId: useCallback((id: string) => update((s) => toggleFilter(s, id)), [update]),

@@ -1,5 +1,6 @@
 import { PlayerLink } from "@/components/PlayerLink";
 import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 
 import { buildScatterPoints, StatScatterChart } from "@/features/explore/StatScatterChart";
 import { Callout } from "@/components/Callout";
@@ -8,13 +9,14 @@ import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { getStatById } from "@/stat/config/statDictionary";
 import { TEAMS } from "@/stat/config/teams";
-import { formatMetricValueHeader, metricSelectAlias, statLabel } from "@/stat/lib/queryBuilder";
+import { formatMetricValueHeader, metricSelectAlias } from "@/stat/lib/queryBuilder";
 import { formatQueryValue } from "@/stat/lib/formatQueryValue";
 import type { NFLPlayer, QueryResult } from "@/stat/types/workbench";
 import { useQueryState } from "@/stat/react/useQueryState";
 import { useLeagueName } from "@/lib/league";
 import { useLeagueOwners } from "@/features/explore/useLeagueOwners";
 import { isLeagueQuery } from "@/stat/lib/queryUrl";
+import { compareHref, MAX_COMPARE, withoutPlayer } from "@/features/players/profile";
 
 export interface ExploreResultsCanvasProps {
   result: QueryResult | null;
@@ -30,7 +32,6 @@ export function ExploreResultsCanvas({ result, error, details, running, pinnedPl
   const { state } = useQueryState();
   const selectedStatIds = state.stats;
   const activeGranularity = state.granularity;
-  const minPlays = state.minPlays;
 
   const leagueName = useLeagueName();
   const [canvasView, setCanvasView] = useState<"table" | "scatter">("table");
@@ -110,31 +111,25 @@ export function ExploreResultsCanvas({ result, error, details, running, pinnedPl
     return columnHeaders.get(metricSelectAlias(yId)) ?? formatMetricValueHeader(st, activeGranularity);
   }, [twoStatsMode, swapScatterAxes, selectedStatIds, columnHeaders, activeGranularity]);
 
-  const canvasSubtitle = useMemo(() => {
-    if (selectedStatIds.length === 0) {
-      return "Select metrics in the query builder to populate results.";
-    }
-    const labels = selectedStatIds
-      .map((id) => getStatById(id))
-      .filter(Boolean)
-      .map((s) => statLabel(s!, leagueName));
-    const gran = activeGranularity === "total" ? "totals" : activeGranularity === "per_game" ? "per game" : "per play";
-    const ranking =
-      state.order && state.limit !== null
-        ? ` · ${state.order.direction === "desc" ? "top" : "bottom"} ${state.limit} by ${getStatById(state.order.metric)?.label ?? state.order.metric}`
-        : "";
-    const split = state.split ? ` · by ${state.split}` : "";
-    return `${labels.join(" · ")} · ${gran} · min ${minPlays} plays${ranking}${split}`;
-  }, [selectedStatIds, activeGranularity, minPlays, state.order, state.limit, state.split, leagueName]);
+  const { search } = useLocation();
+  const [compared, setCompared] = useState<string[]>([]);
+  const toggleCompared = (id: string) =>
+    setCompared((ids) => (ids.includes(id) ? withoutPlayer(ids, id) : ids.length >= MAX_COMPARE ? ids : [...ids, id]));
+  const teamByGsis = useMemo(
+    () => new Map((namedPlayers ?? pinnedPlayers).map((p) => [p.gsis_id, p.team ?? ""])),
+    [pinnedPlayers, namedPlayers],
+  );
+  const rowCount = result?.rows.length ?? 0;
 
   return (
     <section aria-labelledby="explore-results-heading" className="min-h-[160px] space-y-3 overflow-hidden">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 id="explore-results-heading" className="text-section font-semibold">
-            Results
+            {rowCount > 0
+              ? `${rowCount} ${forTeams ? (rowCount === 1 ? "team" : "teams") : rowCount === 1 ? "player" : "players"}`
+              : "Results"}
           </h2>
-          <p className="mt-1 text-caption text-muted">{canvasSubtitle}</p>
         </div>
         {twoStatsMode && result && result.rows.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2">
@@ -183,7 +178,14 @@ export function ExploreResultsCanvas({ result, error, details, running, pinnedPl
               <table className="w-full border-collapse text-left text-body">
                 <thead>
                   <tr className="border-b-[1.5px] border-forest">
+                    {!forTeams && (
+                      <th className="w-11 px-3 py-2 font-medium text-muted">
+                        <span className="sr-only">Compare</span>
+                      </th>
+                    )}
                     <th className="px-3 py-2 font-medium text-muted">{forTeams ? "Team" : "Player"}</th>
+                    {!forTeams && <th className="px-3 py-2 font-medium text-muted">Team</th>}
+                    {!forTeams && <th className="px-3 py-2 font-medium text-muted">Pos</th>}
                     {result.columns
                       .filter((col) => col !== idColumn)
                       .map((col) => (
@@ -199,16 +201,35 @@ export function ExploreResultsCanvas({ result, error, details, running, pinnedPl
                     const label = nameByGsis.get(pid) ?? pid;
                     return (
                       <tr key={`${pid}-${i}`} className="border-b border-line last:border-0">
+                        {!forTeams && (
+                          <td className="px-3 py-1">
+                            <input
+                              type="checkbox"
+                              checked={compared.includes(pid)}
+                              disabled={!compared.includes(pid) && compared.length >= MAX_COMPARE}
+                              onChange={() => toggleCompared(pid)}
+                              aria-label={`Compare ${label}`}
+                              className="h-5 w-5 accent-focus"
+                            />
+                          </td>
+                        )}
                         <td className="px-3 py-2 font-medium text-ink">
                           {forTeams ? label : <PlayerLink gsisId={pid || null} name={label} position={positionByGsis.get(pid) ?? ""} />}
-                          {/* The owner on every row is intended (issue #70); free agents have none. */}
+                          {/* The owner on every row is intended (issue #70); a free agent is marked once a league is chosen. */}
                           {!forTeams && owners?.get(pid) ? (
                             <span className="ml-2 text-caption font-normal text-muted">
                               <span className="sr-only">, owned by </span>
                               {owners.get(pid)!.owner}
                             </span>
                           ) : null}
+                          {!forTeams && owners && !owners.get(pid) ? (
+                            <span className="ml-2 rounded-full bg-panel px-2 py-0.5 text-caption font-semibold text-forest">
+                              Free agent
+                            </span>
+                          ) : null}
                         </td>
+                        {!forTeams && <td className="px-3 py-2 text-ink">{teamByGsis.get(pid) || "—"}</td>}
+                        {!forTeams && <td className="px-3 py-2 text-ink">{positionByGsis.get(pid) || "—"}</td>}
                         {result.columns
                           .filter((col) => col !== idColumn)
                           .map((col) => (
@@ -227,21 +248,35 @@ export function ExploreResultsCanvas({ result, error, details, running, pinnedPl
           <p className="text-muted">Query returned no rows for this combination of filters.</p>
         ) : !error && !running && !hasSubject ? (
           <p className="text-muted">
-            {forTeams ? (
-              <span>Pick teams in The Who, or set a ranking with none picked to rank all 32. </span>
-            ) : (
-              <>
-                <span className="lg:hidden">Open the query builder (bottom-right) to search and pin players. </span>
-                <span className="hidden lg:inline">Pin players to load data. </span>
-              </>
-            )}
-            Stats, granularity, min plays, and filter changes refresh the table automatically.
+            {forTeams
+              ? "Pick teams from the Teams chip, or set a ranking with none picked to rank all 32."
+              : "Add players from the Players chip, or rank everyone by a stat with the ranking chip."}
           </p>
         ) : !error && !running && hasSubject && selectedStatIds.length === 0 ? (
-          <p className="text-muted">
-            <span className="lg:hidden">Open the query builder and pick metrics under The What. </span>
-            <span className="hidden lg:inline">Select at least one metric in The What to load the canvas.</span>
-          </p>
+          <p className="text-muted">Add a stat with “+ stat” to load the results.</p>
+        ) : null}
+
+        {compared.length > 0 ? (
+          <div
+            role="region"
+            aria-label="Compare selection"
+            className="sticky bottom-0 -mx-1 flex flex-wrap items-center gap-3 rounded-xl bg-forest px-4 py-3 text-white"
+          >
+            <p className="min-w-0 flex-1 text-body">
+              {compared.length} selected{compared.length < 2 ? ". Pick one more to compare." : ""}
+            </p>
+            {compared.length >= 2 ? (
+              <Link
+                to={compareHref(compared, search)}
+                className="inline-flex min-h-11 items-center rounded-full bg-chrome-accent px-5 text-body font-bold text-forest"
+              >
+                Compare
+              </Link>
+            ) : null}
+            <button type="button" onClick={() => setCompared([])} className="min-h-11 px-3 text-body underline">
+              Clear
+            </button>
+          </div>
         ) : null}
 
         {details ? <CollapsibleCode title="Query details" code={details} /> : null}

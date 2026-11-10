@@ -5,12 +5,15 @@ Explore is the Find players page. `/explore` redirects here (`lib/redirects.tsx`
 ## Page and loading
 
 - `pages/Explore.tsx` wraps the page in `ManifestProvider` (`stat/react/manifest.tsx`), which queries `/api/stat/data/manifest.json`. Loading and errors show in the content area, with a retry.
-- Pieces: `QueryBuilderPanel`, `ExploreResultsCanvas` (shows `QueryResult.notices`), `PinnedPlayersBar`, `usePinnedPlayers`, `useExploreQueryExecution`, `StatDictionaryPanel`, and `ExploreMobileBuilderDrawer` (the phone builder, a full-height Radix Dialog sheet).
+- The page is a query bar over full-width results (issue #75). `QueryBuilderPanel` holds the bar card, the plain-English summary (`describeQuery.ts`), Reset and saved searches. `QueryBar.tsx` is one row of chips; each chip is a Radix popover (`BarChip.tsx`, `components/ui/popover.tsx`): Players or Teams (with player search and the team picker), the chosen players, teams and stats as removable chips, `+ stat` (`StatPicker.tsx`, searchable, grouped by category), Total / Per game / Per play, Season, Position, League, Ranking (ranking, min plays and split), active situation filters, and `+ filter` (`FilterPopover.tsx`: five common groups, the rest under "More situations").
+- A page opened with no query replaces it once with `defaultQuery.ts` (latest season, WR, targets per game, top 25, at least 20 plays). Reset does the same. Ask's `q` and any other query are left alone.
+- Results (`ExploreResultsCanvas`) show a count, a compare checkbox per player (up to 3, linking to `/players/compare`), Team and Pos columns, the owner, and a "Free agent" marker once a league is chosen. Other pieces: `usePinnedPlayers`, `useExploreQueryExecution`.
+- On a phone the chips wrap and each popover is a normal popover (no bottom sheet yet).
 - Saved searches: `savedSearchStore.ts`, in `localStorage`, so they are per origin.
 
 ## URL keys
 
-- The query lives in the URL under these keys (`web/src/stat/lib/queryUrl.ts`): `p` players, `s` stats, `f` filters, `g` granularity, `m` min plays, `o` order, `n` limit, `by` split, `who` subject, `t` teams, `side`, `lg` league filter, `last` last N games, `pos` position and `rookie` (set by Ask; no Explore control, shown in the query details). `by` is `season`, `week` or `location` (home and away).
+- The query lives in the URL under these keys (`web/src/stat/lib/queryUrl.ts`): `p` players, `s` stats, `f` filters, `g` granularity, `m` min plays, `o` order, `n` limit, `by` split, `who` subject, `t` teams, `side`, `lg` league filter, `last` last N games, `pos` position (a chip here and set by Ask) and `rookie` (set by Ask; no Explore control, shown in the query details). `by` is `season`, `week` or `location` (home and away).
 - Explore's keys never go on other links. `useQueryState` keeps `league` and `team` when it writes.
 
 ## League filter (`lg`)
