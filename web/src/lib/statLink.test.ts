@@ -6,14 +6,16 @@ const link = (position: string, gsisId: string | null = "00-0033873", search = "
 
 describe("statLink", () => {
   it("opens a WR's weekly receiving log for the season", () => {
-    expect(link("WR")).toBe("/players/find?p=00-0033873&s=rec_receptions&s=rec_yards&f=season-2026&f=stype-reg&by=week&g=total");
+    expect(link("WR")).toBe(
+      "/players/find?p=00-0033873&s=rec_tgt&s=rec_receptions&s=rec_yards&s=rec_tds&f=season-2026&f=stype-reg&by=week&g=total",
+    );
   });
   it("uses the receiving set for a TE", () => {
     expect(link("TE")).toBe(link("WR"));
   });
   it("uses passing stats for a QB and rushing plus receiving for an RB", () => {
     expect(link("QB")).toContain("&s=pass_yards&s=pass_tds&");
-    expect(link("RB")).toContain("&s=rush_yards&s=rush_tds&s=rec_receptions&s=rec_yards&");
+    expect(link("RB")).toContain("&s=rush_yards&s=rush_tds&s=rec_tgt&s=rec_receptions&s=rec_yards&s=rec_tds&");
   });
   it("has no link without a gsis id, or for K and DEF", () => {
     expect(link("WR", null)).toBeNull();

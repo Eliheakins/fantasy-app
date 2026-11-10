@@ -1,5 +1,5 @@
 /** Stat ids from metrics/metrics.json. */
-const RECEIVING = ["rec_receptions", "rec_yards"];
+const RECEIVING = ["rec_tgt", "rec_receptions", "rec_yards", "rec_tds"];
 const STATS_BY_POSITION: Readonly<Record<string, readonly string[]>> = {
   QB: ["pass_yards", "pass_tds"],
   RB: ["rush_yards", "rush_tds", ...RECEIVING],

@@ -3,13 +3,18 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { navSearch } from "@/components/layout/navLinks";
 import { PageHeader } from "@/components/PageHeader";
 import { PlayerPicker } from "@/features/players/PlayerPicker";
+import { CompareSummary } from "@/features/players/CompareSummary";
 import { PlayerSections } from "@/features/players/PlayerSections";
 import { MAX_COMPARE, parseCompareIds, withoutPlayer, withPlayer } from "@/features/players/profile";
-import { usePlayer } from "@/features/players/usePlayer";
+import { useKnownIds, usePlayer } from "@/features/players/usePlayer";
+import { useProfiles } from "@/features/players/useProfile";
+import { sharedDomain } from "@/viz";
+import type { Domain } from "@/viz/rangeAxis";
+import type { PlayerProfile } from "@/features/players/profile";
 
 const GRID_BY_COUNT: Record<number, string> = { 1: "md:grid-cols-1", 2: "md:grid-cols-2", 3: "md:grid-cols-3" };
 
-function Column({ gsisId, onRemove }: { gsisId: string; onRemove: () => void }) {
+function Column({ gsisId, onRemove, domain }: { gsisId: string; onRemove: () => void; domain: Domain | null }) {
   const { pathname, search } = useLocation();
   const player = usePlayer(gsisId);
   const info = player.kind === "ready" ? player.data : null;
@@ -36,7 +41,7 @@ function Column({ gsisId, onRemove }: { gsisId: string; onRemove: () => void }) 
       </div>
       {unknown && <p className="text-body text-muted">No player in the stat data has the id {gsisId}.</p>}
       {info && <p className="text-caption uppercase tracking-wide text-focus">{[info.position, info.team].filter(Boolean).join(" · ")}</p>}
-      {info && <PlayerSections gsisId={gsisId} level={3} name={name} />}
+      {info && <PlayerSections gsisId={gsisId} level={3} name={name} domain={domain} />}
     </div>
   );
 }
@@ -61,14 +66,21 @@ export default function PlayersCompare() {
     if (raw !== "" && raw !== ids.join("\n")) setIds(ids, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [raw]);
+  const known = useKnownIds(ids) ?? [];
+  const profileStates = useProfiles(known);
+  const loaded = profileStates.flatMap((s) => (s.kind === "ready" ? [s.data] : []));
+  const allLoaded = known.length >= 2 && loaded.length === known.length;
+  const domain = sharedDomain(loaded.map((p: PlayerProfile) => ({ p10: p.p10, p50: p.median, p90: p.p90 })));
+  const names = loaded.map((p) => p.full_name ?? p.gsis_id);
   return (
     <div className="space-y-6">
       <PageHeader title="Compare players" eyebrow="Players" answer={ids.length < 2 ? "Pick two or three players to compare." : undefined} />
       {ids.length < MAX_COMPARE && <PlayerPicker exclude={ids} onPick={(id) => setIds(withPlayer(ids, id))} />}
+      {allLoaded && <CompareSummary ids={known} names={names} profiles={loaded} domain={domain} />}
       {ids.length > 0 && (
         <div className={`grid grid-cols-1 gap-8 ${GRID_BY_COUNT[ids.length] ?? ""}`}>
           {ids.map((id) => (
-            <Column key={id} gsisId={id} onRemove={() => setIds(withoutPlayer(ids, id))} />
+            <Column key={id} gsisId={id} onRemove={() => setIds(withoutPlayer(ids, id))} domain={domain} />
           ))}
         </div>
       )}

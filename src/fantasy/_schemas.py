@@ -210,6 +210,7 @@ OUTLOOK_SCHEMA: dict[str, pl.DataType | type[pl.DataType]] = {
     "next_ppg": _F,
     "change": _F,
     "chance_to_play": _F,
+    "next_game": _S,
     "label": _S,
     "why": _S,
 }

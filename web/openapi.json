@@ -7822,6 +7822,17 @@
             ],
             "title": "Chance To Play"
           },
+          "next_game": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Game"
+          },
           "label": {
             "type": "string",
             "title": "Label"
@@ -7843,6 +7854,7 @@
           "next_ppg",
           "change",
           "chance_to_play",
+          "next_game",
           "label",
           "why"
         ],
@@ -8156,6 +8168,28 @@
             },
             "type": "array",
             "title": "Role Weeks"
+          },
+          "next_game": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Game"
+          },
+          "bye_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bye Week"
           }
         },
         "additionalProperties": false,
@@ -8181,7 +8215,9 @@
           "ros_over_replacement",
           "outlook_label",
           "why",
-          "role_weeks"
+          "role_weeks",
+          "next_game",
+          "bye_week"
         ],
         "title": "PlayerProfile",
         "description": "Display only: next game range, rest of season over replacement, injury, outlook."

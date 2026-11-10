@@ -1,7 +1,10 @@
 import type { ReactNode } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { ApiBoundary } from "@/components/ApiBoundary";
+import { navSearch } from "@/components/layout/navLinks";
 import { Section } from "@/components/Section";
 import { useLeagueOwners } from "@/features/explore/useLeagueOwners";
+import type { Domain } from "@/viz/rangeAxis";
 import { Delta, Explain, ExplainDelta, formatNumber, formatPercent, RangeBar, sharedDomain, Sparkline } from "@/viz";
 import { marketChange, type PlayerProfile, resultSentence, roleKeysFor, roleSeries } from "./profile";
 import { useLeaguePath, useProfile } from "./useProfile";
@@ -16,9 +19,9 @@ const nextGameWhy = (p: PlayerProfile) =>
 const rosWhy = (p: PlayerProfile) =>
   `His projected points for the rest of the season (${formatNumber(p.ros_points)}) minus those of ${p.replacement_name ?? "the best other free agent"} (${formatNumber(p.replacement_points)}), the replacement at ${p.position}.`;
 
-function NextGame({ p, name }: { p: PlayerProfile; name?: string }) {
-  const domain = sharedDomain([{ p10: p.p10, p50: p.median, p90: p.p90 }]);
-  const result = resultSentence(p);
+function NextGame({ p, name, showResult, shared }: { p: PlayerProfile; name?: string; showResult: boolean; shared: Domain | null }) {
+  const domain = shared ?? sharedDomain([{ p10: p.p10, p50: p.median, p90: p.p90 }]);
+  const result = showResult ? resultSentence(p) : null;
   if (p.median == null || domain === null || p.week == null) {
     return result ? (
       <p className="text-heading font-semibold tabular-nums">{result}</p>
@@ -40,6 +43,7 @@ function NextGame({ p, name }: { p: PlayerProfile; name?: string }) {
         p90={p.p90}
         name={name ? `${name}, next game` : "Next game"}
       />
+      {p.next_game && <p className="text-body">{p.next_game}</p>}
       <p className="text-caption text-muted">
         10th to 90th percentile {formatNumber(p.p10)} to {formatNumber(p.p90)}, for a full game.
         {p.chance_to_play != null && ` Chance to play ${formatPercent(p.chance_to_play)}.`}
@@ -98,16 +102,47 @@ function Market({ rows }: { rows: MarketRow[] }) {
           No 30-day change: the source gives a change as large as the value, so he had no value 30 days ago.
         </p>
       )}
-      <p className="text-caption text-muted">FantasyCalc, today&apos;s value only: history is not stored, so there is no longer trend.</p>
+      <p className="text-caption text-muted">FantasyCalc value as of today. Only the 30-day change is kept, not a longer history.</p>
     </div>
   );
 }
 
+const LINK = "inline-flex min-h-[44px] items-center underline";
+
+/** Where to act on the player: my players go to the Lineup (start or sit) and Trades, others to Trades, free agents to Moves. */
 function Owner({ gsisId }: { gsisId: string }) {
   const { league, state, byPlayer } = useLeagueOwners();
+  const { search, pathname } = useLocation();
   if (league === null || state.kind !== "ready") return null;
   const owner = byPlayer?.get(gsisId);
-  return <p className="text-body">{owner ? `Owned by ${owner.owner}` : "Free agent"}</p>;
+  const to = (path: string, view?: string) => {
+    const params = new URLSearchParams(navSearch(path, search, pathname));
+    if (view) params.set("view", view);
+    const text = params.toString();
+    return { pathname: path, search: text ? `?${text}` : "" };
+  };
+  return (
+    <div className="space-y-1">
+      <p className="text-body">{owner ? `Owned by ${owner.owner}` : "Free agent"}</p>
+      <p className="flex flex-wrap gap-x-4">
+        {owner?.is_mine && (
+          <Link to={to("/lineup")} className={LINK}>
+            Start or sit on Lineup
+          </Link>
+        )}
+        {owner && (
+          <Link to={to("/moves", "trades")} className={LINK}>
+            Trade ideas on Moves
+          </Link>
+        )}
+        {!owner && (
+          <Link to={to("/moves", "fa")} className={LINK}>
+            Add on Moves
+          </Link>
+        )}
+      </p>
+    </div>
+  );
 }
 
 type Level = { level: 2 | 3 };
@@ -120,8 +155,25 @@ function Maybe({ show, title, level, children }: { show: boolean; title: string;
   ) : null;
 }
 
-/** The player page's sections in order; the ones with nothing to show are hidden, the key two say not available. */
-export function PlayerSections({ gsisId, level = 2, name }: { gsisId: string; level?: 2 | 3; name?: string }) {
+/**
+ * The player page's sections; the ones with nothing to show are hidden, the key two say not available. At level 2 (the page) the
+ * projection sections sit in the left column and role, injury, market and owner in the right; level 3 (Compare) is one column.
+ */
+export function PlayerSections({
+  gsisId,
+  level = 2,
+  name,
+  showResult = true,
+  domain = null,
+}: {
+  gsisId: string;
+  level?: 2 | 3;
+  name?: string;
+  /** False where the page header already says the final result. */
+  showResult?: boolean;
+  /** One range axis shared with the other compared players, so the bars compare by eye. */
+  domain?: Domain | null;
+}) {
   const profile = useProfile(gsisId);
   const market = useLeaguePath<MarketRow[]>(`market-values?ids=${encodeURIComponent(gsisId)}`);
   return (
@@ -131,37 +183,42 @@ export function PlayerSections({ gsisId, level = 2, name }: { gsisId: string; le
         const snap = keys.includes("snap_share") ? roleSeries(p.role_weeks, "snap_share") : [];
         const target = keys.includes("target_share") ? roleSeries(p.role_weeks, "target_share") : [];
         return (
-          <div className="space-y-6">
-            <Section title="Next game" level={level}>
-              <NextGame p={p} name={name} />
-            </Section>
-            <Section title="Rest of season" level={level}>
-              <RestOfSeason p={p} />
-            </Section>
-            <Maybe level={level} show={snap.length + target.length > 0} title="Role">
-              <ul className="space-y-1">
-                <RoleLine label="Snap share" values={snap} />
-                <RoleLine label="Target share" values={target} />
-              </ul>
-              <p className="mt-1 text-caption text-muted">By week this season.</p>
-            </Maybe>
-            <Maybe level={level} show={p.outlook_label != null || !!p.why} title="Why the model expects change">
-              <p className="text-body">
-                <span className="font-semibold">{p.outlook_label}</span>
-                {p.why ? `: ${p.why}` : ""}
-              </p>
-            </Maybe>
-            <Maybe level={level} show={!!p.injury_note || p.injury != null || p.chance_to_play != null} title="Injury and chance to play">
-              <p className="text-body">
-                {p.injury_note ?? "No injury report."} {p.chance_to_play != null && `${formatPercent(p.chance_to_play)} to play this game.`}
-              </p>
-            </Maybe>
-            <Section title="Market value" level={level}>
-              <ApiBoundary state={market}>{(rows) => <Market rows={rows} />}</ApiBoundary>
-            </Section>
-            <Section title="Owner" level={level}>
-              <Owner gsisId={gsisId} />
-            </Section>
+          <div className={level === 2 ? "grid gap-x-8 gap-y-6 lg:grid-cols-2" : "space-y-6"}>
+            <div className="min-w-0 space-y-6">
+              <Section title="Next game" level={level}>
+                <NextGame p={p} name={name} showResult={showResult} shared={domain} />
+              </Section>
+              <Section title="Rest of season" level={level}>
+                <RestOfSeason p={p} />
+              </Section>
+              <Maybe level={level} show={p.outlook_label != null || !!p.why} title="Why the model expects change">
+                <p className="text-body">
+                  <span className="font-semibold">{p.outlook_label}</span>
+                  {p.why ? `: ${p.why}` : ""}
+                </p>
+              </Maybe>
+            </div>
+            <div className="min-w-0 space-y-6">
+              <Maybe level={level} show={snap.length + target.length > 0} title="Role">
+                <ul className="space-y-1">
+                  <RoleLine label="Snap share" values={snap} />
+                  <RoleLine label="Target share" values={target} />
+                </ul>
+                <p className="mt-1 text-caption text-muted">By week this season.</p>
+              </Maybe>
+              <Maybe level={level} show={!!p.injury_note || p.injury != null || p.chance_to_play != null} title="Injury and chance to play">
+                <p className="text-body">
+                  {p.injury_note ?? "No injury report."}{" "}
+                  {p.chance_to_play != null && `${formatPercent(p.chance_to_play)} to play this game.`}
+                </p>
+              </Maybe>
+              <Section title="Market value" level={level}>
+                <ApiBoundary state={market}>{(rows) => <Market rows={rows} />}</ApiBoundary>
+              </Section>
+              <Section title="Owner" level={level}>
+                <Owner gsisId={gsisId} />
+              </Section>
+            </div>
           </div>
         );
       }}

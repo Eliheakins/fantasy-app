@@ -50,13 +50,14 @@ OUTLOOK_PINS = {
         "G_QB": ("Improving", "scoring 7.5 above what usage is worth"),
         "G_RB": (
             "Injured",
-            "scoring 7.5 above what usage is worth; Out: 0% to play, 100% next game",
+            "scoring 7.5 above what usage is worth; Out: 0% to play this game, 100% next game",
         ),
         "G_WR": (
             "Improving",
-            "scoring 7.5 above what usage is worth; Questionable: 76% to play, 100% next game",
+            "scoring 7.5 above what usage is worth; "
+            "Questionable: 76% to play this game, 100% next game",
         ),
-        "G_DL": ("Injured", "Doubtful: 2% to play, 100% next game"),
+        "G_DL": ("Injured", "Doubtful: 2% to play this game, 100% next game"),
         "G_TE": ("Injured", "IR, out at least 4 games"),
     },
     "league": {"G_OPP": ("Improving", "scoring 8.5 above what usage is worth")},

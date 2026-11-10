@@ -31,6 +31,8 @@ export interface Answer {
   lines: string[];
   /** The same lines split around the name, so the name can be a link (gsisId is null for team rows). */
   parts: { before: string; name: string; after: string; gsisId: string | null }[];
+  /** A ranking's one-line answer ("<name> leads with 1,036"), shown above the table in place of the numbered list; null otherwise. */
+  leader: { name: string; after: string; gsisId: string | null } | null;
 }
 
 const NO_FILTERS_CONTEXT = "All loaded seasons";
@@ -100,5 +102,15 @@ export function buildAnswer({
     };
   });
   const lines = parts.map((p) => `${p.before}${p.name}${p.after}`);
-  return { context: labels.length > 0 ? labels.join(", ") : NO_FILTERS_CONTEXT, lines, parts };
+  const top = result.rows[0];
+  const first = parts[0];
+  const leader =
+    ranked && top !== undefined && first !== undefined && parts.length > 1
+      ? {
+          name: first.name,
+          after: ` leads with ${statIds.map((id) => formatQueryValue(top[metricSelectAlias(id)])).join(" · ")}`,
+          gsisId: first.gsisId,
+        }
+      : null;
+  return { context: labels.length > 0 ? labels.join(", ") : NO_FILTERS_CONTEXT, lines, parts, leader };
 }

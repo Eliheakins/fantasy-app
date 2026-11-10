@@ -33,6 +33,8 @@ const base: PlayerProfile = {
   outlook_label: null,
   why: null,
   role_weeks: [],
+  next_game: null,
+  bye_week: null,
 };
 
 describe("answerSentence", () => {

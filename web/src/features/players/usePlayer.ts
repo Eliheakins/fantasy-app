@@ -24,3 +24,20 @@ export function usePlayer(gsisId: string): ApiState<PlayerInfo | null> {
 function failed(message: string, retry: () => void): ApiState<never> {
   return { kind: "error", error: { message, code: null }, retry };
 }
+
+/** Of these ids, those the stat data knows, in order; null until that is read. One lookup for the whole list. */
+export function useKnownIds(gsisIds: readonly string[]): string[] | null {
+  const manifestQuery = useManifestQuery();
+  const manifest = manifestQuery.data;
+  const query = useQuery<string[], Error>({
+    queryKey: ["known-ids", gsisIds, manifest?.built_at ?? null],
+    enabled: manifest !== undefined && gsisIds.length > 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const found = new Set((await getPlayersByIds(manifest ?? null, [...gsisIds])).map((p) => p.gsis_id));
+      return gsisIds.filter((id) => found.has(id));
+    },
+  });
+  return query.data ?? null;
+}

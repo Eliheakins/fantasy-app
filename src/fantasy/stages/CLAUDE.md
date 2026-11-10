@@ -5,7 +5,7 @@ Each stage is `python -m fantasy.stages.<name>`. `make refresh` runs `fantasy/pi
 ## Order
 
 0. `backup`: copies `data/archive/` out of the repo, then:
-1. `sync_sleeper`, `news_archive` (daily Sleeper status snapshot from the cached players file), `sleeper_projections`, `outside_projections` (outside sources' snapshots), `ingest_nfl`, `crosswalk` (Sleeper to nflverse ID map): raw data.
+1. `sync_sleeper`, `news_archive` (daily Sleeper status snapshot from the cached players file), `ingest_nfl`, `week_rollover` (moves `leagues.current_week` up once every game of that week has a score, because Sleeper's week moves on Wednesday), `sleeper_projections`, `outside_projections` (outside sources' snapshots), `crosswalk` (Sleeper to nflverse ID map): raw data.
 2. `score` (points per league's scoring), `prop_points` (`proj_props`: this week's prop-implied points from the latest `make odds-slate` snapshot; `proj_outside`: outside sources' latest snapshots, FFToday points), `streaming` (K and DEF projections).
 3. `project`: rolling baseline (`proj_baseline`).
    `learn` (package `stages/learn/`; the GBM code it shares is `stages/gbm.py`): gradient-boosted model on lagged stats and role data (`proj_learned`, same schema). `projection_model` in `config.toml` picks which table later stages read, through `store.projection_table()`.

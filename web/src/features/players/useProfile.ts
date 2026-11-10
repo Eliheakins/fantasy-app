@@ -13,3 +13,20 @@ export function useLeaguePath<T>(path: string): ApiState<T> {
 export function useProfile(gsisId: string): ApiState<PlayerProfile> {
   return useLeaguePath<PlayerProfile>(`players/${encodeURIComponent(gsisId)}/profile`);
 }
+
+/** Profiles of up to MAX_COMPARE players, in order; the same queries the columns make, so nothing is fetched twice. */
+export function useProfiles(gsisIds: readonly string[]): ApiState<PlayerProfile>[] {
+  const { league } = useTeam();
+  const path = (i: number) => {
+    const id = gsisIds[i];
+    return league === null || id === undefined
+      ? null
+      : `/api/leagues/${encodeURIComponent(league)}/players/${encodeURIComponent(id)}/profile`;
+  };
+  const states = [
+    useEnvelopeQuery<PlayerProfile>(path(0)),
+    useEnvelopeQuery<PlayerProfile>(path(1)),
+    useEnvelopeQuery<PlayerProfile>(path(2)),
+  ];
+  return states.slice(0, gsisIds.length);
+}

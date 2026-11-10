@@ -361,11 +361,11 @@ ROWS = {
     "/api/leagues/t/player-weeks?gsis_id=G_QB&n=2": {"week", "projection"},
     "/api/leagues/t/outlook?scope=mine": {
         "gsis_id", "full_name", "position", "owner", "recent_ppg", "expected_ppg", "next_ppg",
-        "change", "chance_to_play", "label", "why",
+        "change", "chance_to_play", "next_game", "label", "why",
     },
     "/api/leagues/t/outlook?scope=free": {
         "gsis_id", "full_name", "position", "owner", "recent_ppg", "expected_ppg", "next_ppg",
-        "change", "chance_to_play", "label", "why",
+        "change", "chance_to_play", "next_game", "label", "why",
     },
 }  # fmt: skip
 

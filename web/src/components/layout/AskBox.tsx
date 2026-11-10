@@ -7,11 +7,14 @@ import { navSearch } from "./navLinks";
 /** The question limit the intent endpoint accepts (see NLQPanel). */
 const MAX_QUESTION_LENGTH = 2000;
 
-/** Top bar question box: an input from md up, an icon link to /ask on phones. Opens /ask?q= keeping league, team and week. */
+/** Top bar question box: an input from md up, an icon link to /ask on phones. Opens /ask?q= keeping league, team and week; hidden on /ask itself. */
 export function AskBox() {
   const [text, setText] = useState("");
   const navigate = useNavigate();
   const { pathname, search } = useLocation();
+
+  // /ask has its own question box
+  if (pathname === "/ask") return null;
 
   const submit = (e: FormEvent) => {
     e.preventDefault();

@@ -15,6 +15,7 @@ import { TEAMS } from "@/stat/config/teams";
 import { isLeagueQuery, serializeQuery } from "@/stat/lib/queryUrl";
 import { useQueryState } from "@/stat/react/useQueryState";
 
+import { AskExamples } from "./AskExamples";
 import { buildAnswer } from "./answerText";
 import { InterpretationChips } from "./InterpretationChips";
 import { PlayerChips, PlayerChoices } from "./NlqPlayerPickers";
@@ -86,10 +87,13 @@ export function NLQPanel() {
   return (
     <div className="space-y-4">
       <section className="space-y-4" aria-label="Ask a question">
-        <p className="measure text-caption text-muted">
-          Names are matched in your browser. Built-in rules read what they can; the hosted model (Jev) reads the rest, with a local model as
-          the fallback. The model sees only the question. The numbers are computed in your browser from play-by-play data.
-        </p>
+        <AskExamples
+          disabled={busy}
+          onPick={(q) => {
+            ask.setQuestion(q);
+            void ask.onAsk(q);
+          }}
+        />
 
         <Textarea
           value={ask.question}
@@ -119,7 +123,7 @@ export function NLQPanel() {
           <section aria-label="Answer" className="space-y-1 border-t border-line pt-3">
             <p className="text-caption font-medium uppercase tracking-wide text-focus">{answer.context}</p>
             <ul className="space-y-1 text-body text-ink">
-              {answer.parts.map((p, i) => (
+              {(answer.leader ? [{ before: "", ...answer.leader }] : answer.parts).map((p, i) => (
                 <li key={answer.lines[i]}>
                   {p.before}
                   {p.gsisId ? <PlayerLink gsisId={p.gsisId} name={p.name} position={positionByGsis.get(p.gsisId) ?? ""} /> : p.name}
@@ -176,7 +180,7 @@ export function NLQPanel() {
               to={{ pathname: "/players/find", search: serializeQuery(state).toString() }}
               className="font-medium text-ink underline-offset-2 hover:underline"
             >
-              Open this query in Explore
+              Open this query in Find players
             </Link>
             .
           </p>

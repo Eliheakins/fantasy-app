@@ -30,6 +30,8 @@ const profile: PlayerProfile = {
   ros_over_replacement: 17.5,
   outlook_label: "Improving",
   why: "teammates who carry targets are out",
+  next_game: null,
+  bye_week: null,
   role_weeks: [
     { week: 1, snap_share: 0.8, target_share: 0.2 },
     { week: 2, snap_share: 0.6, target_share: 0.3 },
@@ -73,8 +75,8 @@ describe("PlayerSections", () => {
     expect(headings()).toEqual([
       "Next game",
       "Rest of season",
-      "Role",
       "Why the model expects change",
+      "Role",
       "Injury and chance to play",
       "Market value",
       "Owner",
@@ -105,6 +107,8 @@ describe("PlayerSections", () => {
         replacement_name: null,
         replacement_points: null,
         role_weeks: [],
+        next_game: null,
+        bye_week: null,
         why: null,
         outlook_label: null,
         injury: null,
@@ -168,10 +172,10 @@ describe("PlayerSections", () => {
     expect(screen.getByRole("img", { name: /^Ann, next game:/ })).toBeInTheDocument();
   });
 
-  it("states that market value history is not stored", () => {
+  it("states that only the 30-day market change is kept", () => {
     mock(ready(profile));
     renderSections();
-    expect(screen.getByText(/history is not stored/i)).toBeInTheDocument();
+    expect(screen.getByText(/Only the 30-day change is kept/i)).toBeInTheDocument();
   });
 
   it("shows the error when the profile fails to load", () => {

@@ -53,6 +53,8 @@ class PlayerProfile(Row):
     outlook_label: str | None
     why: str | None
     role_weeks: list[RoleWeek]
+    next_game: str | None  # "Week 10 at KC, Sun 1:00 PM ET" or "Week 10 bye"
+    bye_week: int | None
 
 
 class OutlookRow(Row):
@@ -65,6 +67,7 @@ class OutlookRow(Row):
     next_ppg: float | None
     change: float | None
     chance_to_play: float | None
+    next_game: str | None  # "vs KC", "@ KC" or "Bye"
     label: str
     why: str
 

@@ -25,10 +25,10 @@ const manifest = {
   seasons: [{ season: 2026, path: "s.parquet", rows: 1, max_week: 9, has_participation: true }],
 };
 const gameLog = {
-  columns: ["player_id", "season", "week", "m_rec_receptions", "m_rec_yards"],
+  columns: ["player_id", "season", "week", "m_rec_tgt", "m_rec_receptions", "m_rec_yards", "m_rec_tds"],
   rows: [
-    { player_id: "00-1", season: 2026, week: 1, m_rec_receptions: 7, m_rec_yards: 101 },
-    { player_id: "00-1", season: 2026, week: 2, m_rec_receptions: 5, m_rec_yards: 64 },
+    { player_id: "00-1", season: 2026, week: 1, m_rec_tgt: 9, m_rec_receptions: 7, m_rec_yards: 101, m_rec_tds: 1 },
+    { player_id: "00-1", season: 2026, week: 2, m_rec_tgt: 6, m_rec_receptions: 5, m_rec_yards: 64, m_rec_tds: 0 },
   ],
 };
 const ready = <T,>(data: T): ApiState<T> => ({ kind: "ready", data }) as ApiState<T>;
@@ -118,14 +118,14 @@ describe("Player page", () => {
       within(rows[1]!)
         .getAllByRole("cell")
         .map((c) => c.textContent),
-    ).toEqual(["1", "7", "101", "21.1"]);
+    ).toEqual(["1", "9", "7", "101", "1", "21.1"]);
     expect(
       within(rows[2]!)
         .getAllByRole("cell")
         .map((c) => c.textContent),
-    ).toEqual(["2", "5", "64", "12.4"]);
+    ).toEqual(["2", "6", "5", "64", "0", "12.4"]);
     expect(vi.mocked(runStatQuery).mock.calls[0]![0]).toMatchObject({
-      statIds: ["rec_receptions", "rec_yards"],
+      statIds: ["rec_tgt", "rec_receptions", "rec_yards", "rec_tds"],
       gsisIds: ["00-1"],
       split: "week",
       granularity: "total",

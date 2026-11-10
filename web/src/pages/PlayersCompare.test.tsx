@@ -146,7 +146,7 @@ describe("Players compare", () => {
     renderAt("/players/compare?p=a&p=b");
     await screen.findByRole("group", { name: "Bob Beta" });
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(["Ann Alpha", "Bob Beta"]);
+    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual(["Side by side", "Ann Alpha", "Bob Beta"]);
     expect(screen.getAllByRole("heading", { level: 3 }).length).toBe(10);
   });
 

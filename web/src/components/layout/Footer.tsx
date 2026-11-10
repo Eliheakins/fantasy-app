@@ -11,6 +11,9 @@ export function Footer() {
   const { search, pathname } = useLocation();
   const session = useSession();
   const queryClient = useQueryClient();
+  const history = new URLSearchParams(navSearch("/ask", search, pathname));
+  history.set("tab", "history");
+  const historySearch = history.toString();
   const rows = state.kind === "ready" ? state.data.freshness : [];
   // a laptop run with no accounts answers as "local": there is nobody to sign out
   const account = session.kind === "signedIn" && session.me.email !== LOCAL_EMAIL ? session.me : null;
@@ -21,6 +24,15 @@ export function Footer() {
         className="mr-4 inline-flex min-h-[44px] items-center underline"
       >
         Model scorecard
+      </Link>
+      <Link
+        to={{ pathname: "/ask", search: navSearch("/ask", search, pathname) }}
+        className="mr-4 inline-flex min-h-[44px] items-center underline"
+      >
+        Ask
+      </Link>
+      <Link to={{ pathname: "/ask", search: historySearch }} className="mr-4 inline-flex min-h-[44px] items-center underline">
+        Ask history
       </Link>
       {rows.map((r) => (
         <span key={r.source} className="mr-4 inline-block">

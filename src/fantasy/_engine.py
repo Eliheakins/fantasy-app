@@ -269,13 +269,19 @@ def _injury_note(data: LeagueData, gsis_id: str) -> str | None:
     long_term = ", out at least 4 games" if status in LONG_TERM else ""
     if "play_prob" not in data.projections.columns:
         return text + long_term
-    rows = data.projections.filter(pl.col("gsis_id") == gsis_id).sort("week").head(2)
+    rows = (
+        data.projections.filter(
+            (pl.col("gsis_id") == gsis_id) & (pl.col("week") >= data.current_week)
+        )
+        .sort("week")
+        .head(2)
+    )
     chances = rows["play_prob"].to_list()
     if not chances or (long_term and not any(chances)):  # IR's return curve has chances
         return text + long_term
     return (
         text
-        + f": {chances[0]:.0%} to play"
+        + f": {chances[0]:.0%} to play this game"
         + (f", {chances[1]:.0%} next game" if len(chances) > 1 else "")
     )
 

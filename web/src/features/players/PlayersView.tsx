@@ -44,7 +44,8 @@ function columns(showOwner: boolean): Column<OutlookRow>[] {
       numeric: true,
       render: (r) => <Delta points={r.change ?? Number.NaN} confidence={isOut(r) ? "toss-up" : undefined} />,
     },
-    { label: "Plays this game", numeric: true, render: (r) => formatPercent(r.chance_to_play) },
+    { label: "Next game", render: (r) => r.next_game ?? "–" },
+    { label: "Chance to play", numeric: true, render: (r) => formatPercent(r.chance_to_play) },
     { label: "Why", role: "detail", render: (r) => <span className={WHY_MIN_WIDTH}>{r.why || "–"}</span> },
   ];
 }

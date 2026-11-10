@@ -55,14 +55,14 @@ export default function Player() {
           player === null ? (
             <NotFound />
           ) : (
-            <div className="max-w-[960px] space-y-6">
+            <div className="max-w-[1200px] space-y-6">
               <PageHeader
                 title={player.full_name}
                 eyebrow={["Players", player.position, player.team].filter(Boolean).join(" · ")}
                 answer={answer}
                 actions={<CompareLink gsisId={gsisId} />}
               />
-              <PlayerSections gsisId={gsisId} />
+              <PlayerSections gsisId={gsisId} showResult={answer === null} />
               <Section title="This season">
                 {statIdsFor(player.position ?? "") === null ? (
                   <p className="text-body text-muted">No stat lines for this position.</p>

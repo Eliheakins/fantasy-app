@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -6,9 +7,10 @@ import { HistoryPanel } from "@/features/ask/HistoryPanel";
 import { NLQPanel } from "@/features/ask/NLQPanel";
 import { ManifestProvider } from "@/stat/react/manifest";
 
-/** Ask in plain language: rules read the question first, the hosted model (Jev, local model as fallback) the rest, and Explore's engine answers. */
+/** Ask in plain language: rules read the question first, the hosted model (Jev, local model as fallback) the rest, and the Find players engine answers. */
 export default function Ask() {
-  const [tab, setTab] = useState("ask");
+  const [params] = useSearchParams();
+  const [tab, setTab] = useState(params.get("tab") === "history" ? "history" : "ask");
   return (
     <section>
       <PageHeader

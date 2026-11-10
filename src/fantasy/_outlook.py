@@ -8,6 +8,7 @@ import polars as pl
 
 from fantasy import store
 from fantasy._engine import _injury_note, _league, _league_id, _names, _opponent_of, _pool
+from fantasy._next_game import next_games
 from fantasy._schemas import OUTLOOK_SCHEMA
 from fantasy.config import load_config
 from fantasy.sim import moves
@@ -200,6 +201,7 @@ def player_outlook(
         "free": lambda owner: owner is None,
     }
     wanted = scopes[scope]
+    upcoming = next_games(summary["gsis_id"].to_list(), data.current_week, data_dir)
     rows = []
     for r in summary.join(recent, on="gsis_id", how="left").iter_rows(named=True):
         g = r["gsis_id"]
@@ -222,6 +224,7 @@ def player_outlook(
                 "next_ppg": r["next_ppg"],
                 "change": change,
                 "chance_to_play": r["chance_to_play"],
+                "next_game": upcoming[g].short() if g in upcoming else None,
                 "label": _label(r, change),
                 "why": _why(r, _injury_note(data, g)),
             }

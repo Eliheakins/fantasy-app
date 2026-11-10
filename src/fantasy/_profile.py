@@ -22,6 +22,7 @@ from fantasy._engine import (
     data_version,
 )
 from fantasy._lineup import _expected_total, _flag_status, _is_out, _ranged, _spread
+from fantasy._next_game import bye_week, next_games
 from fantasy._outlook import player_outlook
 from fantasy.config import load_config
 from fantasy.sim import moves
@@ -177,6 +178,7 @@ def player_profile(
     ros = moves.ros_value(data, [gsis_id])[gsis_id] if has_ros else None
     name, points = _replacement(data, gsis_id, position, names) if position else (None, None)
     outlook = _outlook(league_key, data, mine, gsis_id, data_dir) if position is not None else None
+    upcoming = next_games([gsis_id], data.current_week, data_dir).get(gsis_id)
     return {
         "gsis_id": gsis_id,
         "full_name": names.get(gsis_id),
@@ -199,4 +201,6 @@ def player_profile(
         "outlook_label": outlook["label"] if outlook else None,
         "why": outlook["why"] if outlook else None,
         "role_weeks": _role_weeks(gsis_id, data_dir),
+        "next_game": upcoming.long() if upcoming else None,
+        "bye_week": bye_week(gsis_id, data_dir),
     }

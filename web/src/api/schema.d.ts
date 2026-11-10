@@ -2337,6 +2337,8 @@ export interface components {
             change: number | null;
             /** Chance To Play */
             chance_to_play: number | null;
+            /** Next Game */
+            next_game: string | null;
             /** Label */
             label: string;
             /** Why */
@@ -2423,6 +2425,10 @@ export interface components {
             why: string | null;
             /** Role Weeks */
             role_weeks: components["schemas"]["RoleWeek"][];
+            /** Next Game */
+            next_game: string | null;
+            /** Bye Week */
+            bye_week: number | null;
         };
         /** PlayerWeekRow */
         PlayerWeekRow: {

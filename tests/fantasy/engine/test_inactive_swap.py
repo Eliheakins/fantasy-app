@@ -67,7 +67,7 @@ def test_long_term_notes_say_out_at_least_four_games_unless_the_curve_gives_a_ch
     )
     flags: dict[str, Flag] = {"G_RB": ("IR", "Knee", None), "G_TE": ("PUP", None, None)}
     hurt = replace(data, injuries=flags, projections=chances)
-    assert _engine._injury_note(hurt, "G_RB") == "IR (knee): 0% to play, 4% next game"
+    assert _engine._injury_note(hurt, "G_RB") == "IR (knee): 0% to play this game, 4% next game"
     assert _engine._injury_note(hurt, "G_TE") == "PUP, out at least 4 games"
     no_chances = replace(hurt, projections=chances.drop("play_prob"))
     assert _engine._injury_note(no_chances, "G_RB") == "IR (knee), out at least 4 games"

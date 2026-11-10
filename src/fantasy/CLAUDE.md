@@ -10,7 +10,7 @@ The FastAPI app (`api.py`, the route package `api_routes/` with one module per a
 - `_` modules:
   - `_engine.py`: `_league(league_key, data_dir, team)` returns the simulation inputs and "my" roster id, built once per data version. `_league_id` is one filtered read for display reads that need no projections or draws. `_week_values` gives current-week lineup values.
   - `_leagues.py`: `leagues`, `scoring_labels`, `my_league`, `team_fields`.
-  - `_lineup.py`, `_outlook.py` (`player_owners`, `schedule`, `player_outlook`), `_market.py` (`player_points`, market reads), `_profile.py` (`player_profile`).
+  - `_next_game.py` (a team's next unplayed game or bye, and its bye week), `_lineup.py`, `_outlook.py` (`player_owners`, `schedule`, `player_outlook`), `_market.py` (`player_points`, market reads), `_profile.py` (`player_profile`).
   - `_status.py` (`freshness`, `simulation_behind_inputs`, `missing_layers`, `refresh_runs`), `_calendar.py` (`week_calendar`, `status_changes`), `_actions.py` (`actions`, `streamers`).
   - `_live.py` (`refresh_live`, `live_win_row`, `record_live_tick`, `game_day`) is the live writer.
   - `_scoreboard.py`, `_scorecard.py`, `_values.py`, `_watch.py`, `_season_events.py`, `_league_view.py`, `_digest.py`, `_schemas.py`, `_view.py` (page logic the API serves).

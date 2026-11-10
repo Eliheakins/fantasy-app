@@ -153,3 +153,31 @@ describe("buildAnswer for teams", () => {
     expect(buildAnswer(input).lines[0]).toContain("League points (per game): 21.8");
   });
 });
+
+describe("buildAnswer leader", () => {
+  const rows = [
+    { player_id: "m", [passYards]: 4183 },
+    { player_id: "k", [passYards]: 3900 },
+  ];
+  const input = {
+    result: { columns: ["player_id", passYards], rows },
+    statIds: ["pass_yards"],
+    granularity: "total" as const,
+    filterIds: [],
+    chipGroups: CHIP_GROUPS,
+    nameByGsis: NAMES,
+  };
+
+  it("names the top row of a ranking with its value", () => {
+    const { leader } = buildAnswer({ ...input, ranked: true });
+
+    expect(leader).toEqual({ name: "Patrick Mahomes", after: " leads with 4183", gsisId: "m" });
+  });
+
+  it("has no leader for an unranked answer or a single row", () => {
+    expect(buildAnswer(input).leader).toBeNull();
+    expect(
+      buildAnswer({ ...input, ranked: true, result: { columns: ["player_id", passYards], rows: rows.slice(0, 1) } }).leader,
+    ).toBeNull();
+  });
+});
