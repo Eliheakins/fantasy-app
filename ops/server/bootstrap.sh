@@ -66,7 +66,7 @@ fi
 # Caddy only terminates HTTPS and adds headers; who may sign in is the app's own login.
 # Inline styles: charts set React `style` attributes. https: images: player headshots. The intent
 # body cap stops a large paid-model request before the app buffers it.
-CSP="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+CSP="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
 printf '%s {\n\tencode zstd gzip\n\theader {\n\t\tStrict-Transport-Security "max-age=31536000"\n\t\tX-Content-Type-Options nosniff\n\t\tX-Frame-Options DENY\n\t\tReferrer-Policy strict-origin-when-cross-origin\n\t\tContent-Security-Policy "%s"\n\t}\n\trequest_body /api/stat/nlq/intent {\n\t\tmax_size 32KB\n\t}\n\treverse_proxy 127.0.0.1:8000\n}\n' \
   "$SITE_HOST" "$CSP" >/etc/caddy/Caddyfile
 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
