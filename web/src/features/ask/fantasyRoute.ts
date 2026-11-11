@@ -17,7 +17,10 @@ export interface FantasyRoute {
   label: string | null;
 }
 
-const WAIVERS = /\bwaivers?\b|\bwaiver wire\b|\bpick ?up\b|\bfree agents?\b|\bwho (?:should i|to|can i) add\b/;
+const WAIVERS = /\bwaivers?\b|\bwaiver wire\b|\bpick ?up\b|\bwho (?:should i|to|can i) add\b/;
+const FREE_AGENTS = /\bfree[- ]agents?\b/;
+/** A count the stat paths answer ("free agent WRs with the most targets"); "best" and "top" stay Moves' ranking. */
+const STAT_COUNT = /\b(?:most|fewest|least|highest|lowest)\b/;
 const DROPS = /\bwho (?:should i|to|do i) (?:drop|cut|release)\b|\bshould i (?:drop|cut|release)\b/;
 const INJURY = /\binjur(?:ed|y|ies)\b|\bhurt\b|\bhealthy\b|\bquestionable\b|\bdoubtful\b|\binjury report\b/;
 const PROJECTION = /\bproject(?:ed|ion|ions)\b|\brest of (?:the )?season\b|\bros\b|\boutlook\b/;
@@ -37,7 +40,7 @@ function onePlayer(question: string, dictionary: readonly PlayerDictionaryRow[])
 /** The page a fantasy question belongs on, or null when it is a stat question for the other paths. */
 export function readFantasyRoute(question: string, dictionary: readonly PlayerDictionaryRow[]): FantasyRoute | null {
   const q = question.toLowerCase();
-  if (WAIVERS.test(q) || DROPS.test(q)) {
+  if (WAIVERS.test(q) || DROPS.test(q) || (FREE_AGENTS.test(q) && !STAT_COUNT.test(q))) {
     return {
       text: "Who to add, and whom to drop for them, is on the Moves page, ranked by what each move does to your season.",
       to: "/moves?view=fa",

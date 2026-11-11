@@ -25,6 +25,13 @@ Ask answers an NFL question in plain language. `pages/Ask.tsx` has an Ask tab an
 - `readWho` reads position nouns (QB, RB, WR, TE in their usual words), "rookie" and role nouns ("rushers"). Position and rookie become `QueryState.position` / `rookie`; a generic stat settles to the position's own; a role noun must agree with the ranked stat or picks its family member.
 - `ruleEval.ts`: a case's `rules_reads` is what the rules must read where the model alone must refuse (opponents are read in code before the model is asked).
 
+## League rosters (issue #77)
+
+- `rosterWords.ts` reads "free agent(s)", "unrostered", "on my roster/team", "my players" and "rostered" in a ranking that names no player, and sets `QueryState.roster` (the Find players League filter, `lg`). Explore applies it from the selected league's owners, so Ask adds no fetch. The words are marked read in `claimStructure`, cut from the model's text in `modelText` (so no league word reaches a prompt), and `leaderboardFor` carries the value on `Leaderboard.roster` for both paths.
+- Refused: two groups at once, a team ranking, and no selected league (`useAsk.answer` says to pick a league). The answer's context line shows "Free agents only" and so on (`scopeLabels`).
+- `fantasyRoute.ts` sends a free-agent question to Moves unless it carries a count word (most, fewest, least, highest, lowest); "best free agents" still goes to Moves. Waivers and pick-ups always go to Moves.
+- `timeWords.ts` reads "over the last N games" as the last N games; "over 100 yards" is still unread.
+
 ## Names
 
 - `resolvePlayers.ts`: namesakes get the same choice buttons (`NlqPlayerPickers`). `resolveTeams.ts` does the team names.

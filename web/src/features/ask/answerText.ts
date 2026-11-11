@@ -2,6 +2,7 @@ import { getStatById } from "@/stat/config/statDictionary";
 import type { FilterChipGroup } from "@/stat/config/queryBuilderOptions";
 import { formatQueryValue } from "@/stat/lib/formatQueryValue";
 import { formatMetricValueHeader, metricSelectAlias } from "@/stat/lib/queryBuilder";
+import type { RosterFilter } from "@/stat/lib/queryUrl";
 import type { GranularityMode } from "@/stat/types/queryBuilder";
 import type { QueryResult } from "@/stat/types/workbench";
 
@@ -22,6 +23,7 @@ export interface AnswerInput {
   lastGames?: number | null;
   position?: string | null;
   rookie?: boolean;
+  roster?: RosterFilter | null;
 }
 
 export interface Answer {
@@ -37,12 +39,24 @@ export interface Answer {
 
 const NO_FILTERS_CONTEXT = "All loaded seasons";
 
+const ROSTER_LABELS: Readonly<Record<RosterFilter, string>> = {
+  mine: "On my roster",
+  rostered: "Rostered players only",
+  fa: "Free agents only",
+};
+
 /** Parts of a query that are not chips: the last N games, and who a ranking may list. */
-export function scopeLabels(scope: { lastGames: number | null; position?: string | null; rookie?: boolean }): string[] {
+export function scopeLabels(scope: {
+  lastGames: number | null;
+  position?: string | null;
+  rookie?: boolean;
+  roster?: RosterFilter | null;
+}): string[] {
   return [
     ...(scope.lastGames ? [scope.lastGames === 1 ? "Last game" : `Last ${scope.lastGames} games`] : []),
     ...(scope.position ? [`${scope.position}s only`] : []),
     ...(scope.rookie ? ["Rookies only"] : []),
+    ...(scope.roster ? [ROSTER_LABELS[scope.roster]] : []),
   ];
 }
 
@@ -80,8 +94,9 @@ export function buildAnswer({
   lastGames = null,
   position = null,
   rookie = false,
+  roster = null,
 }: AnswerInput): Answer {
-  const labels = [...filterLabels(filterIds, chipGroups), ...scopeLabels({ lastGames, position, rookie })];
+  const labels = [...filterLabels(filterIds, chipGroups), ...scopeLabels({ lastGames, position, rookie, roster })];
   const parts = result.rows.map((row, rank) => {
     const pid = String(row[idColumn] ?? "");
     const name = nameByGsis.get(pid) ?? pid;

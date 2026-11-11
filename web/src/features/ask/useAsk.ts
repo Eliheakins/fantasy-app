@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { useTeam } from "@/lib/teamContext";
 import { getAllFilterChipIds } from "@/stat/config/queryBuilderOptions";
 import { useFilterChipGroups } from "@/stat/react/filterChipGroups";
 import { useManifest } from "@/stat/react/manifest";
@@ -47,6 +48,7 @@ export function useAsk() {
   const { state, question: urlQuestion, showQuery } = useQueryState();
   const { manifest, seasons } = useManifest();
   const chipGroups = useFilterChipGroups();
+  const { league } = useTeam();
   const [ask, dispatch] = useReducer(askReducer, urlQuestion, initialAsk);
   const { question, phase } = ask;
   const setQuestion = useCallback((text: string) => dispatch({ type: "edit", question: text }), []);
@@ -91,6 +93,11 @@ export function useAsk() {
 
   const answer = useCallback<AskActions["answer"]>(
     (next, asked, path, unrecognized, notes) => {
+      // The League filter reads the selected league's rosters; with none selected it would answer for no one.
+      if (next.roster && league === null) {
+        fail(asked, path, "Pick a league first: free agents and rosters are those of the selected league.");
+        return;
+      }
       // The URL can drop or clamp parts of a query, so compare edits against what is actually shown.
       const shown = parseQuery(writeQuery(new URLSearchParams(), next), new Set(getAllFilterChipIds(chipGroups)));
       const entryId = logAsk({ question: asked, path, outcome: { kind: "answered", query: loggedFrom(shown) } });
@@ -99,7 +106,7 @@ export function useAsk() {
       // The same question can be asked twice, which leaves the URL's question unchanged.
       dispatch({ type: "answered" });
     },
-    [showQuery, chipGroups],
+    [showQuery, chipGroups, league, fail],
   );
 
   /** A start/sit or trade answer: the URL keeps the question, so reload or a shared link answers it again. */

@@ -4,17 +4,17 @@ import type { IntentOutcome, QueryIntent } from "@/stat/lib/schemas/nlqIntent";
 import type { PlayerMatch } from "./resolvePlayers";
 import { parseRules } from "./ruleParser";
 import { readOpponents } from "./opponents";
+import { readRoster } from "./rosterWords";
 import { tokenize } from "./resolvePlayers";
 import { readTime, type TimeScope } from "./timeWords";
 
 /** The question without the words code reads itself (time, opponents); the question as asked when there are none. */
 function modelText(question: string, scope: TimeScope, playerNamed: boolean): string {
-  const read = new Set([...readTime(question, scope).used, ...readOpponents(question, playerNamed).used]);
-  return read.size === 0
-    ? question
-    : tokenize(question.replace(/%/g, " percent "))
-        .filter((_, i) => !read.has(i))
-        .join(" ");
+  const tokens = tokenize(question.replace(/%/g, " percent "));
+  // A roster word means the League filter only in a ranking; next to a player it stays for the model to refuse.
+  const roster = playerNamed ? [] : readRoster(tokens).at;
+  const read = new Set([...readTime(question, scope).used, ...readOpponents(question, playerNamed).used, ...roster]);
+  return read.size === 0 ? question : tokens.filter((_, i) => !read.has(i)).join(" ");
 }
 
 /** "saved" is an answer the user corrected earlier, replayed without asking anything. */

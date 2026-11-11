@@ -164,6 +164,7 @@ export function showRules(
     lastGames: time.lastGames,
     position: board?.position ?? null,
     rookie: board?.rookie ?? false,
+    roster: board?.roster ?? null,
   };
   actions.answer(next, asked, path, unrecognized, time.notes);
 }

@@ -147,6 +147,11 @@ const WORD_READERS: readonly WordReader[] = [
       if (n !== null && n >= 1 && n <= MAX_LAST_GAMES) {
         s.lastGames = n;
         take(s, ...(GAME_WORDS.has(c.next) ? [c.i, c.i + 1] : [c.i, c.i + 1, c.i + 2]));
+        // "over the last 3 games": here "over" is the phrase's lead, not a threshold ("over 100 yards").
+        const lead = s.tokens[c.i - 1] === "the" ? c.i - 2 : c.i - 1;
+        if (s.tokens[lead] === "over") {
+          take(s, lead);
+        }
       }
     },
   },

@@ -1,6 +1,7 @@
 import type { Side } from "@/stat/types/queryBuilder";
 
 import { readLimit, readMinimum, readWho } from "../ranking";
+import { readRoster } from "../rosterWords";
 import { NAME_SUFFIXES, tokenize } from "../resolvePlayers";
 import type { Entities } from "./entities";
 import { findSplit, type SplitRead } from "./split";
@@ -86,7 +87,11 @@ export function claimStructure(e: Entities): Stage<Structure> {
       return stop(ambiguous(limit.reason));
     }
     // "min 100 carries", "tight ends", "rookies": read here; leaderboardFor checks they fit the stat.
-    for (const at of [...(limit ? [limit.at] : []), ...(readMinimum(tokens)?.at ?? []), ...readWho(tokens).at]) {
+    const roster = readRoster(tokens);
+    if (roster.reason) {
+      return stop(ambiguous(roster.reason));
+    }
+    for (const at of [...(limit ? [limit.at] : []), ...(readMinimum(tokens)?.at ?? []), ...readWho(tokens).at, ...roster.at]) {
       used[at] = true;
     }
   }

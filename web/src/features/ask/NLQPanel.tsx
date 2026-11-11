@@ -74,6 +74,7 @@ export function NLQPanel() {
       lastGames: state.lastGames,
       position: state.position,
       rookie: state.rookie,
+      roster: state.roster,
     });
   }, [showingAnswer, exec.result, exec.namedPlayers, state, chipGroups, leagueName]);
 

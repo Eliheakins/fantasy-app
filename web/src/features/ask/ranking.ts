@@ -3,8 +3,10 @@
  * the play floor a player needs to qualify ("min 100 carries"), and "in a single game".
  */
 import { familyMember, getStatById, type PlayerRole } from "@/stat/config/statDictionary";
-import type { Position, QueryOrder } from "@/stat/lib/queryUrl";
+import type { Position, QueryOrder, RosterFilter } from "@/stat/lib/queryUrl";
 import type { GranularityMode } from "@/stat/types/queryBuilder";
+
+import { readRoster } from "./rosterWords";
 
 /** A league-wide ranking: the stat to order by, how many rows to keep, the plays a player needs to qualify, and who may be listed. */
 export interface Leaderboard {
@@ -13,6 +15,8 @@ export interface Leaderboard {
   minPlays: number;
   position?: Position | null;
   rookie?: boolean;
+  /** The League filter ("free agent WRs"); it needs a selected league to apply. */
+  roster?: RosterFilter | null;
 }
 
 /** Position nouns ("quarterbacks", "tight end") and the position they name. Two-word ones are matched first. */
@@ -216,6 +220,13 @@ export function leaderboardFor(
   if (scope.teams && (who.position || who.rookie)) {
     return { reason: "A team ranking cannot be narrowed to a position or to rookies." };
   }
+  const roster = readRoster(tokens);
+  if (roster.reason) {
+    return { reason: roster.reason };
+  }
+  if (scope.teams && roster.roster) {
+    return { reason: "League rosters are for players, not teams." };
+  }
   const floor = scope.weekly ? WEEKLY_LEADERBOARD_MIN_PLAYS : LEADERBOARD_MIN_PLAYS;
   const needsFloor = granularity !== "total" || direction === "asc";
   const minPlays = minimum ? minimum.min : scope.teams || !needsFloor ? 0 : floor;
@@ -225,5 +236,6 @@ export function leaderboardFor(
     minPlays,
     position: who.position,
     rookie: who.rookie,
+    roster: roster.roster,
   };
 }

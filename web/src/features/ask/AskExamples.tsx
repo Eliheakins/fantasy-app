@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
 
-/** One example per thing Ask can answer: a stat, a ranking, start or sit, a trade, a waiver question, a player outlook. */
+/** One example per thing Ask can answer: a stat, a ranking, a free-agent ranking, start or sit, a trade, a waiver question, a player outlook. */
 const EXAMPLE_QUESTIONS = [
   "Mahomes passing yards and touchdowns this season",
   "Most receiving yards this season",
+  "Free agent WRs with the most targets over the last 3 games",
   "Start Kelce or Kittle",
   "Trade Kelce for Kittle",
   "Who should I pick up on waivers",
