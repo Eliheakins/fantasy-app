@@ -2,8 +2,10 @@
 Description=fantasy-app data refresh schedule
 
 [Timer]
-# Same times as ops/refresh.plist: after Monday night, final Friday injury reports, Sunday morning.
+# Same times as ops/refresh.plist: after Monday night, before Thursday night's game, final Friday
+# injury reports, Sunday morning. The Thursday and Sunday runs pull prop lines first (odds_snapshot).
 OnCalendar=Tue *-*-* 06:00:00 America/New_York
+OnCalendar=Thu *-*-* 16:00:00 America/New_York
 OnCalendar=Fri *-*-* 18:00:00 America/New_York
 OnCalendar=Sun *-*-* 08:00:00 America/New_York
 # Runs a missed slot at boot if the server was down.

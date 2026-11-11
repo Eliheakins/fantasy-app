@@ -70,7 +70,7 @@ Configure your own leagues in [config.toml](config.toml) (Sleeper username, user
 | `make stat-data`, `make stat-data-refresh` | Build the nflverse play-by-play shards for the stat app into `data/stat` (all seasons; current season only). Needs the network and minutes |
 | `make ask-model` | Local MLX model server for Ask (Apple Silicon). Ask answers rule-readable questions without it |
 | `make odds`, `make odds-slate` | Archive one week of prop lines; archive the current slate |
-| `make schedule-install`, `make schedule-remove` | Set up or remove a macOS launchd job that runs `make refresh` Tuesday 06:00, Friday 18:00 and Sunday 08:00 (installed on the main Mac on 2026-10-28) |
+| `make schedule-install`, `make schedule-remove` | Set up or remove a macOS launchd job that runs `make refresh` Tuesday 06:00, Thursday 16:00, Friday 18:00 and Sunday 08:00 (not installed on the main Mac since 2026-11-11: the server runs the refresh) |
 <!-- END AUTO-GENERATED -->
 
 Checks against real data: `uv run python -m fantasy.stages.validate_scoring` (computed points against Sleeper's for a completed week), `validate_standings`, `backtest` (walk-forward baseline against a trailing average) and `calibration` (team-score distributions against completed weeks).
@@ -80,7 +80,7 @@ Checks against real data: `uv run python -m fantasy.stages.validate_scoring` (co
 <!-- AUTO-GENERATED from the os.environ reads in src/ and research/; edit the code, not this table -->
 | Variable | Required | Used by | Meaning |
 |---|---|---|---|
-| `ODDS_API_KEY` | For `make odds` only | `stages/snapshot_odds.py` | The Odds API key (`.env` or environment) |
+| `ODDS_API_KEY` | For `make odds` and the refresh's `odds_snapshot` stage (which skips without it) | `stages/snapshot_odds.py` | The Odds API key (`.env` or environment). Keep it on one machine only, or both spend credits |
 | `LIVE_REFRESH` | No | `live_refresh.py` | `off` stops the score refresh while `make serve` runs (default on) |
 | `API_ALLOWED_HOSTS` | No | `api.py` | Extra Host header names the server accepts, comma separated (phone access) |
 | `INTENT_PROVIDER` | No | `nfl_stat/services/intent_provider.py` | Ask's model step: `jev`, `local` or `auto` (default: Jev when `JEV_API_KEY` is set, else the local server). A Jev failure falls back to the local server |

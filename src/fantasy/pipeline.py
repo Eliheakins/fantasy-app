@@ -70,6 +70,7 @@ STAGES: tuple[Stage, ...] = (
     Stage("outside_projections", "fantasy.stages.outside_projections", False, True),
     Stage("crosswalk", "fantasy.stages.crosswalk"),
     Stage("score", "fantasy.stages.score"),
+    Stage("odds_snapshot", "fantasy.stages.snapshot_odds", required=False, args=("--auto",)),
     Stage("prop_points", "fantasy.stages.prop_points", required=False),
     Stage("streaming", "fantasy.stages.streaming", required=False),
     Stage("project", "fantasy.stages.project"),

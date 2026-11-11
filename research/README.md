@@ -65,6 +65,7 @@ not deterministic (see the 2026-10-25 entry).
 | `inj_explore.py` | How do status, practice and injury type predict playing? | | Became `stages/injuries.py` | 10-23 |
 | `availability_check.py` | Does a chance-of-playing classifier beat the injury table? | Brier 0.0980 against 0.1041 on listed player-weeks | Shipped (`stages/availability.py`) | 10-23 |
 | `availability_target_check.py` | Should that classifier predict a stat line rather than any snaps? | Not for Questionable players (t 0.0 to 1.1) | Rejected | 10-25 |
+| `residual_slices.py` | Where is the learned projection weak (2024 on residuals by position, tier, week, rookie, injury status, home, game total, implied total)? | Bias about -0.3 points a game; no segment holds more error than its row share; fixing any bias is worth under 0.1% RMSE | Diagnosis, no hotspot | 11-11 |
 
 ## Features from free data
 

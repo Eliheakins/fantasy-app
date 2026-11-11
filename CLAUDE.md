@@ -15,7 +15,7 @@ Each area has its own CLAUDE.md next to the code, and Claude Code loads it when 
 - `make serve`: build `web/` and serve the UI and API at http://127.0.0.1:8000. `make dev`: API plus the Vite dev server (hot reload).
 - `make ask-model`: local MLX model server for Ask on port 8080.
 - `make odds`: archive one week of prop lines. Needs `ODDS_API_KEY` in the environment or `.env` (gitignored).
-- `make schedule-install` / `make schedule-remove`: a macOS launchd job running `make refresh` on Tuesday 06:00, Friday 18:00 and Sunday 08:00. The Mac must be awake; the log is `data/refresh.log`. Installed on the main Mac on 2026-10-28.
+- `make schedule-install` / `make schedule-remove`: a macOS launchd job running `make refresh` on Tuesday 06:00, Thursday 16:00, Friday 18:00 and Sunday 08:00. The Mac must be awake; the log is `data/refresh.log`. Removed from the main Mac on 2026-11-11: the server runs the refresh now.
 - Server (OVHcloud VPS, `ops/server/`): `ops/server/provision.sh admin@host site-hostname` once; `ops/server/push.sh [--data] fantasy@host` to deploy (`--data` only on the first deploy). The server runs the app and `make refresh` from systemd timers; the app is public on the internet behind Caddy HTTPS and its own accounts (`src/fantasy/auth/`).
 - Accounts (server): `uv run python -m fantasy.auth create-admin you@example.com` once, then `invite friend@example.com` prints a one-time link; the admin page at `/admin` does the same from the browser. `FANTASY_AUTH=required` (set by `bootstrap.sh`) locks the API until the admin exists; `off` disables login. People add their own Sleeper leagues at `/my-leagues` (2 each).
 - Checks against real data: `uv run python -m fantasy.stages.validate_scoring`, `validate_standings`, `backtest`, `calibration`.
@@ -54,7 +54,7 @@ A change to a projection or distribution ships only if it improves held-out erro
 ## Dates that matter (2026 season)
 
 - Trade deadline: week 11. Issue #40 (retest the 50% Sleeper blend weight on clean snapshots) is due around then.
-- `make odds` costs about 80 of 500 monthly credits per snapshot.
+- `make odds` costs about 80 of 500 monthly credits per snapshot. Each refresh also runs the `odds_snapshot` stage (`snapshot_odds --auto`), which spends about 84 to 90 credits a week (the Thursday game on the Thursday run, Sunday's slate on the Sunday run) and keeps 100 in reserve. It does nothing on a machine without `ODDS_API_KEY`.
 
 ## Area files
 

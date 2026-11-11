@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -71,3 +71,35 @@ def test_env_parser_handles_quotes_export_and_comments(tmp_path, monkeypatch):
     assert so.api_key(env) == "abc 123"
     env.write_text('ODDS_API_KEY="k#1"\n')
     assert so.api_key(env) == "k#1"
+
+
+def _event(event_id: str, hours_ahead: float, home: str = "Home", away: str = "Away") -> dict:
+    kickoff = NOW + timedelta(hours=hours_ahead)
+    return {
+        "id": event_id,
+        "commence_time": kickoff.isoformat(),
+        "home_team": home,
+        "away_team": away,
+    }
+
+
+def test_auto_pull_skips_games_with_a_recent_snapshot(tmp_path):
+    (tmp_path / "20261023T060000Z").mkdir()  # 6 hours before NOW
+    (tmp_path / "20261023T060000Z" / "fresh.json").write_text("{}")
+    (tmp_path / "20261021T060000Z").mkdir()  # 54 hours before NOW
+    (tmp_path / "20261021T060000Z" / "old.json").write_text("{}")
+    events = [_event("fresh", 5), _event("old", 5), _event("new", 5)]
+    assert [e["id"] for e in so.needing_a_pull(events, NOW, tmp_path)] == ["old", "new"]
+
+
+def test_budget_keeps_my_games_first_and_stops_at_the_floor():
+    events = [_event("later", 20), _event("mine_late", 30, home="Mine"), _event("soon", 2)]
+    cost = so.snapshot_cost(1)
+    remaining = so.CREDIT_FLOOR + 2 * cost  # room for two games
+    picked = so.fit_budget(events, {"Mine"}, remaining)
+    assert [e["id"] for e in picked] == ["mine_late", "soon"]
+
+
+def test_budget_with_no_credit_data_pulls_everything():
+    events = [_event("a", 2), _event("b", 3)]
+    assert len(so.fit_budget(events, set(), None)) == 2

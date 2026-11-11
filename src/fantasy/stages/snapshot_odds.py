@@ -1,8 +1,13 @@
 """Archive one week's NFL player-prop lines from The Odds API (free tier, 500 credits a month).
 
-Run: uv run python -m fantasy.stages.snapshot_odds [--dry-run] [--slate]
+Run: uv run python -m fantasy.stages.snapshot_odds [--dry-run] [--slate] [--auto]
 --slate pulls only the coming slate, near kickoff: Thursday evening for that night's game, Sunday
 about 11:45 ET for Sunday and Monday (about 84 credits a week instead of one 7-day pull).
+--auto is the refresh pipeline's stage: games that kick off within AUTO_LEAD_HOURS and have no
+snapshot from the last AUTO_REUSE_HOURS, the games with my players first, as many as fit above
+CREDIT_FLOOR. The Thursday and Sunday refreshes then pull about 6 credits for the Thursday game and
+about 78 for Sunday's, 84 to 90 a week, which a 500-credit month covers for four slates; a fifth
+slate keeps its games with my players and drops the rest. Without ODDS_API_KEY it does nothing.
 Needs ODDS_API_KEY in the environment or in .env. Raw JSON; prop_points turns it into points.
 """
 
@@ -18,6 +23,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 import httpx
+import polars as pl
 
 from fantasy import store
 from fantasy.config import ROOT
@@ -37,6 +43,9 @@ EASTERN = ZoneInfo("America/New_York")
 SLATE_END_HOUR = 6
 SLATE_END_DAYS = (calendar.TUESDAY, calendar.FRIDAY)
 CREDIT_FLOOR = 100  # stop before the monthly allowance runs out
+AUTO_LEAD_HOURS = 36  # prop_points drops lines older than this before kickoff
+AUTO_REUSE_HOURS = 24  # a game with a snapshot this recent is not pulled again
+STAMP = re.compile(r"\d{8}T\d{6}Z")  # a finished snapshot folder
 PAUSE_SECONDS = 0.5
 EVENT_ID = re.compile(r"[A-Za-z0-9]+", re.ASCII)  # becomes a file name
 ODDS_DIR = store.DATA_DIR / "archive" / "odds"
@@ -99,6 +108,54 @@ def snapshot_cost(n_events: int) -> int:
     return n_events * len(MARKETS)  # one credit per market per region per event
 
 
+def needing_a_pull(
+    events: list[dict[str, Any]], now: datetime, odds_dir: Path
+) -> list[dict[str, Any]]:
+    """The events with no snapshot file from the last AUTO_REUSE_HOURS."""
+    cutoff = now - timedelta(hours=AUTO_REUSE_HOURS)
+    covered: set[str] = set()
+    for folder in odds_dir.glob("*") if odds_dir.exists() else ():
+        if not STAMP.fullmatch(folder.name):
+            continue
+        taken = datetime.strptime(folder.name, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
+        if taken >= cutoff:
+            covered.update(f.stem for f in folder.glob("*.json"))
+    return [e for e in events if e["id"] not in covered]
+
+
+def fit_budget(
+    events: list[dict[str, Any]], mine: set[str], remaining: float | None
+) -> list[dict[str, Any]]:
+    """Games with my players first, then by kickoff; as many as fit above CREDIT_FLOOR."""
+    ordered = sorted(
+        events,
+        key=lambda e: ({e["home_team"], e["away_team"]}.isdisjoint(mine), e["commence_time"]),
+    )
+    if remaining is None:
+        return ordered
+    room = max(0, int(remaining) - CREDIT_FLOOR) // snapshot_cost(1)
+    return ordered[:room]
+
+
+def my_team_names(data_dir: Path | None = None) -> set[str]:
+    """Odds API names of the NFL teams my players are on (the is_me rosters); none without data."""
+    from fantasy.stages.crosswalk import norm_team
+    from fantasy.stages.prop_points import TEAM_NAMES
+
+    try:
+        mine = store.read_table("league_teams", "raw", data_dir).filter(pl.col("is_me"))
+        rostered = store.read_table("rosters", "raw", data_dir).join(
+            mine.select("league_id", "roster_id"), on=["league_id", "roster_id"]
+        )
+        teams = store.read_table("sleeper_players", "raw", data_dir).join(
+            rostered.select("sleeper_id"), on="sleeper_id"
+        )["team"]
+    except FileNotFoundError:
+        return set()
+    abbreviations = {norm_team(t) for t in teams.drop_nulls()}
+    return {name for name, abbreviation in TEAM_NAMES.items() if abbreviation in abbreviations}
+
+
 def log_credits(stamp: str, used: str | None, remaining: str | None, odds_dir: Path) -> None:
     odds_dir.mkdir(parents=True, exist_ok=True)
     log = odds_dir / "credit_log.csv"
@@ -113,17 +170,31 @@ def run(
     odds_dir: Path = ODDS_DIR,
     now: datetime | None = None,
     slate: bool = False,
+    auto: bool = False,
 ) -> None:
-    """`slate`: only games up to `slate_end` (one pull near kickoff per slate) instead of 7 days."""
+    """`slate`: only games up to `slate_end` (one pull near kickoff per slate) instead of 7 days.
+    `auto`: the pipeline's pull, see the module docstring."""
     now = now or datetime.now(UTC)
-    key = api_key()
+    try:
+        key = api_key()
+    except RuntimeError as err:
+        if not auto:
+            raise
+        print(f"{err}; no prop lines pulled here")
+        return
     listing = _get(f"{BASE}/events", {"apiKey": key})  # free call
-    end = slate_end(now) if slate else now + timedelta(days=WINDOW_DAYS)
+    if auto:
+        end = now + timedelta(hours=AUTO_LEAD_HOURS)
+    else:
+        end = slate_end(now) if slate else now + timedelta(days=WINDOW_DAYS)
     events = events_in_window(listing.json(), now, end)
     if not all(EVENT_ID.fullmatch(str(e["id"])) for e in events):
         raise RuntimeError("Odds API returned an event id that is not alphanumeric")
-    cost = snapshot_cost(len(events))
     remaining = listing.headers.get("x-requests-remaining")
+    if auto:
+        left = float(remaining) if remaining is not None else None
+        events = fit_budget(needing_a_pull(events, now, odds_dir), my_team_names(), left)
+    cost = snapshot_cost(len(events))
     print(f"{len(events)} games until {end:%Y-%m-%d %H:%M} UTC, about {cost} credits")
     print(f"credits remaining before: {remaining}")
     if dry_run or not events:
@@ -159,4 +230,4 @@ def run(
 
 
 if __name__ == "__main__":
-    run(dry_run="--dry-run" in sys.argv, slate="--slate" in sys.argv)
+    run(dry_run="--dry-run" in sys.argv, slate="--slate" in sys.argv, auto="--auto" in sys.argv)

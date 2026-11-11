@@ -76,7 +76,7 @@ odds:
 odds-slate:
 	uv run python -m fantasy.stages.snapshot_odds --slate
 
-# Scheduled refresh (macOS launchd): Tuesday 06:00, Friday 18:00, Sunday 08:00, local time. The
+# Scheduled refresh (macOS launchd): Tuesday 06:00, Thursday 16:00, Friday 18:00, Sunday 08:00, local time. The
 # Mac must be awake; a missed run is not repeated. Output goes to data/refresh.log.
 PLIST = $(HOME)/Library/LaunchAgents/com.fantasy-app.refresh.plist
 LAUNCH_PATH = $(dir $(shell command -v uv)):$(HOME)/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin

@@ -16,10 +16,11 @@
     <key>PATH</key>
     <string>__PATH__</string>
   </dict>
-  <!-- Tuesday 06:00 (after Monday night), Friday 18:00 (final injury reports), Sunday 08:00 -->
+  <!-- Tuesday 06:00 (after Monday night), Thursday 16:00 (before Thursday night), Friday 18:00 (final injury reports), Sunday 08:00 -->
   <key>StartCalendarInterval</key>
   <array>
     <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>6</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>16</integer><key>Minute</key><integer>0</integer></dict>
     <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>18</integer><key>Minute</key><integer>0</integer></dict>
     <dict><key>Weekday</key><integer>0</integer><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
   </array>

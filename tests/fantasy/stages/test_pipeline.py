@@ -149,6 +149,7 @@ def test_the_stage_list_is_what_make_refresh_ran_before() -> None:
         "outside_projections",
         "crosswalk",
         "score",
+        "odds_snapshot",
         "prop_points",
         "streaming",
         "project",
