@@ -28,6 +28,7 @@ import numpy as np
 import polars as pl
 
 from fantasy import store
+from fantasy.config import SKILL_POSITIONS
 from fantasy.stages import outside_projections as op
 from fantasy.stages.sleeper_projections import score_stats
 
@@ -42,7 +43,7 @@ def backfill() -> None:
     CACHE.mkdir(parents=True, exist_ok=True)
     for season in SEASONS:
         for week in WEEKS:
-            for pos in op.POSITIONS:
+            for pos in SKILL_POSITIONS:
                 path = CACHE / f"{season}_{week}_{op.FFTODAY_POS_ID[pos]}.html"
                 if path.exists() and path.stat().st_size:
                     continue
@@ -55,7 +56,7 @@ def fftoday_rows() -> pl.DataFrame:
     rows = []
     for season in SEASONS:
         for week in WEEKS:
-            for pos in op.POSITIONS:
+            for pos in SKILL_POSITIONS:
                 page = (CACHE / f"{season}_{week}_{op.FFTODAY_POS_ID[pos]}.html").read_text()
                 rows += [
                     {"season": season, "week": week, "position": pos, **r, "stats": json.dumps(r["stats"])}
@@ -125,7 +126,7 @@ def history_test(snaps: pl.DataFrame, league_id: str) -> None:
     lag = (d["week"] - d["as_of_week"]).value_counts()
     print(f"rows with all three: {d.height}; week - as_of_week: {dict(lag.iter_rows())}")
     out = []
-    for pos in [None, *op.POSITIONS]:
+    for pos in [None, *SKILL_POSITIONS]:
         g = d if pos is None else d.filter(pl.col("position") == pos)
         row: dict[str, object] = {"position": pos or "ALL", "n": g.height}
         for c in ("ours", "fftoday", "mean_eq"):

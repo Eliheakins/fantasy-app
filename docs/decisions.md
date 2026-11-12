@@ -1237,3 +1237,32 @@ Plan: `.plans/accounts-and-refresh-20261109-2155.md`. Supersedes the Caddy-passw
 - **Change.** `rosterWords.ts` reads free agents, my roster and rostered in a no-player ranking and sets the League filter. The words are cut from the model's text, so league data and league words stay out of prompts. "Free agent" with a count word (most, fewest, least, highest, lowest) goes to the stat path; "best free agents" and waivers stay on Moves. "over the last N games" is now read as the last N games.
 - **Not shipped as a model change:** no projection or distribution changed, so the model standard does not apply. The rules eval pins are unchanged (the web tests pass: 317 in `features/ask`).
 - **Limits.** A ranking cue is still needed (a stat question with no cue and no player is refused). No selected league gives a "pick a league" message. Not checked in a browser against live league data.
+
+## 2026-11-12: Whole-repo review fixes (`refactor/review-fixes`)
+
+A whole-repo review (quality, language and security reviewers per slice, plus repo-wide DRY sweeps) raised 174 findings. A second pass verified each one against the code: 113 real, 49 true but not worth fixing (mostly research-script duplication, which `research/CLAUDE.md` leaves alone), 6 false positives. None was HIGH. This branch fixes the 113.
+
+**Behavior changes**
+
+- **Scoreboard.** In the current week the projected scoreboard uses `_engine._week_values`, so a team with no Sleeper starters keeps a player whose game is over in its best lineup, with his final points (`src/fantasy/CLAUDE.md` gotcha). Regression test in `tests/fantasy/api/test_scoreboard.py`.
+- **No-data answer.** `known_league` no longer catches `FileNotFoundError`. Without a leagues table a job route answers `no_data` instead of "invalid: unknown league", and `digest_data` reaches `guarded`'s `no_data` the same way.
+- **Rate limits.** The Sleeper lookup and Ask intent limits use `FailureLimiter.attempt`, which checks and counts under one lock, so a burst of parallel requests can no longer get past the limit.
+- **Login throttle, accepted.** The per-email limit (`LOGIN_FAILURES` a minute, `auth/routes.py`) lets anyone who knows an account's email keep its owner locked out of signing in. Accepted for a small invite-only app; the per-IP limit stays. Keying the email limit on (email, IP) would weaken protection against guessing spread over many IPs.
+- **Scorecard API.** `has_quantiles` is dropped from the dataclass, the `/scorecard` model and route, `web/openapi.json` and `schema.d.ts`. It was always False and no UI read it.
+- **validate_standings.** One full join sets `record_off` and `points_off` per team, and "points for exact" counts only `points_off`, so a wrong record with exact points is no longer reported as a points mismatch.
+- **Stat data test.** `tests/stat/test_player_game.py` reads `data/stat/player_game.parquet` (`DEFAULT_DATA_DIR`) instead of the nonexistent `tests/data`. Its official-figure checks always skipped before; they run whenever `make stat-data` has been built.
+- **Moves page.** Roster strength is shown once: the trade `StrengthSection` (accessible table, QB/RB/WR/TE order) stays and carries the stand-in free agent method note. The waivers copy (`StrengthList` and its second `strength` fetch) is removed; the two had drifted in sort order and bar scaling.
+- **Compare.** `useGameLog` and `useSeasonTotals` share `features/players/usePlayerStatQuery.ts`, which reports a manifest failure as an error for both. Compare's season totals show the warning instead of waiting forever. The query key includes the stat ids.
+- **Find players search.** Suggestions are a labelled list of buttons, not an ARIA listbox (it had no option role or arrow-key handling).
+- **Retry buttons** in `ApiBoundary` and the trade notice use the shared `Button` (outline) instead of hand-rolled square buttons.
+- **sim/expected** reports dropped unscored rows with `warnings.warn` instead of `print`, so the API path no longer writes to server stdout.
+- **Research outputs** default to `research/scratch/` instead of a per-session temp path; `RECONCILE_PREDS` still overrides.
+
+**One home for repeated values and logic**
+
+- **Season length.** `config.REGULAR_SEASON_WEEKS` (18) is used by `week_rollover`, `sleeper_projections` and `_profile`. The 17s in `sync_sleeper` (matchups fetched) and `project` (weeks projected) are renamed `LAST_FANTASY_WEEK`: they are the last fantasy week on purpose. The `WEEKS_PER_SEASON` strides in `availability` and `stat_line` only order weeks across seasons and stay.
+- **Positions.** `config.SKILL_POSITIONS` is the one QB/RB/WR/TE tuple; `store.SKILL` derives from it, and score's list with K is renamed `SCORED_POSITIONS`. Sets that include K/DEF stay separate on purpose.
+- **Python helpers.** `sim/lineup.week_pool` builds the per-week player pool (roster, value, depth, needs). `_engine.current_week(leagues)` returns None when there is no week (it lives in `_engine` because `_leagues` imports `_engine`). `_runs.parse_utc` is the one naive-as-UTC stamp parser for the read path and the stages. `sim/odds.DEFAULT_SIMS` (20000) is the one default for the API sim paths; `config.toml` `n_sims` applies only to the simulate stage. `accounts.create_admin` returns the new id. The injury `STATUSES` tuple lives in `stages/injuries.py`. The PBP join keys are cast once in `_prepare_pbp_base`.
+- **Web helpers.** League URLs go through `leagueUrl` (`lib/league.tsx`), except `stat/react/useLeaguePoints.ts`, because `stat/` may not import `lib/`. `lib/sharedParams.copyShared` carries the league, team and week URL params across pages (`savedSearchStore.ts` and `routeMemory.ts` still keep their own key lists). `leagueName` (`features/thisweek/weekLogic.ts`) is the display-name fallback. `lib/useNow.ts` is the one clock hook. `components/Field.tsx` is the label-and-input field. `stat/engine/lastGames.latestPlayGames` is the last-N-games visitor for both play stats and derived stats, so both divide by the same games. The page width is the theme token `max-w-page`.
+- **CI** runs `make lint` instead of three separate steps, so the actionlint version is pinned only in the Makefile.
+- **Removed** the unused `clearPins` transition and hook. Add it back if a clear-pins control is built.

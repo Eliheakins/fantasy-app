@@ -52,7 +52,6 @@ install -d -m 700 -o "$APP_USER" -g "$APP_USER" "$APP_HOME/.cache" "$APP_HOME/fa
 # deployed public server is locked, not open, until the admin is created (see the last message).
 printf 'API_ALLOWED_HOSTS=%s\nFANTASY_AUTH=required\n' "$SITE_HOST" >/etc/fantasy-app.env
 
-# The app has no login of its own, so Caddy asks for the password before anything reaches it.
 if ! command -v caddy >/dev/null; then
   apt-get install -y -qq debian-keyring debian-archive-keyring apt-transport-https gpg
   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' |

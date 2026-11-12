@@ -65,13 +65,7 @@ ROLE_DEPTH = {"QB": 2, "RB": 3, "WR": 5, "TE": 2}
 NOISE = {"colgate": 0.04, "yinzburgh": 0.10}  # refit noise sd of the learned model, % of RMSE
 TW = ["league_id", "season", "week", "team"]
 ZERO_FILL = pl.col(pl.Float64).fill_null(0.0)  # a role nobody holds that week
-PREDS_PATH = Path(
-    os.environ.get(
-        "RECONCILE_PREDS",
-        "/private/tmp/claude-501/-Users-eliheakins-personal-fantasy-app/"
-        "230639a7-242c-4003-bae2-a92998c4f96c/scratchpad/preds/reconcile.parquet",
-    )
-)
+PREDS_PATH = Path(os.environ.get("RECONCILE_PREDS", w.SCRATCH / "reconcile_preds.parquet"))
 
 
 def charted(
