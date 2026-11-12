@@ -11,6 +11,7 @@ const todo = (id: string, over: Partial<Todo> = {}): Todo => ({
   href: "/lineup?league=a",
   effect: { playoffPoints: null, points: null },
   deadlineDay: null,
+  sleeperUrl: null,
   ...over,
 });
 
@@ -191,5 +192,13 @@ describe("tradeDeadlineTodos", () => {
 
   it("judges on title odds in the playoffs", () => {
     expect(run("closing", [t("A", "B", 0.09, 0.001), t("C", "D", 0.0, 0.04)], "playoffs")[0]?.title).toBe("Trade deadline: C for D");
+  });
+});
+
+describe("sleeperUrl", () => {
+  it("is the league page when the id is known, null when not", () => {
+    const waiver = { get: "A", give: "B", delta_points: 1, playoff_delta: 5, title_delta: 5 } as never;
+    expect(leagueTodos({ ...league, league_id: "77" }, [], [waiver], deadlines)[0]?.sleeperUrl).toBe("https://sleeper.com/leagues/77");
+    expect(leagueTodos(league, [], [waiver], deadlines)[0]?.sleeperUrl).toBeNull();
   });
 });

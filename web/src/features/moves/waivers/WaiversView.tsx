@@ -3,6 +3,8 @@ import type { ApiState } from "@/api/envelope";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
+import { ExternalLink } from "@/components/ExternalLink";
+import { sleeperLeagueUrl } from "@/lib/sleeper";
 import { useLeague, useLeagueApi } from "@/lib/league";
 import { type Who, useWho, whoFor } from "@/lib/who";
 import { AddsTable } from "./AddsTable";
@@ -18,12 +20,14 @@ type ViewProps = {
   selected: string | null;
   onSelect: (gsisId: string) => void;
   who?: Who;
+  /** The selected league's Sleeper id; no link when null. */
+  sleeperLeagueId?: string | null;
 };
 
 const CHART_HINT = "Select a player to see projected points for the next four weeks.";
 
 /** Presentational: all data comes in as props so tests can pass fixture states. */
-export function WaiversView({ adds, def, kickers, weeks, selected, onSelect, who = whoFor(null) }: ViewProps) {
+export function WaiversView({ adds, def, kickers, weeks, selected, onSelect, who = whoFor(null), sleeperLeagueId = null }: ViewProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const mineMarker = who.name ? "(theirs)" : "(yours)";
   // On a phone the chart sits below the cards, so bring it into view when a player is picked.
@@ -33,6 +37,7 @@ export function WaiversView({ adds, def, kickers, weeks, selected, onSelect, who
   return (
     <div className="space-y-8">
       <Section title="Adds" caption={ADDS_CAPTION} howCalculated={ADDS_METHOD}>
+        {sleeperLeagueId && <ExternalLink href={sleeperLeagueUrl(sleeperLeagueId)}>Open league in Sleeper</ExternalLink>}
         <ApiBoundary state={adds}>
           {(rows) =>
             rows.length === 0 ? (
@@ -63,7 +68,8 @@ export function WaiversView({ adds, def, kickers, weeks, selected, onSelect, who
 }
 
 export function WaiversContent() {
-  const { league } = useLeague();
+  const { league, leagues } = useLeague();
+  const sleeperLeagueId = (leagues.kind === "ready" && leagues.data.find((l) => l.league_key === league)?.league_id) || null;
   const who = useWho();
   const [selection, setSelection] = useState<{ league: string | null; id: string } | null>(null);
   // A pick belongs to the league it was made in.
@@ -83,6 +89,7 @@ export function WaiversContent() {
       selected={selected}
       onSelect={(id) => setSelection({ league, id })}
       who={who}
+      sleeperLeagueId={sleeperLeagueId}
     />
   );
 }

@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { EffectText } from "@/features/effects/EffectText";
+import { ExternalLink } from "@/components/ExternalLink";
 import type { Todo } from "./todos";
 import { dayLabel } from "./weekLogic";
 
@@ -24,6 +25,7 @@ export function TodoList({ todos }: { todos: readonly Todo[] }) {
               <span>{t.detail}</span>
               {deadlineText(t) && <span>{deadlineText(t)}</span>}
             </div>
+            {t.sleeperUrl && <ExternalLink href={t.sleeperUrl}>Open {t.leagueName} in Sleeper</ExternalLink>}
           </div>
           <EffectText todo={t} />
         </li>

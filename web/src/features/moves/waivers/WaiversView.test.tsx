@@ -60,4 +60,12 @@ describe("WaiversView", () => {
     render(<WaiversView {...base} adds={{ kind: "running", startedAt: new Date().toISOString() }} />);
     expect(screen.getByRole("status")).toHaveTextContent(/Working/);
   });
+
+  it("links to the league in Sleeper only when the id is known", () => {
+    const { unmount } = render(<WaiversView {...base} sleeperLeagueId="42" />);
+    expect(screen.getByRole("link", { name: /Open league in Sleeper/ })).toHaveAttribute("href", "https://sleeper.com/leagues/42");
+    unmount();
+    render(<WaiversView {...base} />);
+    expect(screen.queryByRole("link", { name: /Sleeper/ })).toBeNull();
+  });
 });

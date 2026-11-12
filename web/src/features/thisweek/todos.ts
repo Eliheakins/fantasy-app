@@ -5,6 +5,7 @@ import { compareEffect, type Effect, MIN_PLAYOFF_GAIN } from "@/features/effects
 import { type EffectWhy, lineupWhy, tradeWhy, waiverWhy } from "@/features/effects/explain";
 import type { Phase } from "@/features/effects/phase";
 import type { DeadlineWeekState } from "@/lib/deadline";
+import { sleeperLeagueUrl } from "@/lib/sleeper";
 import { leagueName } from "./weekLogic";
 
 type MoveIdea = components["schemas"]["MoveIdeaRow"];
@@ -22,6 +23,8 @@ export type Todo = {
   why?: EffectWhy;
   /** New York calendar day the to-do stops being possible; null when not known. */
   deadlineDay: string | null;
+  /** The league page in Sleeper; null when the league id is not known. */
+  sleeperUrl: string | null;
 };
 
 const PERCENT = 100;
@@ -50,7 +53,9 @@ export function orderByDeadline(todos: readonly Todo[]): Todo[] {
   });
 }
 
-type LeagueRef = { league_key: string; name: string | null | undefined };
+type LeagueRef = { league_key: string; league_id?: string | null; name: string | null | undefined };
+
+const sleeperUrlOf = (l: LeagueRef): string | null => (l.league_id ? sleeperLeagueUrl(l.league_id) : null);
 type Deadlines = { lineup: string | null; waiver: string | null };
 
 const hrefFor = (page: "lineup" | "moves", leagueKey: string) => `/${page}?league=${encodeURIComponent(leagueKey)}`;
@@ -66,7 +71,7 @@ export function leagueTodos(
   deadlines: Deadlines,
   phase: Phase = "season",
 ): Todo[] {
-  const base = { leagueKey: league.league_key, leagueName: leagueName(league) };
+  const base = { leagueKey: league.league_key, leagueName: leagueName(league), sleeperUrl: sleeperUrlOf(league) };
   const fromActions = actions
     .filter((a) => a.kind !== "Waiver" && worthActing(a, a.share_better ?? null)) // the stored add below is the waiver to-do
     .map((a, i): Todo => ({
@@ -120,6 +125,7 @@ export function tradeDeadlineTodos(
     {
       leagueKey: league.league_key,
       leagueName: leagueName(league),
+      sleeperUrl: sleeperUrlOf(league),
       id: `${league.league_key}-trade-${top.give}-${top.get}`,
       kind: "trade",
       title: `Trade deadline: ${top.give} for ${top.get}`,

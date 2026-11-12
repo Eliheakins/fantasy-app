@@ -1337,3 +1337,8 @@ A whole-repo review (quality, language and security reviewers per slice, plus re
 
 - `deadlineWeekState` (web/src/lib/deadline.ts): "passed" is `current_week > trade_deadline`, the API's own rule (`api_routes/season.py`); "closing" is `current_week == trade_deadline`; "none" for a null deadline or one past the last regular week (`playoff_week_start - 1`, 18 when unknown), which covers Sleeper's 99.
 - In the closing week only, each league gets one to-do from its best stored trade idea (playoff odds change, title odds in the playoffs, nothing when out), only when it clears the same MIN_PLAYOFF_GAIN bar as a waiver add. Its deadline day is the league's waiver day (null for daily waivers or unknown), so it sorts with the other to-dos. Moves shows a warn callout "Trades close after week N." only in that week.
+
+## 2026-11-12: Open in Sleeper links (PR 9)
+
+- Link target is `https://sleeper.com/leagues/{league_id}` (verified 200). Team and matchup deep links are undocumented and Sleeper's app links do not cover league pages, so on a phone it opens the browser; the link says "opens in a new tab", not "opens the app".
+- Each to-do links with "Open {league name} in Sleeper" (both leagues share one list); Moves Adds has one "Open league in Sleeper". No link when the league id is unknown.
