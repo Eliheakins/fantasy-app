@@ -3,7 +3,8 @@ import { possessive } from "@/lib/text";
 import { TradeResult } from "./TradeResult";
 import type { TradeEvaluation } from "./types";
 import { ExplainDelta, NOISE_PERCENT, NOISE_WINS, toPoints } from "@/viz";
-import { COPIED_NOTE_MS, canPitch, copyText, pitchText } from "./builder";
+import { COPIED_NOTE_MS, canPitch, pitchText } from "./builder";
+import { copyText } from "@/lib/clipboard";
 
 type Side = TradeEvaluation["odds"][number];
 

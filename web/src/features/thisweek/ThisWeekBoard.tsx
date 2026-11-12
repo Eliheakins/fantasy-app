@@ -5,6 +5,7 @@ import { useTodos } from "./useTodos";
 import { WeekScores } from "./WeekScores";
 import { firstKickoff } from "@/lib/scoreboard";
 import { WeekStrip } from "./WeekStrip";
+import { CopySummaryButton } from "./CopySummaryButton";
 
 /** The week strip, the to-do list for both leagues (the page's tinted panel, unless game day takes it), every matchup's score and the visit changes. */
 export function ThisWeekBoard() {
@@ -30,6 +31,7 @@ export function ThisWeekBoard() {
         ) : (
           <TodoList todos={todos} />
         )}
+        <CopySummaryButton todos={todos} pending={pending} />
         {failed.length > 0 && (
           <p role="alert" className="mt-3 text-caption text-warning">
             Some to-dos did not load for: {failed.join(", ")}.

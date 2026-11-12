@@ -3,7 +3,7 @@ import type { TradeEvaluation } from "./types";
 import { COPIED_NOTE_MS } from "./builder";
 import { TradeOutcome } from "./TradeOutcome";
 
-vi.mock("./builder", async (orig) => ({ ...(await orig<typeof import("./builder")>()), copyText: vi.fn().mockResolvedValue(true) }));
+vi.mock("@/lib/clipboard", () => ({ copyText: vi.fn().mockResolvedValue(true) }));
 
 const side = (who: "me" | "them", name: string) => ({
   side: who,
