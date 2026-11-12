@@ -93,6 +93,8 @@ class LeagueData:
     # (roster id, week) -> points, for playoff weeks already played
     playoff_teams: int = 6
     round_type: int = 0  # Sleeper's playoff_round_type
+    seed_type: int = 0  # Sleeper's playoff_seed_type (1 reseeds each round)
+    divisions: dict[int, int] = field(default_factory=dict)  # roster id -> division, if any
 
     @property
     def playoff_weeks(self) -> int:
@@ -330,6 +332,10 @@ def build_inputs(
         seeds=tuple(seeds) if seeds else None,
         playoff_teams=data.playoff_teams,
         round_type=data.round_type,
+        seed_type=data.seed_type,
+        divisions=tuple(data.divisions.get(r, 0) for r in data.roster_ids)
+        if any(data.divisions.values())
+        else (),
     )
 
 

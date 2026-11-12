@@ -258,6 +258,16 @@ def bracket_frame(league_id: str, bracket: str, rows: Any, week: int) -> pl.Data
     return _frame("playoff_brackets", parsed)
 
 
+def divisions_frame(league_id: str, rosters: list[dict[str, Any]]) -> pl.DataFrame:
+    """The division of each roster that has one (Sleeper's roster `settings.division`)."""
+    rows = [
+        {"league_id": league_id, "roster_id": as_int(r["roster_id"]), "division": division}
+        for r in rosters
+        if (division := as_int((r.get("settings") or {}).get("division"))) is not None
+    ]
+    return _frame("roster_divisions", rows)
+
+
 def _concat(name: str, frames: list[pl.DataFrame]) -> pl.DataFrame:
     return pl.concat(frames) if frames else _frame(name, [])
 
@@ -266,6 +276,7 @@ LEAGUE_TABLES = (
     "leagues",
     "league_teams",
     "rosters",
+    "roster_divisions",
     "matchups",
     "matchup_players",
     "transactions",
@@ -297,6 +308,7 @@ def _league_frames(
     frames["leagues"].append(league_frame(key, lg))
     frames["league_teams"].append(teams)
     frames["rosters"].append(rosters_frame(league_id, rosters))
+    frames["roster_divisions"].append(divisions_frame(league_id, rosters))
     for week in range(1, LAST_FANTASY_WEEK + 1):
         raw_matchups = fetch(f"/league/{league_id}/matchups/{week}")
         week_teams, week_players = matchups_frames(league_id, week, raw_matchups)

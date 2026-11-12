@@ -36,7 +36,7 @@ def roster(roster_id: int, owner: str) -> dict[str, Any]:
         "owner_id": owner,
         "players": ["p1"],
         "starters": ["p1"],
-        "settings": {"wins": 1, "losses": 0},
+        "settings": {"wins": 1, "losses": 0, **({"division": roster_id} if roster_id == 2 else {})},
     }
 
 
@@ -224,3 +224,12 @@ def test_the_live_tick_makes_no_bracket_call(world: Path, monkeypatch: pytest.Mo
     monkeypatch.setattr(sync_sleeper, "fetch", fake)
     sync_sleeper.sync_week(2)
     assert fake.paths and not any("bracket" in p for p in fake.paths)
+
+
+def test_run_stores_each_rosters_division_and_skips_rosters_without_one(
+    world: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    counts = run(FakeSleeper(), monkeypatch)
+    df = table("roster_divisions")
+    assert counts["roster_divisions"] == 1
+    assert df.to_dicts() == [{"league_id": CONFIG_LEAGUE, "roster_id": 2, "division": 2}]

@@ -119,6 +119,8 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "is_starter": _B,
         "is_ir": _B,
     },
+    # written by sync_sleeper: the division of each roster that has one (settings.division)
+    "roster_divisions": {"league_id": _S, "roster_id": _I, "division": _I},
     "matchups": {
         "league_id": _S,
         "week": _I,

@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import polars as pl
 
-from fantasy.sim.bracket import Match, resolve, shape_problem, template
+from fantasy.sim.bracket import Match, resolve, shape_problem, template, with_division_winners
 
 N_PLAYOFF_TEAMS = 6  # the default size (research scripts)
 
@@ -53,6 +53,8 @@ class SeasonInputs:
     seeds: tuple[int, ...] | None = None  # roster ids of seeds 1..N when the bracket is seeded
     playoff_teams: int = 6
     round_type: int = 0  # Sleeper's playoff_round_type
+    seed_type: int = 0  # Sleeper's playoff_seed_type: 1 reseeds each round
+    divisions: tuple[int, ...] = ()  # division per team (index as roster_ids), empty: none
 
 
 @dataclass(frozen=True)
@@ -107,12 +109,17 @@ def simulate_season(inp: SeasonInputs) -> SeasonResult:
     rng = np.random.default_rng([inp.seed, 99_999])
     key = wins * 1e6 + points + rng.uniform(0, 1e-3, size=wins.shape)
     index = {rid: i for i, rid in enumerate(inp.roster_ids)}
+    if any(inp.divisions) and not inp.seeds:  # division winners are guaranteed a spot
+        key = with_division_winners(key, inp.divisions, inp.playoff_teams)
     for k, rid in enumerate(inp.seeds or ()):
         key[index[rid]] = 1e10 - k
     order = np.argsort(-key, axis=0).T  # (S, T): order[s, k] = team index with seed k+1
 
     matches = inp.bracket or template(inp.playoff_teams, inp.round_type)
-    out = resolve(matches, order, scores, column, inp.roster_ids, inp.playoff_start, inp.round_type)
+    reseed = inp.seed_type == 1 and inp.bracket is None  # real rows, once trusted, are the truth
+    out = resolve(
+        matches, order, scores, column, inp.roster_ids, inp.playoff_start, inp.round_type, reseed
+    )
 
     def share(chosen: np.ndarray) -> np.ndarray:
         shares: np.ndarray = np.bincount(chosen.ravel(), minlength=n_teams) / n_sims

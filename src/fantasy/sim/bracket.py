@@ -11,7 +11,7 @@ the sum of its weeks) only changes `round_weeks`.
 """
 
 import json
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -44,6 +44,8 @@ class BracketResult:
 ROUNDS = {4: 2, 6: 3, 8: 3}  # rounds in the winners bracket by playoff teams
 LAST_PLAYOFF_WEEK = 17  # project and sync stop at week 17
 ROUND_TYPES = (0, 1, 2)  # Sleeper's playoff_round_type; semantics in docs/decisions.md
+SEED_TYPES = (0, 1)  # Sleeper's playoff_seed_type: 0 reseeding off, 1 on (decisions.md 2026-11-12)
+DIVISION_BONUS = 1e9  # lifts a playoff team's sort key above every non-qualifier's
 
 
 def _match(r: int, m: int, t1: Slot, t2: Slot, p: int | None = None) -> Match:
@@ -161,16 +163,10 @@ def shape_problem(
     round_type = round_type or 0
     if round_type not in ROUND_TYPES:
         return f"This league's playoff round setting ({round_type}) is not supported."
-    if seed_type:
-        return (
-            "Leagues that reseed each round are not supported: "
-            "what Sleeper's playoff seeding setting means is not confirmed."
-        )
-    if divisions and divisions > 1:
-        return (
-            "Leagues with divisions are not supported: "
-            "how Sleeper seeds division winners is not confirmed."
-        )
+    if (seed_type or 0) not in SEED_TYPES:
+        return f"This league's playoff seeding setting ({seed_type}) is not supported."
+    if divisions and divisions > playoff_teams:
+        return f"This league has more divisions ({divisions}) than playoff spots ({playoff_teams})."
     weeks = playoff_weeks(playoff_teams, round_type)
     last_start = LAST_PLAYOFF_WEEK - weeks + 1
     if playoff_week_start is None or not 1 <= playoff_week_start <= last_start:
@@ -237,6 +233,35 @@ def seeds_from(real: tuple[Match, ...], template: tuple[Match, ...]) -> list[int
     return [found[k] for k in range(1, n + 1)] if set(found) == set(range(1, n + 1)) else None
 
 
+def with_division_winners(
+    key: np.ndarray, divisions: tuple[int, ...], playoff_teams: int
+) -> np.ndarray:
+    """Sort keys (T, S) with every playoff team lifted above the rest: each division's best key
+    is guaranteed a spot, the other spots go to the best remaining keys, and the lifted teams
+    keep their own order. `divisions[t]` is team t's division (0: none, never a winner)."""
+    division = np.asarray(divisions)
+    runs = np.arange(key.shape[1])
+    winners = key.copy()
+    for d in set(divisions) - {0}:
+        members = np.flatnonzero(division == d)
+        winners[members[np.argmax(key[members], axis=0)], runs] += DIVISION_BONUS
+    qualified = np.argsort(-winners, axis=0)[:playoff_teams]
+    lifted = key.copy()
+    lifted[qualified, runs] += DIVISION_BONUS
+    return lifted
+
+
+def _reseeded(
+    ordered: list[Match], r: int, team: Callable[[Slot], np.ndarray], seed_of: np.ndarray,
+    run: np.ndarray,
+) -> dict[int, tuple[np.ndarray, np.ndarray]]:  # fmt: skip
+    """Round r's title-path matches re-paired per run: best remaining seed v worst, and so on."""
+    games = [m for m in ordered if m.r == r and is_title_path(m)]
+    teams = np.stack([team(slot) for g in games for slot in (g.t1, g.t2)], axis=1)  # (S, 2k)
+    best_first = np.take_along_axis(teams, np.argsort(seed_of[run[:, None], teams], axis=1), axis=1)
+    return {g.m: (best_first[:, i], best_first[:, -1 - i]) for i, g in enumerate(games)}
+
+
 def resolve(
     matches: tuple[Match, ...],
     order: np.ndarray,
@@ -245,15 +270,21 @@ def resolve(
     roster_ids: list[int],
     playoff_start: int,
     round_type: int = 0,
+    reseed: bool = False,
 ) -> BracketResult:
     """Run the bracket in every simulated run. `order` (S, T): team index holding seed k+1;
-    `scores` (T, W, S) with `column` week -> index; teams are indexes into `roster_ids`."""
+    `scores` (T, W, S) with `column` week -> index; teams are indexes into `roster_ids`.
+    `reseed` re-pairs each title-path round after the first: the teams left (byes included) play
+    highest seed v lowest, next highest v next lowest. Placement games keep their template slots."""
     n_sims, n_teams = order.shape[0], scores.shape[0]
     run = np.arange(n_sims)
     index = {rid: i for i, rid in enumerate(roster_ids)}
     n_rounds = max(m.r for m in matches)
     won: dict[int, np.ndarray] = {}
     lost: dict[int, np.ndarray] = {}
+    pairing: dict[int, tuple[np.ndarray, np.ndarray]] = {}
+    seed_of = np.empty_like(order)  # (S, T): seed index of each team
+    seed_of[run[:, None], order] = np.arange(n_teams)
 
     def team(slot: Slot) -> np.ndarray:
         if slot is None:
@@ -269,7 +300,9 @@ def resolve(
     wins = {r: np.zeros((n_teams, n_sims), dtype=bool) for r in rounds}
     champion: np.ndarray | None = None
     for match in ordered:
-        a, b = team(match.t1), team(match.t2)
+        if reseed and match.r > 1 and is_title_path(match) and match.m not in pairing:
+            pairing.update(_reseeded(ordered, match.r, team, seed_of, run))
+        a, b = pairing[match.m] if match.m in pairing else (team(match.t1), team(match.t2))
         if match.w is not None:
             win = np.full(n_sims, index[match.w])
         else:

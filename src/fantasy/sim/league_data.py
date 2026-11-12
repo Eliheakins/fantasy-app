@@ -14,7 +14,7 @@ import polars as pl
 from fantasy import store
 from fantasy.config import load_config
 from fantasy.sim.availability import kickoffs, remaining_share
-from fantasy.sim.bracket import Match, from_rows, playoff_weeks, round_type_of
+from fantasy.sim.bracket import Match, from_rows, playoff_weeks, round_type_of, settings_dict
 from fantasy.sim.league_checks import (
     check_league_shape,
     check_projected,
@@ -201,6 +201,17 @@ def _load_bracket(lid: str, data_dir: Path | None) -> tuple[Match, ...]:
     return from_rows(rows.iter_rows(named=True))
 
 
+def _load_divisions(lid: str, settings_json: str | None, data_dir: Path | None) -> dict[int, int]:
+    """roster id -> division for a league with divisions; empty without them or without the table
+    (a release synced before the table existed)."""
+    if (settings_dict(settings_json).get("divisions") or 0) < 2:
+        return {}
+    if not store.table_path("roster_divisions", "raw", data_dir).exists():
+        return {}
+    rows = store.read_table("roster_divisions", "raw", data_dir).filter(pl.col("league_id") == lid)
+    return dict(zip(rows["roster_id"].to_list(), rows["division"].to_list(), strict=True))
+
+
 def _realized(
     matchups: pl.DataFrame, current: int, playoff_start: int
 ) -> dict[tuple[int, int], float]:
@@ -326,4 +337,6 @@ def load_league_data(
         realized=_realized(matchups, current, playoff_start),
         playoff_teams=playoff_teams,
         round_type=round_type,
+        seed_type=int(league.get("playoff_seed_type") or 0),
+        divisions=_load_divisions(lid, league.get("settings"), data_dir),
     )
