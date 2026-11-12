@@ -2126,6 +2126,8 @@ export interface components {
             current_week: number | null;
             /** Playoff Week Start */
             playoff_week_start: number | null;
+            /** Playoff Teams */
+            playoff_teams: number | null;
             /** Num Teams */
             num_teams: number | null;
             /** Roster Id */

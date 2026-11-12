@@ -1309,3 +1309,11 @@ A whole-repo review (quality, language and security reviewers per slice, plus re
 - `playoff_label` shows as a static text chip on my This week scoreboard row and in the Lineup "Your matchup" panel, nothing when null.
 - The odds-over-time chart plots title odds from the bracket's first week (playoff odds are flat 0 or 1 once seeded) and playoff odds before. The marked-events list still quotes playoff odds.
 - The 6 seeds and 2 byes in the seed chart text stay hard-coded; the data fetched there has no seed or bye counts. Left for PR 6.
+
+## 2026-11-12: 4- and 8-team playoffs and two-week rounds
+
+- Sleeper's `playoff_round_type` is read from open-source code, not official docs: 0 = every round one week, 1 = one-week rounds but a two-week championship, 2 = every round two weeks. A two-week round is decided by the sum of both weeks' points. Unconfirmed against a real league that uses 1 or 2; the simulator assumes it. Missing reads as 0 (`leagues.settings` JSON); any other code is refused.
+- Bracket sizes 4, 6, 8. 4: r1 1v4, 2v3, then final and 3rd place. 8: r1 1v8, 4v5, 2v7, 3v6, semis (W1 v W2, W3 v W4), then final and 3rd. Only 6-team has a 5th-place game; other placement games are left out (they never change title odds). Byes: 2 for 6 teams, none for 4 and 8. The 4 and 8 layouts mirror the 6-team one, not yet checked against real rows.
+- The playoff week count comes from size and round type (4: 2/3/4 weeks, 6 and 8: 3/4/6) instead of a fixed 3.
+- One gate, `bracket.shape_problem`, serves add time, the simulate stage and `check_league_shape`. The last playoff week must be 17 (project and sync stop there; the old limit of 18 was a latent bug), so 6 or 8 teams with one-week rounds start by 15, a 4-team by 16.
+- Refused for now: `playoff_seed_type` other than 0 and leagues with more than one division (PR 7 models them).

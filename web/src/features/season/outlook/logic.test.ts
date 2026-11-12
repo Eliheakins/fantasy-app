@@ -5,6 +5,8 @@ import {
   historyTeams,
   weeklyHistory,
   seedFill,
+  byeSeeds,
+  seedCaption,
   matchText,
   roundHeading,
   playoffStartWeek,
@@ -51,8 +53,15 @@ describe("odds history logic", () => {
       { week: 8, run_at: "2026-10-28", "1": 0.7 },
     ]);
   });
+  it("takes the playoff cut and byes from the league's bracket size", () => {
+    expect([4, 6, 8].map(byeSeeds)).toEqual([0, 2, 0]);
+    expect(seedFill(8, 8)).toBe("var(--lf-forest)");
+    expect(seedFill(5, 4)).toBe("var(--lf-chart-other)");
+    expect(seedCaption(6)).toContain("Seeds 1 to 6 make the playoffs; 1 and 2 get a bye");
+    expect(seedCaption(8)).toBe("Chance of each regular-season seed. Seeds 1 to 8 make the playoffs.");
+  });
   it("colours playoff seeds Forest, the rest light grey", () => {
-    expect([1, 2, 6, 7, 10].map((s) => seedFill(s))).toEqual([
+    expect([1, 2, 6, 7, 10].map((s) => seedFill(s, 6))).toEqual([
       "var(--lf-forest)",
       "var(--lf-forest)",
       "var(--lf-forest)",

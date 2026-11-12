@@ -36,12 +36,19 @@ export function runWeeks(history: readonly OddsHistoryRow[]): Map<string, number
   return new Map(history.flatMap((r) => (r.as_of_week == null ? [] : [[r.run_at, r.as_of_week] as const])));
 }
 
-/** Seeds 1 to 6 make the playoffs; 1 and 2 also get a bye. */
-export const PLAYOFF_SEEDS = 6;
-export const BYE_SEEDS = 2;
+/** Seeds 1 to `playoffTeams` make the playoffs; in a 6-team bracket 1 and 2 also get a bye. */
+export const byeSeeds = (playoffTeams: number): number => (playoffTeams === 6 ? 2 : 0);
 
 /** Playoff seeds in Forest, the misses light grey. */
-export const seedFill = (seed: number): string => (seed <= PLAYOFF_SEEDS ? "var(--lf-forest)" : "var(--lf-chart-other)");
+export const seedFill = (seed: number, playoffTeams: number): string =>
+  seed <= playoffTeams ? "var(--lf-forest)" : "var(--lf-chart-other)";
+
+/** The seed chart's caption for a league's bracket. */
+export function seedCaption(playoffTeams: number): string {
+  const bye = byeSeeds(playoffTeams);
+  const byes = bye > 0 ? `; ${bye === 2 ? "1 and 2" : `1 to ${bye}`} get a bye` : "";
+  return `Chance of each regular-season seed. Seeds 1 to ${playoffTeams} make the playoffs${byes}.`;
+}
 
 /** Teams in the history with their names, mine first flagged. */
 export function historyTeams(

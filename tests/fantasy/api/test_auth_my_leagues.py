@@ -34,6 +34,29 @@ class FakeSleeper:
                 },
                 {"league_id": "222", "name": "Second", "total_rosters": 12, "settings": STANDARD},
                 {"league_id": "333", "name": "Third", "total_rosters": 8, "settings": STANDARD},
+                {
+                    "league_id": "777",
+                    "name": "Four",
+                    "total_rosters": 8,
+                    "settings": {**STANDARD, "playoff_teams": 4},
+                },
+                {
+                    "league_id": "888",
+                    "name": "Eight two-week",
+                    "total_rosters": 12,
+                    "settings": {
+                        "num_teams": 12,
+                        "playoff_teams": 8,
+                        "playoff_week_start": 12,
+                        "playoff_round_type": 2,
+                    },
+                },
+                {
+                    "league_id": "998",
+                    "name": "Late",
+                    "total_rosters": 10,
+                    "settings": {**STANDARD, "playoff_week_start": 16},
+                },
                 {"league_id": "444", "name": "Chopped", "total_rosters": 16, "settings": CHOPPED},
                 {
                     "league_id": "555",
@@ -69,6 +92,7 @@ class FakeSleeper:
             "222": [{"roster_id": 1, "owner_id": "u-friend"}],
             "333": [{"roster_id": 1, "owner_id": "u-friend"}],
             "444": [{"roster_id": 1, "owner_id": "u-friend"}],
+            **{k: [{"roster_id": 1, "owner_id": "u-friend"}] for k in ("777", "888", "998")},
             "555": [{"roster_id": 1, "owner_id": "u-friend"}],
             "666": [{"roster_id": 1, "owner_id": "u-friend"}],
         }
@@ -139,6 +163,9 @@ def test_lookup_lists_the_users_current_leagues_and_which_are_already_added(
         "444": False,
         "555": False,
         "666": False,
+        "777": False,
+        "888": False,
+        "998": False,
     }
     assert data["leagues"][0]["num_teams"] == 10
 
@@ -261,6 +288,16 @@ def test_lookup_marks_the_leagues_the_app_cannot_model_with_the_reason(friend: T
     leagues = {lg["league_id"]: lg for lg in lookup(friend).json()["data"]["leagues"]}
     assert leagues["111"]["problem"] is None
     assert "no playoff" in leagues["444"]["problem"]
+
+
+def test_four_and_eight_team_playoffs_are_accepted_and_a_week_16_start_is_not(
+    friend: TestClient,
+) -> None:
+    leagues = {lg["league_id"]: lg for lg in lookup(friend).json()["data"]["leagues"]}
+    assert leagues["777"]["problem"] is None
+    assert leagues["888"]["problem"] is None
+    assert "start week" in leagues["998"]["problem"]
+    assert add(friend, "888").status_code == 200
 
 
 def test_a_league_the_app_cannot_model_cannot_be_added(friend: TestClient, store_dir: Path) -> None:

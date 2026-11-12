@@ -2,10 +2,11 @@ import type { ReactNode } from "react";
 import type { ApiState } from "@/api/envelope";
 import { ApiBoundary, NoData } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
-import { useLeagueApi } from "@/lib/league";
+import { useLeagueApi, usePlayoffTeams } from "@/lib/league";
 import { BracketSection } from "./BracketSection";
 import { OddsTable } from "./OddsTable";
 import { ScheduleTable } from "./ScheduleTable";
+import { seedCaption } from "./logic";
 import { SeedChart } from "./SeedChart";
 import type { ScheduleRow, SeasonOddsRow, SeedRow } from "@/lib/outlookTypes";
 import { capitalize, useWho } from "@/lib/who";
@@ -31,6 +32,7 @@ const SCHEDULE_METHOD =
 /** Season's outlook tables: season odds, where you finish, remaining schedule. The odds chart is Season's own (`SeasonOdds`). */
 export function OutlookView() {
   const who = useWho();
+  const playoffTeams = usePlayoffTeams();
   const odds = useLeagueApi<SeasonOddsRow[]>("season-odds");
   const seeds = useLeagueApi<SeedRow[]>("seeds");
   const schedule = useLeagueApi<ScheduleRow[]>("schedule");
@@ -48,11 +50,8 @@ export function OutlookView() {
             </Section>
             <Optional state={seeds}>
               {(rows) => (
-                <Section
-                  title={who.name ? `Where ${who.name} finishes` : "Where you finish"}
-                  caption="Chance of each regular-season seed. Seeds 1 to 6 make the playoffs; 1 and 2 get a bye."
-                >
-                  <SeedChart rows={rows} />
+                <Section title={who.name ? `Where ${who.name} finishes` : "Where you finish"} caption={seedCaption(playoffTeams)}>
+                  <SeedChart rows={rows} playoffTeams={playoffTeams} />
                 </Section>
               )}
             </Optional>

@@ -6,10 +6,11 @@ match winner is `w` when set, else the side with the higher sum of the round's w
 goes to t1). The champion wins the `p == 1` match; matches with `p > 1` (placement games) are
 resolved but never counted in reach, win or bye shares.
 
-Only the assumed 6-team template exists here (docs/decisions.md); other sizes and round types
-plug in through `template_6`'s siblings and `round_weeks` without touching `resolve`.
+Templates exist for 4, 6 and 8 teams; the round type (one- or two-week rounds, a round decided by
+the sum of its weeks) only changes `round_weeks`.
 """
 
+import json
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -40,27 +41,147 @@ class BracketResult:
     p_bye: np.ndarray  # (T,) share of runs a team's first title-path match is after round 1
 
 
-def template_6(round_type: int = 0) -> tuple[Match, ...]:
-    """Today's assumed 6-team bracket as Sleeper shapes it: 3 v 6 and 4 v 5, byes for 1 and 2
-    (2 meets the 3/6 winner, 1 the 4/5 winner), the final, and the placement games."""
-    if round_type != 0:
+ROUNDS = {4: 2, 6: 3, 8: 3}  # rounds in the winners bracket by playoff teams
+LAST_PLAYOFF_WEEK = 17  # project and sync stop at week 17
+ROUND_TYPES = (0, 1, 2)  # Sleeper's playoff_round_type; semantics in docs/decisions.md
+
+
+def _match(r: int, m: int, t1: Slot, t2: Slot, p: int | None = None) -> Match:
+    return Match("winners", r, m, t1, t2, p=p)
+
+
+def s(n: int) -> Slot:
+    return ("s", n)
+
+
+def w(n: int) -> Slot:
+    return ("w", n)
+
+
+def lo(n: int) -> Slot:
+    return ("l", n)
+
+
+def template(playoff_teams: int, round_type: int = 0) -> tuple[Match, ...]:
+    """The assumed winners bracket as Sleeper lays it out. The shape does not depend on the round
+    type (it only sets how many weeks a round lasts). Placement games below 3rd are left out
+    except 6-team's 5th place: they never change title odds."""
+    if round_type not in ROUND_TYPES:
         raise ValueError(f"round type {round_type} has no template")
-    return (
-        Match("winners", 1, 1, ("s", 3), ("s", 6)),
-        Match("winners", 1, 2, ("s", 4), ("s", 5)),
-        Match("winners", 2, 3, ("s", 2), ("w", 1)),
-        Match("winners", 2, 4, ("s", 1), ("w", 2)),
-        Match("winners", 2, 5, ("l", 1), ("l", 2), p=5),
-        Match("winners", 3, 6, ("w", 3), ("w", 4), p=1),
-        Match("winners", 3, 7, ("l", 3), ("l", 4), p=3),
-    )
+    if playoff_teams == 4:
+        return (
+            _match(1, 1, s(1), s(4)), _match(1, 2, s(2), s(3)),
+            _match(2, 3, w(1), w(2), 1), _match(2, 4, lo(1), lo(2), 3),
+        )  # fmt: skip
+    if playoff_teams == 6:
+        return (
+            _match(1, 1, s(3), s(6)), _match(1, 2, s(4), s(5)),
+            _match(2, 3, s(2), w(1)), _match(2, 4, s(1), w(2)), _match(2, 5, lo(1), lo(2), 5),
+            _match(3, 6, w(3), w(4), 1), _match(3, 7, lo(3), lo(4), 3),
+        )  # fmt: skip
+    if playoff_teams == 8:
+        return (
+            _match(1, 1, s(1), s(8)), _match(1, 2, s(4), s(5)),
+            _match(1, 3, s(2), s(7)), _match(1, 4, s(3), s(6)),
+            _match(2, 5, w(1), w(2)), _match(2, 6, w(3), w(4)),
+            _match(3, 7, w(5), w(6), 1), _match(3, 8, lo(5), lo(6), 3),
+        )  # fmt: skip
+    raise ValueError(f"no template for {playoff_teams} playoff teams")
 
 
-def round_weeks(r: int, playoff_start: int, round_type: int = 0) -> tuple[int, ...]:
-    """The NFL weeks whose scores decide round r (type 0: one week a round)."""
-    if round_type != 0:
+def template_6(round_type: int = 0) -> tuple[Match, ...]:
+    return template(6, round_type)
+
+
+def _spans(n_rounds: int, round_type: int) -> tuple[int, ...]:
+    """Weeks per round: type 0 one each, 1 a two-week final, 2 two weeks every round."""
+    if round_type not in ROUND_TYPES:
         raise ValueError(f"round type {round_type} is not supported")
-    return (playoff_start + r - 1,)
+    return tuple(2 if round_type == 2 or (round_type == 1 and r == n_rounds) else 1
+                 for r in range(1, n_rounds + 1))  # fmt: skip
+
+
+def playoff_weeks(playoff_teams: int, round_type: int = 0) -> int:
+    """Weeks the bracket lasts (0 for a size it has no template for)."""
+    n = ROUNDS.get(playoff_teams)
+    return sum(_spans(n, round_type)) if n else 0
+
+
+def round_weeks(
+    r: int, playoff_start: int, round_type: int = 0, n_rounds: int = 3
+) -> tuple[int, ...]:
+    """The NFL weeks whose scores decide round r (summed when there are two)."""
+    spans = _spans(n_rounds, round_type)
+    first = playoff_start + sum(spans[: r - 1])
+    return tuple(range(first, first + spans[r - 1]))
+
+
+def round_of_week(week: int, playoff_start: int, round_type: int, n_rounds: int) -> int:
+    """The round a playoff week belongs to (beyond the last round: n_rounds + 1)."""
+    for r in range(1, n_rounds + 1):
+        if week in round_weeks(r, playoff_start, round_type, n_rounds):
+            return r
+    return n_rounds + 1
+
+
+def settings_dict(settings_json: str | None) -> dict[str, Any]:
+    """`leagues.settings` as a dict; unreadable or missing settings read as empty."""
+    try:
+        settings = json.loads(settings_json) if settings_json else {}
+    except json.JSONDecodeError:
+        return {}
+    return settings if isinstance(settings, dict) else {}
+
+
+def round_type_of(settings_json: str | None) -> int:
+    """Sleeper's playoff_round_type from `leagues.settings`; missing or odd reads as 0."""
+    value = settings_dict(settings_json).get("playoff_round_type")
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
+def shape_problem(
+    num_teams: int | None,
+    playoff_teams: int | None,
+    playoff_week_start: int | None,
+    round_type: int | None = 0,
+    seed_type: int | None = 0,
+    divisions: int | None = 0,
+) -> str | None:
+    """Why the simulation cannot model a league, in words fit to show, or None when it can.
+    The one gate for the add-time check, the simulate stage and the data loader."""
+    if not playoff_teams:
+        return "This league has no playoff bracket (it may use weekly eliminations)."
+    if playoff_teams not in ROUNDS:
+        return (
+            "Only leagues with a 4, 6 or 8-team playoff are supported "
+            f"(this one has {playoff_teams})."
+        )
+    if num_teams is None or num_teams < playoff_teams:
+        return f"The league needs at least {playoff_teams} teams."
+    round_type = round_type or 0
+    if round_type not in ROUND_TYPES:
+        return f"This league's playoff round setting ({round_type}) is not supported."
+    if seed_type:
+        return "Leagues that reseed or seed by division winners are not supported yet."
+    if divisions and divisions > 1:
+        return "Leagues with divisions are not supported yet."
+    weeks = playoff_weeks(playoff_teams, round_type)
+    last_start = LAST_PLAYOFF_WEEK - weeks + 1
+    if playoff_week_start is None or not 1 <= playoff_week_start <= last_start:
+        return (
+            f"The playoff start week must be between 1 and {last_start} for a {weeks}-week bracket."
+        )
+    return None
+
+
+def row_problem(league: Mapping[str, Any]) -> str | None:
+    """`shape_problem` for a `leagues` table row (round type and divisions come from its JSON)."""
+    settings = settings_dict(league.get("settings"))
+    return shape_problem(
+        league.get("num_teams"), league.get("playoff_teams"), league.get("playoff_week_start"),
+        round_type_of(league.get("settings")), league.get("playoff_seed_type"),
+        settings.get("divisions"),
+    )  # fmt: skip
 
 
 def _slot(team: Any, kind: Any, source: Any) -> Slot:
@@ -117,12 +238,14 @@ def resolve(
     column: dict[int, int],
     roster_ids: list[int],
     playoff_start: int,
+    round_type: int = 0,
 ) -> BracketResult:
     """Run the bracket in every simulated run. `order` (S, T): team index holding seed k+1;
     `scores` (T, W, S) with `column` week -> index; teams are indexes into `roster_ids`."""
     n_sims, n_teams = order.shape[0], scores.shape[0]
     run = np.arange(n_sims)
     index = {rid: i for i, rid in enumerate(roster_ids)}
+    n_rounds = max(m.r for m in matches)
     won: dict[int, np.ndarray] = {}
     lost: dict[int, np.ndarray] = {}
 
@@ -144,7 +267,11 @@ def resolve(
         if match.w is not None:
             win = np.full(n_sims, index[match.w])
         else:
-            weeks = [column[wk] for wk in round_weeks(match.r, playoff_start) if wk in column]
+            weeks = [
+                column[wk]
+                for wk in round_weeks(match.r, playoff_start, round_type, n_rounds)
+                if wk in column
+            ]
             if not weeks:
                 raise ValueError(f"no simulated week for bracket round {match.r}")
             total = scores[:, weeks].sum(axis=1)  # (T, S)

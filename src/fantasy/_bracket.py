@@ -13,7 +13,16 @@ import polars as pl
 
 from fantasy._engine import _read
 from fantasy._leagues import my_league
-from fantasy.sim.bracket import Match, from_rows, is_title_path, round_weeks, seeds_from, template_6
+from fantasy.sim.bracket import (
+    Match,
+    from_rows,
+    is_title_path,
+    round_of_week,
+    round_type_of,
+    round_weeks,
+    seeds_from,
+    template,
+)
 
 ORDINALS = {1: "1st", 2: "2nd", 3: "3rd"}
 
@@ -33,6 +42,13 @@ def _ordinal(n: int) -> str:
 def _matches(league_id: str, data_dir: Path | None) -> tuple[Match, ...]:
     table = _read("playoff_brackets", data_dir).filter(pl.col("league_id") == league_id)
     return from_rows(table.iter_rows(named=True))
+
+
+def _round_type(league_id: str, data_dir: Path | None) -> int:
+    table = _read("leagues", data_dir).filter(pl.col("league_id") == league_id)
+    return (
+        round_type_of(table["settings"][0]) if table.height and "settings" in table.columns else 0
+    )
 
 
 def _names(league_id: str, data_dir: Path | None) -> dict[int, str]:
@@ -65,7 +81,10 @@ def bracket(league_key: str, data_dir: Path | None = None, team: int | None = No
     if not matches:
         return BracketView(message="No bracket has been synced for this league yet")
     names = _names(lid, data_dir)
-    order = seeds_from(tuple(matches), template_6()) or []
+    n_rounds, round_type = max(m.r for m in matches), _round_type(lid, data_dir)
+    order = (
+        seeds_from(tuple(matches), template(int(me.get("playoff_teams") or 6), round_type)) or []
+    )
     seeds = {rid: i + 1 for i, rid in enumerate(order)}
     odds = _read("sim_bracket", data_dir, area="derived").filter(pl.col("league_id") == lid)
     p_win = {
@@ -81,7 +100,7 @@ def bracket(league_key: str, data_dir: Path | None = None, team: int | None = No
     rounds = [
         {
             "round": r,
-            "weeks": list(round_weeks(r, start)),
+            "weeks": list(round_weeks(r, start, round_type, n_rounds)),
             "matches": [
                 {
                     "m": m.m, "place": m.p, "winner": m.w,
@@ -134,4 +153,8 @@ def playoff_status(
     if int(me["current_week"]) < start or week < start:
         return None
     lid = me["league_id"]
-    return status_of(_matches(lid, data_dir), _names(lid, data_dir), roster_id, week - start + 1)
+    matches = _matches(lid, data_dir)
+    if not matches:
+        return None
+    round_no = round_of_week(week, start, _round_type(lid, data_dir), max(m.r for m in matches))
+    return status_of(matches, _names(lid, data_dir), roster_id, round_no)

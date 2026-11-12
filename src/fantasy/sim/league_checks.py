@@ -9,7 +9,7 @@ from typing import Any
 
 import polars as pl
 
-from fantasy.sim.season import N_PLAYOFF_TEAMS
+from fantasy.sim.bracket import row_problem
 
 MAX_NO_PROJECTION = 3  # rostered skill players with no projection at all, per league
 
@@ -53,10 +53,10 @@ def check_standings(base: pl.DataFrame, teams: pl.DataFrame, lid: str) -> None:
 
 
 def check_league_shape(league: dict[str, Any]) -> None:
-    """The season simulation assumes the 6-team playoff in sim/season.py."""
-    teams = league.get("playoff_teams")
-    if teams is not None and int(teams) != N_PLAYOFF_TEAMS:
-        raise ValueError(
-            f"league {league['league_id']} has {teams} playoff teams; "
-            f"sim/season.py supports {N_PLAYOFF_TEAMS}"
-        )
+    """Raise for a league the bracket model cannot fit, by the same gate as `format_problem`.
+    A league with no playoff teams recorded is left to that gate (the stage skips it)."""
+    if league.get("playoff_teams") is None:
+        return
+    problem = row_problem(league)
+    if problem:
+        raise ValueError(f"league {league['league_id']}: {problem}")

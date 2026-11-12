@@ -22,6 +22,7 @@ from fantasy._engine import (
 )
 from fantasy._schemas import ENGINE_SCHEMAS, empty
 from fantasy.sim import moves
+from fantasy.sim.bracket import round_of_week
 from fantasy.sim.lineup import lineup_slots
 from fantasy.sim.odds import DEFAULT_SIMS, LeagueData
 
@@ -160,7 +161,11 @@ def _projected_week(
 def _playoff_label(data: LeagueData, mine: int, week: int) -> str | None:
     if data.current_week < data.playoff_start or week < data.playoff_start:
         return None
-    return status_of(data.bracket, data.team_names, mine, week - data.playoff_start + 1)
+    if not data.bracket:
+        return None
+    n_rounds = max(m.r for m in data.bracket)
+    round_no = round_of_week(week, data.playoff_start, data.round_type, n_rounds)
+    return status_of(data.bracket, data.team_names, mine, round_no)
 
 
 def scoreboard_of(

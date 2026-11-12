@@ -15,7 +15,7 @@ from functools import lru_cache
 import numpy as np
 import polars as pl
 
-from fantasy.sim.bracket import Match, seeds_from, template_6
+from fantasy.sim.bracket import Match, playoff_weeks, seeds_from, template
 from fantasy.sim.lineup import (
     Player,
     auto_lineup,
@@ -36,7 +36,6 @@ from fantasy.sim.value import (
 # explains, from walk-forward projections 2018 to 2025, averaged over both leagues' scoring.
 TAU = {"QB": 1.5, "RB": 1.7, "WR": 0.8, "TE": 0.55}
 DRIFT_SD = 2.0  # assumed weekly roster drift per team, not measured
-PLAYOFF_WEEKS = 3
 DEFAULT_SIMS = 20000  # API paths; the simulate stage reads n_sims from config.toml
 # Absences after this week, measured on nflverse 2018 to 2025 for skill players with at least 5
 # touches or targets: a player who played misses the next week 6.9% of the time, and a player who
@@ -92,6 +91,12 @@ class LeagueData:
     bracket: tuple[Match, ...] = ()  # synced playoff_brackets rows (winners and losers)
     realized: dict[tuple[int, int], float] = field(default_factory=dict)
     # (roster id, week) -> points, for playoff weeks already played
+    playoff_teams: int = 6
+    round_type: int = 0  # Sleeper's playoff_round_type
+
+    @property
+    def playoff_weeks(self) -> int:
+        return playoff_weeks(self.playoff_teams, self.round_type)
 
 
 def kd_slot_mean(data: LeagueData, kind: str, roster_id: int, week: int) -> float:
@@ -232,12 +237,14 @@ def build_inputs(
     of keeping the lineup set in Sleeper. Move evaluators use it for both the before and after
     runs, so an acquired player can fill the slot of one traded away."""
     rosters = data.rosters if rosters is None else rosters
-    last_week = data.playoff_start + PLAYOFF_WEEKS - 1
+    last_week = data.playoff_start + data.playoff_weeks - 1
     weeks = list(range(min(data.current_week, data.playoff_start), last_week + 1))
     off = sum(1 for wk in weeks if wk < data.current_week)  # weeks already played
     real = [m for m in data.bracket if m.bracket == "winners"]
     trusted = bool(real) and data.current_week >= data.playoff_start  # earlier rows are provisional
-    seeds = seeds_from(tuple(real), template_6()) if trusted else None
+    seeds = (
+        seeds_from(tuple(real), template(data.playoff_teams, data.round_type)) if trusted else None
+    )
     slots = lineup_slots(data.roster_positions)
     constants = constant_slot_count(data.roster_positions)
     index = {rid: i for i, rid in enumerate(data.roster_ids)}
@@ -321,6 +328,8 @@ def build_inputs(
         seed=seed,
         bracket=tuple(real) if trusted else None,
         seeds=tuple(seeds) if seeds else None,
+        playoff_teams=data.playoff_teams,
+        round_type=data.round_type,
     )
 
 

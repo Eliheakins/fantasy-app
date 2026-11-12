@@ -141,7 +141,12 @@ def _problem(lg: dict[str, Any]) -> str | None:
     """Why the season simulation cannot model this league, from Sleeper's own settings."""
     settings = lg.get("settings") or {}
     shape = format_problem(
-        settings.get("num_teams"), settings.get("playoff_teams"), settings.get("playoff_week_start")
+        settings.get("num_teams"),
+        settings.get("playoff_teams"),
+        settings.get("playoff_week_start"),
+        settings.get("playoff_round_type"),
+        settings.get("playoff_seed_type"),
+        settings.get("divisions"),
     )
     if shape:
         return shape

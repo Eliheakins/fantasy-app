@@ -7145,6 +7145,17 @@
             ],
             "title": "Playoff Week Start"
           },
+          "playoff_teams": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Teams"
+          },
           "num_teams": {
             "anyOf": [
               {
@@ -7250,6 +7261,7 @@
           "name",
           "current_week",
           "playoff_week_start",
+          "playoff_teams",
           "num_teams",
           "roster_id",
           "team_name",

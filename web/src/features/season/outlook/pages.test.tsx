@@ -16,6 +16,7 @@ vi.mock("@/lib/league", () => ({
     paths.push(path);
     return responder(path);
   },
+  usePlayoffTeams: () => 6,
 }));
 
 const ready = (data: unknown): ApiState<unknown> => ({ kind: "ready", data });

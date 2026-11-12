@@ -14,7 +14,7 @@ import polars as pl
 from fantasy import store
 from fantasy.config import load_config
 from fantasy.sim.availability import kickoffs, remaining_share
-from fantasy.sim.bracket import Match, from_rows
+from fantasy.sim.bracket import Match, from_rows, playoff_weeks, round_type_of
 from fantasy.sim.league_checks import (
     check_league_shape,
     check_projected,
@@ -27,7 +27,7 @@ from fantasy.sim.league_projections import (
     layered_projections,
 )
 from fantasy.sim.lineup import Player
-from fantasy.sim.odds import PLAYOFF_WEEKS, CurrentWeek, LeagueData
+from fantasy.sim.odds import CurrentWeek, LeagueData
 from fantasy.sim.schedule import pairings, standings
 from fantasy.store import SKILL
 from fantasy.teams import TEAM_MAP
@@ -254,6 +254,8 @@ def load_league_data(
     cfg = load_config()
     lid, current = league["league_id"], int(league["current_week"])
     playoff_start = int(league["playoff_week_start"])
+    playoff_teams = int(league.get("playoff_teams") or 6)
+    round_type = round_type_of(league.get("settings"))
     teams = store.read_table("league_teams", "raw", data_dir).filter(pl.col("league_id") == lid)
     matchups = store.read_table("matchups", "raw", data_dir).filter(pl.col("league_id") == lid)
     id_map = store.read_table("id_map", data_dir=data_dir).select("sleeper_id", "gsis_id")
@@ -270,7 +272,8 @@ def load_league_data(
         lid, current, id_map, sleeper_players, projection_table, data_dir
     )
     # after the final no week is left to project, so no rostered player has a projection
-    check_projected(rosters, projections, lid, strict and current < playoff_start + PLAYOFF_WEEKS)
+    last_week = playoff_start + playoff_weeks(playoff_teams, round_type) - 1
+    check_projected(rosters, projections, lid, strict and current <= last_week)
     positions = _active_positions(sleeper_players, id_map)
     marginals = store.read_table("marginals", data_dir=data_dir).filter(pl.col("league_id") == lid)
     cv, rho = _spread_inputs(lid, marginals, data_dir)
@@ -321,4 +324,6 @@ def load_league_data(
         kd_slot=kd_slot_projections(lid, id_map, current, data_dir),
         bracket=_load_bracket(lid, data_dir),
         realized=_realized(matchups, current, playoff_start),
+        playoff_teams=playoff_teams,
+        round_type=round_type,
     )

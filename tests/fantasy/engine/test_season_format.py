@@ -1,5 +1,5 @@
-"""Which leagues the season simulation can model: a 6-team playoff within weeks 1 to 18.
-Anything else (a guillotine league with no playoffs, a 4-team or 8-team bracket) is left out
+"""Which leagues the season simulation can model: a 4, 6 or 8-team playoff ending by week 17.
+Anything else (a guillotine league with no playoffs, a 5-team bracket) is left out
 instead of crashing the refresh for everyone."""
 
 import polars as pl
@@ -12,7 +12,7 @@ from fantasy.stages import simulate as sim_stage
 
 @pytest.mark.parametrize(
     ("teams", "playoff_teams", "start"),
-    [(10, 6, 15), (12, 6, 14), (6, 6, 15), (14, 6, 16)],
+    [(10, 6, 15), (12, 6, 14), (6, 6, 15), (14, 6, 15), (10, 4, 16), (12, 8, 15)],
 )
 def test_the_formats_the_app_models_pass(teams: int, playoff_teams: int, start: int) -> None:
     assert format_problem(teams, playoff_teams, start) is None
@@ -23,12 +23,11 @@ def test_the_formats_the_app_models_pass(teams: int, playoff_teams: int, start: 
     [
         (16, None, 0, "no playoff"),  # a guillotine league: weekly eliminations, no bracket
         (16, 0, 0, "no playoff"),
-        (10, 4, 15, "6-team playoff"),
-        (12, 8, 15, "6-team playoff"),
+        (10, 5, 15, "4, 6 or 8-team playoff"),
         (5, 6, 15, "at least 6 teams"),
         (10, 6, 0, "start week"),
         (10, 6, None, "start week"),
-        (10, 6, 17, "start week"),  # a three-round bracket from week 17 would run past week 18
+        (10, 6, 17, "start week"),  # a three-round bracket from week 17 would run past week 17
     ],
 )
 def test_the_formats_it_cannot_model_get_a_reason_in_plain_words(
