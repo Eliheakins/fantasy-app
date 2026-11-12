@@ -119,8 +119,8 @@ SHAPE: list[tuple[Any, ...]] = [
     (5, 6, 15, 0, 0, 1, "at least 6 teams"),
     (6, 8, 12, 0, 0, 1, "at least 8 teams"),
     (10, 6, 15, 3, 0, 1, "round"),
-    (10, 6, 15, 0, 1, 1, "reseed"),
-    (10, 6, 15, 0, 0, 2, "division"),
+    (10, 6, 15, 0, 1, 1, "reseed each round are not supported"),
+    (10, 6, 15, 0, 0, 2, "divisions are not supported"),
 ]
 
 

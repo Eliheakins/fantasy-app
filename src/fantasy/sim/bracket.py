@@ -162,9 +162,15 @@ def shape_problem(
     if round_type not in ROUND_TYPES:
         return f"This league's playoff round setting ({round_type}) is not supported."
     if seed_type:
-        return "Leagues that reseed or seed by division winners are not supported yet."
+        return (
+            "Leagues that reseed each round are not supported: "
+            "what Sleeper's playoff seeding setting means is not confirmed."
+        )
     if divisions and divisions > 1:
-        return "Leagues with divisions are not supported yet."
+        return (
+            "Leagues with divisions are not supported: "
+            "how Sleeper seeds division winners is not confirmed."
+        )
     weeks = playoff_weeks(playoff_teams, round_type)
     last_start = LAST_PLAYOFF_WEEK - weeks + 1
     if playoff_week_start is None or not 1 <= playoff_week_start <= last_start:
