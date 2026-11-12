@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 
 /** Amber notice: warnings and errors the server explains (deadline, busy, invalid trade). */
 export function Notice({ children, action }: { children: ReactNode; action?: ReactNode }) {
@@ -14,8 +15,8 @@ export function Notice({ children, action }: { children: ReactNode; action?: Rea
 
 export function RetryButton({ onClick, children = "Try again" }: { onClick: () => void; children?: ReactNode }) {
   return (
-    <button type="button" onClick={onClick} className="min-h-[44px] rounded border border-line bg-page px-4 text-ink">
+    <Button variant="outline" onClick={onClick}>
       {children}
-    </button>
+    </Button>
   );
 }

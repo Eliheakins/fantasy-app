@@ -23,7 +23,6 @@ const add = {
 };
 const base = {
   adds: ready([add]),
-  strength: ready([{ position: "QB", vor_per_week: 3.2, rank: 2, teams: 12 }]),
   def: ready([{ unit: "DEF", name: "Jets", team: "NYJ", is_mine: true, this_week: 8, next_three: 20 }]),
   kickers: { kind: "no_data", message: "x" } as ApiState<never[]>,
   weeks: { kind: "loading" } as ApiState<never[]>,
@@ -37,7 +36,6 @@ describe("WaiversView", () => {
     expect(screen.getAllByText("~0.4").length).toBeGreaterThan(0);
     expect(screen.getAllByText("+5.0 ▲").length).toBeGreaterThan(0);
     expect(screen.getByText("Run the streaming stage to see this.")).toBeInTheDocument();
-    expect(screen.getByText(/rank 2 of 12/)).toBeInTheDocument();
   });
   it("links the name to the player page", () => {
     render(<WaiversView {...base} />);
@@ -55,9 +53,8 @@ describe("WaiversView", () => {
     expect(screen.getByText("11.2")).toBeInTheDocument();
   });
   it("renders empty, running and missing-stage states", () => {
-    render(<WaiversView {...base} adds={ready([])} strength={{ kind: "no_data", message: "Nothing here" }} />);
+    render(<WaiversView {...base} adds={ready([])} />);
     expect(screen.getByText("No free agent adds expected points for your team.")).toBeInTheDocument();
-    expect(screen.getByText("Nothing here")).toBeInTheDocument();
   });
   it("shows elapsed time while the job runs", () => {
     render(<WaiversView {...base} adds={{ kind: "running", startedAt: new Date().toISOString() }} />);

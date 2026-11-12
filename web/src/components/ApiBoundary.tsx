@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { type ApiState, elapsedSeconds } from "@/api/envelope";
+import { Button } from "@/components/ui/button";
 
 /** Plain muted line, for states that have no extra chrome. */
 function Message({ children, role }: { children: ReactNode; role?: "status" | "alert" }) {
@@ -39,9 +40,9 @@ function ErrorState({ message, onRetry }: { message: string; onRetry?: () => voi
       <p className="text-body font-semibold">This did not load.</p>
       <p className="text-caption text-muted">{message}</p>
       {onRetry && (
-        <button type="button" onClick={onRetry} className="mt-2 min-h-[44px] rounded border border-line bg-page px-4 text-body text-ink">
+        <Button variant="outline" onClick={onRetry} className="mt-2">
           Try again
-        </button>
+        </Button>
       )}
     </div>
   );

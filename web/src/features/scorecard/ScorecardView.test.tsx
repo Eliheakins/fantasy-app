@@ -20,7 +20,6 @@ const data = (rows: ScorecardRow[], weeks = [7]): ScorecardData => ({
   excluded,
   weeks_archived: weeks,
   weeks_scored: weeks,
-  has_quantiles: false,
   sleeper_first_fetch: null,
 });
 

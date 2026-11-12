@@ -13,6 +13,9 @@ const orderOf = (position: string) => {
   return i === -1 ? POSITION_ORDER.length : i;
 };
 
+const STRENGTH_METHOD =
+  "Points a week the best lineup gains over a stand-in free agent at each position. The stand-in is the third-best or so free agent at the position, since the top ones are the adds. Thin positions are where an add helps; deep ones are where a trade can come from. Bars start at 0 and scale to the biggest position.";
+
 export function StrengthSection() {
   const state = useLeagueApi<Strength[]>("strength");
   const { viewed } = useTeam();
@@ -21,6 +24,7 @@ export function StrengthSection() {
     <Section
       title={`Where ${owner} roster is strong or thin`}
       caption="A low rank is a deep position, where a trade can come from. A high rank is thin: that is the need."
+      howCalculated={STRENGTH_METHOD}
     >
       <ApiBoundary state={state}>
         {(rows) => {

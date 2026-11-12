@@ -1,4 +1,5 @@
 import type { components } from "@/api/schema";
+import { ALL_POSITIONS, POSITION_ORDER } from "@/lib/positions";
 
 export type ScorecardData = components["schemas"]["ScorecardData"];
 export type ScorecardRow = components["schemas"]["ScorecardRow"];
@@ -6,7 +7,6 @@ export type Model = ScorecardRow["model"];
 
 export const MODELS: readonly Model[] = ["learned", "baseline", "sleeper"];
 export const MODEL_LABEL: Record<Model, string> = { learned: "Learned", baseline: "Baseline", sleeper: "Sleeper" };
-const ALL_POSITIONS = "ALL";
 const ALL_TIERS = -1;
 /** A cell with fewer player-games than this is too noisy to rank models on. */
 export const SMALL_N = 30;
@@ -16,7 +16,6 @@ const TIER_LABEL: Record<number, string> = {
   1: "Middle projection third",
   2: "High projection third",
 };
-const POSITION_ORDER = ["QB", "RB", "WR", "TE", "K", "DEF"];
 
 export const EMPTY_TEXT = "Fills after the first archived week finishes and you run make refresh.";
 
