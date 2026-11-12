@@ -6,18 +6,21 @@ is wrong all year), so weeks are not independent. z is keyed by (seed, roster, w
 with the same seed share random numbers wherever the inputs are unchanged. That makes the difference
 between two scenarios (a trade, a waiver add) much less noisy than the odds themselves.
 
-Seeding: wins, then points for, ties broken at random. Bracket (assumed, see decisions.md): seeds 1
-and 2 skip the first playoff week; round 1 is 3 v 6 and 4 v 5; then 1 v winner(4/5), 2 v
-winner(3/6); the final is the next week.
+Seeding: wins, then points for, ties broken at random, unless `seeds` holds the real seeds (the
+bracket is seeded). The bracket is `sim/bracket.py`: the assumed 6-team template (seeds 1 and 2
+skip round 1; 3 v 6 and 4 v 5; then 1 v winner(4/5), 2 v winner(3/6); the final) or, once seeded,
+Sleeper's real rows with played games fixed. Playoff weeks already played arrive as zero-noise
+means (realized points); standings count weeks before `playoff_start` only.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import polars as pl
 
+from fantasy.sim.bracket import Match, resolve, template_6
+
 N_PLAYOFF_TEAMS = 6
-BYE_SEEDS = 2
 LAST_NFL_WEEK = 18
 BRACKET_ROUNDS = 3  # round one, the semifinals, the final
 
@@ -57,6 +60,8 @@ class SeasonInputs:
     points0: np.ndarray  # (T,) points for from completed weeks
     playoff_start: int
     seed: int = 0
+    bracket: tuple[Match, ...] | None = None  # real rows when trusted, else the 6-team template
+    seeds: tuple[int, ...] | None = None  # roster ids of seeds 1..6 when the bracket is seeded
 
 
 @dataclass(frozen=True)
@@ -68,6 +73,9 @@ class SeasonResult:
     p_seed: np.ndarray  # (T, T): share of runs in which team t takes seed k+1
     made_playoffs: np.ndarray  # (T, S) bool, per run, for paired error estimates
     champion: np.ndarray  # (S,) index of the title winner in each run
+    rounds: tuple[int, ...] = ()  # bracket rounds that count toward the title
+    p_reach: np.ndarray = field(default_factory=lambda: np.zeros((0, 0)))  # (rounds, T)
+    p_win: np.ndarray = field(default_factory=lambda: np.zeros((0, 0)))  # (rounds, T) won a game
 
 
 def noise_matrix(roster_ids: list[int], weeks: list[int], n_sims: int, seed: int) -> np.ndarray:
@@ -104,23 +112,16 @@ def simulate_season(inp: SeasonInputs) -> SeasonResult:
         if week < inp.playoff_start:
             points += scores[:, column[week]]
 
-    # seeds: wins, then points for, then a random tie-break
+    # seeds: wins, then points for, then a random tie-break; real seeds, once known, come first
     rng = np.random.default_rng([inp.seed, 99_999])
     key = wins * 1e6 + points + rng.uniform(0, 1e-3, size=wins.shape)
+    index = {rid: i for i, rid in enumerate(inp.roster_ids)}
+    for k, rid in enumerate(inp.seeds or ()):
+        key[index[rid]] = 1e10 - k
     order = np.argsort(-key, axis=0).T  # (S, T): order[s, k] = team index with seed k+1
 
-    def winner(team_a: np.ndarray, team_b: np.ndarray, week: int) -> np.ndarray:
-        s = scores[:, column[week]].T  # (S, T)
-        idx = np.arange(n_sims)
-        return np.where(s[idx, team_a] >= s[idx, team_b], team_a, team_b)
-
-    w1, w2, w3 = inp.playoff_start, inp.playoff_start + 1, inp.playoff_start + 2
-    seed1, seed2, seed3, seed4, seed5, seed6 = (order[:, k] for k in range(N_PLAYOFF_TEAMS))
-    win_36 = winner(seed3, seed6, w1)
-    win_45 = winner(seed4, seed5, w1)
-    finalist_1 = winner(seed1, win_45, w2)
-    finalist_2 = winner(seed2, win_36, w2)
-    champion = winner(finalist_1, finalist_2, w3)
+    matches = inp.bracket or template_6()
+    out = resolve(matches, order, scores, column, inp.roster_ids, inp.playoff_start)
 
     def share(chosen: np.ndarray) -> np.ndarray:
         shares: np.ndarray = np.bincount(chosen.ravel(), minlength=n_teams) / n_sims
@@ -132,12 +133,15 @@ def simulate_season(inp: SeasonInputs) -> SeasonResult:
 
     return SeasonResult(
         p_playoffs=share(order[:, :N_PLAYOFF_TEAMS]),
-        p_bye=share(order[:, :BYE_SEEDS]),
-        p_title=share(champion),
+        p_bye=out.p_bye,
+        p_title=share(out.champion),
         exp_wins=wins.mean(axis=1),
         p_seed=np.stack([share(order[:, k]) for k in range(n_teams)], axis=1),
         made_playoffs=made,
-        champion=champion,
+        champion=out.champion,
+        rounds=out.rounds,
+        p_reach=out.p_reach,
+        p_win=out.p_win,
     )
 
 

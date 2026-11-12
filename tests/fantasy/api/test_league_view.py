@@ -151,6 +151,7 @@ def test_run_writes_the_new_tables_in_one_call_with_the_season_tables(
         "sim_team_weeks",
         "sim_conditional",
         "sim_win_need",
+        "sim_bracket",
     }
     assert tables["sim_season"].equals(latest)
     cond = tables["sim_conditional"]

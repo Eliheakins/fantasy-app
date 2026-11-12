@@ -241,6 +241,9 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     "availability": _cols(strings="gsis_id", ints="season week", floats="p_play"),
     # written by outlook (area: derived): return-from-absence ratios and teammate-vacancy slopes
     "outlook_effects": _cols(strings="position kind", ints="n", floats="value"),
+    # written by simulate with sim_season: a team's chance to play (p_reach) and win (p_win) a
+    # title-path bracket game in each round; teams that never reach a round have no row
+    "sim_bracket": _cols(strings="league_id", ints="roster_id round", floats="p_reach p_win"),
     "sim_seeds": _cols(strings="league_id", ints="roster_id seed", floats="p"),
     # written by simulate with sim_season: a team's expected score (mean plus mean shift) and spread
     # in each remaining regular-season week

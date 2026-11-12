@@ -1,6 +1,7 @@
 """Simulate the rest of each league's season and write playoff and title odds.
 
-Writes sim_season (latest) and appends to sim_season_history (one row per team per run, so the
+Writes sim_season and sim_bracket (latest) and appends to sim_season_history (one row per team
+per run, so the
 Outlook chart can show odds over time). Odds assume current rosters: no waiver moves, trades or
 injuries beyond the spread already in each player's outcome distribution.
 
@@ -89,7 +90,7 @@ def run(
     """Simulate every league. `archive=False` skips the append-only history (live ticks)."""
     cfg = load_config()
     n_sims = n_sims or cfg.n_sims
-    rows, seed_rows, week_rows, conditional, win_need = [], [], [], [], []
+    rows, seed_rows, bracket_rows, week_rows, conditional, win_need = [], [], [], [], [], []
     for league in store.read_table("leagues", "raw", data_dir).iter_rows(named=True):
         problem = format_problem(
             league["num_teams"], league["playoff_teams"], league["playoff_week_start"]
@@ -108,6 +109,18 @@ def run(
         conditional.append(cond.select(*store.SCHEMAS["sim_conditional"]))
         need = _tag(win_need_odds(inp, result, scores=scores), league["league_id"], data)
         win_need.append(need.select(*store.SCHEMAS["sim_win_need"]))
+        bracket_rows += [
+            (
+                league["league_id"],
+                roster_id,
+                rnd,
+                float(result.p_reach[j, i]),
+                float(result.p_win[j, i]),
+            )
+            for i, roster_id in enumerate(data.roster_ids)
+            for j, rnd in enumerate(result.rounds)
+            if result.p_reach[j, i] > 0
+        ]
         for i, roster_id in enumerate(data.roster_ids):
             seed_rows += [
                 (league["league_id"], roster_id, k + 1, float(result.p_seed[i, k]))
@@ -131,6 +144,9 @@ def run(
     # a failure earlier leaves it behind the tables, never ahead
     store.write_tables(
         {
+            "sim_bracket": pl.DataFrame(
+                bracket_rows, schema=store.SCHEMAS["sim_bracket"], orient="row"
+            ),
             "sim_seeds": pl.DataFrame(seed_rows, schema=store.SCHEMAS["sim_seeds"], orient="row"),
             "sim_team_weeks": pl.DataFrame(
                 week_rows, schema=store.SCHEMAS["sim_team_weeks"], orient="row"
