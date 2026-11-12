@@ -2,10 +2,9 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-type CalloutVariant = "error" | "warn" | "info";
+type CalloutVariant = "warn" | "info";
 
 const variantClass: Record<CalloutVariant, string> = {
-  error: "border-warning-edge bg-warning-bg text-warning",
   warn: "border-warning-edge bg-warning-bg text-warning",
   info: "border-line text-muted",
 };

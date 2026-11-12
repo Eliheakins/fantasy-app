@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
 
 const CHIP_CLASS =
-  "inline-flex min-h-11 items-center gap-2 rounded-full border bg-surface px-3.5 text-body font-medium text-ink md:min-h-10 " +
+  "inline-flex min-h-11 items-center gap-2 rounded-full border border-panel-line bg-surface px-3.5 text-body font-medium text-ink md:min-h-10 " +
   "hover:border-focus data-[state=open]:border-focus data-[state=open]:bg-panel";
 
 function Caret() {
@@ -12,21 +11,11 @@ function Caret() {
 }
 
 /** A chip of the query bar: its label, and a popover with the controls for it. */
-export function BarChip({
-  label,
-  ariaLabel,
-  children,
-  className,
-}: {
-  label: ReactNode;
-  ariaLabel: string;
-  children: ReactNode;
-  className?: string;
-}) {
+export function BarChip({ label, ariaLabel, children }: { label: ReactNode; ariaLabel: string; children: ReactNode }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button type="button" aria-label={ariaLabel} className={cn(CHIP_CLASS, "border-panel-line", className)}>
+        <button type="button" aria-label={ariaLabel} className={CHIP_CLASS}>
           {label}
           <Caret />
         </button>

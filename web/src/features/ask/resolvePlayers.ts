@@ -115,6 +115,9 @@ export function tokenize(text: string): string[] {
     .filter(Boolean);
 }
 
+/** Words as the parser reads them. A "%" is a word ("sack %"), not punctuation, so "sack" alone is not "sack %". */
+export const wordsOf = (text: string): string[] => tokenize(text.replace(/%/g, " percent "));
+
 function stripSuffix(tokens: string[]): string[] {
   const out = [...tokens];
   while (out.length > 1 && NAME_SUFFIXES.has(out[out.length - 1]!)) {

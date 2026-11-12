@@ -48,7 +48,7 @@ export interface QueryState {
 }
 
 export type Position = "QB" | "RB" | "WR" | "TE";
-const POSITIONS: readonly Position[] = ["QB", "RB", "WR", "TE"];
+export const POSITIONS: readonly Position[] = ["QB", "RB", "WR", "TE"];
 
 export type RosterFilter = "mine" | "rostered" | "fa";
 const ROSTER_FILTERS: readonly RosterFilter[] = ["mine", "rostered", "fa"];
@@ -117,9 +117,10 @@ function parseOrder(value: string | null, stats: readonly string[]): QueryOrder 
   return { metric, direction: direction ?? "desc" };
 }
 
-function parseLimit(value: string | null): number | null {
+/** A whole number from 1 to `max` written as plain digits, else null. */
+function parsePositiveInt(value: string | null, max: number): number | null {
   const n = Number(value);
-  return value !== null && /^\d+$/.test(value) && n >= 1 && n <= MAX_LIMIT ? n : null;
+  return value !== null && /^\d+$/.test(value) && n >= 1 && n <= max ? n : null;
 }
 
 /** True for a league-wide leaderboard: no players named, but an order and a limit. */
@@ -155,21 +156,16 @@ export function parseQuery(params: URLSearchParams, knownFilterIds?: ReadonlySet
     minPlays: clampMinPlays(Number(params.get(KEYS.minPlays) ?? 0)),
     order,
     // A limit without an order would cut the rows unsorted, so it only counts alongside one.
-    limit: order ? parseLimit(params.get(KEYS.limit)) : null,
+    limit: order ? parsePositiveInt(params.get(KEYS.limit), MAX_LIMIT) : null,
     split: SPLITS.find((s) => s === params.get(KEYS.split)) ?? null,
     subject: params.get(KEYS.subject) === "teams" ? "teams" : "players",
     teams: unique(params.getAll(KEYS.teams).filter((id) => getTeamById(id))).slice(0, MAX_PINNED_TEAMS),
     side: params.get(KEYS.side) === "defense" ? "defense" : "offense",
     roster: ROSTER_FILTERS.find((r) => r === params.get(KEYS.roster)) ?? null,
-    lastGames: parseLastGames(params.get(KEYS.lastGames)),
+    lastGames: parsePositiveInt(params.get(KEYS.lastGames), MAX_LAST_GAMES),
     position: POSITIONS.find((p) => p === params.get(KEYS.position)) ?? null,
     rookie: params.get(KEYS.rookie) === "1",
   };
-}
-
-function parseLastGames(value: string | null): number | null {
-  const n = Number(value);
-  return value !== null && /^\d+$/.test(value) && n >= 1 && n <= MAX_LAST_GAMES ? n : null;
 }
 
 /** `base` with its query parameters replaced by `state`; other parameters (like `q`) are kept. */
@@ -334,8 +330,4 @@ export function pinPlayer(state: QueryState, id: string): QueryState {
 
 export function unpinPlayer(state: QueryState, id: string): QueryState {
   return { ...state, players: state.players.filter((p) => p !== id) };
-}
-
-export function clearPins(state: QueryState): QueryState {
-  return { ...state, players: [] };
 }

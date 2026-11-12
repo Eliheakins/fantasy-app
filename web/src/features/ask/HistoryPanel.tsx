@@ -4,6 +4,7 @@ import type { FilterChipGroup } from "@/stat/config/queryBuilderOptions";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
+import { copyShared } from "@/lib/sharedParams";
 import { getStatById } from "@/stat/config/statDictionary";
 import { useFilterChipGroups } from "@/stat/react/filterChipGroups";
 import { EMPTY_QUERY, serializeQuery } from "@/stat/lib/queryUrl";
@@ -32,24 +33,12 @@ function describe(query: LoggedQuery, chipGroups: FilterChipGroup[]): string {
 
 /** The Ask URL that shows an entry again, on the same league and team. */
 const reopenSearch = (entry: AskLogEntry, current: URLSearchParams): string | null => {
-  if (entry.outcome.kind === "start_sit" || entry.outcome.kind === "trade") {
-    const params = new URLSearchParams({ q: entry.question });
-    for (const key of ["league", "team", "week"]) {
-      const value = current.get(key);
-      if (value !== null) params.set(key, value);
-    }
-    return params.toString();
-  }
-  if (entry.outcome.kind !== "answered") {
-    return null;
-  }
-  const query = entry.corrected ?? entry.outcome.query;
-  const params = serializeQuery({ ...EMPTY_QUERY, ...query });
+  const { outcome } = entry;
+  if (outcome.kind !== "answered" && outcome.kind !== "start_sit" && outcome.kind !== "trade") return null;
+  const params =
+    outcome.kind === "answered" ? serializeQuery({ ...EMPTY_QUERY, ...(entry.corrected ?? outcome.query) }) : new URLSearchParams();
   params.set("q", entry.question);
-  for (const key of ["league", "team", "week"]) {
-    const value = current.get(key);
-    if (value !== null) params.set(key, value);
-  }
+  copyShared(current, params);
   return params.toString();
 };
 

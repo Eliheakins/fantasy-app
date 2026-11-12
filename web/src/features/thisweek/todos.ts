@@ -3,6 +3,7 @@ import { actionGain, actionSentence, worthActing } from "@/features/thisweek/lea
 import type { ActionRow } from "@/features/thisweek/leagues/logic";
 import { compareEffect, type Effect, MIN_PLAYOFF_GAIN } from "@/features/effects/effect";
 import { type EffectWhy, lineupWhy, waiverWhy } from "@/features/effects/explain";
+import { leagueName } from "./weekLogic";
 
 type MoveIdea = components["schemas"]["MoveIdeaRow"];
 
@@ -42,8 +43,7 @@ const hrefFor = (page: "lineup" | "moves", leagueKey: string) => `/${page}?leagu
 
 /** One league's to-dos: lineup and injury actions plus the best stored waiver add. Effects come from the responses as given. */
 export function leagueTodos(league: LeagueRef, actions: readonly ActionRow[], waivers: readonly MoveIdea[], deadlines: Deadlines): Todo[] {
-  const leagueName = league.name?.trim() || league.league_key;
-  const base = { leagueKey: league.league_key, leagueName };
+  const base = { leagueKey: league.league_key, leagueName: leagueName(league) };
   const fromActions = actions
     .filter((a) => a.kind !== "Waiver" && worthActing(a, a.share_better ?? null)) // the stored add below is the waiver to-do
     .map((a, i): Todo => ({

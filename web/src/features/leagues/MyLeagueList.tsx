@@ -29,11 +29,14 @@ export function MyLeagueList() {
   const [picking, setPicking] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const readyBefore = useRef(0);
-  const ready = state.kind === "ready" ? state.data.filter((l) => l.status === "ready").length : 0;
+  // null until the list first loads, so a visit does not refetch /api/leagues for leagues already ready.
+  const readyBefore = useRef<number | null>(null);
+  const ready = state.kind === "ready" ? state.data.filter((l) => l.status === "ready").length : null;
 
   useEffect(() => {
-    if (ready > readyBefore.current) void queryClient.invalidateQueries({ queryKey: ["api", "/api/leagues"] });
+    if (ready === null) return;
+    if (readyBefore.current !== null && ready > readyBefore.current)
+      void queryClient.invalidateQueries({ queryKey: ["api", "/api/leagues"] });
     readyBefore.current = ready;
   }, [ready, queryClient]);
 

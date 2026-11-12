@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
 import { errorReply, okReply, stubApi } from "@/test/fakeApi";
 import { AddLeague } from "./AddLeague";
 
@@ -17,15 +16,10 @@ const TEAMS = [
 ];
 const TEAMS_URL = "/api/me/sleeper/leagues/111/teams";
 
-function Harness() {
-  const [username, setUsername] = useState("");
-  return <AddLeague username={username} onUsername={setUsername} />;
-}
-
 function open() {
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <Harness />
+      <AddLeague />
     </QueryClientProvider>,
   );
 }

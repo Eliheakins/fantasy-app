@@ -1,9 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { Field } from "@/components/Field";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { redeemInvite } from "@/lib/session";
 
 /** The server's minimum (fantasy/auth/passwords.py); checked here too so most mistakes need no round trip. */
@@ -53,33 +53,25 @@ export default function RedeemInvite() {
     <main className="mx-auto w-full max-w-sm px-4 py-10">
       <PageHeader title="Choose a password" subtitle={`At least ${MIN_PASSWORD_LENGTH} characters. A password manager makes this easy.`} />
       <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="invite-password" className="text-body font-medium text-ink">
-            New password
-          </label>
-          <Input
-            id="invite-password"
-            ref={field}
-            type="password"
-            autoComplete="new-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="invite-again" className="text-body font-medium text-ink">
-            Type it again
-          </label>
-          <Input
-            id="invite-again"
-            type="password"
-            autoComplete="new-password"
-            required
-            value={again}
-            onChange={(e) => setAgain(e.target.value)}
-          />
-        </div>
+        <Field
+          id="invite-password"
+          label="New password"
+          ref={field}
+          type="password"
+          autoComplete="new-password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <Field
+          id="invite-again"
+          label="Type it again"
+          type="password"
+          autoComplete="new-password"
+          required
+          value={again}
+          onChange={(e) => setAgain(e.target.value)}
+        />
         {error && (
           <p role="alert" className="text-body text-ink">
             {error}

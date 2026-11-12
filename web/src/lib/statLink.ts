@@ -1,3 +1,5 @@
+import { copyShared } from "./sharedParams";
+
 /** Stat ids from metrics/metrics.json. */
 const RECEIVING = ["rec_tgt", "rec_receptions", "rec_yards", "rec_tds"];
 const STATS_BY_POSITION: Readonly<Record<string, readonly string[]>> = {
@@ -30,11 +32,7 @@ export function statLink({ gsisId, position, season, search = "" }: StatLinkArgs
     ["by", "week"],
     ["g", "total"],
   ]);
-  const current = new URLSearchParams(search);
-  for (const shared of ["league", "team", "week"]) {
-    const value = current.get(shared);
-    if (value !== null) query.set(shared, value);
-  }
+  copyShared(new URLSearchParams(search), query);
   return `/players/find?${query.toString()}`;
 }
 

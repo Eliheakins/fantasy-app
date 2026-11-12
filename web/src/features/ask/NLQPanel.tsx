@@ -113,7 +113,7 @@ export function NLQPanel() {
           </Button>
         </div>
 
-        <div role="alert">{ask.message ? <Callout variant="error">{ask.message}</Callout> : null}</div>
+        <div role="alert">{ask.message ? <Callout variant="warn">{ask.message}</Callout> : null}</div>
         <IgnoredFiltersNotice />
         <ParticipationNotice />
 

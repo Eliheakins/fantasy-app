@@ -45,7 +45,7 @@ export type LoggedQuery = z.infer<typeof loggedQuerySchema>;
 export type AskLogEntry = z.infer<typeof entrySchema>;
 export type StorageLike = Pick<Storage, "getItem" | "setItem">;
 
-/** The eval files' case shape (`backend/tests/eval/*.json`). */
+/** The eval files' case shape (`tests/stat/eval/*.json`). */
 export interface EvalCaseDraft {
   q: string;
   stats: string[];

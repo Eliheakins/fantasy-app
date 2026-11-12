@@ -5,7 +5,6 @@ import { getAllFilterChipIds } from "@/stat/config/queryBuilderOptions";
 import { useFilterChipGroups } from "@/stat/react/filterChipGroups";
 import {
   applyFilterGroup,
-  clearPins,
   ignoredFilterIds,
   parseQuery,
   pinPlayer,
@@ -94,6 +93,5 @@ export function useQueryState() {
     toggleFilterId: useCallback((id: string) => update((s) => toggleFilter(s, id)), [update]),
     pinPlayer: useCallback((id: string) => update((s) => pinPlayer(s, id)), [update]),
     unpinPlayer: useCallback((id: string) => update((s) => unpinPlayer(s, id)), [update]),
-    clearPins: useCallback(() => update((s) => clearPins(s)), [update]),
   };
 }

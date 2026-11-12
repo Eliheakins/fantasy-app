@@ -4,15 +4,9 @@ import { getStatById } from "@/stat/config/statDictionary";
 import { statLabel } from "@/stat/lib/queryBuilder";
 import { useFilterChipGroups } from "@/stat/react/filterChipGroups";
 import { useQueryState } from "@/stat/react/useQueryState";
-import type { GranularityMode } from "@/stat/types/queryBuilder";
+import { GRANULARITY_LABELS, type GranularityMode } from "@/stat/types/queryBuilder";
 
 import { scopeLabels } from "./answerText";
-
-const GRANULARITY_LABELS: Record<GranularityMode, string> = {
-  total: "Total",
-  per_game: "Per game",
-  per_play: "Per play",
-};
 
 const chipClass =
   "inline-flex items-center gap-1 rounded-full border border-line bg-surface px-2.5 py-0.5 text-caption text-ink " +

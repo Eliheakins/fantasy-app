@@ -14,24 +14,16 @@ function toNumber(v: unknown): number | null {
   if (v === null || v === undefined) {
     return null;
   }
-  if (typeof v === "bigint") {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  }
-  if (typeof v === "number") {
-    return Number.isFinite(v) ? v : null;
-  }
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
 function paddedDomain(values: number[]): [number, number] {
-  const finite = values.filter((v) => Number.isFinite(v));
-  if (finite.length === 0) {
+  if (values.length === 0) {
     return [0, 1];
   }
-  const min = Math.min(...finite);
-  const max = Math.max(...finite);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
   if (min === max) {
     const pad = Math.abs(min) * 0.1 || 1;
     return [min - pad, max + pad];

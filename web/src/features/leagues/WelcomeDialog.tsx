@@ -13,7 +13,6 @@ import { AddLeague } from "./AddLeague";
 export function WelcomeDialog() {
   const { leagues } = useLeague();
   const mine = useEnvelopeQuery<MyLeague[]>("/api/me/leagues"); // an error (no account, login off) means no dialog
-  const [username, setUsername] = useState("");
   const [wasNew, setWasNew] = useState(false);
   const [closed, setClosed] = useState(false);
   const isNew = leagues.kind === "ready" && leagues.data.length === 0 && mine.kind === "ready" && mine.data.length === 0;
@@ -34,7 +33,7 @@ export function WelcomeDialog() {
             Enter your Sleeper username, then add each league and pick which team in it is yours. You can add up to 2, and change them later
             under My leagues.
           </Dialog.Description>
-          <AddLeague username={username} onUsername={setUsername} />
+          <AddLeague />
           <Dialog.Close asChild>
             <Button variant="outline" className="self-end">
               Done

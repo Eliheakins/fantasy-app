@@ -36,7 +36,7 @@ export function RequireSession() {
   }
   if (session.kind === "error") {
     return (
-      <section className="mx-auto max-w-[1200px] p-6">
+      <section className="mx-auto max-w-page p-6">
         <PageHeader title="Could not check your sign-in" />
         <p role="alert" className="measure text-muted">
           {session.message}

@@ -4,9 +4,9 @@ import { sendJson } from "@/api/envelope";
 import type { AdminAccount, InviteCreated } from "@/api/types";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { ApiBoundary } from "@/components/ApiBoundary";
+import { Field } from "@/components/Field";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { InviteLink } from "./InviteLink";
 
 const ACCOUNTS_URL = "/api/admin/accounts";
@@ -91,12 +91,15 @@ export function People() {
   return (
     <div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2 sm:flex-row sm:items-end">
-        <div className="flex flex-1 flex-col gap-1">
-          <label htmlFor="invite-email" className="text-body font-medium text-ink">
-            Email to invite
-          </label>
-          <Input id="invite-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        </div>
+        <Field
+          id="invite-email"
+          label="Email to invite"
+          wrapperClassName="flex-1"
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
         <Button type="submit" disabled={busy}>
           Create invite link
         </Button>

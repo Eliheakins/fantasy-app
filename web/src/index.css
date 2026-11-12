@@ -71,6 +71,8 @@
 }
 
 @theme inline {
+  /* page width cap, as `max-w-page` */
+  --container-page: 1200px;
   --color-page: var(--lf-page);
   --color-surface: var(--lf-surface);
   --color-panel: var(--lf-panel);

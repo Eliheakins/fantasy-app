@@ -7,6 +7,7 @@ import { marketDate, marketText } from "./logic";
 import type { FoundTrade } from "./types";
 import { useKeptState } from "./useKeptState";
 import { usePostEnvelope } from "@/api/useEnvelope";
+import { leagueUrl } from "@/lib/league";
 
 /** "You fill: WR" / "They fill: RB, WR" on two lines; a side with no named need says "none". */
 function FillsNote({ r }: { r: Pick<FoundTrade, "my_fills" | "their_fills"> }) {
@@ -102,11 +103,7 @@ function HowToRead() {
 
 export function FindTradesSection({ league, scope = league }: { league: string; scope?: string }) {
   const [requested, setRequested] = useKeptState<boolean>(["finder-requested", scope], false);
-  const { state, refetch } = usePostEnvelope<FoundTrade[]>(
-    ["find-trades", scope],
-    `/api/leagues/${encodeURIComponent(league)}/trades/find`,
-    requested ? {} : null,
-  );
+  const { state, refetch } = usePostEnvelope<FoundTrade[]>(["find-trades", scope], leagueUrl(league, "trades/find"), requested ? {} : null);
   const running = state?.kind === "running" || (requested && state?.kind === "loading");
   return (
     <Section

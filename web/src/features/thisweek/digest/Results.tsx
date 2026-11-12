@@ -1,3 +1,4 @@
+import { sideName } from "@/lib/scoreboard";
 import { PlayerLink } from "@/components/PlayerLink";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { Delta, NOISE_PERCENT, NOISE_POINTS, NOISE_WINS, formatNumber, formatPercent, toPoints } from "@/viz";
@@ -17,7 +18,7 @@ function Figure({ label, children }: { label: string; children: React.ReactNode 
   );
 }
 
-/** Last week's game: result sentence, then the three figures the League page totals over the season. */
+/** Last week's game: result sentence, then the two figures the League page totals over the season. */
 export function LastWeek({ row, currentWeek }: { row: LastWeekRow | null; currentWeek: number | null }) {
   if (row === null) {
     return (
@@ -31,7 +32,7 @@ export function LastWeek({ row, currentWeek }: { row: LastWeekRow | null; curren
       <p className="text-body font-semibold">
         Week {row.week}: {resultSentence(row)}
       </p>
-      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3">
+      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2">
         <Figure label="Bench points left (best lineup minus started)">
           {row.bench_points_left === null ? UNKNOWN : formatNumber(row.bench_points_left)}
         </Figure>
@@ -103,7 +104,7 @@ function Change({ fraction }: { fraction: number | null }) {
 }
 
 const ODDS_COLUMNS: Column<OddsChangeRow>[] = [
-  { label: "Team", role: "primary", render: (r) => (r.is_me ? `${r.team_name} (you)` : r.team_name) },
+  { label: "Team", role: "primary", render: (r) => sideName(r) },
   { label: "Playoff odds", numeric: true, render: (r) => formatPercent(r.p_playoffs) },
   { label: "Playoff change (% pts)", numeric: true, render: (r) => <Change fraction={r.d_playoffs} /> },
   { label: "Title odds", numeric: true, render: (r) => formatPercent(r.p_title) },

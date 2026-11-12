@@ -1,15 +1,7 @@
-/**
- * Player row shape read from the static `players.json` (aligned with the roster index).
- */
-export interface NFLPlayer {
-  gsis_id: string;
-  full_name: string | null;
-  position: string | null;
-  team: string | null;
-  headshot_url: string | null;
-  birth_date?: string | null;
-  years_exp?: number | null;
-}
+import type { Player } from "@/stat/lib/schemas/players";
+
+/** A `players.json` row; the name is null for a pinned id not (yet) in the list. */
+export type NFLPlayer = Omit<Player, "full_name"> & { full_name: string | null };
 
 /**
  * Result of a stat query, as the UI renders it.

@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Callout } from "@/components/Callout";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
+import { leagueUrl } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
 import { statIdsFor, statLink } from "@/lib/statLink";
 import { getStatById } from "@/stat/config/statDictionary";
@@ -25,9 +26,7 @@ export function PlayerGameLog({ gsisId, position, season }: Props) {
   const log = useGameLog(gsisId, statIds, season);
   const { league } = useTeam();
   const points = useEnvelopeQuery<PointsRow[]>(
-    league === null
-      ? null
-      : `/api/leagues/${encodeURIComponent(league)}/player-points?gsis_id=${encodeURIComponent(gsisId)}&season=${season}`,
+    league === null ? null : leagueUrl(league, `player-points?gsis_id=${encodeURIComponent(gsisId)}&season=${season}`),
   );
   const pointsByWeek = points.kind === "ready" ? new Map(points.data.map((p) => [p.week, p.points])) : null;
   const logByWeek = new Map((log.data?.rows ?? []).map((r) => [Number(r.week), r]));

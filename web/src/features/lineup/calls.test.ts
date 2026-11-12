@@ -3,7 +3,6 @@ import type { LineupRow } from "./logic";
 import {
   type SlotCall,
   callText,
-  recommendedObjective,
   scratchFallbacks,
   splitCalls,
   startAnswer,
@@ -83,12 +82,6 @@ describe("late scratch fallbacks", () => {
       row("c", "Benched", { recommended: false, swap_in: "Nobody" }),
     ];
     expect(scratchFallbacks(rows)).toEqual([{ gsisId: "a", text: "If James Cook is out: start Ray Bernard" }]);
-  });
-});
-
-describe("recommended objective", () => {
-  test("is win probability whatever the matchup", () => {
-    expect(recommendedObjective()).toBe("win_probability");
   });
 });
 

@@ -4,7 +4,6 @@ import { buildFilterChipGroups, getAllFilterChipIds } from "@/stat/config/queryB
 
 import {
   applyFilterGroup,
-  clearPins,
   EMPTY_QUERY,
   ignoredFilterIds,
   isLeagueQuery,
@@ -253,13 +252,10 @@ describe("query transitions", () => {
     expect(state.players).toHaveLength(MAX_PINNED_PLAYERS);
   });
 
-  it("unpins one player and clears all, without touching the rest of the query", () => {
+  it("unpins one player without touching the rest of the query", () => {
     const state = unpinPlayer(FULL, "00-0033873");
     expect(state.players).toEqual(["00-0034857"]);
     expect(state.stats).toEqual(FULL.stats);
-
-    expect(clearPins(FULL).players).toEqual([]);
-    expect(clearPins(FULL).filters).toEqual(FULL.filters);
   });
 
   it("never mutates the state it is given", () => {

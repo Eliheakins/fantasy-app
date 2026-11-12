@@ -5,12 +5,12 @@ import type { PlayerMatch } from "./resolvePlayers";
 import { parseRules } from "./ruleParser";
 import { readOpponents } from "./opponents";
 import { readRoster } from "./rosterWords";
-import { tokenize } from "./resolvePlayers";
+import { wordsOf } from "./resolvePlayers";
 import { readTime, type TimeScope } from "./timeWords";
 
 /** The question without the words code reads itself (time, opponents); the question as asked when there are none. */
 function modelText(question: string, scope: TimeScope, playerNamed: boolean): string {
-  const tokens = tokenize(question.replace(/%/g, " percent "));
+  const tokens = wordsOf(question);
   // A roster word means the League filter only in a ranking; next to a player it stays for the model to refuse.
   const roster = playerNamed ? [] : readRoster(tokens).at;
   const read = new Set([...readTime(question, scope).used, ...readOpponents(question, playerNamed).used, ...roster]);

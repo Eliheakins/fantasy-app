@@ -1,3 +1,4 @@
+import { sideName } from "@/lib/scoreboard";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { cn } from "@/lib/utils";
 import { WinBar, formatNumber } from "@/viz";
@@ -33,7 +34,7 @@ export function PowerRankings({ rows }: { rows: readonly PowerRankingRow[] }) {
           )}
         >
           <span className="tabular-nums text-muted">{r.rank}</span>
-          <span className="truncate">{r.is_me ? `${r.team_name} (you)` : r.team_name}</span>
+          <span className="truncate">{sideName(r)}</span>
           <span className="col-span-3 col-start-1 row-start-2 md:col-span-1 md:col-start-3 md:row-start-1">
             <HBar
               fraction={barFraction(r.exp_points_week, max)}
@@ -49,7 +50,7 @@ export function PowerRankings({ rows }: { rows: readonly PowerRankingRow[] }) {
 }
 
 const SCHEDULE_COLUMNS: Column<PowerRankingRow>[] = [
-  { label: "Team", role: "primary", render: (r) => (r.is_me ? `${r.team_name} (you)` : r.team_name) },
+  { label: "Team", role: "primary", render: (r) => sideName(r) },
   { label: "Rank", numeric: true, render: (r) => r.sos_rank ?? "–" },
   { label: "Opponents' avg. expected points", numeric: true, render: (r) => formatNumber(r.sos_remaining) },
   { label: "Playoff odds", render: (r) => <WinBar fraction={r.p_playoffs} tone={toneOf(r.is_me)} /> },

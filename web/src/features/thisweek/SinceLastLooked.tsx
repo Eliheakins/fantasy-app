@@ -3,13 +3,13 @@ import type { League } from "@/api/types";
 import type { DigestData } from "@/lib/digestTypes";
 import { ExplainDelta, NOISE_PERCENT } from "@/viz";
 import type { components } from "@/api/schema";
-import type { ApiState } from "@/api/envelope";
+import { isPending } from "@/api/envelope";
 import { useAllLeagues, useLeagueQuery } from "@/lib/league";
 import { type OddsRun, type Visit, asMs, newAdds, oddsSince, readVisit, writeVisit } from "./visit";
+import { leagueName } from "./weekLogic";
 
 type StatusChange = components["schemas"]["StatusChangeRow"];
 const MIN_GAP_MS = 30 * 60_000; // a quick reload keeps showing the same changes
-const settled = (s: ApiState<unknown>) => s.kind !== "loading" && s.kind !== "running";
 const when = (iso: string) =>
   new Date(iso).toLocaleString("en-US", {
     timeZone: "America/New_York",
@@ -92,7 +92,7 @@ function LeagueSince({ league }: { league: League }) {
   const changes = useLeagueQuery<StatusChange[]>(key, visit ? `status-changes?since=${encodeURIComponent(visit.at)}` : null);
   const digest = useLeagueQuery<DigestData>(key, "digest");
   const written = useRef(false);
-  const ready = settled(digest) && (visit === null || (settled(history) && settled(changes)));
+  const ready = !isPending(digest) && (visit === null || (!isPending(history) && !isPending(changes)));
   const adds = digest.kind === "ready" ? digest.data.waivers.map((w) => w.get) : (visit?.adds ?? []);
   useEffect(() => {
     if (!ready || written.current) return;
@@ -103,7 +103,7 @@ function LeagueSince({ league }: { league: League }) {
   return (
     <div className="mt-3">
       <h3 className="font-semibold">
-        {league.name?.trim() || key}
+        {leagueName(league)}
         {visit && <span className="font-normal text-muted"> since {when(visit.at)}</span>}
       </h3>
       {visit === null ? (

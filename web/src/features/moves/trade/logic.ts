@@ -47,9 +47,6 @@ export function formatSigned(value: number, percent: boolean): string {
   return `${signed}${percent ? "%" : ""}`;
 }
 
-/** Probability change to points, under the name features/ask imports. */
-export { toPoints as points } from "@/viz";
-
 /** "gives 5,000, gets 5,700, you receive 14% more": what the market says, nothing about acceptance. */
 export function marketText(m: MarketSummary): string {
   const n = (v: number) => Math.round(v).toLocaleString("en-US");

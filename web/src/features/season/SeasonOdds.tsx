@@ -6,11 +6,10 @@ import { HISTORY_WAIT_MESSAGE, canShowHistory, runWeeks } from "@/features/seaso
 import type { OddsHistoryRow, SeasonOddsRow } from "@/lib/outlookTypes";
 import { useLeagueApi } from "@/lib/league";
 import { formatPercent } from "@/viz";
-import { myOddsByWeek, weekMarks } from "./logic";
+import { KIND_LABEL, myOddsByWeek, weekMarks } from "./logic";
 import type { SeasonEventRow } from "./types";
 
 const EVENTS_ID = "season-marked-events";
-const KIND_LABEL = { trade: "Trade", injury: "Injury", big_week: "Big week" } as const;
 const MISSING =
   "Marked: your trades, injuries to your starters (Sleeper's Out, IR or Doubtful, from the daily snapshots) and weeks far above your average. Not marked: waiver moves, and anything before the first saved run.";
 

@@ -119,7 +119,11 @@ export function Advice({ leagueKey, mine, teamName }: { leagueKey: string; mine:
       <ApiBoundary state={odds}>
         {(d) => (
           <Block title="This week">
-            {chance !== null && <Stat label="Chance to win this week" value={formatPercent(chance)} />}
+            {chance !== null && (
+              <dl>
+                <Stat label="Chance to win this week" value={formatPercent(chance)} />
+              </dl>
+            )}
             <div className="mt-3">
               <RangeBars odds={d} mine={mine} />
             </div>

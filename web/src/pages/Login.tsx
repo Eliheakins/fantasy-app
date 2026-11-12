@@ -1,9 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Field } from "@/components/Field";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { signIn, useSession } from "@/lib/session";
 
 type LoginState = { from?: string; ended?: boolean } | null;
@@ -56,26 +56,25 @@ export default function Login() {
         </p>
       )}
       <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="login-email" className="text-body font-medium text-ink">
-            Email
-          </label>
-          <Input id="login-email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="login-password" className="text-body font-medium text-ink">
-            Password
-          </label>
-          <Input
-            id="login-password"
-            ref={passwordField}
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </div>
+        <Field
+          id="login-email"
+          label="Email"
+          type="email"
+          autoComplete="username"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <Field
+          id="login-password"
+          label="Password"
+          ref={passwordField}
+          type="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
         {error && (
           <p role="alert" className="text-body text-ink">
             {error}

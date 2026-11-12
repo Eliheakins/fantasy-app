@@ -1,3 +1,4 @@
+import { isPending } from "@/api/envelope";
 import type { components } from "@/api/schema";
 import type { League, Status } from "@/api/types";
 import { leagueUrl, useAllLeagues } from "@/lib/league";
@@ -6,6 +7,7 @@ import { possessive } from "@/lib/text";
 import { Explain, formatNumber, formatPercent } from "@/viz";
 import { isDecided, neededLine, players } from "./gameDayText";
 import { WinChanceLine } from "./WinChanceLine";
+import { leagueName } from "./weekLogic";
 
 type GameDayData = components["schemas"]["GameDayData"];
 const MS_PER_MINUTE = 60_000;
@@ -28,7 +30,7 @@ const winWhy = (c: Now) =>
 
 function LeagueGameDay({ league, intervalMs }: { league: League; intervalMs: number }) {
   const { state, stale } = useEnvelopePolling<GameDayData>(leagueUrl(league.league_key, "game-day"), intervalMs);
-  const name = league.name?.trim() || league.league_key;
+  const name = leagueName(league);
   if (state.kind === "error")
     return (
       <p role="alert" className="text-body text-warning">
@@ -91,7 +93,7 @@ export function GameDay({ intervalMs }: { intervalMs: number }) {
           The leagues did not load, so there are no game-day numbers.
         </p>
       )}
-      {(leagues.kind === "loading" || leagues.kind === "running") && (
+      {isPending(leagues) && (
         <p role="status" className="text-muted">
           Loading leagues…
         </p>

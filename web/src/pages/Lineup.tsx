@@ -10,7 +10,7 @@ import { ChevronDown } from "lucide-react";
 import { Explain, ExplainDelta, NOISE_PERCENT, formatNumber, formatPercent } from "@/viz";
 import { CloseCalls } from "@/features/lineup/CloseCalls";
 import { ResultPanel } from "@/features/lineup/ResultPanel";
-import { OPTION_OF, recommendedObjective, slotCalls, startAnswer, weekOverText, weekResult } from "@/features/lineup/calls";
+import { OPTION_OF, RECOMMENDED_OBJECTIVE, slotCalls, startAnswer, weekOverText, weekResult } from "@/features/lineup/calls";
 import { SLEEPER_WIN_WHY, winChanceWhy } from "@/features/lineup/explain";
 import { Comparison } from "@/features/lineup/Comparison";
 import { PlayerTable } from "@/features/lineup/PlayerTables";
@@ -84,7 +84,7 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
     );
   }
   const hasOdds = odds !== null && odds.options.length > 0;
-  const recommended = recommendedObjective();
+  const recommended = RECOMMENDED_OBJECTIVE;
   const differ = hasOdds && lineupsDiffer(odds.comparison);
   const chosen = differ && picked?.under === recommended ? picked.key : null;
   const objective = chosen ?? recommended;

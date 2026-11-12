@@ -7,7 +7,7 @@ import type { AnswerPath } from "../interpretQuestion";
 import { withDefaultSeasonType } from "../intentFilters";
 import { readOpponents } from "../opponents";
 import { leaderboardFor } from "../ranking";
-import { tokenize } from "../resolvePlayers";
+import { wordsOf } from "../resolvePlayers";
 import { asksRanking, type Leaderboard, splitAsked, teamsAsked } from "../ruleParser";
 import { settleStats } from "../settleStats";
 import { readTime, type TimeScope, withTime } from "../timeWords";
@@ -115,7 +115,7 @@ export function showModelRanking(
   }
   const subject = team ? ({ kind: "team" } as const) : ({ kind: "players", positions: [] } as const);
   const metric = settleStats([intent.stat_ids[0]!], subject)[0]!;
-  const board = leaderboardFor(tokenize(asked.replace(/%/g, " percent ")), metric, intent.granularity, {
+  const board = leaderboardFor(wordsOf(asked), metric, intent.granularity, {
     teams: team !== null,
     defense: team?.side === "defense",
     weekly: splitOf(asked) === "week",

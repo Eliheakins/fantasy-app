@@ -295,6 +295,9 @@ export function parseExpression(sql: string): Node {
   return new Parser(tokenize(sql)).parse();
 }
 
+/** An optional clause: none when the SQL is empty. */
+export const parseOptional = (sql: string): Node | null => (sql === "" ? null : parseExpression(sql));
+
 /** Every column the expression reads, once each. */
 export function columnsIn(node: Node, into = new Set<string>()): string[] {
   switch (node.kind) {

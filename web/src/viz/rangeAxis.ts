@@ -1,3 +1,4 @@
+import { formatNumber } from "./format";
 import { clampedLinear } from "./linearMap";
 
 export type Range = { p10?: number | null; p50?: number | null; p90?: number | null };
@@ -34,10 +35,9 @@ export function layoutRange(range: Range, domain: Domain, width: number): BarLay
 }
 
 export function rangeLabel(range: Range): string {
-  const one = (v: number) => v.toFixed(1);
   if (!finite(range.p50) && !finite(range.p10) && !finite(range.p90)) return "No projection";
-  const median = finite(range.p50) ? `Median ${one(range.p50)}` : "No median";
+  const median = finite(range.p50) ? `Median ${formatNumber(range.p50)}` : "No median";
   if (!finite(range.p10) || !finite(range.p90)) return `${median}, range unavailable`;
   const [lo, hi] = [Math.min(range.p10, range.p90), Math.max(range.p10, range.p90)];
-  return `${median}, range ${one(lo)} to ${one(hi)}`;
+  return `${median}, range ${formatNumber(lo)} to ${formatNumber(hi)}`;
 }

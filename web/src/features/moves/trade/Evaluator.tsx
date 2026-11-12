@@ -1,7 +1,8 @@
 import { useId, useMemo } from "react";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
-import { useEnvelopeQuery } from "@/api/useEnvelope";
+import { useEnvelopeQuery, usePostEnvelope } from "@/api/useEnvelope";
+import { leagueUrl } from "@/lib/league";
 import { BUILDER_DEBOUNCE_MS } from "./builder";
 import { TradeOutcome } from "./TradeOutcome";
 import { useDebounced } from "./useDebounced";
@@ -10,7 +11,6 @@ import { canEvaluate, EMPTY_DRAFT, toRequest, tradeKey } from "./logic";
 import { MultiSelect } from "./MultiSelect";
 import type { Asset, Draft, Partner, TradeEvaluation } from "./types";
 import { useKeptState } from "./useKeptState";
-import { usePostEnvelope } from "@/api/useEnvelope";
 
 const toOptions = (assets: readonly Asset[]) => assets.map((a) => ({ id: a.gsis_id, label: a.label }));
 
@@ -31,9 +31,7 @@ export function Evaluator({ league, scope = league, partners, mine, debounceMs =
     stored.partner !== null && partners.some((p) => p.roster_id === stored.partner) ? stored.partner : (partners[0]?.roster_id ?? null);
   const draft = useMemo<Draft>(() => ({ ...stored, partner }), [stored, partner]); // stable, so the debounce timer restarts only on a real change
   const partnerName = partners.find((p) => p.roster_id === partner)?.team_name ?? "";
-  const theirs = useEnvelopeQuery<Asset[]>(
-    partner === null ? null : `/api/leagues/${encodeURIComponent(league)}/trade-assets?roster_id=${partner}`,
-  );
+  const theirs = useEnvelopeQuery<Asset[]>(partner === null ? null : leagueUrl(league, `trade-assets?roster_id=${partner}`));
   const settled = useDebounced(draft, debounceMs);
   const settledKey = tradeKey(settled);
   const busy = tradeKey(draft) !== settledKey; // the result below is for the previous picks

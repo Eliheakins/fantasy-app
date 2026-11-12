@@ -1,20 +1,14 @@
 import { possessive } from "@/lib/text";
 import { useState } from "react";
 import { ApiBoundary } from "@/components/ApiBoundary";
-import { RadioGroup } from "@/components/RadioGroup";
+import { RadioGroup, pillOptionClass } from "@/components/RadioGroup";
 import { useLeague, useLeagueApi } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
-import { cn } from "@/lib/utils";
 import { Delta, formatPercent, toPoints } from "@/viz";
 import { MIN_RUNS, type Matchup, groupMatchups, isThin } from "./logic";
 import type { WhatIfRow } from "./types";
 
 const WEEKS_AHEAD = 4;
-const OPTION_CLASS = (on: boolean) =>
-  cn(
-    "min-h-[44px] rounded-full border px-4 text-body",
-    on ? "border-forest bg-forest font-semibold text-white" : "border-panel-line bg-surface text-forest hover:border-forest",
-  );
 
 function Outcome({ row, owner }: { row: WhatIfRow; owner: string }) {
   const runs = row.n_runs.toLocaleString("en-US");
@@ -77,7 +71,7 @@ function Picker({ matchups, owner }: { matchups: readonly Matchup[]; owner: stri
         value={String(outcomeIndex)}
         onChange={(k) => setOutcomeIndex(Number(k))}
         className="mt-2 flex flex-wrap gap-2"
-        optionClassName={OPTION_CLASS}
+        optionClassName={pillOptionClass}
       />
       {outcome && <Outcome row={outcome} owner={owner} />}
     </div>
@@ -105,7 +99,7 @@ export function WhatIf() {
           value={String(ahead)}
           onChange={(k) => setAhead(Number(k))}
           className="mb-3 flex flex-wrap gap-2"
-          optionClassName={OPTION_CLASS}
+          optionClassName={pillOptionClass}
         />
       )}
       <ApiBoundary state={state}>

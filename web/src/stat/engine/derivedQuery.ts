@@ -20,9 +20,10 @@ import {
   compileRowExpression,
   type Node,
   parseExpression,
+  parseOptional,
   type Value,
 } from "./expression";
-import { latestGames } from "./lastGames";
+import { latestPlayGames } from "./lastGames";
 import { wantedPlayers } from "./playerGameQuery";
 import {
   GAME_SCOPE_GROUP_IDS,
@@ -52,8 +53,6 @@ function partsOf(nodes: readonly Node[]): { stats: string[]; team: string[]; gam
   return { stats: [...new Set([...stats, ...team])], team, games: names.has(GAMES) };
 }
 
-const parseOptional = (sql: string): Node | null => (sql === "" ? null : parseExpression(sql));
-
 type TotalPart = { stat: StatDefinition; summed: Node; filter: Node | null };
 
 /** The games (with the team the player had the ball for) behind each row key, within the scope and last-N cut. */
@@ -69,17 +68,7 @@ function gamesByRowKey(
   const posteam = cols.posteam!;
   const inScope = (i: number) => !scope || scope(i) === true;
 
-  const last = params.lastGames
-    ? latestGames(params.lastGames, (addGame) => {
-        for (let i = 0; i < rowCount; i++) {
-          if (!inScope(i)) continue;
-          for (const column of idColumns) {
-            const id = cols[column]![i];
-            if (typeof id === "string" && wanted(id)) addGame(id, gameId[i], Number(cols.season![i]), Number(cols.week![i]));
-          }
-        }
-      })
-    : null;
+  const last = params.lastGames ? latestPlayGames(params.lastGames, cols, rowCount, wanted, scope, idColumns) : null;
 
   const gamesByKey = new Map<string, Set<string>>();
   for (let i = 0; i < rowCount; i++) {

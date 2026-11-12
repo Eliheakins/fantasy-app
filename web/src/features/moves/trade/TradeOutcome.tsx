@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { possessive } from "@/lib/text";
-import { points } from "./logic";
 import { TradeResult } from "./TradeResult";
 import type { TradeEvaluation } from "./types";
-import { ExplainDelta, NOISE_PERCENT, NOISE_WINS } from "@/viz";
+import { ExplainDelta, NOISE_PERCENT, NOISE_WINS, toPoints } from "@/viz";
 import { COPIED_NOTE_MS, canPitch, copyText, pitchText } from "./builder";
 
 type Side = TradeEvaluation["odds"][number];
@@ -18,14 +17,14 @@ function SideChange({ side }: { side: Side }) {
       <p className="flex flex-wrap items-baseline gap-x-3">
         <span className="whitespace-nowrap">
           <ExplainDelta
-            points={points(side.playoff_after - side.playoff_before)}
+            points={toPoints(side.playoff_after - side.playoff_before)}
             noise={NOISE_PERCENT}
             why={sideWhy(side, "chance to make the playoffs")}
           />{" "}
           <span className="text-caption text-muted">playoff pts</span>
         </span>
         <span className="whitespace-nowrap">
-          <ExplainDelta points={points(side.title_after - side.title_before)} noise={NOISE_PERCENT} why={sideWhy(side, "title chance")} />{" "}
+          <ExplainDelta points={toPoints(side.title_after - side.title_before)} noise={NOISE_PERCENT} why={sideWhy(side, "title chance")} />{" "}
           <span className="text-caption text-muted">title pts</span>
         </span>
         <span className="whitespace-nowrap">

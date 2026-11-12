@@ -13,8 +13,7 @@ import {
 } from "@/lib/scoreboard";
 import { cn } from "@/lib/utils";
 import { useAllLeagues, useEachLeague } from "@/lib/league";
-
-const leagueName = (l: League) => l.name?.trim() || l.league_key;
+import { leagueName } from "./weekLogic";
 
 /** The side that won a final, or null while the matchup is open or tied. */
 function winnerId(row: ScoreboardRow): number | null {

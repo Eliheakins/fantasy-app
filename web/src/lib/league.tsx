@@ -67,18 +67,18 @@ export function useLeague(): LeagueContextValue {
   return value;
 }
 
+export const leagueUrl = (key: string, path: string) => `/api/leagues/${encodeURIComponent(key)}/${path}`;
+
 /** GET /api/leagues/{league}/{path} for the selected league; path may carry a query string. */
 export function useLeagueApi<T>(path: string): ApiState<T> {
   const { league } = useLeague();
-  return useEnvelopeQuery<T>(league === null ? null : `/api/leagues/${encodeURIComponent(league)}/${path}`);
+  return useEnvelopeQuery<T>(league === null ? null : leagueUrl(league, path));
 }
 
 /** Every league from /api/leagues, independent of the top-bar picker (untrimmed, for per-league blocks). */
 export function useAllLeagues(): ApiState<League[]> {
   return useEnvelopeQuery<League[]>("/api/leagues");
 }
-
-export const leagueUrl = (key: string, path: string) => `/api/leagues/${encodeURIComponent(key)}/${path}`;
 
 /**
  * One GET per league, whatever the league select says and always for my own team (no `?team=`):

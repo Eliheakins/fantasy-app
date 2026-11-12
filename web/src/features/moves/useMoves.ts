@@ -1,10 +1,8 @@
-import type { ApiState } from "@/api/envelope";
+import { isPending } from "@/api/envelope";
 import type { DigestData } from "@/lib/digestTypes";
 import type { WaiverRow } from "@/features/moves/waivers/logic";
 import { useLeagueApi } from "@/lib/league";
 import { type Move, rankMoves, tradeMoves, waiverMoves } from "./moves";
-
-const isOpen = (s: ApiState<unknown>) => s.kind === "loading" || s.kind === "running";
 
 export type MovesState = {
   addsPending: boolean;
@@ -22,8 +20,8 @@ export function useMoves(): MovesState {
   const addMoves = adds.kind === "ready" ? waiverMoves(adds.data) : [];
   const trades = digest.kind === "ready" ? tradeMoves(digest.data.trades) : [];
   return {
-    addsPending: isOpen(adds),
-    tradesPending: isOpen(digest),
+    addsPending: isPending(adds),
+    tradesPending: isPending(digest),
     moves: rankMoves([...addMoves, ...trades]),
     addsError: adds.kind === "error" ? adds.error.message : adds.kind === "no_data" ? adds.message : null,
     tradesFailed: digest.kind === "error",

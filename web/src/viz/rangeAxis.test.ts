@@ -50,4 +50,7 @@ describe("rangeLabel", () => {
     expect(rangeLabel({ p50: 17.2 })).toBe("Median 17.2, range unavailable");
     expect(rangeLabel({})).toBe("No projection");
   });
+  it("never prints a negative zero floor", () => {
+    expect(rangeLabel({ p10: -0.03, p50: 4, p90: 9 })).toBe("Median 4.0, range 0.0 to 9.0");
+  });
 });

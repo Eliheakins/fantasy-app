@@ -6,7 +6,8 @@
 import { MAX_WEEK } from "@/stat/config/queryBuilderOptions";
 import { MAX_LAST_GAMES } from "@/stat/lib/queryUrl";
 
-import { tokenize } from "./resolvePlayers";
+import { wordsOf } from "./resolvePlayers";
+import { YEAR } from "./rules/vocab";
 
 /** The seasons the data has and the latest week each reaches (from the manifest). */
 export interface TimeScope {
@@ -46,7 +47,6 @@ const NUMBER_WORDS: Readonly<Record<string, number>> = {
 const SEASON_WORDS = new Set(["season", "year", "szn", "seasons", "years"]);
 const GAME_WORDS = new Set(["games", "weeks", "game", "starts"]);
 const RANGE_JOINS = new Set(["to", "through", "thru", "and", "until"]);
-const YEAR = /^(19|20)\d\d$/;
 
 const numberAt = (tokens: readonly string[], at: number): number | null => {
   const token = tokens[at] ?? "";
@@ -220,7 +220,7 @@ function readWeekSpan(c: Cursor, s: TimeState): void {
 
 /** `skip`: token indices another reader already took ("week 13 or later" is a chip phrase). */
 export function readTime(question: string, scope: TimeScope, skip: ReadonlySet<number> = new Set()): TimeRead {
-  const tokens = tokenize(question.replace(/%/g, " percent "));
+  const tokens = wordsOf(question);
   const current = scope.seasons.length > 0 ? Math.max(...scope.seasons) : null;
   const s: TimeState = {
     tokens,

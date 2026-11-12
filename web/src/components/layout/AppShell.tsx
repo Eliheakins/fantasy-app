@@ -44,7 +44,7 @@ function Frame() {
       >
         <TopBar />
         <nav aria-label="Main" className="hidden bg-chrome-tabs md:block">
-          <ul className="mx-auto flex w-full max-w-[1200px] gap-8 px-[var(--page-pad)]">
+          <ul className="mx-auto flex w-full max-w-page gap-8 px-[var(--page-pad)]">
             {NAV_ITEMS.map(({ path, label }) => (
               <li key={path}>
                 <NavLink
@@ -68,7 +68,7 @@ function Frame() {
         <StatusBanner />
         <NoLeaguesNotice />
         <TeamBanner />
-        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1200px] flex-1 outline-none">
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-page flex-1 outline-none">
           <Suspense fallback={<Loading />}>
             <Outlet />
           </Suspense>

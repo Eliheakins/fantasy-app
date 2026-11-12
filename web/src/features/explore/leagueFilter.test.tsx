@@ -240,8 +240,8 @@ describe("owner on result rows", () => {
     ],
   };
   const names = [
-    { gsis_id: "00-A", full_name: "Ann", position: "WR", team: null, headshot_url: null },
-    { gsis_id: "00-FA", full_name: "Fay", position: "WR", team: null, headshot_url: null },
+    { gsis_id: "00-A", full_name: "Ann", position: "WR", team: null, headshot_url: null, birth_date: null, years_exp: null },
+    { gsis_id: "00-FA", full_name: "Fay", position: "WR", team: null, headshot_url: null, birth_date: null, years_exp: null },
   ];
 
   it("shows the owning team for a rostered player and a Free agent marker for a free agent", async () => {

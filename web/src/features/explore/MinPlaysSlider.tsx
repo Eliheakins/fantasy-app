@@ -2,25 +2,16 @@ import { useQueryState } from "@/stat/react/useQueryState";
 
 import { cn } from "@/lib/utils";
 
-interface MinPlaysSliderProps {
-  className?: string;
-  /** Omit outer card section; use inside another container. */
-  embedded?: boolean;
-}
-
-export function MinPlaysSlider({ className, embedded = false }: MinPlaysSliderProps) {
+/** The min-plays control, inside the query bar's options popover. */
+export function MinPlaysSlider() {
   const { state, setMinPlays } = useQueryState();
   const minPlays = state.minPlays;
 
-  const body = (
-    <>
+  return (
+    <div className="space-y-1">
       <div className="flex items-center justify-between gap-4">
         <div>
-          {!embedded ? (
-            <h2 className="text-body font-semibold uppercase tracking-wide text-focus">Min plays</h2>
-          ) : (
-            <h3 className="text-caption font-semibold uppercase tracking-wide text-focus">Min plays</h3>
-          )}
+          <h3 className="text-caption font-semibold uppercase tracking-wide text-focus">Min plays</h3>
           <p className="mt-0.5 text-caption text-muted">
             Leave out players with fewer plays than this (0 to 500), so one-play outliers do not top a list.
           </p>
@@ -41,12 +32,6 @@ export function MinPlaysSlider({ className, embedded = false }: MinPlaysSliderPr
         )}
         aria-label="Minimum plays threshold"
       />
-    </>
+    </div>
   );
-
-  if (embedded) {
-    return <div className={cn("space-y-1", className)}>{body}</div>;
-  }
-
-  return <section className={cn("border-b border-line pb-5", className)}>{body}</section>;
 }

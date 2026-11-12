@@ -35,7 +35,7 @@ function useStatHealth(): StatHealth | null {
   return typeof data?.data_ready === "boolean" ? data : null;
 }
 
-const INNER = "mx-auto w-full max-w-[1200px] px-[var(--page-pad)]";
+const INNER = "mx-auto w-full max-w-page px-[var(--page-pad)]";
 
 /** One amber line at every width with a details disclosure; stacked rows pushed each page's answer down. */
 export function StatusBanner() {

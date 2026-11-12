@@ -1,4 +1,4 @@
-import type { FilterChipGroup } from "@/stat/config/queryBuilderOptions";
+import { type FilterChipGroup, seasonOfChipId } from "@/stat/config/queryBuilderOptions";
 import type { Manifest } from "@/stat/lib/schemas/manifest";
 
 /** How current the data is, as "2026 week 8" (mirrors `Manifest.data_through` in the backend). */
@@ -33,8 +33,8 @@ export function participationGap(args: {
   }
 
   const chosen = filters.flatMap((id) => {
-    const match = /^season-(\d+)$/.exec(id);
-    return match ? [Number(match[1])] : [];
+    const season = seasonOfChipId(id);
+    return season === null ? [] : [season];
   });
   const covered = chosen.length > 0 ? chosen : manifest.seasons.map((s) => s.season);
   const seasons = manifest.seasons.filter((s) => !s.has_participation && covered.includes(s.season)).map((s) => s.season);

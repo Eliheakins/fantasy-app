@@ -48,7 +48,7 @@ export function rootFor(rows: readonly WhatIfRow[]): RootFor[] {
     .slice(0, ROOT_FOR_LIMIT);
 }
 
-const KIND_LABEL = { trade: "Trade", injury: "Injury", big_week: "Big week" } as const;
+export const KIND_LABEL = { trade: "Trade", injury: "Injury", big_week: "Big week" } as const;
 
 /** Events on the weekly odds chart, keyed by the week of the run they fall in; events with no run are left out. */
 export function weekMarks(

@@ -13,6 +13,9 @@ export type ApiState<T> =
   | { kind: "error"; error: ApiError; retry?: () => void }
   | { kind: "ready"; data: T };
 
+/** Still waiting: the request is in flight or the server is computing the answer. */
+export const isPending = (s: ApiState<unknown>): boolean => s.kind === "loading" || s.kind === "running";
+
 export class ApiFailure extends Error {
   readonly code: string | null;
   constructor(message: string, code: string | null = null) {
@@ -54,18 +57,11 @@ export function elapsedSeconds(startedAt: string | null, now: number): number | 
   return Number.isNaN(started) ? null : Math.max(0, Math.floor((now - started) / 1000));
 }
 
-/** The `error.code` of an envelope-shaped body, or null. */
-function errorCode(body: unknown): string | null {
-  const error = (body as { error?: unknown } | null)?.error;
-  const code = (error as { code?: unknown } | null)?.code;
-  return typeof code === "string" ? code : null;
-}
-
-/** The `error.message` of an envelope-shaped body, or null. */
-function errorMessage(body: unknown): string | null {
-  const error = (body as { error?: unknown } | null)?.error;
-  const message = (error as { message?: unknown } | null)?.message;
-  return typeof message === "string" ? message : null;
+/** The `error.code` or `error.message` of an envelope-shaped body, or null. */
+function errorField(body: unknown, key: "code" | "message"): string | null {
+  const error = (body as { error?: Record<string, unknown> } | null)?.error;
+  const value = error?.[key];
+  return typeof value === "string" ? value : null;
 }
 
 export async function fetchEnvelope<T>(url: string, init?: RequestInit): Promise<Envelope<T>> {
@@ -79,10 +75,10 @@ export async function fetchEnvelope<T>(url: string, init?: RequestInit): Promise
     throw new ApiFailure(`Server returned HTTP ${response.status} without JSON`);
   }
   if (typeof body !== "object" || body === null || !("status" in body) || !ENVELOPE_STATUSES.includes(body.status as EnvelopeStatus)) {
-    throw new ApiFailure(errorMessage(body) ?? `Unexpected response from ${url}`);
+    throw new ApiFailure(errorField(body, "message") ?? `Unexpected response from ${url}`);
   }
   // the sign-in routes answer "unauthorized" for their own reasons; anything else means the session is gone
-  if (errorCode(body) === "unauthorized" && !url.startsWith("/api/auth/") && typeof window !== "undefined") {
+  if (errorField(body, "code") === "unauthorized" && !url.startsWith("/api/auth/") && typeof window !== "undefined") {
     window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
   }
   return body as Envelope<T>;

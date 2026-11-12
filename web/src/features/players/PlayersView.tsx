@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { PlayerLink } from "@/components/PlayerLink";
-import { RadioGroup } from "@/components/RadioGroup";
+import { RadioGroup, pillOptionClass } from "@/components/RadioGroup";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { Section } from "@/components/Section";
 import type { OutlookRow } from "@/lib/outlookTypes";
@@ -15,12 +15,6 @@ const CAPTION = "Change is projected points a game over the next four games minu
 const METHOD =
   "Change counts only games the player plays. Improving or Regressing means a change past 1.5 points a game. Three drivers are modeled because they held up in tests on 2019 to 2025: players back from missed games play below projection for a game or two (a player who missed games with no injury report much more), receivers and backs gain when teammates who carry targets or carries are out, and points above or below what usage is worth tend to be partly luck. Usage trends, schedule strength and rookie status added nothing on top of the projection, so they are not used.";
 const WHY_MIN_WIDTH = "block min-w-[14rem]";
-
-const radioClass = (on: boolean) =>
-  cn(
-    "rounded-full border border-panel-line px-4 text-body",
-    on ? "border-forest bg-forest font-semibold text-white" : "bg-surface text-forest hover:border-forest",
-  );
 
 function columns(showOwner: boolean): Column<OutlookRow>[] {
   return [
@@ -69,7 +63,7 @@ function PlayerTable({ rows, scope }: { rows: readonly OutlookRow[]; scope: Scop
             setShown(PAGE_SIZE);
           }}
           className="mb-3 flex flex-wrap gap-2"
-          optionClassName={radioClass}
+          optionClassName={pillOptionClass}
         />
       )}
       <ResponsiveTable
@@ -108,7 +102,7 @@ export function PlayersView() {
         value={scope}
         onChange={setScope}
         className="mb-6 flex flex-wrap gap-2"
-        optionClassName={radioClass}
+        optionClassName={pillOptionClass}
       />
       <Section title={title} caption={CAPTION} howCalculated={METHOD}>
         <ApiBoundary state={state}>

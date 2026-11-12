@@ -12,6 +12,13 @@ type Props<K extends string> = {
   optionClassName?: (selected: boolean) => string;
 };
 
+/** The pill look for `optionClassName`: forest when selected, outlined otherwise. */
+export const pillOptionClass = (selected: boolean) =>
+  cn(
+    "rounded-full border px-4 text-body",
+    selected ? "border-forest bg-forest font-semibold text-white" : "border-panel-line bg-surface text-forest hover:border-forest",
+  );
+
 /** ARIA radio group: one tab stop (the selected radio), arrow keys move and select. */
 export function RadioGroup<K extends string>({ label, options, value, onChange, className, optionClassName }: Props<K>) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);

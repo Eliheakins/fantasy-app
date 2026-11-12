@@ -2,7 +2,7 @@
  * Opponents, read in code on every path: "against the Cowboys", "vs the Bills", "facing Dallas". The
  * team becomes an `opp-` chip (the defense the plays came against) instead of the question's subject.
  */
-import { tokenize } from "./resolvePlayers";
+import { wordsOf } from "./resolvePlayers";
 import { findTeams, type TeamMatch } from "./resolveTeams";
 
 const LEADS = new Set(["against", "vs", "versus", "facing", "v"]);
@@ -13,7 +13,7 @@ const LEADS = new Set(["against", "vs", "versus", "facing", "v"]);
  * Chiefs" is the Chiefs' defense), so it is an opponent only next to another team.
  */
 export function readOpponents(question: string, playerNamed: boolean): { teams: TeamMatch[]; filters: string[]; used: number[] } {
-  const tokens = tokenize(question.replace(/%/g, " percent "));
+  const tokens = wordsOf(question);
   const teams: TeamMatch[] = [];
   const used: number[] = [];
   const named = findTeams(tokens);

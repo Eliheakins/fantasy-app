@@ -2,20 +2,19 @@ import { useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
 import { sendJson } from "@/api/envelope";
 import type { MyLeague, SleeperLookup } from "@/api/types";
+import { Field } from "@/components/Field";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { TeamPicker } from "./TeamPicker";
 
 const MY_LEAGUES_KEY = ["api", "/api/me/leagues"] as const;
 /** Sleeper's own rule for a username; the server checks it again. */
 const USERNAME_PATTERN = "[A-Za-z0-9_]{1,40}";
 
-type Props = { username: string; onUsername: (name: string) => void };
-
 /** Find a Sleeper user's leagues, then add the ones that are theirs, picking which team in each is
  * yours. The username is not proof of who someone is (Sleeper has no sign-in to check against), so
  * the page says plainly what it does. */
-export function AddLeague({ username, onUsername }: Props) {
+export function AddLeague() {
+  const [username, setUsername] = useState("");
   const queryClient = useQueryClient();
   const [lookup, setLookup] = useState<SleeperLookup | null>(null);
   const [looking, setLooking] = useState(false);
@@ -60,20 +59,17 @@ export function AddLeague({ username, onUsername }: Props) {
   return (
     <div>
       <form onSubmit={(e) => void handleFind(e)} className="flex flex-col gap-2 sm:flex-row sm:items-end">
-        <div className="flex flex-1 flex-col gap-1">
-          <label htmlFor="sleeper-username" className="text-body font-medium text-ink">
-            Your Sleeper username
-          </label>
-          <Input
-            id="sleeper-username"
-            required
-            pattern={USERNAME_PATTERN}
-            autoComplete="off"
-            autoCapitalize="none"
-            value={username}
-            onChange={(e) => onUsername(e.target.value)}
-          />
-        </div>
+        <Field
+          id="sleeper-username"
+          label="Your Sleeper username"
+          wrapperClassName="flex-1"
+          required
+          pattern={USERNAME_PATTERN}
+          autoComplete="off"
+          autoCapitalize="none"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
         <Button type="submit" disabled={looking}>
           {looking ? "Looking…" : "Find my leagues"}
         </Button>

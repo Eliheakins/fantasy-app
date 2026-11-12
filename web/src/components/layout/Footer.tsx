@@ -18,7 +18,7 @@ export function Footer() {
   // a laptop run with no accounts answers as "local": there is nobody to sign out
   const account = session.kind === "signedIn" && session.me.email !== LOCAL_EMAIL ? session.me : null;
   return (
-    <footer className="mx-auto w-full max-w-[1200px] border-t border-line px-4 py-3 text-caption text-muted">
+    <footer className="mx-auto w-full max-w-page border-t border-line px-4 py-3 text-caption text-muted">
       <Link
         to={{ pathname: "/model", search: navSearch("/model", search, pathname) }}
         className="mr-4 inline-flex min-h-[44px] items-center underline"

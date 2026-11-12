@@ -15,13 +15,11 @@ import { useTeam } from "@/lib/teamContext";
 import { getStatById } from "@/stat/config/statDictionary";
 import { TEAMS } from "@/stat/config/teams";
 import { statLabel } from "@/stat/lib/queryBuilder";
-import type { GranularityMode } from "@/stat/types/queryBuilder";
-import type { Position, RosterFilter } from "@/stat/lib/queryUrl";
+import { GRANULARITY_LABELS, type GranularityMode } from "@/stat/types/queryBuilder";
+import { POSITIONS, type Position, type RosterFilter } from "@/stat/lib/queryUrl";
 import { useFilterChipGroups } from "@/stat/react/filterChipGroups";
 import { useQueryState } from "@/stat/react/useQueryState";
 
-const GRANULARITY_LABELS: Record<GranularityMode, string> = { total: "Total", per_game: "Per game", per_play: "Per play" };
-const POSITIONS: readonly Position[] = ["QB", "RB", "WR", "TE"];
 const ALL = "all";
 const TOGGLE = "rounded-md";
 
@@ -153,7 +151,7 @@ function RankingChip() {
     <BarChip ariaLabel="Ranking and options" label={label}>
       <div className="space-y-5">
         <RankingControl />
-        <MinPlaysSlider embedded />
+        <MinPlaysSlider />
         <SplitControl />
       </div>
     </BarChip>
