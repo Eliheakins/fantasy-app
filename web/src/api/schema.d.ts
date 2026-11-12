@@ -2185,6 +2185,8 @@ export interface components {
             playoff_week_start: number | null;
             /** Playoff Teams */
             playoff_teams: number | null;
+            /** Playoff Weeks */
+            playoff_weeks: number | null;
             /** Num Teams */
             num_teams: number | null;
             /** Roster Id */
@@ -3008,6 +3010,8 @@ export interface components {
             this_week: number | null;
             /** Next Three */
             next_three: number | null;
+            /** Playoff Points */
+            playoff_points: number | null;
         };
         /** StrengthRow */
         StrengthRow: {
@@ -5073,6 +5077,7 @@ export interface operations {
     waivers_api_leagues__league__waivers_get: {
         parameters: {
             query?: {
+                horizon?: "ros" | "playoffs";
                 /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
                 team?: number | null;
             };

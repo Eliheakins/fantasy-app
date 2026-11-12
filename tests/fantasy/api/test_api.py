@@ -343,7 +343,7 @@ ROWS = {
         "run_at", "as_of_week", "team_name", "roster_id", "p_playoffs", "p_title",
     },
     "/api/leagues/t/streamers?kind=K": {
-        "unit", "name", "team", "is_mine", "this_week", "next_three",
+        "unit", "name", "team", "is_mine", "this_week", "next_three", "playoff_points",
     },
     "/api/leagues/t/lineup?week=3": LINEUP,
     "/api/leagues/t/schedule": {"week", "opponent", "my_points", "their_points", "win_chance"},

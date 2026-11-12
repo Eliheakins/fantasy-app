@@ -10,6 +10,7 @@ class LeagueRow(Row):
     current_week: int | None
     playoff_week_start: int | None  # the first week whose seeds are fixed (playoff mode from here)
     playoff_teams: int | None
+    playoff_weeks: int | None  # how many weeks the bracket lasts, from its size and round type
     num_teams: int | None
     roster_id: int | None
     team_name: str | None

@@ -11,6 +11,7 @@ from typing import Any
 import polars as pl
 
 from fantasy._engine import _read
+from fantasy.sim.bracket import playoff_weeks, round_type_of
 
 TEAM_COLUMNS = ["roster_id", "team_name", "wins", "losses", "ties", "points_for"]
 
@@ -34,13 +35,21 @@ def leagues(data_dir: Path | None = None) -> pl.DataFrame:
             joined["scoring_settings"], joined["roster_positions"], strict=True
         )
     ]
-    return joined.with_columns(pl.Series("scoring_labels", labels, dtype=pl.String)).select(
+    lengths = [
+        playoff_weeks(int(teams), round_type_of(settings)) if teams else None
+        for teams, settings in zip(joined["playoff_teams"], joined["settings"], strict=True)
+    ]
+    return joined.with_columns(
+        pl.Series("scoring_labels", labels, dtype=pl.String),
+        pl.Series("playoff_weeks", lengths, dtype=pl.Int64),
+    ).select(
         "league_key",
         "league_id",
         "name",
         "current_week",
         "playoff_week_start",
         "playoff_teams",
+        "playoff_weeks",
         "num_teams",
         "roster_id",
         "team_name",

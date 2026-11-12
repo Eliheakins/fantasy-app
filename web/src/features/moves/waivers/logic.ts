@@ -10,3 +10,14 @@ export const ADDS_METHOD =
 export const STREAM_CAPTION = "Projected points over the next three weeks; a bye week counts as zero. Treat small gaps as noise.";
 export const STREAM_METHOD =
   "The projection is a regression on recent form and the game's implied total; kickers also use the spread, home field, the team's recent offense, the kicker's recent kick volume and the opposing defense's points allowed. Against a plain league average it has about 5% to 7% lower error for defenses and about 2% for kickers.";
+
+export type Rank = "ros" | "playoffs";
+export type PlayoffWeeks = { first: number; last: number } | null;
+
+export const ADDS_CAPTION_PLAYOFFS =
+  "Free agents ranked by extra points over the league's playoff weeks only; playoff and title changes are unchanged. Select a player to see the next four weeks.";
+export const STREAM_PLAYOFF_NOTE =
+  "Playoff weeks column: far-week kicker and defense numbers rest on team strength and byes, and are untested.";
+
+/** "playoff weeks 15 to 17" for the status line and caption; the weeks are omitted until the league is known. */
+export const playoffLabel = (w: PlayoffWeeks): string => (w ? `playoff weeks ${w.first} to ${w.last}` : "playoff weeks");

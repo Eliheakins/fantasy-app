@@ -8,6 +8,7 @@ from fantasy import store
 from fantasy._engine import _id_map, _league, _league_id, _names, _read
 from fantasy._schemas import ENGINE_SCHEMAS
 from fantasy.sim import moves
+from fantasy.sim.horizon import Horizon, horizon_weeks
 from fantasy.sim.odds import LeagueData
 
 MIN_GAIN = 0.05  # expected points below this are not worth a roster move
@@ -18,11 +19,15 @@ def waivers(
     loaded: tuple[LeagueData, int] | None = None,
     data_dir: Path | None = None,
     team: int | None = None,
+    horizon: Horizon = "ros",
 ) -> pl.DataFrame:
-    """Best adds for my team by extra points over the rest of the season (a shortcut)."""
+    """Best adds for my team by extra points over the rest of the season, or over the playoff
+    weeks when `horizon` is "playoffs" (a shortcut). Odds deltas come from the season sim."""
     data, mine = loaded or _league(league_key, data_dir, team)
     names = _names(data_dir)
-    adds = [w for w in moves.waiver_candidates(data, mine, top_n=15) if w.delta_mu > MIN_GAIN]
+    weeks = None if horizon == "ros" else horizon_weeks(data, horizon)
+    candidates = moves.waiver_candidates(data, mine, top_n=15, weeks=weeks)
+    adds = [w for w in candidates if w.delta_mu > MIN_GAIN]
     odds = {r["gsis_id"]: r for r in moves.waiver_odds(data, mine, adds).iter_rows(named=True)}
     trending = _trending_adds(data_dir)
     rows = [

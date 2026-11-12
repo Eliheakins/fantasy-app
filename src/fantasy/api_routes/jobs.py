@@ -2,7 +2,7 @@
 
 import threading
 from dataclasses import asdict
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Query
 
@@ -106,11 +106,13 @@ def actions_data(league: str, stored_adds: bool, ctx: RequestContext) -> list[di
 @router.get(
     "/leagues/{league}/waivers", response_model=Envelope[list[WaiverRow]], responses=JOB_RESPONSES
 )
-def waivers(league: str, ctx: Ctx, runner: Runner) -> Any:
+def waivers(
+    league: str, ctx: Ctx, runner: Runner, horizon: Literal["ros", "playoffs"] = "ros"
+) -> Any:
     def build() -> list[dict[str, Any]]:
-        return rows(data_api.waivers(league, data_dir=ctx.data_dir, team=ctx.team))
+        return rows(data_api.waivers(league, horizon=horizon, data_dir=ctx.data_dir, team=ctx.team))
 
-    return run_job(runner, "waivers", (league,), build, ctx)
+    return run_job(runner, "waivers", (league, horizon), build, ctx)
 
 
 @router.post("/leagues/{league}/trades/evaluate", response_model=Envelope[TradeEvaluation])

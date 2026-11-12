@@ -48,6 +48,7 @@ ENGINE_SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "is_mine": _B,
         "this_week": _F,
         "next_three": _F,
+        "playoff_points": _F,
     },
     "last_week": {
         "week": _I,

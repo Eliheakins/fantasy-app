@@ -17,6 +17,7 @@ from fantasy._schemas import ENGINE_SCHEMAS, empty
 from fantasy.config import load_config
 from fantasy.sim import moves
 from fantasy.sim.availability import kickoffs, missing_kickoffs
+from fantasy.sim.horizon import horizon_weeks
 from fantasy.sim.lineup import CONSTANT_SLOTS, Player, auto_lineup, lineup_slots
 from fantasy.sim.lineup import ELIGIBLE as SLOT_ELIGIBLE
 from fantasy.sim.odds import LeagueData
@@ -60,10 +61,11 @@ def streamers(
     if me is None or kind not in ("K", "DEF"):
         return empty("streamers")
     lid, current, mine = me["league_id"], int(me["current_week"]), me["roster_id"]
+    playoff_weeks = horizon_weeks(_league(league_key, data_dir, team)[0], "playoffs")
     proj = (
         _read("streaming_projection", data_dir, area="derived")
         .filter((pl.col("league_id") == lid) & (pl.col("kind") == kind))
-        .filter(pl.col("week") < current + STREAM_WEEKS)
+        .filter((pl.col("week") < current + STREAM_WEEKS) | pl.col("week").is_in(playoff_weeks))
     )
     rostered = _read("rosters", data_dir).filter(pl.col("league_id") == lid)
     owned = _kd_owned(kind, rostered, data_dir)
@@ -72,7 +74,14 @@ def streamers(
     taken_units = set(owned["unit"]) - mine_units
     totals = proj.group_by("unit", "team").agg(
         pl.col("projection").filter(pl.col("week") == current).sum().alias("this_week"),
-        pl.col("projection").sum().alias("next_three"),
+        pl.col("projection")
+        .filter(pl.col("week") < current + STREAM_WEEKS)
+        .sum()
+        .alias("next_three"),
+        pl.col("projection")
+        .filter(pl.col("week").is_in(playoff_weeks))
+        .sum()
+        .alias("playoff_points"),
     )
     rows = totals.with_columns(
         pl.col("unit").replace_strict(name, default=pl.col("unit")).alias("name"),

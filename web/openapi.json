@@ -2768,6 +2768,20 @@
             }
           },
           {
+            "name": "horizon",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "ros",
+                "playoffs"
+              ],
+              "type": "string",
+              "default": "ros",
+              "title": "Horizon"
+            }
+          },
+          {
             "name": "team",
             "in": "query",
             "required": false,
@@ -7356,6 +7370,17 @@
             ],
             "title": "Playoff Teams"
           },
+          "playoff_weeks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Weeks"
+          },
           "num_teams": {
             "anyOf": [
               {
@@ -7462,6 +7487,7 @@
           "current_week",
           "playoff_week_start",
           "playoff_teams",
+          "playoff_weeks",
           "num_teams",
           "roster_id",
           "team_name",
@@ -10280,6 +10306,17 @@
               }
             ],
             "title": "Next Three"
+          },
+          "playoff_points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Points"
           }
         },
         "additionalProperties": false,
@@ -10290,7 +10327,8 @@
           "team",
           "is_mine",
           "this_week",
-          "next_three"
+          "next_three",
+          "playoff_points"
         ],
         "title": "StreamerRow"
       },

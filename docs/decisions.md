@@ -1361,3 +1361,9 @@ A whole-repo review (quality, language and security reviewers per slice, plus re
 
 - `sim/horizon.horizon_weeks(data, "ros" | "playoffs")`: "ros" is every projected week from `current_week` (today's behaviour); "playoffs" is `playoff_start` through `playoff_start + playoff_weeks - 1` (bracket size and round type, never 15 to 17), cut to weeks not yet played, so empty after the final.
 - `Valuer(data, weeks=None)`, `ros_value(..., weeks=None)`, `waiver_candidates(..., weeks=None)` and `best_swap(..., weeks=None)` sum only the given weeks. The Valuer still builds absence chances over every projected week and `season_value` skips the unwanted weeks without re-indexing, so week 15 keeps its true offset from the current week (filtering projections first would have used week 12's chance for week 15). Default None is unchanged; goldens did not move. No consumers yet.
+
+## 2026-11-12: rank adds by playoff weeks
+- The waivers job takes `horizon` ("ros" default, "playoffs"). In playoff mode the shortlist and the drop choice use `horizon_weeks(data, "playoffs")`, so `delta_points` means points over the playoff weeks. Playoff and title deltas still come from the season sim, unchanged. The job key includes the horizon.
+- The Moves toggle is a Radix single ToggleGroup bound to `?rank=playoffs` (absent means rest of season). The default `waivers` path is unchanged, so the digest-style callers share the cache.
+- Streamers gain `playoff_points` (sum of `streaming_projection` over `horizon_weeks(..., "playoffs")`, so none after the final). Ranking stays by `next_three`; no `sort=playoffs` (not needed yet). The table shows the column only in playoff mode, with a note that far-week K/DEF numbers rest on team strength and byes and are untested.
+- `/api/leagues` rows gain `playoff_weeks` (bracket length from size and round type) so the status line can say "playoff weeks 15 to 17".

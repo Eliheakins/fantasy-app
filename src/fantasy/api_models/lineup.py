@@ -114,6 +114,7 @@ class StreamerRow(Row):
     is_mine: bool
     this_week: float | None
     next_three: float | None
+    playoff_points: float | None
 
 
 class ScheduleRow(Row):
