@@ -68,6 +68,17 @@ describe("Lineup page states", () => {
     );
     expect(requested).toContain("x/win-probability?week=1");
   });
+  test("?view=ahead asks for the lineup grid and shows the table", () => {
+    lineupState = { kind: "ready", data: { weeks: [3], playoff_weeks: [], rows: [] } };
+    requested.length = 0;
+    render(
+      <MemoryRouter initialEntries={["/lineup?view=ahead"]}>
+        <Lineup />
+      </MemoryRouter>,
+    );
+    expect(requested).toContain("x/lineup-grid");
+    expect(screen.getByRole("radio", { name: "Weeks ahead", checked: true })).toBeTruthy();
+  });
   test("two leagues build different query keys for the same endpoint", () => {
     const key = (league: string) => `/api/leagues/${encodeURIComponent(league)}/lineup?week=1`;
     expect(key("colgate")).not.toBe(key("yinzburgh"));

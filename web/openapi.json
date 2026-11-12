@@ -1924,6 +1924,63 @@
         }
       }
     },
+    "/api/leagues/{league}/lineup-grid": {
+      "get": {
+        "summary": "Lineup Grid",
+        "operationId": "lineup_grid_api_leagues__league__lineup_grid_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_LineupGrid_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/live-score": {
       "get": {
         "summary": "Live Score",
@@ -3869,6 +3926,59 @@
           "started_at"
         ],
         "title": "Envelope[InviteCreated]"
+      },
+      "Envelope_LineupGrid_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LineupGrid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[LineupGrid]"
       },
       "Envelope_Lookup_": {
         "properties": {
@@ -7070,6 +7180,71 @@
         ],
         "title": "GameDayPoint"
       },
+      "GridRow": {
+        "properties": {
+          "week": {
+            "type": "integer",
+            "title": "Week"
+          },
+          "slot": {
+            "type": "string",
+            "title": "Slot"
+          },
+          "gsis_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gsis Id"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "points": {
+            "type": "number",
+            "title": "Points"
+          },
+          "flag": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "bye",
+                  "out",
+                  "weak"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flag"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "week",
+          "slot",
+          "gsis_id",
+          "full_name",
+          "points",
+          "flag"
+        ],
+        "title": "GridRow"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -7610,6 +7785,39 @@
           "trade_deadline"
         ],
         "title": "LeagueRow"
+      },
+      "LineupGrid": {
+        "properties": {
+          "weeks": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Weeks"
+          },
+          "playoff_weeks": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Playoff Weeks"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/GridRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "weeks",
+          "playoff_weeks",
+          "rows"
+        ],
+        "title": "LineupGrid"
       },
       "LineupRow": {
         "properties": {

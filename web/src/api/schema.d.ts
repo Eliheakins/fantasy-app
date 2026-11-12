@@ -743,6 +743,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/lineup-grid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lineup Grid */
+        get: operations["lineup_grid_api_leagues__league__lineup_grid_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/live-score": {
         parameters: {
             query?: never;
@@ -1308,6 +1325,18 @@ export interface components {
              */
             status: "ok" | "running" | "error";
             data: components["schemas"]["InviteCreated"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[LineupGrid] */
+        Envelope_LineupGrid_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["LineupGrid"] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -2084,6 +2113,21 @@ export interface components {
             /** Opp Left */
             opp_left: number;
         };
+        /** GridRow */
+        GridRow: {
+            /** Week */
+            week: number;
+            /** Slot */
+            slot: string;
+            /** Gsis Id */
+            gsis_id: string | null;
+            /** Full Name */
+            full_name: string | null;
+            /** Points */
+            points: number;
+            /** Flag */
+            flag: ("bye" | "out" | "weak") | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2236,6 +2280,15 @@ export interface components {
             record: string;
             /** Trade Deadline */
             trade_deadline: number | null;
+        };
+        /** LineupGrid */
+        LineupGrid: {
+            /** Weeks */
+            weeks: number[];
+            /** Playoff Weeks */
+            playoff_weeks: number[];
+            /** Rows */
+            rows: components["schemas"]["GridRow"][];
         };
         /** LineupRow */
         LineupRow: {
@@ -4655,6 +4708,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_StashData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lineup_grid_api_leagues__league__lineup_grid_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_LineupGrid_"];
                 };
             };
             /** @description Validation Error */

@@ -124,6 +124,21 @@ class StashData(Row):
     rows: list[StashRow]
 
 
+class GridRow(Row):
+    week: int
+    slot: str
+    gsis_id: str | None
+    full_name: str | None
+    points: float
+    flag: Literal["bye", "out", "weak"] | None
+
+
+class LineupGrid(Row):
+    weeks: list[int]
+    playoff_weeks: list[int]
+    rows: list[GridRow]
+
+
 class StreamerRow(Row):
     unit: str
     name: str | None

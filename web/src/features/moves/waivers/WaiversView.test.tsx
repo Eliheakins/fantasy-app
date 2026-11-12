@@ -73,6 +73,29 @@ describe("WaiversView", () => {
     expect(screen.queryByRole("link", { name: /Sleeper/ })).toBeNull();
   });
 
+  describe("position filter", () => {
+    const rows = ready([add, { ...add, gsis_id: "g2", full_name: "Rob Back", position: "RB" }]);
+    it("shows only the chosen position and offers to show all", async () => {
+      const onShowAll = vi.fn();
+      render(<WaiversView {...base} adds={rows} pos="WR" onShowAll={onShowAll} />);
+      expect(screen.getAllByText("Jane Doe").length).toBeGreaterThan(0);
+      expect(screen.queryByText("Rob Back")).toBeNull();
+      expect(screen.getByText(/Showing WR only/)).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Show all" }));
+      expect(onShowAll).toHaveBeenCalled();
+    });
+    it("shows every add with no position", () => {
+      render(<WaiversView {...base} adds={rows} />);
+      expect(screen.getAllByText("Rob Back").length).toBeGreaterThan(0);
+      expect(screen.queryByRole("button", { name: "Show all" })).toBeNull();
+    });
+    it("sends K and DEF to the streaming section", () => {
+      render(<WaiversView {...base} adds={rows} pos="K" />);
+      expect(screen.queryByText("Jane Doe")).toBeNull();
+      expect(screen.getByRole("link", { name: /streaming/i })).toHaveAttribute("href", "#streaming");
+    });
+  });
+
   describe("rank toggle", () => {
     const toggle = () => screen.getByRole("radiogroup", { name: "Rank adds by" });
     it("offers both modes and reports a change", async () => {

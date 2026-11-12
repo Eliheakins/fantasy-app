@@ -22,7 +22,7 @@ from fantasy.config import load_config
 from fantasy.sim import moves
 from fantasy.sim.availability import LONG_TERM, games_on, kickoffs, locked_teams
 from fantasy.sim.calibration import tier_of
-from fantasy.sim.lineup import Player, auto_lineup, constant_slot_count
+from fantasy.sim.lineup import Lineup, Player, auto_lineup, constant_slot_count, lineup_slots
 from fantasy.sim.odds import CurrentWeek, LeagueData, kd_slot_mean
 from fantasy.sim.sampler import LEVELS, Slate, correlation_matrix, sample_points
 
@@ -233,6 +233,21 @@ def _pool(
     return [
         Player(i, positions[i], values[i]) for i in moves.team_ids(data, roster_id) if i in values
     ]
+
+
+def _week_lineup(
+    data: LeagueData,
+    roster_id: int,
+    week: int,
+    positions: dict[str, str] | None = None,
+    by_week: dict[int, dict[str, float]] | None = None,
+) -> tuple[list[Player], Lineup]:
+    """A team's pool for `week` and its auto-lineup (skill slots only; K and DEF are added by the
+    caller). `schedule` and the weeks-ahead grid both read it, so their totals agree."""
+    pos = positions if positions is not None else moves.position_of(data)
+    values = by_week if by_week is not None else moves.week_values(data)
+    pool = _pool(data, roster_id, pos, values.get(week, {}))
+    return pool, auto_lineup(pool, lineup_slots(data.roster_positions))
 
 
 def _week_values(data: LeagueData, week: int, positions: dict[str, str]) -> dict[str, float]:

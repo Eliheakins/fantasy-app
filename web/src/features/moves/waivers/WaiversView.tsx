@@ -16,9 +16,13 @@ import {
   ADDS_METHOD,
   type PlayerWeekRow,
   type PlayoffWeeks,
+  isStreamPos,
+  type Pos,
   playoffLabel,
+  posOf,
   type Rank,
   STREAM_CAPTION,
+  STREAMING_ANCHOR,
   STREAM_METHOD,
   type StashData,
   type StreamerRow,
@@ -42,6 +46,9 @@ type ViewProps = {
   rank?: Rank;
   onRank?: (rank: Rank) => void;
   playoffWeeks?: PlayoffWeeks;
+  /** Show only this position's adds (`?pos=`). */
+  pos?: Pos | null;
+  onShowAll?: () => void;
 };
 
 const RANKS: { value: Rank; label: string }[] = [
@@ -65,6 +72,8 @@ export function WaiversView({
   rank = "ros",
   onRank = () => {},
   playoffWeeks = null,
+  pos = null,
+  onShowAll = () => {},
 }: ViewProps) {
   const chartRef = useRef<HTMLDivElement>(null);
   const mineMarker = who.name ? "(theirs)" : "(yours)";
@@ -92,11 +101,27 @@ export function WaiversView({
           ))}
         </ToggleGroup>
         <p role="status" className="sr-only">{`Ranked by ${mode}${count}`}</p>
+        {pos !== null && (
+          <p className="mb-3 text-body">
+            Showing {pos} only,{" "}
+            <button type="button" onClick={onShowAll} className="min-h-[44px] underline underline-offset-2 lg:min-h-0">
+              Show all
+            </button>
+          </p>
+        )}
         {sleeperLeagueId && <ExternalLink href={sleeperLeagueUrl(sleeperLeagueId)}>Open league in Sleeper</ExternalLink>}
         <ApiBoundary state={adds}>
-          {(rows) =>
-            rows.length === 0 ? (
-              <p className="py-6 text-muted">No free agent adds expected points for {who.name ?? "your team"}.</p>
+          {(all) => {
+            const rows = pos === null ? all : all.filter((r) => r.position === pos); // K and DEF are never adds
+            return rows.length === 0 ? (
+              <p className="py-6 text-muted">
+                {pos === null
+                  ? `No free agent adds expected points for ${who.name ?? "your team"}.`
+                  : isStreamPos(pos)
+                    ? "Adds do not include kickers or defenses. "
+                    : `No ${pos} adds expected points for ${who.name ?? "your team"}.`}
+                {pos !== null && isStreamPos(pos) && <a href={`#${STREAMING_ANCHOR}`}>See streaming picks</a>}
+              </p>
             ) : (
               <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start xl:gap-6">
                 <AddsTable rows={rows} selected={selected} onSelect={onSelect} />
@@ -110,15 +135,17 @@ export function WaiversView({
                   )}
                 </div>
               </div>
-            )
-          }
+            );
+          }}
         </ApiBoundary>
       </Section>
       <StashSection state={stash} />
-      <Section title="Streaming: defense and kicker" caption={STREAM_CAPTION} howCalculated={STREAM_METHOD}>
-        <StreamerTable label="Defenses" state={def} mineMarker={mineMarker} playoffs={rank === "playoffs"} />
-        <StreamerTable label="Kickers" state={kickers} mineMarker={mineMarker} playoffs={rank === "playoffs"} />
-      </Section>
+      <div id={STREAMING_ANCHOR}>
+        <Section title="Streaming: defense and kicker" caption={STREAM_CAPTION} howCalculated={STREAM_METHOD}>
+          <StreamerTable label="Defenses" state={def} mineMarker={mineMarker} playoffs={rank === "playoffs"} />
+          <StreamerTable label="Kickers" state={kickers} mineMarker={mineMarker} playoffs={rank === "playoffs"} />
+        </Section>
+      </div>
     </div>
   );
 }
@@ -139,6 +166,19 @@ export function WaiversContent() {
           const out = new URLSearchParams(prev);
           if (next === "ros") out.delete("rank");
           else out.set("rank", next);
+          return out;
+        },
+        { replace: true },
+      ),
+    [setParams],
+  );
+  const pos = posOf(params.get("pos"));
+  const showAll = useCallback(
+    () =>
+      setParams(
+        (prev) => {
+          const out = new URLSearchParams(prev);
+          out.delete("pos");
           return out;
         },
         { replace: true },
@@ -171,6 +211,8 @@ export function WaiversContent() {
       rank={rank}
       onRank={setRank}
       playoffWeeks={playoffWeeks}
+      pos={pos}
+      onShowAll={showAll}
     />
   );
 }

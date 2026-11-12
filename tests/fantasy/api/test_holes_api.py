@@ -21,3 +21,11 @@ def test_stash_route_returns_slots_and_rows(client: TestClient) -> None:
             "gsis_id", "full_name", "position", "status", "owner", "is_mine",
             "ir_eligible", "first_week", "playoff_points",
         }  # fmt: skip
+
+
+def test_lineup_grid_route_returns_weeks_and_rows(client: TestClient) -> None:
+    body = client.get("/api/leagues/t/lineup-grid").json()
+    assert body["status"] == "ok"
+    assert set(body["data"]) == {"weeks", "playoff_weeks", "rows"}
+    for row in body["data"]["rows"]:
+        assert set(row) == {"week", "slot", "gsis_id", "full_name", "points", "flag"}

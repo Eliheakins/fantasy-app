@@ -15,13 +15,12 @@ from fantasy._engine import (
     _league_id,
     _names,
     _opponent_of,
-    _pool,
+    _week_lineup,
 )
 from fantasy._next_game import next_games
 from fantasy._schemas import OUTLOOK_SCHEMA
 from fantasy.config import load_config
 from fantasy.sim import moves
-from fantasy.sim.lineup import auto_lineup, lineup_slots
 from fantasy.sim.odds import kd_slot_mean
 
 OUTLOOK_RECENT_GAMES = 4
@@ -53,11 +52,9 @@ def schedule(
 
     data, mine = _league(league_key, data_dir, team)
     positions, by_week = moves.position_of(data), moves.week_values(data)
-    slots = lineup_slots(data.roster_positions)
 
     def moments(roster_id: int, week: int) -> tuple[float, float]:
-        pool = _pool(data, roster_id, positions, by_week.get(week, {}))
-        best = auto_lineup(pool, slots)
+        pool, best = _week_lineup(data, roster_id, week, positions, by_week)
         chosen = [p for p in pool if p.id in best.players]
         mean, var, _ = lineup_moments(
             chosen, data.cv, data.pair_rho, data.cv_tiers

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PageHeader } from "@/components/PageHeader";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { RadioGroup } from "@/components/RadioGroup";
@@ -12,6 +14,7 @@ import { CloseCalls } from "@/features/lineup/CloseCalls";
 import { ResultPanel } from "@/features/lineup/ResultPanel";
 import { OPTION_OF, RECOMMENDED_OBJECTIVE, slotCalls, startAnswer, weekOverText, weekResult } from "@/features/lineup/calls";
 import { SLEEPER_WIN_WHY, winChanceWhy } from "@/features/lineup/explain";
+import { WeeksAheadGrid, type LineupGrid } from "@/features/lineup/WeeksAheadGrid";
 import { Comparison } from "@/features/lineup/Comparison";
 import { PlayerTable } from "@/features/lineup/PlayerTables";
 import {
@@ -182,16 +185,66 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
   );
 }
 
+const LINEUP_VIEWS = [
+  { value: "week", label: "This week" },
+  { value: "ahead", label: "Weeks ahead" },
+] as const;
+
+function ViewToggle({ view }: { view: "week" | "ahead" }) {
+  const [, setParams] = useSearchParams();
+  const choose = (next: string) => {
+    if (!next) return; // clicking the selected item would clear a single-select group
+    setParams(
+      (prev) => {
+        const out = new URLSearchParams(prev);
+        if (next === "week") out.delete("view");
+        else out.set("view", next);
+        return out;
+      },
+      { replace: true },
+    );
+  };
+  return (
+    <ToggleGroup type="single" aria-label="Lineup view" value={view} onValueChange={choose} className="mb-4 justify-start">
+      {LINEUP_VIEWS.map((v) => (
+        <ToggleGroupItem key={v.value} value={v.value}>
+          {v.label}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  );
+}
+
+function WeeksAhead({ eyebrow }: { eyebrow?: string }) {
+  const { league } = useLeague();
+  const grid = useLeagueApi<LineupGrid>("lineup-grid");
+  return (
+    <>
+      <PageHeader title="Lineup" eyebrow={eyebrow} />
+      <ViewToggle view="ahead" />
+      <ApiBoundary state={grid}>{(g) => <WeeksAheadGrid grid={g} league={league ?? ""} />}</ApiBoundary>
+    </>
+  );
+}
+
 export default function Lineup() {
   const { league } = useLeague();
   const { week } = useWeek();
+  const [params] = useSearchParams();
   const eyebrow = usePageEyebrow("Lineup", true);
   const lineup = useLeagueApi<LineupRow[]>(`lineup?week=${week}`);
   const odds = useLeagueApi<WinProbability>(`win-probability?week=${week}`);
   const board = useLeagueApi<ScoreboardRow[]>(`scoreboard?week=${week}`);
   const { team } = useTeam();
+  if (params.get("view") === "ahead")
+    return (
+      <div key={league}>
+        <WeeksAhead eyebrow={eyebrow} />
+      </div>
+    );
   return (
     <div key={league}>
+      <ViewToggle view="week" />
       {lineup.kind !== "ready" && <PageHeader title="Lineup" eyebrow={eyebrow} />}
       <ApiBoundary state={lineup}>
         {(base) => (

@@ -1374,3 +1374,11 @@ A whole-repo review (quality, language and security reviewers per slice, plus re
 - Points are the projections as they already are (injury and availability scaled); there is no IR return model. `first_week` is the first projected week from the current one with points above zero, and the UI says it is when projections resume, not a medical estimate.
 - Open IR slots are `reserve_slots` from `leagues.settings` minus my rostered players on IR, floored at 0, and 0 when the setting is missing. `ir_eligible` reuses `_actions.reserve_rules` (IR and PUP always, Out and others only with `reserve_allow_*`).
 - The Moves waivers view shows the section below Adds and an "Open IR slot" note (not an alert) only when a slot is open and a listed player is IR-eligible.
+
+## 2026-11-12: weeks-ahead lineup grid
+
+- `GET /api/leagues/{l}/lineup-grid` gives my auto-lineup for every week from the current one through the last playoff week (`playoff_start + playoff_weeks - 1`): one row per week and slot with the starter, his points and a flag. K and DEF rows carry the team's projection (`kd_slot_mean`) and no player.
+- `_engine._week_lineup` builds the pool and the auto-lineup; `_outlook.schedule` and the grid both call it, so the grid's weekly totals equal `schedule`'s `my_points`. Like `schedule`, the grid adds no stand-ins to the lineup: a slot nobody fills shows no player and 0 points.
+- Flags, first match wins: "out" when the starter is Out or on IR (`_is_out`); "bye" when one of my players eligible for the slot has no game that week (the week is on the schedule and his team is not in it) and his average projection beats the slot's points; "weak" when the best free stand-in (`replacement_pool`, `stand_ins`, the same pool the valuer uses) beats the slot's points. Weeks with no schedule rows flag no byes.
+- The Lineup page switches views with `?view=ahead`. A flagged cell shows the flag as text with a hidden reason and a link to `/moves?league=...&pos=<slot>`; a flex slot links to Moves with no position.
+- The Moves adds table honours `?pos=QB|RB|WR|TE|K|DEF` client-side with a "Showing WR only, Show all" control. Adds hold skill players only, so K or DEF shows a note linking to the streaming section.

@@ -33,7 +33,7 @@ from fantasy._engine import file_stamp as file_stamp
 from fantasy._engine import pinned_version as pinned_version
 from fantasy._leagues import TEAM_COLUMNS, leagues, scoring_labels
 from fantasy._leagues import my_league as my_league
-from fantasy._lineup import lineup, win_probability
+from fantasy._lineup import lineup, lineup_grid, win_probability
 from fantasy._live import game_day, live_win_row, record_live_tick, refresh_live
 from fantasy._market import (
     evaluate_trade,
@@ -75,6 +75,7 @@ __all__ = [
     "last_week",
     "leagues",
     "lineup",
+    "lineup_grid",
     "live_score",
     "live_win_row",
     "luck",

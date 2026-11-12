@@ -11,6 +11,7 @@ from fantasy.api_envelope import guarded, rows
 from fantasy.api_models import (
     Envelope,
     HoleRow,
+    LineupGrid,
     LineupRow,
     ScheduleRow,
     StashData,
@@ -56,3 +57,8 @@ def holes(league: str, ctx: Ctx) -> Any:
 @router.get("/leagues/{league}/stash", response_model=Envelope[StashData])
 def stash(league: str, ctx: Ctx) -> Any:
     return guarded(lambda: data_api.stash(league, ctx.data_dir, ctx.team))
+
+
+@router.get("/leagues/{league}/lineup-grid", response_model=Envelope[LineupGrid])
+def lineup_grid(league: str, ctx: Ctx) -> Any:
+    return guarded(lambda: data_api.lineup_grid(league, ctx.data_dir, ctx.team))

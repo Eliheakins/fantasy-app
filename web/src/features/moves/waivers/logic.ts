@@ -27,3 +27,11 @@ export const playoffLabel = (w: PlayoffWeeks): string => (w ? `playoff weeks ${w
 export const STASH_CAPTION =
   "Injured free agents and your own injured players, ranked by projected points in the playoff weeks. First projected week is when our projections resume, not a medical estimate.";
 export const STASH_ANCHOR = "stash-for-playoffs";
+
+const POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"] as const;
+export type Pos = (typeof POSITIONS)[number];
+/** The `?pos=` value, or null when it is absent or not a position. */
+export const posOf = (raw: string | null): Pos | null => POSITIONS.find((p) => p === raw) ?? null;
+/** Adds are skill players only; a kicker or defense is found in the streaming section. */
+export const isStreamPos = (p: Pos): boolean => p === "K" || p === "DEF";
+export const STREAMING_ANCHOR = "streaming";
