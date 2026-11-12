@@ -8,6 +8,7 @@ players, so callers add their own value for them.
 """
 
 import itertools
+from collections.abc import Iterable, Mapping
 from datetime import datetime, timedelta
 from typing import NamedTuple
 
@@ -44,6 +45,13 @@ class ActualPlayer(NamedTuple):
     id: str
     positions: tuple[str, ...]  # fantasy positions; more than one for a multi-position player
     points: float
+
+
+def week_pool(
+    ids: Iterable[str], positions: Mapping[str, str], values: Mapping[str, float]
+) -> list[Player]:
+    """The players among ids with a position and a value this week."""
+    return [Player(i, positions[i], values[i]) for i in ids if i in values and i in positions]
 
 
 def lineup_slots(roster_positions: list[str]) -> list[str]:

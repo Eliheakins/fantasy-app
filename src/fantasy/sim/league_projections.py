@@ -63,11 +63,10 @@ OUTLOOK_POINT_KINDS = frozenset({"vac_target", "vac_carry"})
 
 
 def _scale_to_league(
-    league_id: str, table: pl.DataFrame | None = None, *, data_dir: Path | None
+    league_id: str, projections: pl.DataFrame, *, data_dir: Path | None
 ) -> dict[str, float]:
     """Each position's mean projection here over the league the effects were measured in."""
     reference = reference_league(store.read_table("leagues", "raw", data_dir))
-    projections = store.projection_table(data_dir) if table is None else table
     history = projections.filter(~pl.col("is_future") & pl.col("has_history"))
     return position_scale(history, league_id, reference)
 

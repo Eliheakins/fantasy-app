@@ -14,23 +14,25 @@ from fantasy import store
 from fantasy._engine import (
     _injury_note,
     _league,
-    _marginals,
     _names,
     _play_probs,
-    _tier_edges,
     _week_values,
     data_version,
 )
-from fantasy._lineup import _expected_total, _flag_status, _is_out, _ranged, _spread
+from fantasy._lineup import (
+    _expected_total,
+    _flag_status,
+    _is_out,
+    _ranged,
+    _ratio_table,
+    _spread,
+)
 from fantasy._next_game import bye_week, next_games
 from fantasy._outlook import player_outlook
-from fantasy.config import load_config
+from fantasy.config import REGULAR_SEASON_WEEKS, load_config
 from fantasy.sim import moves
 from fantasy.sim.lineup import Player
 from fantasy.sim.odds import LeagueData
-
-RANGE_LEVELS = (0.1, 0.5, 0.9)
-REGULAR_SEASON_WEEKS = 18  # shortcut: nfl_snaps has no season type; update if the NFL season grows
 
 RANGE_LEVELS = (0.1, 0.5, 0.9)
 
@@ -43,12 +45,7 @@ def _range(
     data_dir: Path | None,
 ) -> tuple[float | None, float | None, float | None, float]:
     """Week range (10th, median, 90th) and expected total as the Lineup page computes them."""
-    marginals = _marginals(data.league_id, data_dir)
-    ratio = {
-        (r["position"], r["tier"], round(r["tau"], 2)): r["ratio"]
-        for r in marginals.iter_rows(named=True)
-    }
-    edges = _tier_edges(marginals)
+    ratio, edges = _ratio_table(data.league_id, data_dir)
     out = _is_out(data, player.id)
     low, mid, high = (
         _ranged(player, _spread(player, q, chance, ratio, edges, out), live) for q in RANGE_LEVELS
@@ -126,7 +123,7 @@ def _role_weeks(gsis_id: str, data_dir: Path | None) -> list[dict[str, Any]]:
             snaps.filter(
                 (pl.col("gsis_id") == gsis_id)
                 & (pl.col("season") == season)
-                & (pl.col("week") <= REGULAR_SEASON_WEEKS)
+                & (pl.col("week") <= REGULAR_SEASON_WEEKS)  # nfl_snaps has no season type
             )
             .select("week", "offense_pct")
             .collect()

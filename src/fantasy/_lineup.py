@@ -36,7 +36,7 @@ from fantasy.config import load_config
 from fantasy.sim import moves
 from fantasy.sim.availability import LONG_TERM, kickoffs
 from fantasy.sim.lineup import Player, lineup_slots, lineup_with_locks, swap_plan
-from fantasy.sim.odds import LeagueData
+from fantasy.sim.odds import DEFAULT_SIMS, LeagueData
 from fantasy.sim.winprob import (
     Verdict,
     choose,
@@ -46,7 +46,7 @@ from fantasy.sim.winprob import (
     swap_candidates,
 )
 
-LINEUP_SIMS = 20000
+LINEUP_SIMS = DEFAULT_SIMS
 UNDERDOG = 0.45  # below this chance to win with the best lineup, variance is an asset
 FAVORITE = 0.55  # above it, protect the floor
 SWAP_STATUSES = frozenset({"Questionable", "Doubtful"})  # game-day calls settled at inactives
@@ -102,6 +102,18 @@ def _kickoffs_by_player(week: int, data_dir: Path | None) -> dict[str, datetime]
     }
 
 
+def _ratio_table(
+    league_id: str, data_dir: Path | None
+) -> tuple[dict[tuple[str, int, float], float], dict[str, list[float]]]:
+    """The quantile ratios by (position, tier, level) and the tier edges that `_spread` reads."""
+    marginals = _marginals(league_id, data_dir)
+    ratio = {
+        (r["position"], r["tier"], round(r["tau"], 2)): r["ratio"]
+        for r in marginals.iter_rows(named=True)
+    }
+    return ratio, _tier_edges(marginals)
+
+
 def _spread(
     p: Player,
     level: float,
@@ -139,12 +151,7 @@ def lineup(
     names, positions = _names(data_dir), moves.position_of(data)
     values = _week_values(data, week, positions)
     pool = _pool(data, mine, positions, values)
-    marginals = _marginals(data.league_id, data_dir)
-    ratio = {
-        (r["position"], r["tier"], round(r["tau"], 2)): r["ratio"]
-        for r in marginals.iter_rows(named=True)
-    }
-    edges = _tier_edges(marginals)
+    ratio, edges = _ratio_table(data.league_id, data_dir)
     chance = _play_probs(data, week)
     current = week == data.current_week
     starting = set(_set_starters(data.league_id, week, mine, data_dir)) if current else set()

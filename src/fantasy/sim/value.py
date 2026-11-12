@@ -14,9 +14,9 @@ not assumed available, since someone else will claim them.
 
 import polars as pl
 
-from fantasy.sim.lineup import Player, auto_lineup
+from fantasy.config import SKILL_POSITIONS
+from fantasy.sim.lineup import Player, auto_lineup, week_pool
 
-POSITIONS = ("QB", "RB", "WR", "TE")
 REPLACEMENT_SKIP = 2  # the best free agents are adds, not stand-ins
 REPLACEMENT_DEPTH = 6  # stand-in candidates kept per position and week
 STAND_INS_PER_POSITION = 2  # used per position and week, after dropping the roster's own
@@ -86,7 +86,7 @@ def replacement_pool(
     pool: dict[int, list[Player]] = {}
     for week, values in values_by_week.items():
         chosen: list[Player] = []
-        for position in POSITIONS:
+        for position in SKILL_POSITIONS:
             ranked = sorted(
                 (i for i in free_ids if positions.get(i) == position and values.get(i, 0.0) > 0),
                 key=lambda i: (-values[i], i),
@@ -102,7 +102,7 @@ def replacement_pool(
 def stand_ins(candidates: list[Player], mine: set[str]) -> list[Player]:
     """The stand-ins in use: per position the first few candidates the roster does not hold."""
     out: list[Player] = []
-    for position in POSITIONS:
+    for position in SKILL_POSITIONS:
         free = [p for p in candidates if p.position == position and p.id not in mine]
         out += free[:STAND_INS_PER_POSITION]
     return out
@@ -123,7 +123,7 @@ def season_value(
     mine = set(ids)
     total = 0.0
     for index, (week, values) in enumerate(sorted(values_by_week.items())):
-        pool = [Player(i, positions[i], values[i]) for i in ids if i in values and i in positions]
+        pool = week_pool(ids, positions, values)
         floor = stand_ins(replacements.get(week, []), mine)
         lineup = auto_lineup(pool + floor, slots)
         week_total = lineup.total

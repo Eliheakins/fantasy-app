@@ -19,7 +19,11 @@ from nfl_stat.core.seasons import roster_season
 from nfl_stat.pipeline import nflverse
 from nfl_stat.pipeline.atomic import atomic_path
 from nfl_stat.pipeline.pbp_source import ensure_pbp
-from nfl_stat.pipeline.players import merge_player_index, read_player_index
+from nfl_stat.pipeline.players import (
+    PLAYER_INDEX_FILENAME,
+    merge_player_index,
+    read_player_index,
+)
 
 # --- PBP (lean) + join keys + advanced --------------------------------------
 PBP_COLS = [
@@ -82,6 +86,7 @@ NGS_RUSH = ["avg_time_to_los", "expected_rush_yards", "efficiency"]
 EXPECTED_RUN_YARDS_ALIAS = "expected_run_yards"
 
 NGS_COLS = [*NGS_PASS, *NGS_REC, "avg_time_to_los", EXPECTED_RUN_YARDS_ALIAS, "efficiency"]
+ID_ROLE_COLS = ("passer_player_id", "rusher_player_id", "receiver_player_id")
 PART_DTYPES: dict[str, pl.DataType | type[pl.DataType]] = {
     "offense_personnel": pl.Utf8,
     "defenders_in_box": pl.Int32,
@@ -118,7 +123,7 @@ def create_player_index(data_dir: Path, years: list[int]) -> None:
             "season",
         ]
     ).with_columns(pl.col("gsis_id").cast(pl.Utf8), pl.col("season").cast(pl.Int32))
-    out_path = data_dir / "player_index.parquet"
+    out_path = data_dir / PLAYER_INDEX_FILENAME
     merged = merge_player_index(read_player_index(out_path), player_index)
     with atomic_path(out_path) as tmp:
         merged.write_parquet(tmp)
@@ -126,11 +131,8 @@ def create_player_index(data_dir: Path, years: list[int]) -> None:
 
 
 def _prepare_pbp_base(df: pl.DataFrame) -> pl.DataFrame:
-    available = [c for c in PBP_COLS if c in df.columns]
-    missing = [c for c in PBP_COLS if c not in df.columns]
-    if missing:
-        print(f"⚠️  PBP missing columns (omitted): {missing}")
-    out = df.select(available).filter(pl.col("play_type").is_in(["pass", "run"]))
+    """Keep pass and run plays and cast the join keys (`df` is already pruned to PBP_COLS)."""
+    out = df.filter(pl.col("play_type").is_in(["pass", "run"]))
     out = out.with_columns(
         [
             pl.col("play_id").cast(pl.Int64),
@@ -144,7 +146,7 @@ def _prepare_pbp_base(df: pl.DataFrame) -> pl.DataFrame:
         out = out.with_columns(pl.col("game_id").cast(pl.Utf8))
     if "season_type" in out.columns:
         out = out.with_columns(pl.col("season_type").cast(pl.Utf8))
-    for role in ("passer_player_id", "rusher_player_id", "receiver_player_id"):
+    for role in ID_ROLE_COLS:
         if role in out.columns:
             out = out.with_columns(pl.col(role).cast(pl.Utf8))
     return out
@@ -219,7 +221,7 @@ def _join_ngs_weekly(
 
 def finalize_columns(out: pl.DataFrame) -> pl.DataFrame:
     """
-    Cast to storage types.
+    Cast participation and NGS columns to storage types (`_prepare_pbp_base` cast the keys).
 
     Missing participation and NGS values stay null. Filling them with 0 would turn "not measured"
     into a real value, and averages and filters would then count it.
@@ -228,12 +230,6 @@ def finalize_columns(out: pl.DataFrame) -> pl.DataFrame:
         pl.col(c).cast(dtype) for c, dtype in PART_DTYPES.items() if c in out.columns
     ]
     casts += [pl.col(c).cast(pl.Float64) for c in NGS_COLS if c in out.columns]
-    casts += [pl.col(c).cast(pl.Int32) for c in ("season", "week") if c in out.columns]
-    casts += [
-        pl.col(c).cast(pl.Utf8)
-        for c in ("passer_player_id", "rusher_player_id", "receiver_player_id")
-        if c in out.columns
-    ]
     return out.with_columns(casts) if casts else out
 
 

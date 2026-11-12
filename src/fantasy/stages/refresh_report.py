@@ -1,23 +1,17 @@
 """End of `make refresh`: list the steps that failed or were skipped since --since; exit 1."""
 
 import argparse
-from datetime import UTC, datetime
 from pathlib import Path
 
 from fantasy import _runs
 
 
-def _parse(stamp: str) -> datetime:
-    parsed = datetime.fromisoformat(stamp)
-    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
-
-
 def main(argv: list[str] | None = None, data_dir: Path | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--since", required=True, help="ISO time this refresh started")
-    since = _parse(parser.parse_args(argv).since)
+    since = _runs.parse_utc(parser.parse_args(argv).since)
     runs = _runs.latest_runs(data_dir).to_dicts()
-    recent = [r for r in runs if _parse(str(r["finished_at"])) >= since]
+    recent = [r for r in runs if _runs.parse_utc(str(r["finished_at"])) >= since]
     if not recent:  # a run that recorded nothing is not a run that went well
         print(f"REFRESH FAILED: no stage recorded since {since.isoformat()}")
         return 1

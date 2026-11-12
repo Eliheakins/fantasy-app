@@ -75,6 +75,14 @@ def _inputs(
         return None
 
 
+def _tag(frame: pl.DataFrame, league_id: str, data: LeagueData) -> pl.DataFrame:
+    """Add the league id and the week the odds were computed as of."""
+    return frame.with_columns(
+        pl.lit(league_id).alias("league_id"),
+        pl.lit(data.current_week).cast(pl.Int64).alias("as_of_week"),
+    )
+
+
 def run(
     n_sims: int | None = None, archive: bool = True, data_dir: Path | None = None
 ) -> pl.DataFrame:
@@ -96,15 +104,9 @@ def run(
         result = simulate_season(inp)
         week_rows += team_week_rows(data, inp)
         scores = team_scores(inp)  # one draw for both display tables below
-        cond = conditional_odds(inp, result, scores).with_columns(
-            pl.lit(league["league_id"]).alias("league_id"),
-            pl.lit(data.current_week).cast(pl.Int64).alias("as_of_week"),
-        )
+        cond = _tag(conditional_odds(inp, result, scores), league["league_id"], data)
         conditional.append(cond.select(*store.SCHEMAS["sim_conditional"]))
-        need = win_need_odds(inp, result, scores=scores).with_columns(
-            pl.lit(league["league_id"]).alias("league_id"),
-            pl.lit(data.current_week).cast(pl.Int64).alias("as_of_week"),
-        )
+        need = _tag(win_need_odds(inp, result, scores=scores), league["league_id"], data)
         win_need.append(need.select(*store.SCHEMAS["sim_win_need"]))
         for i, roster_id in enumerate(data.roster_ids):
             seed_rows += [
@@ -150,9 +152,9 @@ def run(
 
 def main() -> None:
     latest = run()
-    leagues = store.read_table("leagues", "raw").select("league_id", "league_key")
+    league_keys = store.read_table("leagues", "raw").select("league_id", "league_key")
     pl.Config.set_tbl_rows(30)
-    shown = latest.join(leagues, on="league_id").sort(
+    shown = latest.join(league_keys, on="league_id").sort(
         ["league_key", "p_title"], descending=[False, True]
     )
     print(shown.select("league_key", "team_name", "p_playoffs", "p_bye", "p_title", "exp_wins"))

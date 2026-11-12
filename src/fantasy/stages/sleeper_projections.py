@@ -17,7 +17,7 @@ import polars as pl
 
 from fantasy import store
 from fantasy._runs import note_soft_failure
-from fantasy.config import load_config
+from fantasy.config import REGULAR_SEASON_WEEKS, load_config
 from fantasy.scoring import DEFENSE_KEYS, DEFENSE_PREFIXES, score_stats
 from fantasy.sources.sleeper import fetch
 
@@ -25,7 +25,6 @@ log = logging.getLogger(__name__)
 PROJECTIONS_BASE = "https://api.sleeper.com"
 POSITIONS = ["QB", "RB", "WR", "TE", "K", "DEF"]
 WEEKS_AHEAD = 4
-LAST_WEEK = 18
 # Sleeper stat keys no league scores: projection totals, ADP and volume stats
 IGNORED_KEYS = {
     "adp_dd_ppr", "cmp_pct", "def_fum_td", "def_kr_td", "def_pr_td", "fga", "gp",
@@ -101,7 +100,7 @@ def run(data_dir: Path | None = None) -> int:
     season = load_config().season
     leagues = store.read_table("leagues", "raw", data_dir)
     current = int(leagues["current_week"].to_numpy().max())
-    weeks = range(current, min(current + WEEKS_AHEAD, LAST_WEEK + 1))
+    weeks = range(current, min(current + WEEKS_AHEAD, REGULAR_SEASON_WEEKS + 1))
     if not weeks:
         print(f"week {current} is past the last projected week; nothing to snapshot")
         return 0

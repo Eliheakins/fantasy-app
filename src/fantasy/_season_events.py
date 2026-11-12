@@ -15,6 +15,7 @@ from typing import Any
 import polars as pl
 
 from fantasy import store
+from fantasy._runs import parse_utc
 
 SEVERE = frozenset({"Out", "IR", "Doubtful"})
 BIG_WEEK_SDS = 1.0  # a week this many standard deviations above my mean
@@ -22,15 +23,10 @@ MIN_WEEKS = 3  # fewer completed weeks have no meaningful spread
 COLUMNS = {"kind": pl.String, "when": pl.String, "run_at": pl.String, "label": pl.String}
 
 
-def _utc(text: str) -> datetime:
-    parsed = datetime.fromisoformat(text)
-    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
-
-
 def _try_utc(text: str | None) -> datetime | None:
     """The time, or None for a missing or malformed timestamp (such a row is skipped)."""
     try:
-        return None if text is None else _utc(text)
+        return None if text is None else parse_utc(text)
     except ValueError:
         return None
 

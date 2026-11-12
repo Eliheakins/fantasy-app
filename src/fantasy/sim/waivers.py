@@ -8,7 +8,8 @@ from typing import NamedTuple
 
 import polars as pl
 
-from fantasy.sim.odds import LeagueData, league_odds
+from fantasy.config import SKILL_POSITIONS
+from fantasy.sim.odds import DEFAULT_SIMS, LeagueData, league_odds
 from fantasy.sim.roster import (
     Valuer,
     free_agents,
@@ -17,7 +18,6 @@ from fantasy.sim.roster import (
     team_ids,
     with_roster,
 )
-from fantasy.sim.value import POSITIONS
 
 CANDIDATES_PER_POSITION = 8
 DROP_CANDIDATES = 8  # lowest rest-of-season players considered for a drop
@@ -47,7 +47,7 @@ def waiver_candidates(
     pool = free_agents(data)
     pool_value = ros_value(data, pool)
     shortlist: list[str] = []
-    for position in POSITIONS:
+    for position in SKILL_POSITIONS:
         of_position = [p for p in pool if positions.get(p) == position]
         shortlist += sorted(of_position, key=lambda p: -pool_value[p])[:CANDIDATES_PER_POSITION]
     ranked = [best_swap(data, ids, c, base, valuer) for c in shortlist]
@@ -68,7 +68,7 @@ def best_swap(
 
 
 def waiver_odds(
-    data: LeagueData, my_id: int, adds: list[Waiver], n_sims: int = 20000, seed: int = 0
+    data: LeagueData, my_id: int, adds: list[Waiver], n_sims: int = DEFAULT_SIMS, seed: int = 0
 ) -> pl.DataFrame:
     """Playoff and title odds for me before and after each add-drop, on the same random draws.
 

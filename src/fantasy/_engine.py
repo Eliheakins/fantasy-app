@@ -41,6 +41,12 @@ def _read(name: str, data_dir: Path | None, area: str = "raw") -> pl.DataFrame:
         return pl.DataFrame(schema=store.SCHEMAS[name])
 
 
+def current_week(frame: pl.DataFrame) -> int | None:
+    """The highest `current_week` over a leagues frame, or None when it has none."""
+    week = frame["current_week"].max()
+    return None if week is None else int(week)  # type: ignore[arg-type]
+
+
 LEAGUE_CACHE_SIZE = 4
 
 
@@ -66,7 +72,8 @@ def _week_kickoffs(
     cache, so a rewrite of either file is read again on the next call)."""
     leagues = store.read_table("leagues", "raw", Path(root))
     schedules = store.read_table("nfl_schedules", "raw", Path(root))
-    return kickoffs(schedules, season, int(leagues["current_week"].max()))  # type: ignore[arg-type]
+    week = current_week(leagues)
+    return {} if week is None else kickoffs(schedules, season, week)
 
 
 def _live_bucket(root: Path, stamps: dict[str, FileStamp]) -> str:

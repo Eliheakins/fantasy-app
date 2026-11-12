@@ -130,23 +130,22 @@ def _public(row: sqlite3.Row) -> dict[str, Any]:
     }
 
 
-def create_admin(conn: sqlite3.Connection, email: str, password: str) -> None:
-    """Create the admin, or reset the password (and sign out everywhere) if the email exists."""
+def create_admin(conn: sqlite3.Connection, email: str, password: str) -> int:
+    """Create the admin, or reset the password (and sign out everywhere) if the email exists.
+    Returns the account id."""
     problem = passwords.check_length(password)
     if problem:
         raise ValueError(problem)
     hashed = passwords.hash_password(password)
     with conn:
-        conn.execute(
+        admin_id: int = conn.execute(
             "INSERT INTO accounts (email, password_hash, is_admin, created_at) VALUES (?, ?, 1, ?)"
             " ON CONFLICT(email) DO UPDATE"
-            " SET password_hash = excluded.password_hash, is_admin = 1",
+            " SET password_hash = excluded.password_hash, is_admin = 1 RETURNING id",
             (normalize_email(email), hashed, stamp(datetime.now(UTC))),
-        )
-        conn.execute(
-            "DELETE FROM sessions WHERE account_id = (SELECT id FROM accounts WHERE email = ?)",
-            (normalize_email(email),),
-        )
+        ).fetchone()[0]
+        conn.execute("DELETE FROM sessions WHERE account_id = ?", (admin_id,))
+    return admin_id
 
 
 def create_invite(conn: sqlite3.Connection, email: str, now: datetime) -> str:

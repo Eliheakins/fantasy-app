@@ -38,13 +38,10 @@ def main(argv: Sequence[str]) -> int:
                 print("The two passwords differ.", file=sys.stderr)
                 return 1
             try:
-                accounts.create_admin(conn, args.email, password)
+                admin_id = accounts.create_admin(conn, args.email, password)
             except ValueError as err:
                 print(err, file=sys.stderr)
                 return 1
-            admin_id = conn.execute(
-                "SELECT id FROM accounts WHERE email = ?", (accounts.normalize_email(args.email),)
-            ).fetchone()[0]
             accounts.set_sleeper_user(conn, admin_id, load_config().user_id)  # the owner's team
             print(f"Admin {accounts.normalize_email(args.email)} is ready.")
         elif args.command == "invite":

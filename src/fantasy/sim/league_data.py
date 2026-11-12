@@ -178,6 +178,42 @@ def _spread_inputs(
     return cv, rho
 
 
+def _standings_inputs(
+    matchups: pl.DataFrame, teams: pl.DataFrame, lid: str, current: int
+) -> tuple[dict[int, float], dict[int, float]]:
+    """Wins (a tie is half) and points for each roster through last week, checked against
+    Sleeper's record."""
+    base = standings(matchups, current - 1)
+    check_standings(base, teams, lid)
+    wins = base["wins"] + 0.5 * base["ties"]
+    return (
+        {int(r): float(w) for r, w in zip(base["roster_id"], wins, strict=True)},
+        {int(r): float(p) for r, p in zip(base["roster_id"], base["points_for"], strict=True)},
+    )
+
+
+def _active_positions(sleeper_players: pl.DataFrame, id_map: pl.DataFrame) -> dict[str, str]:
+    """gsis_id -> position of every active skill player on a team."""
+    active = (
+        sleeper_players.filter((pl.col("status") == "Active") & pl.col("team").is_not_null())
+        .filter(pl.col("position").is_in(SKILL))
+        .join(id_map, on="sleeper_id")
+        .filter(pl.col("gsis_id_right").is_not_null())
+    )
+    return dict(zip(active["gsis_id_right"], active["position"], strict=True))
+
+
+def _live_maps(
+    mp: pl.DataFrame, clock: dict[str, float]
+) -> tuple[frozenset[str], dict[str, tuple[float, float]]]:
+    """This week's mapped players whose game has started, and each one's (points so far, share
+    of his game left)."""
+    rows = [r for r in mp.iter_rows(named=True) if r["gsis_id"]]
+    played = frozenset(r["gsis_id"] for r in rows if clock[r["sleeper_id"]] < 1.0)
+    live = {r["gsis_id"]: (float(r["points"] or 0.0), clock[r["sleeper_id"]]) for r in rows}
+    return played, live
+
+
 def load_league_data(
     league: dict[str, Any], strict: bool = True, data_dir: Path | None = None
 ) -> LeagueData:
@@ -206,10 +242,7 @@ def load_league_data(
     matchup_players = store.read_table("matchup_players", "raw", data_dir)
     projection_table = store.projection_table(data_dir)
 
-    base = standings(matchups, current - 1)
-    check_standings(base, teams, lid)
-    wins0 = dict(zip(base["roster_id"], base["wins"] + 0.5 * base["ties"], strict=True))
-    points0 = dict(zip(base["roster_id"], base["points_for"], strict=True))
+    wins0, points0 = _standings_inputs(matchups, teams, lid, current)
     roster_ids = sorted(teams["roster_id"].to_list())
 
     rosters = _load_rosters(lid, id_map, players, strict, data_dir=data_dir)
@@ -217,13 +250,7 @@ def load_league_data(
         lid, current, id_map, sleeper_players, projection_table, data_dir
     )
     check_projected(rosters, projections, lid, strict)
-    active = (
-        sleeper_players.filter((pl.col("status") == "Active") & pl.col("team").is_not_null())
-        .filter(pl.col("position").is_in(SKILL))
-        .join(id_map, on="sleeper_id")
-        .filter(pl.col("gsis_id_right").is_not_null())
-    )
-    positions = dict(zip(active["gsis_id_right"], active["position"], strict=True))
+    positions = _active_positions(sleeper_players, id_map)
     marginals = store.read_table("marginals", data_dir=data_dir).filter(pl.col("league_id") == lid)
     cv, rho = _spread_inputs(lid, marginals, data_dir)
     kd = kicker_and_defense(lid, current, cfg.season, players, matchup_players, data_dir)
@@ -243,6 +270,7 @@ def load_league_data(
     week_projection = dict(zip(this_week["gsis_id"], this_week["projection"], strict=True))
     week_pool = dict(zip(rosters["gsis_id"], rosters["position"], strict=True))
     week_pool.update(dict.fromkeys(week_projection, ""))
+    played, live = _live_maps(mp, clock)
 
     return LeagueData(
         roster_ids=roster_ids,
@@ -259,21 +287,13 @@ def load_league_data(
             week: [(int(a), int(b)) for a, b in g.select("roster_a", "roster_b").iter_rows()]
             for (week,), g in pairings(matchups).group_by("week")
         },
-        wins0={int(k): float(v) for k, v in wins0.items()},
-        points0={int(k): float(v) for k, v in points0.items()},
+        wins0=wins0,
+        points0=points0,
         **kd,
         current=current_state(mp, week_projection, week_pool, clock),
         injuries=flags,
-        played=frozenset(
-            r["gsis_id"]
-            for r in mp.iter_rows(named=True)
-            if r["gsis_id"] and clock[r["sleeper_id"]] < 1.0
-        ),
-        live={
-            r["gsis_id"]: (float(r["points"] or 0.0), clock[r["sleeper_id"]])
-            for r in mp.iter_rows(named=True)
-            if r["gsis_id"]
-        },
+        played=played,
+        live=live,
         positions=positions,
         trade_deadline=int(league["trade_deadline"] or 99),
         league_id=lid,

@@ -36,6 +36,7 @@ from fantasy.sim.value import (
 TAU = {"QB": 1.5, "RB": 1.7, "WR": 0.8, "TE": 0.55}
 DRIFT_SD = 2.0  # assumed weekly roster drift per team, not measured
 PLAYOFF_WEEKS = 3
+DEFAULT_SIMS = 20000  # API paths; the simulate stage reads n_sims from config.toml
 # Absences after this week, measured on nflverse 2018 to 2025 for skill players with at least 5
 # touches or targets: a player who played misses the next week 6.9% of the time, and a player who
 # missed one misses another 53% of the time (a bit low, since players who never return drop out of
@@ -312,7 +313,7 @@ def build_inputs(
 def league_odds(
     data: LeagueData,
     rosters: pl.DataFrame | None = None,
-    n_sims: int = 20000,
+    n_sims: int = DEFAULT_SIMS,
     seed: int = 0,
     reoptimize: bool = False,
 ) -> SeasonResult:

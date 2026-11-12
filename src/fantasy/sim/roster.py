@@ -7,7 +7,7 @@ leaves unchanged. `waivers`, `trades` and `needs` build on these; `moves` re-exp
 
 import polars as pl
 
-from fantasy.sim.lineup import Player, auto_lineup, lineup_slots
+from fantasy.sim.lineup import auto_lineup, lineup_slots, week_pool
 from fantasy.sim.odds import HAZARD, STAY_OUT, LeagueData
 from fantasy.sim.value import (
     absence_probs,
@@ -68,8 +68,7 @@ def team_total(
     positions = position_of(data) if positions is None else positions
     total = 0.0
     for values in (week_values(data) if values_by_week is None else values_by_week).values():
-        pool = [Player(i, positions[i], values[i]) for i in ids if i in values and i in positions]
-        total += auto_lineup(pool, slots).total
+        total += auto_lineup(week_pool(ids, positions, values), slots).total
     return total
 
 

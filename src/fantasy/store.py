@@ -14,7 +14,7 @@ from pathlib import Path
 
 import polars as pl
 
-from fantasy.config import ROOT, load_config
+from fantasy.config import ROOT, SKILL_POSITIONS, load_config
 from nfl_stat.pipeline.atomic import atomic_path
 
 log = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ CURRENT = "current"
 RELEASE_ENV = "FANTASY_RELEASE_DIR"  # set by the pipeline for its stages: the release being built
 RUN_ID_ENV = "FANTASY_RUN_ID"  # one id per `make refresh`, kept across a retry of a failed run
 RUNS_DIR = ".runs"  # inside data/archive: which rows of each table the current run appended
-SKILL = ["QB", "RB", "WR", "TE"]  # positions the projection and simulation layers cover
+SKILL = list(SKILL_POSITIONS)  # positions the projection and simulation layers cover
 WEEK_STRIDE = 25  # weeks per season in the running index; playoffs reach week 22
 _NAME = re.compile(r"^[a-z][a-z0-9_]*$")
 

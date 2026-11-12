@@ -13,7 +13,7 @@ from typing import Any
 import polars as pl
 
 from fantasy import store
-from fantasy._engine import _league, _opponent_of
+from fantasy._engine import _league, _opponent_of, _read, current_week
 from fantasy._leagues import leagues
 from fantasy._outlook import live_score
 from fantasy._scoreboard import scoreboard_of
@@ -24,7 +24,9 @@ def refresh_live(data_dir: Path | None = None) -> int:
     """Pull this week's matchups from Sleeper again so scores are current. Returns player rows."""
     from fantasy.stages.sync_sleeper import sync_week
 
-    week = int(leagues(data_dir)["current_week"].to_numpy().max())
+    week = current_week(leagues(data_dir))
+    if week is None:
+        raise ValueError("no league has a current week")
     return sync_week(week, data_dir)
 
 
@@ -99,10 +101,7 @@ def _append_live_rows(rows: list[dict[str, Any]], data_dir: Path | None) -> None
     new = pl.DataFrame([{c: r[c] for c in schema} for r in rows], schema=schema).unique(
         subset=["league_id", "roster_id", "run_at"], keep="last", maintain_order=True
     )
-    try:
-        old = store.read_table(LIVE_HISTORY, "derived", data_dir)
-    except FileNotFoundError:
-        old = new.clear()
+    old = _read(LIVE_HISTORY, data_dir, area="derived")
     for league_id, week in {(r["league_id"], r["week"]) for r in rows}:
         old = old.filter(~((pl.col("league_id") == league_id) & (pl.col("week") != week)))
     old = old.join(
@@ -123,10 +122,7 @@ def game_day(
     current = live_win_row(league_key, data_dir, team)
     if current is None:
         return {"week": None, "as_of": None, "current": None, "history": []}
-    try:
-        table = store.read_table(LIVE_HISTORY, "derived", data_dir)
-    except FileNotFoundError:
-        table = pl.DataFrame(schema=store.SCHEMAS[LIVE_HISTORY])
+    table = _read(LIVE_HISTORY, data_dir, area="derived")
     mine = table.filter(
         (pl.col("league_id") == current["league_id"])
         & (pl.col("roster_id") == current["roster_id"])

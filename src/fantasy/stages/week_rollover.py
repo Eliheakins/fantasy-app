@@ -11,9 +11,7 @@ from pathlib import Path
 import polars as pl
 
 from fantasy import store
-from fantasy.config import load_config
-
-LAST_WEEK = 18
+from fantasy.config import REGULAR_SEASON_WEEKS, load_config
 
 
 def week_is_final(schedules: pl.DataFrame, season: int, week: int) -> bool:
@@ -29,9 +27,9 @@ def week_is_final(schedules: pl.DataFrame, season: int, week: int) -> bool:
 def advance_finished_week(
     leagues: pl.DataFrame, schedules: pl.DataFrame, season: int
 ) -> pl.DataFrame:
-    """`leagues` with `current_week` moved up one where that week is final, up to LAST_WEEK."""
+    """`leagues` with `current_week` moved up one where that week is final, up to week 18."""
     advanced = [
-        min(week + 1, LAST_WEEK)
+        min(week + 1, REGULAR_SEASON_WEEKS)
         if week is not None and week_is_final(schedules, season, week)
         else week
         for week in leagues["current_week"]

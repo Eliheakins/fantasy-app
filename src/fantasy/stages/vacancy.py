@@ -23,11 +23,11 @@ import polars as pl
 from fantasy.sim.injuries import PRACTICE
 from fantasy.sim.outlook import usage_table as share_table
 from fantasy.stages.crosswalk import norm_team
+from fantasy.stages.injuries import STATUSES
 from fantasy.stages.lags import lag_asof
 from fantasy.store import SKILL
 
 KEY = ["gsis_id", "season", "week"]
-STATUSES = ("Out", "Doubtful", "Questionable")
 OUT_STATUSES = ("Out", "Doubtful")
 STAND_IN_STATUSES = ("Out",)
 USAGE = ("tgt", "car", "snap")

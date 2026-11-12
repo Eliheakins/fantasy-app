@@ -4,21 +4,17 @@ import math
 
 import polars as pl
 
-from fantasy.sim.lineup import Player, auto_lineup
+from fantasy.config import SKILL_POSITIONS
+from fantasy.sim.lineup import auto_lineup, week_pool
 from fantasy.sim.odds import LeagueData
 from fantasy.sim.roster import Valuer, ros_value, team_ids
-from fantasy.sim.value import POSITIONS
 
 
 def _starts_per_week(ids: list[str], valuer: Valuer) -> dict[str, float]:
     """Average starters at each position over the weeks, from the team's best weekly lineups."""
-    totals = dict.fromkeys(POSITIONS, 0)
+    totals = dict.fromkeys(SKILL_POSITIONS, 0)
     for values in valuer.values.values():
-        pool = [
-            Player(i, valuer.positions[i], values[i])
-            for i in ids
-            if i in values and i in valuer.positions
-        ]
+        pool = week_pool(ids, valuer.positions, values)
         for pid in auto_lineup(pool, valuer.slots).players:
             totals[valuer.positions[pid]] += 1
     weeks = max(len(valuer.values), 1)
@@ -39,7 +35,7 @@ def position_depth(data: LeagueData, valuer: Valuer | None = None) -> pl.DataFra
         base = valuer(ids)
         starts = _starts_per_week(ids, valuer)
         ros = ros_value(data, ids)
-        for pos in POSITIONS:
+        for pos in SKILL_POSITIONS:
             at_pos = sorted(
                 (i for i in ids if valuer.positions.get(i) == pos), key=lambda i: (-ros[i], i)
             )

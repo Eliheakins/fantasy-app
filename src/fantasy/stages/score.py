@@ -16,7 +16,7 @@ from fantasy import store
 from fantasy.auth import leagues
 from fantasy.scoring import UnmappedScoring, score_player_stats
 
-SKILL_POSITIONS = ["QB", "RB", "WR", "TE", "K"]
+SCORED_POSITIONS = ["QB", "RB", "WR", "TE", "K"]
 CONTEXT = ["is_home", "team_implied", "opp_implied", "total_line", "roof", "temp", "wind"]
 
 
@@ -53,7 +53,7 @@ def team_games_frame(schedules: pl.DataFrame) -> pl.DataFrame:
 def player_points_frame(
     stats: pl.DataFrame, team_games: pl.DataFrame, scoring: dict[str, float], league_id: str
 ) -> pl.DataFrame:
-    scored = score_player_stats(stats.filter(pl.col("position").is_in(SKILL_POSITIONS)), scoring)
+    scored = score_player_stats(stats.filter(pl.col("position").is_in(SCORED_POSITIONS)), scoring)
     context = team_games.select("season", "week", "team", *CONTEXT)
     return (
         scored.join(context, on=["season", "week", "team"], how="left")
