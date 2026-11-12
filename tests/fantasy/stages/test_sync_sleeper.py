@@ -99,3 +99,41 @@ def test_players_keep_only_fantasy_positions_and_name_defenses() -> None:
 def test_empty_inputs_still_match_schema() -> None:
     for name in ("rosters", "matchups", "transactions", "trending"):
         store.check_schema(name, s._frame(name, []))
+
+
+# Anonymised copy of Sleeper's 6-team bracket shape (seeds 2 and 3 have byes).
+BRACKET = [
+    {"m": 1, "r": 1, "l": None, "w": None, "t1": 9, "t2": 8},
+    {"m": 2, "r": 1, "l": None, "w": None, "t1": 6, "t2": 7},
+    {"m": 3, "r": 2, "l": None, "w": None, "t1": 2, "t2": None, "t2_from": {"w": 1}},
+    {"m": 4, "r": 2, "l": None, "w": None, "t1": 3, "t2": None, "t2_from": {"w": 2}},
+    {"p": 5, "m": 5, "r": 2, "t1_from": {"l": 1}, "t2_from": {"l": 2}},
+    {"p": 1, "m": 6, "r": 3, "t1_from": {"w": 3}, "t2_from": {"w": 4}},
+    {"p": 3, "m": 7, "r": 3, "t1_from": {"l": 3}, "t2_from": {"l": 4}},
+]
+
+
+def test_bracket_parses_teams_byes_sources_and_places() -> None:
+    df = s.bracket_frame("L1", "winners", BRACKET, 11)
+    store.check_schema("playoff_brackets", df)
+    rows = {r["m"]: r for r in df.to_dicts()}
+    assert df.height == 7 and set(df["fetched_week"]) == {11} and set(df["bracket"]) == {"winners"}
+    assert (rows[1]["t1"], rows[1]["t2"], rows[1]["t1_from_kind"]) == (9, 8, None)
+    assert (rows[3]["t1"], rows[3]["t2"], rows[3]["t1_from_kind"]) == (2, None, None)
+    assert (rows[3]["t2_from_kind"], rows[3]["t2_from_m"]) == ("w", 1)
+    assert (rows[5]["t1_from_kind"], rows[5]["t1_from_m"], rows[5]["p"]) == ("l", 1, 5)
+    assert [rows[m]["p"] for m in (1, 6, 7)] == [None, 1, 3]
+
+
+def test_bracket_null_and_empty_give_no_rows() -> None:
+    empty: list[Any] = [None, []]
+    for raw in empty:
+        df = s.bracket_frame("L1", "losers", raw, 3)
+        store.check_schema("playoff_brackets", df)
+        assert df.height == 0
+
+
+def test_bracket_malformed_row_is_logged_not_raised(caplog: Any) -> None:
+    df = s.bracket_frame("L1", "winners", [BRACKET[0], {"m": "x", "r": 1}, "junk"], 3)
+    assert df.height == 0
+    assert "bracket" in caplog.text

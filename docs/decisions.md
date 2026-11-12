@@ -1273,3 +1273,10 @@ A whole-repo review (quality, language and security reviewers per slice, plus re
 - **First run on the server.** `read_archive` raises `ArchiveMissing` when the table is absent beside other archive tables; the stage records it as a soft failure. Write the empty table once before the first deploy's refresh (see the 2026-11-10 entry).
 - **Read.** `_values.market_history` and `GET /api/leagues/{league}/market-history?id=` return one `{day, value}` per day (the day's latest fetch) for the league's FantasyCalc format; a missing archive table gives an empty list. A separate endpoint, not a field on `market-values`, so the trade builder's many-id calls do not grow.
 - **Web.** The player page's Market section draws the existing sparkline, labelled "Market value, last N refreshes, X to Y", only from 4 points (`MIN_HISTORY_POINTS`). The caption no longer says only the 30-day change is kept.
+
+## 2026-11-12: Sleeper playoff brackets (C01)
+
+- **Sync.** `sync_sleeper` stores `/league/{id}/winners_bracket` and `/losers_bracket` in the raw table `playoff_brackets`, one row per game: `r`, `m`, `t1`, `t2` (roster ids), `w`, `l`, `p` (1 final, 3 third place, 5 fifth place), `t1_from_kind`/`t1_from_m` and `t2_from_kind`/`t2_from_m` (`w` or `l` of game `m`), and `fetched_week` (the league's `current_week` at fetch). A bye is a round 2 team with `t1` set and no `t1_from`.
+- **Provisional.** Sleeper already returns a full bracket mid-season, with `t1`/`t2` filled from the current standings; they change weekly until seeding. Rows fetched before `playoff_week_start` are provisional, and `fetched_week` tells them from final ones.
+- **Failure.** A null or empty answer gives zero rows. A row that cannot be parsed logs a warning and keeps zero rows for that bracket; it never drops the league.
+- **Calls.** +2 per league per full refresh; none per live tick (`sync_week`, `live_refresh`).

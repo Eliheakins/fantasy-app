@@ -226,6 +226,38 @@ def trending_frame(fetched_at: str, kind: str, items: list[dict[str, Any]]) -> p
     return _frame("trending", rows)
 
 
+def _bracket_row(league_id: str, bracket: str, week: int, row: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "league_id": league_id,
+        "bracket": bracket,
+        "r": int(row["r"]),
+        "m": int(row["m"]),
+        "t1": as_int(row.get("t1")),
+        "t2": as_int(row.get("t2")),
+        "w": as_int(row.get("w")),
+        "l": as_int(row.get("l")),
+        "p": as_int(row.get("p")),
+        "fetched_week": week,
+    }
+    for side in ("t1", "t2"):
+        # a slot fed by an earlier game is {"w"|"l": match id}; a bye or seed has none
+        ((kind, source),) = (row.get(f"{side}_from") or {None: None}).items()
+        out[f"{side}_from_kind"] = kind
+        out[f"{side}_from_m"] = as_int(source)
+    return out
+
+
+def bracket_frame(league_id: str, bracket: str, rows: Any, week: int) -> pl.DataFrame:
+    """One bracket's games (`bracket` is "winners" or "losers"). Null or empty gives no rows; an
+    unreadable row is logged and the whole bracket skipped, so it cannot drop the league."""
+    try:
+        parsed = [_bracket_row(league_id, bracket, week, r) for r in rows or []]
+    except (KeyError, ValueError, TypeError, AttributeError):
+        log.warning("league %s: unreadable %s bracket", league_id, bracket, exc_info=True)
+        parsed = []
+    return _frame("playoff_brackets", parsed)
+
+
 def _concat(name: str, frames: list[pl.DataFrame]) -> pl.DataFrame:
     return pl.concat(frames) if frames else _frame(name, [])
 
@@ -237,6 +269,7 @@ LEAGUE_TABLES = (
     "matchups",
     "matchup_players",
     "transactions",
+    "playoff_brackets",
 )
 # What a league added by someone else can fail with: Sleeper refusing it or not answering, no
 # rosters, or a payload that is not the shape we read. Anything else is a bug: stop the run.
@@ -270,6 +303,9 @@ def _league_frames(
         frames["matchups"].append(week_teams)
         frames["matchup_players"].append(week_players)
     current = as_int((lg.get("settings") or {}).get("leg")) or 1
+    for bracket in ("winners", "losers"):
+        raw = fetch(f"/league/{league_id}/{bracket}_bracket")
+        frames["playoff_brackets"].append(bracket_frame(league_id, bracket, raw, current))
     for week in range(1, current + 1):
         txs = fetch(f"/league/{league_id}/transactions/{week}")
         frames["transactions"].append(transactions_frame(league_id, week, txs))

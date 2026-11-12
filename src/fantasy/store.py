@@ -146,6 +146,12 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "action": _S,
         "waiver_bid": _I,
     },
+    # written by sync_sleeper: Sleeper's playoff brackets; rows are provisional (seeds still move)
+    # while fetched_week is before the league's playoff_week_start
+    "playoff_brackets": _cols(
+        strings="league_id bracket t1_from_kind t2_from_kind",
+        ints="r m t1 t2 t1_from_m t2_from_m w l p fetched_week",
+    ),
     "trending": {"fetched_at": _S, "kind": _S, "sleeper_id": _S, "count": _I},
     # written by news_archive (area: archive, only ever appended): one snapshot a day of the
     # players-file fields that change through the week; fetched_at is the file's fetch time

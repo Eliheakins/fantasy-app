@@ -47,6 +47,7 @@ class FakeSleeper:
         self.broken = broken or set()
         self.no_rosters = no_rosters or set()
         self.paths: list[str] = []
+        self.brackets: dict[str, Any] = {}
 
     def __call__(self, path: str, params: dict[str, Any] | None = None) -> Any:
         self.paths.append(path)
@@ -65,6 +66,8 @@ class FakeSleeper:
                 {"user_id": OWNER, "display_name": "Owner"},
                 {"user_id": FRIEND, "display_name": "Friend"},
             ]
+        if path.endswith("_bracket"):
+            return self.brackets.get(path.rsplit("/", 1)[1], [])
         return []  # matchups, transactions, trending
 
 
@@ -188,3 +191,36 @@ def test_a_swallowed_league_error_logs_its_traceback(
     )
     [record] = [r for r in caplog.records if FRIEND_LEAGUE in r.getMessage()]
     assert record.exc_info is not None
+
+
+def test_run_writes_both_brackets_with_the_fetch_week(
+    world: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = FakeSleeper()
+    fake.brackets = {
+        "winners_bracket": [{"m": 1, "r": 1, "t1": 2, "t2": 1}],
+        "losers_bracket": [{"m": 1, "r": 1, "t1": 4, "t2": 3}],
+    }
+    counts = run(fake, monkeypatch)
+    df = table("playoff_brackets").sort("bracket")
+    assert counts["playoff_brackets"] == 2
+    assert df["bracket"].to_list() == ["losers", "winners"]
+    assert df["fetched_week"].to_list() == [2, 2]  # league_payload leg
+
+
+def test_a_malformed_bracket_keeps_the_league_ok(
+    world: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = FakeSleeper()
+    fake.brackets = {"winners_bracket": [{"m": "bad"}], "losers_bracket": None}
+    run(fake, monkeypatch)
+    assert table("leagues")["league_id"].to_list() == [CONFIG_LEAGUE]
+    assert table("playoff_brackets").height == 0
+
+
+def test_the_live_tick_makes_no_bracket_call(world: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    run(FakeSleeper(), monkeypatch)
+    fake = FakeSleeper()
+    monkeypatch.setattr(sync_sleeper, "fetch", fake)
+    sync_sleeper.sync_week(2)
+    assert fake.paths and not any("bracket" in p for p in fake.paths)
