@@ -18,6 +18,7 @@ import polars as pl
 
 from fantasy import _digest, _league_view, _season_events, store
 from fantasy._actions import actions as actions
+from fantasy._actions import holes as holes
 from fantasy._actions import streamers as streamers
 from fantasy._bracket import bracket as bracket
 from fantasy._bracket import playoff_status as playoff_status
@@ -68,6 +69,7 @@ __all__ = [
     "find_trades",
     "freshness",
     "game_day",
+    "holes",
     "ideas_are_mine",
     "last_week",
     "leagues",

@@ -10,6 +10,7 @@ from fantasy.api_deps import Ctx
 from fantasy.api_envelope import guarded, rows
 from fantasy.api_models import (
     Envelope,
+    HoleRow,
     LineupRow,
     ScheduleRow,
     StreamerRow,
@@ -44,3 +45,8 @@ def schedule(league: str, ctx: Ctx) -> Any:
 @router.get("/leagues/{league}/strength", response_model=Envelope[list[StrengthRow]])
 def strength(league: str, ctx: Ctx) -> Any:
     return guarded(lambda: rows(data_api.position_strength(league, ctx.data_dir, ctx.team)))
+
+
+@router.get("/leagues/{league}/holes", response_model=Envelope[list[HoleRow]])
+def holes(league: str, ctx: Ctx) -> Any:
+    return guarded(lambda: data_api.holes(league, ctx.data_dir, ctx.team))

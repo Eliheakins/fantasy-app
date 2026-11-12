@@ -709,6 +709,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/holes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Holes */
+        get: operations["holes_api_leagues__league__holes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/live-score": {
         parameters: {
             query?: never;
@@ -1522,6 +1539,19 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** Envelope[list[HoleRow]] */
+        Envelope_list_HoleRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["HoleRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[list[LeagueRow]] */
         Envelope_list_LeagueRow__: {
             /**
@@ -1899,6 +1929,19 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** FillInRow */
+        FillInRow: {
+            /** Gsis Id */
+            gsis_id: string;
+            /** Full Name */
+            full_name: string;
+            /** Position */
+            position: string;
+            /** Projection */
+            projection: number;
+            /** Drop Name */
+            drop_name: string | null;
+        };
         /** FoundTradeRow */
         FoundTradeRow: {
             /** Partner */
@@ -2041,6 +2084,20 @@ export interface components {
              * @description Seasons with a shard
              */
             seasons?: number[];
+        };
+        /** HoleRow */
+        HoleRow: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "bye" | "out" | "empty" | "ir_move";
+            /** Slot */
+            slot: string;
+            /** Player Name */
+            player_name: string | null;
+            /** Fill Ins */
+            fill_ins: components["schemas"]["FillInRow"][];
         };
         /** IdeasInfo */
         IdeasInfo: {
@@ -4469,6 +4526,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_StrengthRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    holes_api_leagues__league__holes_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_HoleRow__"];
                 };
             };
             /** @description Validation Error */

@@ -1810,6 +1810,63 @@
         }
       }
     },
+    "/api/leagues/{league}/holes": {
+      "get": {
+        "summary": "Holes",
+        "operationId": "holes_api_leagues__league__holes_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_HoleRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/live-score": {
       "get": {
         "summary": "Live Score",
@@ -4818,6 +4875,63 @@
         ],
         "title": "Envelope[list[FoundTradeRow]]"
       },
+      "Envelope_list_HoleRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/HoleRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[HoleRow]]"
+      },
       "Envelope_list_LeagueRow__": {
         "properties": {
           "status": {
@@ -6471,6 +6585,47 @@
         ],
         "title": "Envelope[list[WinNeedRow]]"
       },
+      "FillInRow": {
+        "properties": {
+          "gsis_id": {
+            "type": "string",
+            "title": "Gsis Id"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "projection": {
+            "type": "number",
+            "title": "Projection"
+          },
+          "drop_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drop Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gsis_id",
+          "full_name",
+          "position",
+          "projection",
+          "drop_name"
+        ],
+        "title": "FillInRow"
+      },
       "FoundTradeRow": {
         "properties": {
           "partner": {
@@ -6854,6 +7009,51 @@
           "data_ready"
         ],
         "title": "HealthResponse"
+      },
+      "HoleRow": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bye",
+              "out",
+              "empty",
+              "ir_move"
+            ],
+            "title": "Kind"
+          },
+          "slot": {
+            "type": "string",
+            "title": "Slot"
+          },
+          "player_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Name"
+          },
+          "fill_ins": {
+            "items": {
+              "$ref": "#/components/schemas/FillInRow"
+            },
+            "type": "array",
+            "title": "Fill Ins"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "slot",
+          "player_name",
+          "fill_ins"
+        ],
+        "title": "HoleRow"
       },
       "IdeasInfo": {
         "properties": {

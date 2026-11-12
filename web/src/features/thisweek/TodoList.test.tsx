@@ -36,3 +36,16 @@ describe("TodoList Sleeper link", () => {
     expect(screen.queryByRole("link", { name: /Sleeper/ })).toBeNull();
   });
 });
+
+describe("TodoList fill-ins", () => {
+  it("renders fill-ins as a nested list with the claim note", () => {
+    show([todo({ kind: "cover", fillIns: ["Add A (5.0 pts), drop B", "Add C (4.0 pts)"] })]);
+    expect(screen.getAllByRole("listitem").length).toBeGreaterThanOrEqual(3);
+    expect(screen.getByText("Add A (5.0 pts), drop B")).toBeInTheDocument();
+    expect(screen.getByText(/it may need a waiver claim/)).toBeInTheDocument();
+  });
+  it("says no free agent is left when the list is empty", () => {
+    show([todo({ kind: "cover", fillIns: [] })]);
+    expect(screen.getByText("No free agent left to start this week")).toBeInTheDocument();
+  });
+});

@@ -1,5 +1,7 @@
 """Lineup, win-probability, action and streamer models."""
 
+from typing import Literal
+
 from fantasy.api_models.base import Row
 
 
@@ -88,6 +90,21 @@ class ActionRow(Row):
     text: str
     delta_points: float | None = None
     share_better: float | None = None
+
+
+class FillInRow(Row):
+    gsis_id: str
+    full_name: str
+    position: str
+    projection: float
+    drop_name: str | None
+
+
+class HoleRow(Row):
+    kind: Literal["bye", "out", "empty", "ir_move"]
+    slot: str
+    player_name: str | None
+    fill_ins: list[FillInRow]
 
 
 class StreamerRow(Row):

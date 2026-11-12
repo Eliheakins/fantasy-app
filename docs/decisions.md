@@ -1342,3 +1342,12 @@ A whole-repo review (quality, language and security reviewers per slice, plus re
 
 - Link target is `https://sleeper.com/leagues/{league_id}` (verified 200). Team and matchup deep links are undocumented and Sleeper's app links do not cover league pages, so on a phone it opens the browser; the link says "opens in a new tab", not "opens the app".
 - Each to-do links with "Open {league name} in Sleeper" (both leagues share one list); Moves Adds has one "Open league in Sleeper". No link when the league id is unknown.
+
+## 2026-11-12: lineup-hole to-dos with free-agent fill-ins (PR 10)
+
+- `GET /api/leagues/{l}/holes` (`_actions.holes`): per starting slot (`lineup_slots`; starters are `rosters.is_starter` and not `is_ir`, placed narrowest slot first), kind `bye` (the starter's NFL team has a game nowhere on this week's schedule; an empty schedule means unknown, never bye), `out` (status in `UNAVAILABLE` or `_is_out`), or `empty` (fewer starters than slots). K and DEF slots are not covered.
+- A hole is listed only when no bench player can cover it (eligible, has a kickoff still ahead, not unavailable); a bench player covers one hole only, as in `swap_plan`.
+- Fill-ins: top 3 free agents eligible for the slot by this week's projection, only with a known kickoff still ahead. A missing kickoff counts as started (unknown lock). The same rule applies to bench cover, so a bench player with no kickoff does not cover. Each carries the drop: the non-starter, non-IR player with the lowest `ros_value` (ties by id), null with an empty bench.
+- `ir_move`: bench players whose status is IR, PUP, or one whose `reserve_allow_<status>` is 1 (`Out`, `Doubtful`, ...), up to `reserve_slots` (from `leagues.settings`) minus players with `is_ir`. Missing or unreadable settings mean 0 slots.
+- Web: holes become "cover" to-dos (deadline = next kickoff day) with a nested fill-in list; IR moves become "ir" to-dos. A league whose holes fail joins `failed`.
+- K and DEF slots are covered too (follow-up): a K or DEF starter on bye (schedule) or a K who is Out, or an empty K/DEF slot, with no bench K/DEF that has a kickoff ahead, is a hole. Fill-ins are the top 3 free units (not rostered in the league) by this week's `streaming_projection`, games not started, missing kickoff counts as started; unit and name logic is shared with `streamers` (`_kd_owned`, `_kd_names`). A DEF is never "out". Drops are chosen as for skill players, so a spare bench K/DEF (ros 0) is the cheapest drop.

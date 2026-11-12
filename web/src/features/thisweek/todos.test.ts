@@ -1,5 +1,5 @@
 import { rankTodos } from "@/features/effects/effect";
-import { type Todo, leagueTodos, orderByDeadline, tradeDeadlineTodos } from "./todos";
+import { type Todo, holeTodos, leagueTodos, orderByDeadline, tradeDeadlineTodos } from "./todos";
 
 const todo = (id: string, over: Partial<Todo> = {}): Todo => ({
   id,
@@ -200,5 +200,39 @@ describe("sleeperUrl", () => {
     const waiver = { get: "A", give: "B", delta_points: 1, playoff_delta: 5, title_delta: 5 } as never;
     expect(leagueTodos({ ...league, league_id: "77" }, [], [waiver], deadlines)[0]?.sleeperUrl).toBe("https://sleeper.com/leagues/77");
     expect(leagueTodos(league, [], [waiver], deadlines)[0]?.sleeperUrl).toBeNull();
+  });
+});
+
+describe("holeTodos", () => {
+  const league = { league_key: "a", league_id: "9", name: "A" };
+  const fill = (n: string, p: number, d: string | null) => ({ gsis_id: n, full_name: n, position: "TE", projection: p, drop_name: d });
+  it("maps a bye hole to a cover to-do with fill-ins and the lineup deadline", () => {
+    const [t = todo("missing")] = holeTodos(
+      league,
+      [{ kind: "bye", slot: "TE", player_name: "Kelce", fill_ins: [fill("Lowe", 12.34, "Bench")] }],
+      "2026-11-15",
+    );
+    expect(t).toMatchObject({ kind: "cover", title: "No TE this week: Kelce is on bye", deadlineDay: "2026-11-15" });
+    expect(t.fillIns).toEqual(["Add Lowe (12.3 pts), drop Bench"]);
+    expect(t.sleeperUrl).toContain("9");
+  });
+  it("words out and empty holes, and keeps an empty fill-in list", () => {
+    const todos = holeTodos(
+      league,
+      [
+        { kind: "out", slot: "QB", player_name: "Allen", fill_ins: [] },
+        { kind: "empty", slot: "RB", player_name: null, fill_ins: [fill("X", 1, null)] },
+      ],
+      null,
+    );
+    expect(todos[0]?.title).toBe("No QB this week: Allen is out");
+    expect(todos[0]?.fillIns).toEqual([]);
+    expect(todos[1]?.title).toBe("No RB this week: the slot is empty");
+    expect(todos[1]?.fillIns).toEqual(["Add X (1.0 pts)"]);
+  });
+  it("maps an IR move to an ir to-do", () => {
+    const [t = todo("missing")] = holeTodos(league, [{ kind: "ir_move", slot: "IR", player_name: "Hurt", fill_ins: [] }], null);
+    expect(t).toMatchObject({ kind: "ir", title: "Move Hurt to IR to open a roster spot" });
+    expect(t.fillIns).toBeUndefined();
   });
 });

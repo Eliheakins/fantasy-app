@@ -10,7 +10,8 @@ import { leagueName } from "./weekLogic";
 
 type MoveIdea = components["schemas"]["MoveIdeaRow"];
 
-type TodoKind = "waiver" | "lineup" | "injury" | "trade";
+type TodoKind = "waiver" | "lineup" | "injury" | "trade" | "cover" | "ir";
+type HoleRow = components["schemas"]["HoleRow"];
 export type Todo = {
   id: string;
   leagueKey: string;
@@ -25,7 +26,15 @@ export type Todo = {
   deadlineDay: string | null;
   /** The league page in Sleeper; null when the league id is not known. */
   sleeperUrl: string | null;
+  /** Free agents to add for a lineup hole, one line each; an empty list means none can start. */
+  fillIns?: string[];
 };
+
+export const FILL_IN_LABEL = "Add in Sleeper before kickoff; it may need a waiver claim";
+export const NO_FILL_IN = "No free agent left to start this week";
+
+const HOLE_REASON = { bye: "is on bye", out: "is out", empty: "", ir_move: "" } as const;
+const PTS = (n: number) => n.toFixed(1);
 
 const PERCENT = 100;
 
@@ -136,4 +145,30 @@ export function tradeDeadlineTodos(
       deadlineDay,
     },
   ];
+}
+
+/** Lineup holes and IR moves as to-dos; the deadline is the lineup deadline (next kickoff). */
+export function holeTodos(league: LeagueRef, holes: readonly HoleRow[], lineupDeadline: string | null): Todo[] {
+  return holes.map((h, i): Todo => {
+    const base = {
+      leagueKey: league.league_key,
+      leagueName: leagueName(league),
+      sleeperUrl: sleeperUrlOf(league),
+      id: `${league.league_key}-hole-${i}-${h.kind}-${h.slot}`,
+      href: hrefFor("lineup", league.league_key),
+      effect: { playoffPoints: null, points: null },
+      deadlineDay: lineupDeadline,
+    };
+    if (h.kind === "ir_move") {
+      return { ...base, kind: "ir", title: `Move ${h.player_name} to IR to open a roster spot`, detail: "Roster" };
+    }
+    const reason = h.player_name ? `${h.player_name} ${HOLE_REASON[h.kind]}` : "the slot is empty";
+    return {
+      ...base,
+      kind: "cover",
+      title: `No ${h.slot} this week: ${reason}`,
+      detail: "Lineup hole",
+      fillIns: h.fill_ins.map((f) => `Add ${f.full_name} (${PTS(f.projection)} pts)${f.drop_name ? `, drop ${f.drop_name}` : ""}`),
+    };
+  });
 }
