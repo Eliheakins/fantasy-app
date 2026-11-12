@@ -64,6 +64,20 @@ beforeEach(() => {
   digest = digestWith([trade]);
 });
 
+describe("Moves page trade deadline callout", () => {
+  it("shows the warning only in deadline week", () => {
+    leagueRow = { ...leagueRow, trade_deadline: 9 } as typeof leagueRow;
+    renderAt("/moves");
+    expect(screen.getByText("Trades close after week 9.")).toBeInTheDocument();
+  });
+
+  it.each([null, 99, 11, 5])("shows nothing when the deadline is %s", (deadline) => {
+    leagueRow = { ...leagueRow, trade_deadline: deadline } as typeof leagueRow;
+    renderAt("/moves");
+    expect(screen.queryByText(/Trades close after/)).not.toBeInTheDocument();
+  });
+});
+
 describe("Moves page", () => {
   it("has one h1 that answers with the best move, and one ranked list of adds and trades", () => {
     renderAt("/moves?league=a");

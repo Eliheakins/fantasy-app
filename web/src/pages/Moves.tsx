@@ -1,4 +1,5 @@
 import { useSearchParams } from "react-router-dom";
+import { Callout } from "@/components/Callout";
 import { PageHeader } from "@/components/PageHeader";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MoveList } from "@/features/moves/MoveList";
@@ -7,6 +8,7 @@ import { OUT_MESSAGE } from "@/features/effects/phase";
 import { useMoves } from "@/features/moves/useMoves";
 import { EffectText } from "@/features/effects/EffectText";
 import { WaiversContent } from "@/features/moves/waivers/WaiversView";
+import { deadlineWeekState } from "@/lib/deadline";
 import { useLeague } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
 import { useHeld } from "@/lib/useHeld";
@@ -64,12 +66,21 @@ export default function Moves() {
         : moveHeadline(top, failed.length > 0);
   const answer = !out && top && worthMove(top) && !pending ? <EffectText todo={top} playoffNoise={MOVE_NOISE_PERCENT} inline /> : undefined;
   // a background refetch must not unmount the number the reader has open
-  const { league } = useLeague();
+  const { league, leagues } = useLeague();
+  const row = leagues.kind === "ready" ? leagues.data.find((l) => l.league_key === league) : undefined;
+  const closing =
+    deadlineWeekState(row?.current_week, row?.trade_deadline, row?.playoff_week_start == null ? null : row.playoff_week_start - 1) ===
+    "closing";
   const { team } = useTeam();
   const header = useHeld({ title, answer }, pending, `${league}|${team}`);
   return (
     <div className="flex flex-col">
       <PageHeader title={header.title} eyebrow={eyebrow} answer={header.answer} />
+      {closing && (
+        <Callout variant="warn" className="mb-4">
+          Trades close after week {row?.trade_deadline}.
+        </Callout>
+      )}
       <section aria-labelledby="moves-heading" className="mb-8 key-panel">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 id="moves-heading" className="text-section font-semibold">

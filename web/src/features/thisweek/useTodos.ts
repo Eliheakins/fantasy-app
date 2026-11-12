@@ -4,8 +4,9 @@ import type { ActionRow } from "@/features/thisweek/leagues/logic";
 import type { DigestData } from "@/lib/digestTypes";
 import { useAllLeagues, useEachLeague } from "@/lib/league";
 import { phaseOf } from "@/features/effects/phase";
+import { deadlineWeekState } from "@/lib/deadline";
 import { useNow } from "./useNow";
-import { type Todo, leagueTodos, orderByDeadline } from "./todos";
+import { type Todo, leagueTodos, orderByDeadline, tradeDeadlineTodos } from "./todos";
 import { type WeekCalendar, leagueName, lineupDeadlineDay, waiverDeadlineDay } from "./weekLogic";
 
 export type TodosState = {
@@ -43,7 +44,12 @@ export function useTodos(): TodosState {
       waiver: waiverDeadlineDay(waiverDay, now),
     };
     const phase = phaseOf(l, d?.kind === "ready" ? d.data.odds_change : []);
-    return leagueTodos(l, a?.kind === "ready" ? a.data : [], d?.kind === "ready" ? d.data.waivers : [], deadlines, phase);
+    const digest = d?.kind === "ready" ? d.data : null;
+    const state = deadlineWeekState(l.current_week, l.trade_deadline, l.playoff_week_start == null ? null : l.playoff_week_start - 1);
+    return [
+      ...leagueTodos(l, a?.kind === "ready" ? a.data : [], digest?.waivers ?? [], deadlines, phase),
+      ...tradeDeadlineTodos(l, digest?.trades ?? [], state, l.trade_deadline ?? null, deadlines.waiver, phase),
+    ];
   });
   const pending = isPending(leagues) || actions.some(isPending) || digests.some(isPending);
   const leaguesError = leagues.kind === "error" ? leagues.error.message : leagues.kind === "no_data" ? leagues.message : null;

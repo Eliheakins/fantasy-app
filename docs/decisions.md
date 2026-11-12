@@ -1331,3 +1331,9 @@ A whole-repo review (quality, language and security reviewers per slice, plus re
 - Divisions (same guide): "each division winner will qualify for the playoffs ... It's possible a division winner could have a worse record than a wild card team". User decision: division winners are guaranteed a spot; all playoff teams are then seeded by wins, then points (the existing order and random tie-break). Division winner = best wins then points inside its division, same tie-break. A division winner can sit below a wild card.
 - Data: `settings.division` of each roster is kept in the new raw table `roster_divisions` (league_id, roster_id, division), from the rosters response already fetched. A missing table or a roster with no division means no divisions.
 - Gate: `shape_problem` allows seed type 0 or 1 and any `divisions` up to the playoff size.
+||||||| parent of 59175d8 (feat: trade-deadline to-do and Moves callout)
+
+## 2026-11-12: trade-deadline to-do and Moves callout (PR 8)
+
+- `deadlineWeekState` (web/src/lib/deadline.ts): "passed" is `current_week > trade_deadline`, the API's own rule (`api_routes/season.py`); "closing" is `current_week == trade_deadline`; "none" for a null deadline or one past the last regular week (`playoff_week_start - 1`, 18 when unknown), which covers Sleeper's 99.
+- In the closing week only, each league gets one to-do from its best stored trade idea (playoff odds change, title odds in the playoffs, nothing when out), only when it clears the same MIN_PLAYOFF_GAIN bar as a waiver add. Its deadline day is the league's waiver day (null for daily waivers or unknown), so it sorts with the other to-dos. Moves shows a warn callout "Trades close after week N." only in that week.

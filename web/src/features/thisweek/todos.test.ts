@@ -1,5 +1,5 @@
 import { rankTodos } from "@/features/effects/effect";
-import { type Todo, leagueTodos, orderByDeadline } from "./todos";
+import { type Todo, leagueTodos, orderByDeadline, tradeDeadlineTodos } from "./todos";
 
 const todo = (id: string, over: Partial<Todo> = {}): Todo => ({
   id,
@@ -157,5 +157,39 @@ describe("leagueTodos in the playoffs", () => {
   it("gives an eliminated team no waiver to-do but keeps its lineup to-dos", () => {
     const actions = [{ kind: "Injury", text: "Cook is Out and in your lineup", delta_points: null }];
     expect(leagueTodos(league, actions as never, [add], deadlines, "out").map((t) => t.kind)).toEqual(["injury"]);
+  });
+});
+
+describe("tradeDeadlineTodos", () => {
+  const t = (give: string, get: string, playoff_delta: number | null, title_delta: number | null = null) =>
+    ({ kind: "trade", give, get, partner: "R", playoff_delta, title_delta, delta_points: 1, rank: 1 }) as never;
+  const run = (state: "open" | "closing" | "passed" | "none", trades: never[], phase: "season" | "playoffs" | "out" = "season") =>
+    tradeDeadlineTodos(league, trades, state, 11, "2026-11-04", phase);
+
+  it("gives one to-do for the best trade in deadline week", () => {
+    const out = run("closing", [t("A", "B", 0.02), t("C", "D", 0.05)]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      kind: "trade",
+      title: "Trade deadline: C for D",
+      detail: "Trades close after week 11",
+      href: "/moves?league=a&view=trades",
+      deadlineDay: "2026-11-04",
+      effect: { playoffPoints: 5 },
+    });
+  });
+
+  it("gives nothing outside deadline week", () => {
+    for (const s of ["open", "passed", "none"] as const) expect(run(s, [t("A", "B", 0.05)])).toEqual([]);
+  });
+
+  it("gives nothing under the gain bar, with no trades, or when out", () => {
+    expect(run("closing", [t("A", "B", 0.001)])).toEqual([]);
+    expect(run("closing", [])).toEqual([]);
+    expect(run("closing", [t("A", "B", 0.05)], "out")).toEqual([]);
+  });
+
+  it("judges on title odds in the playoffs", () => {
+    expect(run("closing", [t("A", "B", 0.09, 0.001), t("C", "D", 0.0, 0.04)], "playoffs")[0]?.title).toBe("Trade deadline: C for D");
   });
 });

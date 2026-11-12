@@ -2,13 +2,14 @@ import type { components } from "@/api/schema";
 import { actionGain, actionSentence, worthActing } from "@/features/thisweek/leagues/logic";
 import type { ActionRow } from "@/features/thisweek/leagues/logic";
 import { compareEffect, type Effect, MIN_PLAYOFF_GAIN } from "@/features/effects/effect";
-import { type EffectWhy, lineupWhy, waiverWhy } from "@/features/effects/explain";
+import { type EffectWhy, lineupWhy, tradeWhy, waiverWhy } from "@/features/effects/explain";
 import type { Phase } from "@/features/effects/phase";
+import type { DeadlineWeekState } from "@/lib/deadline";
 import { leagueName } from "./weekLogic";
 
 type MoveIdea = components["schemas"]["MoveIdeaRow"];
 
-type TodoKind = "waiver" | "lineup" | "injury";
+type TodoKind = "waiver" | "lineup" | "injury" | "trade";
 export type Todo = {
   id: string;
   leagueKey: string;
@@ -24,6 +25,18 @@ export type Todo = {
 };
 
 const PERCENT = 100;
+
+/** The odds an idea is judged on: title in the playoffs (playoff odds are fixed then), playoff odds before. */
+const ideaOdds = (idea: MoveIdea, phase: Phase) => (phase !== "season" ? idea.title_delta : idea.playoff_delta);
+
+/** The idea with the biggest odds change; none for an eliminated team. */
+const bestIdea = (ideas: readonly MoveIdea[], phase: Phase): MoveIdea | undefined =>
+  phase === "out"
+    ? undefined
+    : ideas.reduce<MoveIdea | undefined>(
+        (best, w) => ((ideaOdds(w, phase) ?? -Infinity) > ((best && ideaOdds(best, phase)) ?? -Infinity) ? w : best),
+        undefined,
+      );
 
 /** What expires first goes first (no deadline last); within one day, the effect ranking. */
 export function orderByDeadline(todos: readonly Todo[]): Todo[] {
@@ -68,14 +81,8 @@ export function leagueTodos(
       deadlineDay: deadlines.lineup,
     }));
   const title = phase !== "season";
-  const oddsOf = (w: MoveIdea) => (title ? w.title_delta : w.playoff_delta);
-  const top =
-    phase === "out"
-      ? undefined
-      : waivers.reduce<MoveIdea | undefined>(
-          (best, w) => ((oddsOf(w) ?? -Infinity) > ((best && oddsOf(best)) ?? -Infinity) ? w : best),
-          undefined,
-        );
+  const top = bestIdea(waivers, phase);
+  const oddsOf = (w: MoveIdea) => ideaOdds(w, phase);
   const topOdds = top === undefined ? null : oddsOf(top);
   const add: Todo[] =
     top !== undefined && topOdds !== null && topOdds >= MIN_PLAYOFF_GAIN
@@ -94,4 +101,33 @@ export function leagueTodos(
         ]
       : [];
   return [...fromActions, ...add];
+}
+
+/** In the deadline week only: the best stored trade idea, if it clears the same gain bar as an add. */
+export function tradeDeadlineTodos(
+  league: LeagueRef,
+  trades: readonly MoveIdea[],
+  state: DeadlineWeekState,
+  deadlineWeek: number | null,
+  deadlineDay: string | null,
+  phase: Phase = "season",
+): Todo[] {
+  const top = state === "closing" ? bestIdea(trades, phase) : undefined;
+  const odds = top === undefined ? null : ideaOdds(top, phase);
+  if (top === undefined || odds === null || odds < MIN_PLAYOFF_GAIN) return [];
+  const title = phase !== "season";
+  return [
+    {
+      leagueKey: league.league_key,
+      leagueName: leagueName(league),
+      id: `${league.league_key}-trade-${top.give}-${top.get}`,
+      kind: "trade",
+      title: `Trade deadline: ${top.give} for ${top.get}`,
+      detail: `Trades close after week ${deadlineWeek}`,
+      href: `${hrefFor("moves", league.league_key)}&view=trades`,
+      effect: { playoffPoints: odds * PERCENT, points: top.delta_points, ...(title && { odds: "title" as const }) },
+      why: tradeWhy(top.give, top.get, title),
+      deadlineDay,
+    },
+  ];
 }
