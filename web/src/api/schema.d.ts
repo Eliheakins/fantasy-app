@@ -797,6 +797,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/market-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Market History */
+        get: operations["market_history_api_leagues__league__market_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/player-weeks": {
         parameters: {
             query?: never;
@@ -1494,6 +1511,19 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** Envelope[list[MarketHistoryRow]] */
+        Envelope_list_MarketHistoryRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["MarketHistoryRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[list[MarketValueRow]] */
         Envelope_list_MarketValueRow__: {
             /**
@@ -2159,6 +2189,13 @@ export interface components {
             efficiency: number;
             /** Bench Points Left */
             bench_points_left: number;
+        };
+        /** MarketHistoryRow */
+        MarketHistoryRow: {
+            /** Day */
+            day: string;
+            /** Value */
+            value: number;
         };
         /**
          * MarketSummary
@@ -4518,6 +4555,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_MarketValueRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    market_history_api_leagues__league__market_history_get: {
+        parameters: {
+            query: {
+                id: string;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_MarketHistoryRow__"];
                 };
             };
             /** @description Validation Error */

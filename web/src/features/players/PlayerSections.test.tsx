@@ -41,15 +41,24 @@ const market = [{ gsis_id: "a", value: 4200, overall_rank: 12, position_rank: 5,
 const owners = { rows: [{ gsis_id: "a", owner: "Theirs", roster_id: 3, is_mine: false }], unmatched: 0 };
 const ready = <T,>(data: T): ApiState<T> => ({ kind: "ready", data }) as ApiState<T>;
 
-function mock(p: ApiState<unknown>, m: ApiState<unknown> = ready(market), o: ApiState<unknown> = ready(owners)) {
+const days = (n: number) => Array.from({ length: n }, (_, i) => ({ day: `2026-11-0${i + 1}`, value: 4000 + i * 100 }));
+
+function mock(
+  p: ApiState<unknown>,
+  m: ApiState<unknown> = ready(market),
+  o: ApiState<unknown> = ready(owners),
+  h: ApiState<unknown> = ready([]),
+) {
   vi.mocked(useEnvelopeQuery).mockImplementation(((path: string | null) =>
     path?.includes("/profile")
       ? p
       : path?.includes("/market-values")
         ? m
-        : path?.includes("/owners")
-          ? o
-          : { kind: "loading" }) as typeof useEnvelopeQuery);
+        : path?.includes("/market-history")
+          ? h
+          : path?.includes("/owners")
+            ? o
+            : { kind: "loading" }) as typeof useEnvelopeQuery);
 }
 
 function renderSections(level: 2 | 3 = 2) {
@@ -172,10 +181,16 @@ describe("PlayerSections", () => {
     expect(screen.getByRole("img", { name: /^Ann, next game:/ })).toBeInTheDocument();
   });
 
-  it("states that only the 30-day market change is kept", () => {
-    mock(ready(profile));
+  it("hides the market history below 4 points", () => {
+    mock(ready(profile), ready(market), ready(owners), ready(days(3)));
     renderSections();
-    expect(screen.getByText(/Only the 30-day change is kept/i)).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /Market value, last/ })).toBeNull();
+  });
+
+  it("shows the market history with its label at 4 points", () => {
+    mock(ready(profile), ready(market), ready(owners), ready(days(4)));
+    renderSections();
+    expect(screen.getByRole("img", { name: /^Market value, last 4 refreshes, 4000 to 4300/ })).toBeInTheDocument();
   });
 
   it("shows the error when the profile fails to load", () => {

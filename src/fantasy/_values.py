@@ -13,16 +13,38 @@ from fantasy.sim.value import accepted_share, market_hint
 COLUMNS = ["gsis_id", "value", "overall_rank", "position_rank", "trend_30_day", "fetched_at"]
 
 
+def _format_key(league_key: str, data_dir: Path | None) -> str:
+    league = _read("leagues", data_dir).filter(pl.col("league_key") == league_key)
+    if league.is_empty():
+        raise ValueError(f"unknown league {league_key!r}")
+    row = league.row(0, named=True)
+    return setting_for(row["scoring_settings"], row["roster_positions"], row["num_teams"]).key
+
+
+def market_history(league_key: str, gsis_id: str, data_dir: Path | None) -> list[dict[str, Any]]:
+    """One value per day (the day's latest fetch) for the league's format, oldest first; empty
+    when the archive table or the player is missing."""
+    key = _format_key(league_key, data_dir)
+    ids = _id_map(data_dir).filter(pl.col("gsis_id") == gsis_id)["sleeper_id"]
+    found = _read("market_values_history", data_dir, "archive").filter(
+        (pl.col("format") == key) & pl.col("sleeper_id").is_in(ids.implode())
+    )
+    return (
+        found.sort("fetched_at")
+        .with_columns(day=pl.col("fetched_at").str.slice(0, 10))
+        .group_by("day", maintain_order=True)
+        .last()
+        .select("day", "value")
+        .to_dicts()
+    )
+
+
 def market_values(league_key: str, gsis_ids: list[str], data_dir: Path | None) -> pl.DataFrame:
     """Values for the given players under the league's setting; empty when the table is missing."""
     empty = pl.DataFrame(
         schema={c: store.SCHEMAS["market_values"].get(c, pl.String) for c in COLUMNS}
     )
-    league = _read("leagues", data_dir).filter(pl.col("league_key") == league_key)
-    if league.is_empty():
-        raise ValueError(f"unknown league {league_key!r}")
-    row = league.row(0, named=True)
-    key = setting_for(row["scoring_settings"], row["roster_positions"], row["num_teams"]).key
+    key = _format_key(league_key, data_dir)
     values = _read("market_values", data_dir, "raw").filter(pl.col("format") == key)
     if values.is_empty():
         return empty

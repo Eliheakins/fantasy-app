@@ -206,6 +206,12 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         ints="overall_rank position_rank tier",
         floats="value trend_30_day",
     ),
+    # written by market_values (area: archive, only ever appended): every fetch, same columns
+    "market_values_history": _cols(
+        strings="format sleeper_id name position fetched_at",
+        ints="overall_rank position_rank tier",
+        floats="value trend_30_day",
+    ),
     # written by sleeper_projections (area: archive, only ever appended)
     "sleeper_proj_snapshots": _cols(strings="fetched_at sleeper_id stats", ints="week"),
     # written by outside_projections (area: archive, only ever appended): other sites' stat lines

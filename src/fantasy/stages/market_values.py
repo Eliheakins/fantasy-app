@@ -1,4 +1,4 @@
-"""FantasyCalc market values, one fetch a day per distinct league setting.
+"""FantasyCalc market values, one fetch a day per distinct league setting, each kept in the archive.
 
 The endpoint is undocumented with no stated terms or rate limit, so any failure is logged and
 the stage still exits 0 with the previous table left in place.
@@ -103,6 +103,9 @@ def run(
     replaced = {f["format"][0] for f in new if f.height}
     out = pl.concat([kept.filter(~pl.col("format").is_in(replaced)), *new])
     store.write_table("market_values", out, "raw", data_dir)
+    # raises ArchiveMissing when the table is lost beside its siblings; main() records it
+    history = store.with_archive("market_values_history", pl.concat(new), data_dir)
+    store.write_table("market_values_history", history, "archive", data_dir)
     return sum(f.height for f in new)
 
 

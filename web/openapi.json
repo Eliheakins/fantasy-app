@@ -2102,6 +2102,55 @@
         }
       }
     },
+    "/api/leagues/{league}/market-history": {
+      "get": {
+        "summary": "Market History",
+        "operationId": "market_history_api_leagues__league__market_history_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 40,
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_MarketHistoryRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/player-weeks": {
       "get": {
         "summary": "Player Weeks",
@@ -4752,6 +4801,63 @@
         ],
         "title": "Envelope[list[ManagerGradeRow]]"
       },
+      "Envelope_list_MarketHistoryRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MarketHistoryRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[MarketHistoryRow]]"
+      },
       "Envelope_list_MarketValueRow__": {
         "properties": {
           "status": {
@@ -7207,6 +7313,25 @@
           "bench_points_left"
         ],
         "title": "ManagerGradeRow"
+      },
+      "MarketHistoryRow": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "title": "Day"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "day",
+          "value"
+        ],
+        "title": "MarketHistoryRow"
       },
       "MarketSummary": {
         "properties": {

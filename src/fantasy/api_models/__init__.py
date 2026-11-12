@@ -45,6 +45,7 @@ from fantasy.api_models.lineup import (
     WinProbabilityData,
 )
 from fantasy.api_models.players import (
+    MarketHistoryRow,
     MarketValueRow,
     OutlookRow,
     OwnerRow,
@@ -131,6 +132,7 @@ __all__ = [
     "LiveScoreRow",
     "LuckRow",
     "ManagerGradeRow",
+    "MarketHistoryRow",
     "MarketSummary",
     "MarketValueRow",
     "MoveIdeaRow",

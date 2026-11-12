@@ -48,6 +48,7 @@ from fantasy._schemas import ENGINE_SCHEMAS
 from fantasy._scoreboard import SCOREBOARD_SIMS, scoreboard_of
 from fantasy._scorecard import Scorecard, scorecard_of
 from fantasy._status import freshness, missing_layers, refresh_runs, simulation_behind_inputs
+from fantasy._values import market_history as market_history
 from fantasy._values import market_values as _market_values
 from fantasy._values import trade_market as _trade_market
 from fantasy._watch import watchlist as _watchlist
@@ -71,6 +72,7 @@ __all__ = [
     "live_win_row",
     "luck",
     "manager_grades",
+    "market_history",
     "market_values",
     "missing_layers",
     "move_ideas",

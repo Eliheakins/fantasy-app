@@ -11,7 +11,10 @@ import { useLeaguePath, useProfile } from "./useProfile";
 
 type MarketRow = { gsis_id: string; value: number; overall_rank: number | null; position_rank: number | null; trend_30_day: number | null };
 
+type HistoryRow = { day: string; value: number };
+
 const RANGE_WIDTH = 240;
+const MIN_HISTORY_POINTS = 4;
 const NOT_AVAILABLE = (what: string) => <p className="text-body text-muted">Not available: {what}.</p>;
 
 const nextGameWhy = (p: PlayerProfile) =>
@@ -82,7 +85,14 @@ function RoleLine({ label, values }: { label: string; values: number[] }) {
   );
 }
 
-function Market({ rows }: { rows: MarketRow[] }) {
+function MarketHistory({ history }: { history: HistoryRow[] }) {
+  if (history.length < MIN_HISTORY_POINTS) return null;
+  const values = history.map((h) => h.value);
+  const label = `Market value, last ${values.length} refreshes, ${Math.round(values[0]!)} to ${Math.round(values[values.length - 1]!)}`;
+  return <Sparkline values={values} width={120} height={24} label={label} />;
+}
+
+function Market({ rows, history }: { rows: MarketRow[]; history: HistoryRow[] }) {
   const row = rows[0];
   if (!row) return NOT_AVAILABLE("no market value for this player");
   const move = marketChange(row.value, row.trend_30_day);
@@ -102,7 +112,8 @@ function Market({ rows }: { rows: MarketRow[] }) {
           No 30-day change: the source gives a change as large as the value, so he had no value 30 days ago.
         </p>
       )}
-      <p className="text-caption text-muted">FantasyCalc value as of today. Only the 30-day change is kept, not a longer history.</p>
+      <MarketHistory history={history} />
+      <p className="text-caption text-muted">FantasyCalc value as of today.</p>
     </div>
   );
 }
@@ -175,6 +186,7 @@ export function PlayerSections({
   domain?: Domain | null;
 }) {
   const profile = useProfile(gsisId);
+  const history = useLeaguePath<HistoryRow[]>(`market-history?id=${encodeURIComponent(gsisId)}`);
   const market = useLeaguePath<MarketRow[]>(`market-values?ids=${encodeURIComponent(gsisId)}`);
   return (
     <ApiBoundary state={profile}>
@@ -213,7 +225,9 @@ export function PlayerSections({
                 </p>
               </Maybe>
               <Section title="Market value" level={level}>
-                <ApiBoundary state={market}>{(rows) => <Market rows={rows} />}</ApiBoundary>
+                <ApiBoundary state={market}>
+                  {(rows) => <Market rows={rows} history={history.kind === "ready" ? history.data : []} />}
+                </ApiBoundary>
               </Section>
               <Section title="Owner" level={level}>
                 <Owner gsisId={gsisId} />

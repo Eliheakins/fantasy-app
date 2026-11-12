@@ -12,6 +12,11 @@ class MarketValueRow(Row):
     fetched_at: str
 
 
+class MarketHistoryRow(Row):
+    day: str
+    value: float
+
+
 class PlayerPointsRow(Row):
     gsis_id: str
     week: int
