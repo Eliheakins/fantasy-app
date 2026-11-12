@@ -1,5 +1,8 @@
-/** playoffPoints: change in playoff odds, % points. points: fantasy points. Either may be missing. */
-export type Effect = { playoffPoints: number | null; points: number | null };
+/**
+ * playoffPoints: change in playoff odds, % points (in playoff weeks, with `odds: "title"`, the title odds instead).
+ * points: fantasy points. Either may be missing.
+ */
+export type Effect = { playoffPoints: number | null; points: number | null; odds?: "title" };
 
 /** A stored add under this (0.5 playoff points) is inside the noise; same bar as the Do this now action. */
 export const MIN_PLAYOFF_GAIN = 0.005;

@@ -1,6 +1,7 @@
 import type { components } from "@/api/schema";
 import { MIN_PLAYOFF_GAIN, rankTodos, type Effect } from "@/features/effects/effect";
 import { type EffectWhy, tradeWhy, waiverWhy } from "@/features/effects/explain";
+import type { Phase } from "@/features/effects/phase";
 import { toPoints } from "@/viz";
 
 type Waiver = components["schemas"]["WaiverRow"];
@@ -25,20 +26,24 @@ export type Move = {
   drop: { name: string; netPoints: number | null } | null;
 };
 
-export const waiverMoves = (rows: readonly Waiver[]): Move[] =>
+/** The odds an add or trade is judged on: playoff odds in the season, title odds once the seeds are fixed. */
+const effectOf = (playoff: number | null, title: number | null, points: number | null, phase: Phase): Effect =>
+  phase === "season" ? { playoffPoints: toPoints(playoff), points } : { playoffPoints: toPoints(title), points, odds: "title" };
+
+export const waiverMoves = (rows: readonly Waiver[], phase: Phase = "season"): Move[] =>
   rows.map((w) => ({
     id: `add-${w.gsis_id}`,
     kind: "add",
     title: `Add ${w.full_name}, drop ${w.drop_name}`,
     detail: w.position,
-    effect: { playoffPoints: toPoints(w.playoff_delta), points: w.delta_points },
-    why: waiverWhy(w.full_name, w.drop_name),
+    effect: effectOf(w.playoff_delta, w.title_delta, w.delta_points, phase),
+    why: waiverWhy(w.full_name, w.drop_name, phase !== "season"),
     player: { gsisId: w.gsis_id, name: w.full_name, position: w.position },
     trendingAdds: w.trending_adds,
     drop: { name: w.drop_name, netPoints: w.delta_points },
   }));
 
-export const tradeMoves = (rows: readonly Idea[]): Move[] =>
+export const tradeMoves = (rows: readonly Idea[], phase: Phase = "season"): Move[] =>
   rows
     .filter((r) => r.kind === "trade")
     .map((r) => ({
@@ -46,8 +51,8 @@ export const tradeMoves = (rows: readonly Idea[]): Move[] =>
       kind: "trade",
       title: `Trade ${r.give} for ${r.get}`,
       detail: r.partner ? `with ${r.partner}` : "",
-      effect: { playoffPoints: toPoints(r.playoff_delta), points: r.delta_points },
-      why: tradeWhy(r.give, r.get),
+      effect: effectOf(r.playoff_delta, r.title_delta, r.delta_points, phase),
+      why: tradeWhy(r.give, r.get, phase !== "season"),
       player: null,
       trendingAdds: null,
       drop: null,

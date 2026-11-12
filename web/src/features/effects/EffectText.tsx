@@ -16,7 +16,7 @@ export function EffectText({
   playoffNoise?: number;
   inline?: boolean;
 }) {
-  const { playoffPoints, points } = todo.effect;
+  const { playoffPoints, points, odds } = todo.effect;
   const { playoff, points: pointsWhy } = todo.why ?? { playoff: null, points: null };
   if (playoffPoints === null && points === null) return null;
   return (
@@ -24,7 +24,7 @@ export function EffectText({
       {playoffPoints !== null && (
         <span className="whitespace-nowrap">
           <NumberDelta points={playoffPoints} noise={playoffNoise} why={playoff} row={!inline} />{" "}
-          <span className="text-caption text-muted">playoff pts</span>
+          <span className="text-caption text-muted">{odds === "title" ? "title" : "playoff"} pts</span>
         </span>
       )}
       {points !== null && (

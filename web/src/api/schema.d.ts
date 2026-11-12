@@ -2048,6 +2048,8 @@ export interface components {
             name: string | null;
             /** Current Week */
             current_week: number | null;
+            /** Playoff Week Start */
+            playoff_week_start: number | null;
             /** Num Teams */
             num_teams: number | null;
             /** Roster Id */

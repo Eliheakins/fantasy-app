@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { MoveList } from "@/features/moves/MoveList";
 import { MOVE_NOISE_PERCENT, type MoveView, filterMoves, moveHeadline, worthMove } from "@/features/moves/moves";
+import { OUT_MESSAGE } from "@/features/effects/phase";
 import { useMoves } from "@/features/moves/useMoves";
 import { EffectText } from "@/features/effects/EffectText";
 import { WaiversContent } from "@/features/moves/waivers/WaiversView";
@@ -35,7 +36,8 @@ export default function Moves() {
   const [params, setParams] = useSearchParams();
   const view = viewOf(params.get("view"));
   const eyebrow = usePageEyebrow("Moves");
-  const { addsPending, tradesPending, moves, addsError, tradesFailed } = useMoves();
+  const { addsPending, tradesPending, moves, addsError, tradesFailed, phase } = useMoves();
+  const out = phase === "out";
   const top = moves[0];
   const choose = (next: string) => {
     if (!next) return; // clicking the selected item would clear a single-select group
@@ -53,8 +55,14 @@ export default function Moves() {
   const pending = addsPending || tradesPending;
   const listPending = (showAdds && addsPending) || (showTrades && tradesPending);
   const failed = [addsError !== null && "free agents", tradesFailed && "trade ideas"].filter(Boolean);
-  const title = pending ? "Looking for your best move…" : failed.length === 2 ? "Moves did not load" : moveHeadline(top, failed.length > 0);
-  const answer = top && worthMove(top) && !pending ? <EffectText todo={top} playoffNoise={MOVE_NOISE_PERCENT} inline /> : undefined;
+  const title = out
+    ? OUT_MESSAGE
+    : pending
+      ? "Looking for your best move…"
+      : failed.length === 2
+        ? "Moves did not load"
+        : moveHeadline(top, failed.length > 0);
+  const answer = !out && top && worthMove(top) && !pending ? <EffectText todo={top} playoffNoise={MOVE_NOISE_PERCENT} inline /> : undefined;
   // a background refetch must not unmount the number the reader has open
   const { league } = useLeague();
   const { team } = useTeam();
@@ -75,7 +83,9 @@ export default function Moves() {
             ))}
           </ToggleGroup>
         </div>
-        {listPending && moves.length === 0 ? (
+        {out ? (
+          <p className="text-body">{OUT_MESSAGE}: no add or trade changes your title odds.</p>
+        ) : listPending && moves.length === 0 ? (
           <p role="status" className="text-muted">
             Simulating your moves…
           </p>
@@ -93,8 +103,8 @@ export default function Moves() {
           </p>
         )}
         <p className="measure mt-3 text-caption text-muted">
-          Ordered by playoff-odds change first, then fantasy points; the two are not converted. Points are net of the drop. Trade ideas are
-          your stored finds; build any other trade below.
+          Ordered by {phase === "playoffs" ? "title" : "playoff"}-odds change first, then fantasy points; the two are not converted. Points
+          are net of the drop. Trade ideas are your stored finds; build any other trade below.
         </p>
       </section>
       <TradeBuilder />

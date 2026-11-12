@@ -6832,6 +6832,17 @@
             ],
             "title": "Current Week"
           },
+          "playoff_week_start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Week Start"
+          },
           "num_teams": {
             "anyOf": [
               {
@@ -6936,6 +6947,7 @@
           "league_id",
           "name",
           "current_week",
+          "playoff_week_start",
           "num_teams",
           "roster_id",
           "team_name",

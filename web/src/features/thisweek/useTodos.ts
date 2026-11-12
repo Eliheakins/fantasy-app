@@ -3,6 +3,7 @@ import { useEnvelopeQuery } from "@/api/useEnvelope";
 import type { ActionRow } from "@/features/thisweek/leagues/logic";
 import type { DigestData } from "@/lib/digestTypes";
 import { useAllLeagues, useEachLeague } from "@/lib/league";
+import { phaseOf } from "@/features/effects/phase";
 import { useNow } from "./useNow";
 import { type Todo, leagueTodos, orderByDeadline } from "./todos";
 import { type WeekCalendar, leagueName, lineupDeadlineDay, waiverDeadlineDay } from "./weekLogic";
@@ -41,7 +42,8 @@ export function useTodos(): TodosState {
       lineup: calendar ? lineupDeadlineDay(calendar.kickoffs, now) : null,
       waiver: waiverDeadlineDay(waiverDay, now),
     };
-    return leagueTodos(l, a?.kind === "ready" ? a.data : [], d?.kind === "ready" ? d.data.waivers : [], deadlines);
+    const phase = phaseOf(l, d?.kind === "ready" ? d.data.odds_change : []);
+    return leagueTodos(l, a?.kind === "ready" ? a.data : [], d?.kind === "ready" ? d.data.waivers : [], deadlines, phase);
   });
   const pending = isPending(leagues) || actions.some(isPending) || digests.some(isPending);
   const leaguesError = leagues.kind === "error" ? leagues.error.message : leagues.kind === "no_data" ? leagues.message : null;

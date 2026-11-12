@@ -32,8 +32,9 @@ const trade = {
 
 let waivers: ApiState<unknown>;
 let digest: ApiState<unknown>;
+let leagueRow = { league_key: "a", name: "L", current_week: 9, playoff_week_start: 15 };
 vi.mock("@/lib/league", () => ({
-  useLeague: () => ({ league: "a", leagues: { kind: "ready", data: [{ league_key: "a", name: "L", current_week: 9 }] } }),
+  useLeague: () => ({ league: "a", leagues: { kind: "ready", data: [leagueRow] } }),
   useLeagueName: () => "L",
   useLeagueApi: (path: string) => (path === "waivers" ? waivers : digest),
 }));
@@ -42,7 +43,9 @@ vi.mock("@/features/moves/trade/TradeBuilder", () => ({ TradeBuilder: () => <p>t
 vi.mock("@/features/moves/trade/TradeDetails", () => ({ TradeDetails: () => <p>trade details</p> }));
 
 const ready = (data: unknown): ApiState<unknown> => ({ kind: "ready", data }) as ApiState<unknown>;
-const digestWith = (trades: unknown[]) => ready({ waivers: [], trades, ideas: { is_mine: true } });
+const digestWith = (trades: unknown[], odds_change: unknown[] = []) =>
+  ready({ waivers: [], trades, odds_change, ideas: { is_mine: true } });
+const myOdds = (p_title: number) => ({ is_me: true, as_of_week: 15, p_title, p_playoffs: 1 });
 
 function Where() {
   return <p data-testid="search">{useLocation().search}</p>;
@@ -56,6 +59,7 @@ const renderAt = (entry: string) =>
   );
 
 beforeEach(() => {
+  leagueRow = { league_key: "a", name: "L", current_week: 9, playoff_week_start: 15 };
   waivers = ready([waiver("Coleman"), waiver("Small", { playoff_delta: 0.001, delta_points: 1, trending_adds: 200000 })]);
   digest = digestWith([trade]);
 });
@@ -135,5 +139,31 @@ describe("Moves page", () => {
     expect(screen.getByText("trade builder")).toBeInTheDocument();
     expect(screen.getByText("waivers details")).toBeInTheDocument();
     expect(screen.getByText("trade details")).toBeInTheDocument();
+  });
+});
+
+describe("Moves page in the playoffs", () => {
+  beforeEach(() => {
+    leagueRow = { ...leagueRow, current_week: 15 };
+  });
+
+  it("ranks by title odds and says so", () => {
+    waivers = ready([
+      waiver("Coleman", { playoff_delta: 0, title_delta: 0.02 }),
+      waiver("Small", { playoff_delta: 0.5, title_delta: 0.001 }),
+    ]);
+    digest = digestWith([], [myOdds(0.3)]);
+    renderAt("/moves");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Add Coleman, drop Bernard");
+    expect(screen.getAllByText("title pts").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Ordered by title-odds change/)).toBeInTheDocument();
+  });
+
+  it("tells an eliminated team it is out instead of listing zero-value adds", () => {
+    waivers = ready([waiver("Coleman", { playoff_delta: 0, title_delta: 0 })]);
+    digest = digestWith([], [myOdds(0)]);
+    renderAt("/moves");
+    expect(screen.getAllByText(/You are out of the playoffs/).length).toBeGreaterThan(0);
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
   });
 });

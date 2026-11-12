@@ -3,6 +3,7 @@ import { actionGain, actionSentence, worthActing } from "@/features/thisweek/lea
 import type { ActionRow } from "@/features/thisweek/leagues/logic";
 import { compareEffect, type Effect, MIN_PLAYOFF_GAIN } from "@/features/effects/effect";
 import { type EffectWhy, lineupWhy, waiverWhy } from "@/features/effects/explain";
+import type { Phase } from "@/features/effects/phase";
 import { leagueName } from "./weekLogic";
 
 type MoveIdea = components["schemas"]["MoveIdeaRow"];
@@ -41,8 +42,17 @@ type Deadlines = { lineup: string | null; waiver: string | null };
 
 const hrefFor = (page: "lineup" | "moves", leagueKey: string) => `/${page}?league=${encodeURIComponent(leagueKey)}`;
 
-/** One league's to-dos: lineup and injury actions plus the best stored waiver add. Effects come from the responses as given. */
-export function leagueTodos(league: LeagueRef, actions: readonly ActionRow[], waivers: readonly MoveIdea[], deadlines: Deadlines): Todo[] {
+/**
+ * One league's to-dos: lineup and injury actions plus the best stored waiver add. Effects come from the responses as given.
+ * In the playoffs the add is judged on its title change (playoff odds are fixed); an eliminated team gets no add.
+ */
+export function leagueTodos(
+  league: LeagueRef,
+  actions: readonly ActionRow[],
+  waivers: readonly MoveIdea[],
+  deadlines: Deadlines,
+  phase: Phase = "season",
+): Todo[] {
   const base = { leagueKey: league.league_key, leagueName: leagueName(league) };
   const fromActions = actions
     .filter((a) => a.kind !== "Waiver" && worthActing(a, a.share_better ?? null)) // the stored add below is the waiver to-do
@@ -57,22 +67,28 @@ export function leagueTodos(league: LeagueRef, actions: readonly ActionRow[], wa
       why: lineupWhy(a.share_better),
       deadlineDay: deadlines.lineup,
     }));
-  const top = waivers.reduce<MoveIdea | undefined>(
-    (best, w) => ((w.playoff_delta ?? -Infinity) > (best?.playoff_delta ?? -Infinity) ? w : best),
-    undefined,
-  );
+  const title = phase !== "season";
+  const oddsOf = (w: MoveIdea) => (title ? w.title_delta : w.playoff_delta);
+  const top =
+    phase === "out"
+      ? undefined
+      : waivers.reduce<MoveIdea | undefined>(
+          (best, w) => ((oddsOf(w) ?? -Infinity) > ((best && oddsOf(best)) ?? -Infinity) ? w : best),
+          undefined,
+        );
+  const topOdds = top === undefined ? null : oddsOf(top);
   const add: Todo[] =
-    top !== undefined && top.playoff_delta !== null && top.playoff_delta >= MIN_PLAYOFF_GAIN
+    top !== undefined && topOdds !== null && topOdds >= MIN_PLAYOFF_GAIN
       ? [
           {
             ...base,
             id: `${league.league_key}-waiver-${top.get}`,
             kind: "waiver",
             title: `Add ${top.get}, drop ${top.give}`,
-            detail: "Best free agent for your odds",
+            detail: title ? "Best free agent for your title odds" : "Best free agent for your odds",
             href: hrefFor("moves", league.league_key),
-            effect: { playoffPoints: top.playoff_delta * PERCENT, points: top.delta_points },
-            why: waiverWhy(top.get, top.give),
+            effect: { playoffPoints: topOdds * PERCENT, points: top.delta_points, ...(title && { odds: "title" as const }) },
+            why: waiverWhy(top.get, top.give, title),
             deadlineDay: deadlines.waiver,
           },
         ]

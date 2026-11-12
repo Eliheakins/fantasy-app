@@ -8,6 +8,7 @@ class LeagueRow(Row):
     league_id: str
     name: str | None
     current_week: int | None
+    playoff_week_start: int | None  # the first week whose seeds are fixed (playoff mode from here)
     num_teams: int | None
     roster_id: int | None
     team_name: str | None

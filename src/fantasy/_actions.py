@@ -70,6 +70,7 @@ LINEUP_GAP = 1.0  # expected points below the best lineup before the gap is wort
 
 
 WAIVER_PLAYOFF_GAIN = 0.005  # playoff odds change that makes an add worth mentioning
+WAIVER_TITLE_GAIN = 0.005  # title odds change that does the same once the bracket is seeded
 
 
 def actions(
@@ -126,13 +127,21 @@ def actions(
     if adds is None:
         adds = waivers(league_key, loaded=loaded, data_dir=data_dir, team=team)
     if not adds.is_empty():
-        top = adds.sort("playoff_delta", descending=True).row(0, named=True)
-        if top["playoff_delta"] >= WAIVER_PLAYOFF_GAIN:
+        data = loaded[0]
+        # from the playoff start the seeds are fixed, so playoff_delta is always 0: use the title
+        odds_kind, gain = (
+            ("title", WAIVER_TITLE_GAIN)
+            if data.current_week >= data.playoff_start
+            else ("playoff", WAIVER_PLAYOFF_GAIN)
+        )
+        col = f"{odds_kind}_delta"
+        top = adds.sort(col, descending=True).row(0, named=True)
+        if top[col] >= gain:
             found.append(
                 (
                     "Waiver",
                     f"Add {top['full_name']}, drop {top['drop_name']}: "
-                    f"{top['playoff_delta']:+.1%} playoff odds, {top['delta_points']:+.1f} points",
+                    f"{top[col]:+.1%} {odds_kind} odds, {top['delta_points']:+.1f} points",
                 )
             )
     return pl.DataFrame(found[:n], schema={"kind": pl.String, "text": pl.String}, orient="row")

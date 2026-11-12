@@ -1289,3 +1289,10 @@ A whole-repo review (quality, language and security reviewers per slice, plus re
 - **Standings cap.** `wins0` and `points0` count weeks before `playoff_start` only; `pairs` already holds regular-season weeks, so `sim_conditional` and `sim_win_need` are empty during the playoffs.
 - **sim_bracket.** New derived table (league_id, roster_id, round, p_reach, p_win), written by `simulate` next to `sim_season`; rows only where p_reach is above 0. `sim_season_history` is unchanged.
 - **After the final.** Once no playoff week is left (`current_week` past the last playoff week), the strict missing-projection check is skipped, because projections stop at week 17 and there is nothing to project; the other strict checks stay. Checked on a copy of the release with `current_week` forced to 14, 15, 16, 17 and 18: `simulate` ran each time, title odds summed to 1 and bye odds to 2 in both leagues.
+
+## 2026-11-12: playoff-mode moves
+
+- From `current_week >= playoff_week_start` seeds are fixed, so `playoff_delta` is 0 for every add and trade. The waiver to-do (`_actions.py`, `WAIVER_TITLE_GAIN` 0.005, and `todos.ts`), the Moves ranking and effect labels, and the "why" tooltips use `title_delta` instead and say "title odds".
+- Eliminated means title odds exactly 0 in my digest `odds_change` row from a refresh at or after the playoff start (covers missed playoffs and knocked out). Moves then shows "You are out of the playoffs" in place of the list, and there is no waiver to-do. Lineup and injury to-dos stay.
+- `LeagueRow` gains `playoff_week_start` (already in the `leagues` table); no new endpoint.
+- Unchanged: the digest stage picks stored adds by `delta_points`, and the Adds and Ideas tables already show both odds columns.

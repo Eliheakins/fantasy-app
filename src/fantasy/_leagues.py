@@ -39,6 +39,7 @@ def leagues(data_dir: Path | None = None) -> pl.DataFrame:
         "league_id",
         "name",
         "current_week",
+        "playoff_week_start",
         "num_teams",
         "roster_id",
         "team_name",

@@ -133,3 +133,29 @@ describe("leagueTodos", () => {
     expect(t?.deadlineDay).toBeNull();
   });
 });
+
+describe("leagueTodos in the playoffs", () => {
+  const add = {
+    kind: "waiver",
+    get: "Coleman",
+    give: "Bernard",
+    playoff_delta: 0,
+    title_delta: 0.012,
+    delta_points: 3.1,
+    rank: 1,
+  } as never;
+  it("gates and ranks the stored add on the title change, since seeds are fixed", () => {
+    const [t] = leagueTodos(league, [], [add], deadlines, "playoffs");
+    expect(t?.title).toBe("Add Coleman, drop Bernard");
+    expect(t?.effect.playoffPoints).toBeCloseTo(1.2);
+    expect(t?.effect.odds).toBe("title");
+  });
+  it("skips an add whose title change is under the bar even if its playoff change is big", () => {
+    const small = { ...(add as object), playoff_delta: 0.05, title_delta: 0.001 } as never;
+    expect(leagueTodos(league, [], [small], deadlines, "playoffs")).toEqual([]);
+  });
+  it("gives an eliminated team no waiver to-do but keeps its lineup to-dos", () => {
+    const actions = [{ kind: "Injury", text: "Cook is Out and in your lineup", delta_points: null }];
+    expect(leagueTodos(league, actions as never, [add], deadlines, "out").map((t) => t.kind)).toEqual(["injury"]);
+  });
+});
