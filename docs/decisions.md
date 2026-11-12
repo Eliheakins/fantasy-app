@@ -1331,7 +1331,6 @@ A whole-repo review (quality, language and security reviewers per slice, plus re
 - Divisions (same guide): "each division winner will qualify for the playoffs ... It's possible a division winner could have a worse record than a wild card team". User decision: division winners are guaranteed a spot; all playoff teams are then seeded by wins, then points (the existing order and random tie-break). Division winner = best wins then points inside its division, same tie-break. A division winner can sit below a wild card.
 - Data: `settings.division` of each roster is kept in the new raw table `roster_divisions` (league_id, roster_id, division), from the rosters response already fetched. A missing table or a roster with no division means no divisions.
 - Gate: `shape_problem` allows seed type 0 or 1 and any `divisions` up to the playoff size.
-||||||| parent of 59175d8 (feat: trade-deadline to-do and Moves callout)
 
 ## 2026-11-12: trade-deadline to-do and Moves callout (PR 8)
 
@@ -1351,3 +1350,9 @@ A whole-repo review (quality, language and security reviewers per slice, plus re
 - `ir_move`: bench players whose status is IR, PUP, or one whose `reserve_allow_<status>` is 1 (`Out`, `Doubtful`, ...), up to `reserve_slots` (from `leagues.settings`) minus players with `is_ir`. Missing or unreadable settings mean 0 slots.
 - Web: holes become "cover" to-dos (deadline = next kickoff day) with a nested fill-in list; IR moves become "ir" to-dos. A league whose holes fail joins `failed`.
 - K and DEF slots are covered too (follow-up): a K or DEF starter on bye (schedule) or a K who is Out, or an empty K/DEF slot, with no bench K/DEF that has a kickoff ahead, is a hole. Fill-ins are the top 3 free units (not rostered in the league) by this week's `streaming_projection`, games not started, missing kickoff counts as started; unit and name logic is shared with `streamers` (`_kd_owned`, `_kd_names`). A DEF is never "out". Drops are chosen as for skill players, so a spare bench K/DEF (ros 0) is the cheapest drop.
+
+## 2026-11-12: copyable weekly summary (PR 11)
+
+- `copyText` moved to `web/src/lib/clipboard.ts` (Clipboard API, then execCommand) so This week can use it without importing Moves. InviteLink keeps its own copy: it must select its input on failure, so the helper is not a drop-in.
+- `summaryText` (features/thisweek/summary.ts) makes 5 to 8 plain lines with two leagues: last result and odds per league, then the to-dos (title, league name, effect), cut at 8. Odds are playoff odds in the season, title odds in the playoffs, "out of the playoffs" when out (the phase stands in for the playoff label). It uses league display names only and carries no ids, links or ECR ranks (guard test).
+- The "Copy summary" button is disabled with a reason while to-dos load. The text is built before the click; on failure a read-only textarea is shown, focused and selected.
