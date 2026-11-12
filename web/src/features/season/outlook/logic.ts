@@ -1,4 +1,4 @@
-import type { OddsHistoryRow, SeasonOddsRow } from "@/lib/outlookTypes";
+import type { BracketMatch, BracketRound, BracketSide, OddsHistoryRow, SeasonOddsRow } from "@/lib/outlookTypes";
 
 export const HISTORY_WAIT_MESSAGE = "The odds-over-time chart appears once the simulation has run in two different weeks.";
 
@@ -10,10 +10,11 @@ export function canShowHistory(odds: readonly SeasonOddsRow[], history: readonly
 export type WeekPoint = { week: number; run_at: string; [rosterId: string]: number | string | null };
 
 /**
- * One point per week from the last saved run in that week, one key per roster id holding p_playoffs.
+ * One point per week from the last saved run in that week, one key per roster id holding p_playoffs
+ * (p_title from `titleFromWeek` on: playoff odds are flat 0 or 1 once the bracket is set).
  * shortcut: runs without `as_of_week` (none in today's archive) are skipped; date them if old archives need it.
  */
-export function weeklyHistory(history: readonly OddsHistoryRow[]): WeekPoint[] {
+export function weeklyHistory(history: readonly OddsHistoryRow[], titleFromWeek?: number | null): WeekPoint[] {
   const lastRun = new Map<number, string>();
   for (const r of history) {
     if (r.as_of_week == null) continue;
@@ -24,7 +25,8 @@ export function weeklyHistory(history: readonly OddsHistoryRow[]): WeekPoint[] {
   for (const r of history) {
     if (r.as_of_week == null || lastRun.get(r.as_of_week) !== r.run_at) continue;
     const point = points.get(r.as_of_week) ?? { week: r.as_of_week, run_at: r.run_at };
-    points.set(r.as_of_week, { ...point, [String(r.roster_id)]: r.p_playoffs });
+    const title = titleFromWeek != null && r.as_of_week >= titleFromWeek;
+    points.set(r.as_of_week, { ...point, [String(r.roster_id)]: title ? r.p_title : r.p_playoffs });
   }
   return [...points.values()].sort((a, b) => a.week - b.week);
 }
@@ -83,4 +85,50 @@ export function dodgeLabels(ys: readonly number[], minGap: number, lo: number, h
   const out = new Array<number>(ys.length).fill(lo);
   for (const it of up) out[it.i] = it.y;
   return out;
+}
+
+/** First week of the first round, or null without a bracket. */
+export function playoffStartWeek(rounds: readonly BracketRound[]): number | null {
+  const weeks = rounds.flatMap((r) => r.weeks);
+  return weeks.length ? Math.min(...weeks) : null;
+}
+
+export function roundHeading(r: BracketRound): string {
+  return `Round ${r.round}, ${r.weeks.length > 1 ? "weeks" : "week"} ${r.weeks.join(" and ")}`;
+}
+
+function sideText(s: BracketSide, myId: number | null): string {
+  if (s.roster_id === null) return `${s.from_kind === "l" ? "loser" : "winner"} of match ${s.from_m}`;
+  const seed = s.seed === null ? "" : `seed ${s.seed} `;
+  return `${seed}${s.team_name ?? "Team"}${s.roster_id === myId ? " (you)" : ""}`;
+}
+
+const sentence = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+const name = (s: BracketSide) => s.team_name ?? "Team";
+
+/** One match as a sentence: who plays, then who won or each side's chance to advance. Winner/loser sides are named by their match. */
+export function matchText(m: BracketMatch, myId: number | null): string {
+  const pair = `${sentence(sideText(m.t1, myId))} vs ${sideText(m.t2, myId)}.`;
+  const winner = [m.t1, m.t2].find((s) => s.roster_id !== null && s.roster_id === m.winner);
+  if (winner) return `${pair} ${name(winner)} won.`;
+  const sides: [BracketSide, number | null][] = [
+    [m.t1, m.t1_p_win],
+    [m.t2, m.t2_p_win],
+  ];
+  const odds = sides.filter((x): x is [BracketSide, number] => x[0].roster_id !== null && x[1] !== null);
+  const [first, second] = odds;
+  if (!first) return pair;
+  const pct = (p: number) => `${Math.round(p * 100)}%`;
+  return `${pair} ${name(first[0])} ${pct(first[1])} to advance${second ? `, ${name(second[0])} ${pct(second[1])}` : ""}.`;
+}
+
+/** "Champion", "Eliminated in round N" (the first match I lost), or null while I am alive or without a team. */
+export function myBracketStatus(rounds: readonly BracketRound[], myId: number | null): string | null {
+  if (myId === null) return null;
+  const mine = rounds.flatMap((r) =>
+    r.matches.filter((m) => m.winner !== null && (m.t1.roster_id === myId || m.t2.roster_id === myId)).map((m) => ({ round: r.round, m })),
+  );
+  const lost = [...mine].sort((a, b) => a.round - b.round).find((x) => x.m.winner !== myId);
+  if (lost) return `Eliminated in round ${lost.round}`;
+  return mine.some((x) => x.m.place === 1) ? "Champion" : null;
 }

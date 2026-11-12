@@ -120,6 +120,13 @@ describe("LineupView answer and evidence", () => {
     expect(within(panel).getByRole("img", { name: /^Your team:/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Close calls" }).closest("section")!.className).not.toContain("key-panel");
   });
+  test("the matchup panel shows the playoff label only when there is one", () => {
+    const { unmount } = render(<LineupView base={cookRows} odds={{ ...withCalls, playoff_label: "Round 2 of the playoffs" }} week={3} />);
+    expect(within(screen.getByRole("region", { name: "Your matchup" })).getByText("Round 2 of the playoffs")).toBeInTheDocument();
+    unmount();
+    render(<LineupView base={cookRows} odds={withCalls} week={3} />);
+    expect(screen.queryByText(/of the playoffs/)).toBeNull();
+  });
   test("locked starters are not counted as clear slots", () => {
     const locked = cookRows.map((r) => (r.gsis_id === "rb1" ? { ...r, locked: true } : r));
     render(<LineupView base={locked} odds={withCalls} week={3} />);

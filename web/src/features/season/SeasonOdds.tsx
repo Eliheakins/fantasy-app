@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
 import { OddsHistoryChart } from "@/features/season/outlook/OddsHistoryChart";
-import { HISTORY_WAIT_MESSAGE, canShowHistory, runWeeks } from "@/features/season/outlook/logic";
-import type { OddsHistoryRow, SeasonOddsRow } from "@/lib/outlookTypes";
+import { HISTORY_WAIT_MESSAGE, canShowHistory, playoffStartWeek, runWeeks } from "@/features/season/outlook/logic";
+import type { BracketData, OddsHistoryRow, SeasonOddsRow } from "@/lib/outlookTypes";
 import { useLeagueApi } from "@/lib/league";
 import { formatPercent } from "@/viz";
 import { KIND_LABEL, myOddsByWeek, weekMarks } from "./logic";
@@ -53,10 +53,12 @@ function Chart({
   odds,
   history,
   events,
+  titleFromWeek,
 }: {
   odds: SeasonOddsRow[];
   history: OddsHistoryRow[];
   events: ReturnType<typeof useLeagueApi<SeasonEventRow[]>>;
+  titleFromWeek: number | null;
 }) {
   const list = useMemo(() => (events.kind === "ready" ? events.data : []), [events]);
   const weeks = useMemo(() => runWeeks(history), [history]);
@@ -65,7 +67,7 @@ function Chart({
   if (!canShowHistory(odds, history)) return <p className="measure text-caption text-muted">{HISTORY_WAIT_MESSAGE}</p>;
   return (
     <>
-      <OddsHistoryChart odds={odds} history={history} marks={marks} describedBy={EVENTS_ID} />
+      <OddsHistoryChart odds={odds} history={history} marks={marks} describedBy={EVENTS_ID} titleFromWeek={titleFromWeek} />
       {events.kind === "error" ? (
         <p role="alert" id={EVENTS_ID} className="mt-2 text-caption text-warning">
           Marks unavailable: {events.error.message}
@@ -86,14 +88,18 @@ export function SeasonOdds() {
   const odds = useLeagueApi<SeasonOddsRow[]>("season-odds");
   const history = useLeagueApi<OddsHistoryRow[]>("odds-history");
   const events = useLeagueApi<SeasonEventRow[]>("season-events");
+  const bracket = useLeagueApi<BracketData>("bracket");
+  const titleFromWeek = bracket.kind === "ready" ? playoffStartWeek(bracket.data.rounds) : null;
   return (
     <Section
       title="Playoff odds over the season"
-      caption="Chance to make the playoffs at the end of each week. Your team is the Forest line; dots mark your trades, starter injuries and big weeks."
+      caption="Chance to make the playoffs at the end of each week; once the bracket is set, the chance to win the title. Your team is the Forest line; dots mark your trades, starter injuries and big weeks."
       howCalculated={MISSING}
     >
       <ApiBoundary state={odds}>
-        {(o) => <ApiBoundary state={history}>{(h) => <Chart odds={o} history={h} events={events} />}</ApiBoundary>}
+        {(o) => (
+          <ApiBoundary state={history}>{(h) => <Chart odds={o} history={h} events={events} titleFromWeek={titleFromWeek} />}</ApiBoundary>
+        )}
       </ApiBoundary>
     </Section>
   );

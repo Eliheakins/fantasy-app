@@ -11,6 +11,7 @@ import {
   sideScore,
   sortMineFirst,
 } from "@/lib/scoreboard";
+import { PlayoffLabel } from "@/components/PlayoffLabel";
 import { cn } from "@/lib/utils";
 import { useAllLeagues, useEachLeague } from "@/lib/league";
 import { leagueName } from "./weekLogic";
@@ -55,12 +56,13 @@ function Matchup({ row, kickoff }: { row: ScoreboardRow; kickoff: Date | null })
   const winner = winnerId(row);
   return (
     <li
-      aria-label={`${spoken(first, row.status)}, ${spoken(second, row.status)}, ${status}`}
+      aria-label={`${row.playoff_label ? `${row.playoff_label}: ` : ""}${spoken(first, row.status)}, ${spoken(second, row.status)}, ${status}`}
       className={cn("grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 px-3 py-2", isMine(row) && "mine-row rounded-r-lg")}
     >
       <div className="space-y-1">
         <TeamLine side={first} row={row} winner={winner} />
         <TeamLine side={second} row={row} winner={winner} />
+        <PlayoffLabel label={row.playoff_label} />
       </div>
       <span className={cn("w-14 text-right text-caption sm:w-20", row.status === "Live" ? "font-semibold text-ink" : "text-muted")}>
         {status}

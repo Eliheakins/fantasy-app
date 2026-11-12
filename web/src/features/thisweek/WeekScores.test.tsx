@@ -24,7 +24,9 @@ const routes: Record<string, unknown> = {
   ]),
 };
 
+const scoreboardA = routes["/api/leagues/a/scoreboard"];
 beforeEach(() => {
+  routes["/api/leagues/a/scoreboard"] = scoreboardA;
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string) => Response.json(routes[url.split("?")[0] ?? ""] ?? ok([]))),
@@ -43,6 +45,19 @@ function renderScores() {
 }
 
 describe("WeekScores", () => {
+  it("shows the playoff label as text on my row and nowhere else", async () => {
+    routes["/api/leagues/a/scoreboard"] = ok([
+      final(
+        { team_name: "Lisan", is_me: true, points: 148.5 },
+        { team_name: "Flowers", points: 160 },
+        { playoff_label: "Round 1 of the playoffs" },
+      ),
+      final({ team_name: "Seals", points: 120 }, { team_name: "tsd", points: 99.3 }, { matchup_id: 2 }),
+    ]);
+    renderScores();
+    expect(await screen.findAllByText("Round 1 of the playoffs")).toHaveLength(1);
+  });
+
   it("groups every matchup by league with my matchup first", async () => {
     renderScores();
     const alpha = (await screen.findByRole("heading", { name: "Alpha" })).closest("section")!;

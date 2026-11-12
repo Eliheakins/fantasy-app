@@ -45,13 +45,15 @@ const players = [
 
 function outlookWith(history: unknown) {
   responder = (p) =>
-    p === "season-odds"
-      ? ready(odds)
-      : p === "seeds"
-        ? ready([{ seed: 1, p: 0.3 }])
-        : p === "schedule"
-          ? ready([{ week: 9, opponent: "Rival", my_points: 100, their_points: 95, win_chance: 0.6 }])
-          : ready(history);
+    p === "bracket"
+      ? { kind: "no_data", message: "x" }
+      : p === "season-odds"
+        ? ready(odds)
+        : p === "seeds"
+          ? ready([{ seed: 1, p: 0.3 }])
+          : p === "schedule"
+            ? ready([{ week: 9, opponent: "Rival", my_points: 100, their_points: 95, win_chance: 0.6 }])
+            : ready(history);
 }
 
 describe("Outlook page", () => {

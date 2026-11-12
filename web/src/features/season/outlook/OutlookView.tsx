@@ -3,6 +3,7 @@ import type { ApiState } from "@/api/envelope";
 import { ApiBoundary, NoData } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
 import { useLeagueApi } from "@/lib/league";
+import { BracketSection } from "./BracketSection";
 import { OddsTable } from "./OddsTable";
 import { ScheduleTable } from "./ScheduleTable";
 import { SeedChart } from "./SeedChart";
@@ -55,6 +56,7 @@ export function OutlookView() {
                 </Section>
               )}
             </Optional>
+            <BracketSection myRosterId={oddsRows.find((r) => r.is_me)?.roster_id ?? null} />
             <Optional state={schedule}>
               {(rows) => (
                 <Section

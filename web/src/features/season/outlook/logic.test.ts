@@ -1,5 +1,16 @@
-import { canShowHistory, dodgeLabels, rankOdds, historyTeams, weeklyHistory, seedFill } from "./logic";
-import type { OddsHistoryRow, SeasonOddsRow } from "@/lib/outlookTypes";
+import {
+  canShowHistory,
+  dodgeLabels,
+  rankOdds,
+  historyTeams,
+  weeklyHistory,
+  seedFill,
+  matchText,
+  roundHeading,
+  playoffStartWeek,
+  myBracketStatus,
+} from "./logic";
+import type { BracketMatch, BracketRound, OddsHistoryRow, SeasonOddsRow } from "@/lib/outlookTypes";
 
 const odds: SeasonOddsRow[] = [
   { roster_id: 1, team_name: "Me", p_playoffs: 0.7, p_bye: 0.2, p_title: 0.1, exp_wins: 8, is_me: true },
@@ -80,5 +91,82 @@ describe("dodgeLabels", () => {
   it("handles empty input and a plot too small for the gap", () => {
     expect(dodgeLabels([], 12, 0, 200)).toEqual([]);
     expect(dodgeLabels([5, 6, 7], 12, 0, 10).every((y) => y >= 0 && y <= 10)).toBe(true);
+  });
+});
+
+const side = (
+  roster_id: number | null,
+  team_name: string | null,
+  seed: number | null,
+  from_kind: string | null = null,
+  from_m: number | null = null,
+) => ({
+  roster_id,
+  team_name,
+  seed,
+  from_kind,
+  from_m,
+});
+const match = (over: Partial<BracketMatch> = {}): BracketMatch => ({
+  m: 1,
+  place: null,
+  winner: null,
+  t1: side(3, "A", 3),
+  t2: side(6, "B", 6),
+  t1_p_win: 0.58,
+  t2_p_win: 0.42,
+  is_mine: false,
+  ...over,
+});
+
+describe("bracket text", () => {
+  it("reads an open match with seeds and the chance to advance", () => {
+    expect(matchText(match(), null)).toBe("Seed 3 A vs seed 6 B. A 58% to advance, B 42%.");
+  });
+  it("says who won a played match", () => {
+    expect(matchText(match({ winner: 6 }), null)).toBe("Seed 3 A vs seed 6 B. B won.");
+  });
+  it("names an undecided side by the match it comes from and leaves out unknown odds", () => {
+    const m = match({ t1: side(3, "A", 3), t2: side(null, null, null, "w", 1), t1_p_win: null, t2_p_win: null });
+    expect(matchText(m, null)).toBe("Seed 3 A vs winner of match 1.");
+    expect(matchText(match({ t2: side(null, null, null, "l", 2) }), null)).toContain("loser of match 2");
+  });
+  it("marks my team with (you)", () => {
+    expect(matchText(match(), 3)).toContain("Seed 3 A (you) vs seed 6 B.");
+  });
+  it("heads a round with its weeks", () => {
+    expect(roundHeading({ round: 1, weeks: [15], matches: [] })).toBe("Round 1, week 15");
+    expect(roundHeading({ round: 3, weeks: [16, 17], matches: [] })).toBe("Round 3, weeks 16 and 17");
+  });
+  it("finds the first playoff week", () => {
+    expect(
+      playoffStartWeek([
+        { round: 2, weeks: [16], matches: [] },
+        { round: 1, weeks: [15], matches: [] },
+      ]),
+    ).toBe(15);
+    expect(playoffStartWeek([])).toBeNull();
+  });
+});
+
+describe("my bracket status", () => {
+  const rounds = (final: Partial<BracketMatch>): BracketRound[] => [
+    { round: 1, weeks: [15], matches: [match({ winner: 3 })] },
+    { round: 2, weeks: [16], matches: [match({ m: 2, place: 1, ...final })] },
+  ];
+  it("is Champion after winning the final", () => expect(myBracketStatus(rounds({ winner: 3 }), 3)).toBe("Champion"));
+  it("names the round of my first loss", () => expect(myBracketStatus(rounds({ winner: 6 }), 3)).toBe("Eliminated in round 2"));
+  it("is null while alive, or with no team", () => {
+    expect(myBracketStatus(rounds({}), 3)).toBeNull();
+    expect(myBracketStatus(rounds({ winner: 6 }), null)).toBeNull();
+  });
+});
+
+describe("title odds in the playoffs", () => {
+  it("plots title odds from the playoff week and playoff odds before", () => {
+    const rows = [h("a", 1, 0.5, 14), h("b", 1, 0.9, 15)];
+    const pts = weeklyHistory(rows, 15);
+    expect(pts.map((p) => p["1"])).toEqual([0.5, 0.45]);
+    expect(weeklyHistory(rows).map((p) => p["1"])).toEqual([0.5, 0.9]);
   });
 });

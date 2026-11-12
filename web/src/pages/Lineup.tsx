@@ -115,7 +115,15 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
           )
         }
       />
-      <ResultPanel result={result} option={shownOption} win={hasOdds ? h.win : null} shown={h.shown} now={h.now} gap={h.gap} />
+      <ResultPanel
+        result={result}
+        option={shownOption}
+        win={hasOdds ? h.win : null}
+        shown={h.shown}
+        now={h.now}
+        gap={h.gap}
+        playoffLabel={odds?.playoff_label}
+      />
       <CloseCalls calls={slotCalls(odds, objective)} rows={rows} objective={objective} />
       {hasOdds && !result && (
         <details className="group mt-8">
