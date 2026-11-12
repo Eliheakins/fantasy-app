@@ -456,6 +456,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/bracket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bracket
+         * @description The winners bracket with each side's chance to win its round; no_data before it is set.
+         */
+        get: operations["bracket_api_leagues__league__bracket_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/odds-history": {
         parameters: {
             query?: never;
@@ -1106,6 +1126,50 @@ export interface components {
             /** Label */
             label: string;
         };
+        /** BracketData */
+        BracketData: {
+            /** Rounds */
+            rounds: components["schemas"]["BracketRound"][];
+        };
+        /** BracketMatch */
+        BracketMatch: {
+            /** M */
+            m: number;
+            /** Place */
+            place: number | null;
+            /** Winner */
+            winner: number | null;
+            t1: components["schemas"]["BracketSide"];
+            t2: components["schemas"]["BracketSide"];
+            /** T1 P Win */
+            t1_p_win: number | null;
+            /** T2 P Win */
+            t2_p_win: number | null;
+            /** Is Mine */
+            is_mine: boolean;
+        };
+        /** BracketRound */
+        BracketRound: {
+            /** Round */
+            round: number;
+            /** Weeks */
+            weeks: number[];
+            /** Matches */
+            matches: components["schemas"]["BracketMatch"][];
+        };
+        /** BracketSide */
+        BracketSide: {
+            /** Roster Id */
+            roster_id: number | null;
+            /** Team Name */
+            team_name: string | null;
+            /** Seed */
+            seed: number | null;
+            /** From Kind */
+            from_kind: string | null;
+            /** From M */
+            from_m: number | null;
+        };
         /** CatalogFilter */
         CatalogFilter: {
             /** Id */
@@ -1165,6 +1229,18 @@ export interface components {
             /** Trades */
             trades: components["schemas"]["MoveIdeaRow"][];
             ideas: components["schemas"]["IdeasInfo"];
+        };
+        /** Envelope[BracketData] */
+        Envelope_BracketData_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["BracketData"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
         };
         /** Envelope[DigestData] */
         Envelope_DigestData_: {
@@ -2672,6 +2748,8 @@ export interface components {
              * @enum {string}
              */
             status: "Not started" | "Live" | "Final";
+            /** Playoff Label */
+            playoff_label: string | null;
             a: components["schemas"]["ScoreboardSide"];
             b: components["schemas"]["ScoreboardSide"];
         };
@@ -3124,6 +3202,8 @@ export interface components {
         };
         /** WinProbabilityData */
         WinProbabilityData: {
+            /** Playoff Label */
+            playoff_label: string | null;
             /** Script */
             script: string | null;
             swap: components["schemas"]["SwapNoteModel"] | null;
@@ -3906,6 +3986,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_SeedRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bracket_api_leagues__league__bracket_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_BracketData_"];
                 };
             };
             /** @description Validation Error */

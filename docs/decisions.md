@@ -1296,3 +1296,9 @@ A whole-repo review (quality, language and security reviewers per slice, plus re
 - Eliminated means title odds exactly 0 in my digest `odds_change` row from a refresh at or after the playoff start (covers missed playoffs and knocked out). Moves then shows "You are out of the playoffs" in place of the list, and there is no waiver to-do. Lineup and injury to-dos stay.
 - `LeagueRow` gains `playoff_week_start` (already in the `leagues` table); no new endpoint.
 - Unchanged: the digest stage picks stored adds by `delta_points`, and the Adds and Ideas tables already show both odds columns.
+
+## 2026-11-12: bracket API and playoff status labels
+
+- `GET /api/leagues/{l}/bracket` returns the winners bracket by round (weeks from `round_weeks`), each match with sides (roster, name, seed from `seeds_from`, or the earlier match it waits on), the winner once played, and each side's chance to win the round from `sim_bracket`. The chance is null for a played match, a placement game, or an undecided side. `no_data` with "The bracket is set after week N" (N = playoff week start - 1) until current week >= playoff week start, the same trust rule as the simulation; also `no_data` with no synced rows.
+- `playoff_status` is a pure read of `playoff_brackets` (no simulation, no matchups table): "Champion" (won the p = 1 match, from that round on), else this round's match: "Round N vs <team>" (title path, "TBD" if the opponent is undecided) or "Consolation: <place> place game vs <team>" (winners rows with p > 1; a losers-bracket game gives None), else "Bye this round" (in a later title-path round), else "Eliminated" (lost a title-path match in an earlier round), else None (including teams that never made the bracket).
+- `playoff_label` is on `ScoreboardRow` (my side's row only, other rows null) and on the win-probability (Lineup) payload. A not-yet-set playoff week still returns no scoreboard rows, so it carries no label there.

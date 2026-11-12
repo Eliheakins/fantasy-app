@@ -184,6 +184,6 @@ def scoreboard_rows(frame: pl.DataFrame) -> list[dict[str, object]]:
     out = []
     for r in frame.to_dicts():
         sides = {s: {k[2:]: v for k, v in r.items() if k.startswith(f"{s}_")} for s in ("a", "b")}
-        head = {k: r[k] for k in ("week", "matchup_id", "status")}
+        head = {k: r[k] for k in ("week", "matchup_id", "status", "playoff_label")}
         out.append({**head, **sides})
     return out

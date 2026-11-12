@@ -29,16 +29,26 @@ MAX_TRADE_EVALUATIONS = 2
 TRADE_SLOTS = threading.BoundedSemaphore(MAX_TRADE_EVALUATIONS)
 
 
+def _playoff_label(league: str, week: int, ctx: RequestContext) -> str | None:
+    me = data_api.my_league(league, ctx.data_dir, ctx.team)
+    if me is None:
+        return None
+    week = week or int(me["current_week"])
+    return data_api.playoff_status(league, int(me["roster_id"]), week, ctx.data_dir)
+
+
 def win_probability_data(league: str, week: int, ctx: RequestContext) -> dict[str, Any]:
     lineup_rows = data_api.lineup(league, week, data_dir=ctx.data_dir, team=ctx.team)
     odds = data_api.win_probability(league, week, data_dir=ctx.data_dir, team=ctx.team)
+    label = _playoff_label(league, week, ctx)
     if lineup_rows.is_empty():
         return {
-            "script": None, "swap": None, "comparison": [], "options": [],
+            "playoff_label": label, "script": None, "swap": None, "comparison": [], "options": [],
             "lineups": {}, "summaries": {},
         }  # fmt: skip
     swap = view.swap_note(lineup_rows, odds)
     return {
+        "playoff_label": label,
         "script": None if odds.is_empty() else odds["script"][0],
         "swap": None if swap is None else asdict(swap),
         "comparison": [] if odds.is_empty() else rows(view.comparison(odds)),

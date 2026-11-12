@@ -29,6 +29,7 @@ class ScoreboardRow(Row):
     week: int
     matchup_id: int | None
     status: Literal["Not started", "Live", "Final"]
+    playoff_label: str | None  # my side's playoff line (e.g. "Round 2 vs X"), my row only
     a: ScoreboardSide
     b: ScoreboardSide
 

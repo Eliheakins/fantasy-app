@@ -19,6 +19,8 @@ import polars as pl
 from fantasy import _digest, _league_view, _season_events, store
 from fantasy._actions import actions as actions
 from fantasy._actions import streamers as streamers
+from fantasy._bracket import bracket as bracket
+from fantasy._bracket import playoff_status as playoff_status
 from fantasy._calendar import status_changes as status_changes
 from fantasy._calendar import week_calendar as week_calendar
 from fantasy._engine import _clear_league_cache as clear_league_cache
@@ -28,7 +30,8 @@ from fantasy._engine import _tier_edges as _tier_edges
 from fantasy._engine import data_version as data_version
 from fantasy._engine import file_stamp as file_stamp
 from fantasy._engine import pinned_version as pinned_version
-from fantasy._leagues import TEAM_COLUMNS, leagues, my_league, scoring_labels
+from fantasy._leagues import TEAM_COLUMNS, leagues, scoring_labels
+from fantasy._leagues import my_league as my_league
 from fantasy._lineup import lineup, win_probability
 from fantasy._live import game_day, live_win_row, record_live_tick, refresh_live
 from fantasy._market import (
@@ -57,6 +60,7 @@ from fantasy.sim.depth import position_depth
 
 __all__ = [
     "actions",
+    "bracket",
     "clear_league_cache",
     "data_version",
     "evaluate_trade",
@@ -86,6 +90,7 @@ __all__ = [
     "player_profile",
     "player_vs_projection",
     "player_weeks",
+    "playoff_status",
     "position_strength",
     "power_rankings",
     "record_live_tick",

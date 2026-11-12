@@ -9,6 +9,7 @@ from store_fixture import engine_store
 from test_data_api_characterization import NOW
 
 from fantasy import _engine, _scoreboard, data_api
+from fantasy.sim.bracket import from_rows
 
 SIMS = 4000
 
@@ -95,3 +96,14 @@ def test_an_unset_lineup_keeps_a_final_player_whose_projection_is_gone(tmp_path:
     live = replace(data, projections=gone, live={"G_OPP": (500.0, 0.0)})
     row = _scoreboard.scoreboard_of(live, mine, 0, SIMS, data_dir=tmp_path).to_dicts()[0]
     assert row["b_projected"] >= 500.0
+
+
+def test_my_matchup_carries_the_playoff_label_in_a_playoff_week(tmp_path: Path) -> None:
+    engine_store(tmp_path)
+    data, mine = _engine._league("t", data_dir=tmp_path)
+    bracket = from_rows([{"bracket": "winners", "r": 2, "m": 3, "t1": 1, "t2": 2, "p": None}])
+    playoffs = replace(data, playoff_start=2, bracket=bracket)
+    rows = _scoreboard.scoreboard_of(playoffs, mine, 0, SIMS, data_dir=tmp_path).to_dicts()
+    assert [r["playoff_label"] for r in rows] == ["Round 2 vs Theirs", None, None]
+    regular = _scoreboard.scoreboard_of(data, mine, 0, SIMS, data_dir=tmp_path).to_dicts()
+    assert {r["playoff_label"] for r in regular} == {None}

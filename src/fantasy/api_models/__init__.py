@@ -67,6 +67,10 @@ from fantasy.api_models.scores import (
     ScorecardRow,
 )
 from fantasy.api_models.season import (
+    BracketData,
+    BracketMatch,
+    BracketRound,
+    BracketSide,
     LuckRow,
     ManagerGradeRow,
     OddsHistoryRow,
@@ -115,6 +119,10 @@ __all__ = [
     "ActionRow",
     "ApiError",
     "AssetRow",
+    "BracketData",
+    "BracketMatch",
+    "BracketRound",
+    "BracketSide",
     "ComparisonRow",
     "DigestData",
     "Envelope",

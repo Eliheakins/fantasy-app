@@ -966,6 +966,64 @@
         }
       }
     },
+    "/api/leagues/{league}/bracket": {
+      "get": {
+        "summary": "Bracket",
+        "description": "The winners bracket with each side's chance to win its round; no_data before it is set.",
+        "operationId": "bracket_api_leagues__league__bracket_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_BracketData_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/odds-history": {
       "get": {
         "summary": "Odds History",
@@ -3094,6 +3152,197 @@
         ],
         "title": "AssetRow"
       },
+      "BracketData": {
+        "properties": {
+          "rounds": {
+            "items": {
+              "$ref": "#/components/schemas/BracketRound"
+            },
+            "type": "array",
+            "title": "Rounds"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rounds"
+        ],
+        "title": "BracketData"
+      },
+      "BracketMatch": {
+        "properties": {
+          "m": {
+            "type": "integer",
+            "title": "M"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place"
+          },
+          "winner": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Winner"
+          },
+          "t1": {
+            "$ref": "#/components/schemas/BracketSide"
+          },
+          "t2": {
+            "$ref": "#/components/schemas/BracketSide"
+          },
+          "t1_p_win": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "T1 P Win"
+          },
+          "t2_p_win": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "T2 P Win"
+          },
+          "is_mine": {
+            "type": "boolean",
+            "title": "Is Mine"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "m",
+          "place",
+          "winner",
+          "t1",
+          "t2",
+          "t1_p_win",
+          "t2_p_win",
+          "is_mine"
+        ],
+        "title": "BracketMatch"
+      },
+      "BracketRound": {
+        "properties": {
+          "round": {
+            "type": "integer",
+            "title": "Round"
+          },
+          "weeks": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Weeks"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/BracketMatch"
+            },
+            "type": "array",
+            "title": "Matches"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "round",
+          "weeks",
+          "matches"
+        ],
+        "title": "BracketRound"
+      },
+      "BracketSide": {
+        "properties": {
+          "roster_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roster Id"
+          },
+          "team_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Name"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "from_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Kind"
+          },
+          "from_m": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From M"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "roster_id",
+          "team_name",
+          "seed",
+          "from_kind",
+          "from_m"
+        ],
+        "title": "BracketSide"
+      },
       "CatalogFilter": {
         "properties": {
           "id": {
@@ -3280,6 +3529,59 @@
           "ideas"
         ],
         "title": "DigestData"
+      },
+      "Envelope_BracketData_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BracketData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[BracketData]"
       },
       "Envelope_DigestData_": {
         "properties": {
@@ -9038,6 +9340,17 @@
             ],
             "title": "Status"
           },
+          "playoff_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Label"
+          },
           "a": {
             "$ref": "#/components/schemas/ScoreboardSide"
           },
@@ -9051,6 +9364,7 @@
           "week",
           "matchup_id",
           "status",
+          "playoff_label",
           "a",
           "b"
         ],
@@ -10588,6 +10902,17 @@
       },
       "WinProbabilityData": {
         "properties": {
+          "playoff_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Label"
+          },
           "script": {
             "anyOf": [
               {
@@ -10644,6 +10969,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
+          "playoff_label",
           "script",
           "swap",
           "comparison",

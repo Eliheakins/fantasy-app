@@ -74,6 +74,7 @@ class SummaryModel(Row):
 
 
 class WinProbabilityData(Row):
+    playoff_label: str | None  # e.g. "Round 2 vs X"; null outside the playoffs
     script: str | None
     swap: SwapNoteModel | None
     comparison: list[ComparisonRow]

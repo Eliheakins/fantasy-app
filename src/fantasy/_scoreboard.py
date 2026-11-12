@@ -11,6 +11,7 @@ import numpy as np
 import polars as pl
 
 from fantasy import store
+from fantasy._bracket import status_of
 from fantasy._engine import (
     KD_SEED_OFFSET,
     LINEUP_SEED,
@@ -156,6 +157,12 @@ def _projected_week(
     return rows
 
 
+def _playoff_label(data: LeagueData, mine: int, week: int) -> str | None:
+    if data.current_week < data.playoff_start or week < data.playoff_start:
+        return None
+    return status_of(data.bracket, data.team_names, mine, week - data.playoff_start + 1)
+
+
 def scoreboard_of(
     data: LeagueData,
     mine: int,
@@ -180,5 +187,7 @@ def scoreboard_of(
         rows = _past_week(data, mine, week, matchup_of, data_dir)
     else:
         rows = _projected_week(data, mine, week, matchup_of, n_sims, data_dir)
+    label = _playoff_label(data, mine, week)
+    rows = [{**r, "playoff_label": label if r["a_is_me"] or r["b_is_me"] else None} for r in rows]
     rows.sort(key=lambda r: (not (r["a_is_me"] or r["b_is_me"]), r["matchup_id"] or 0))
     return pl.DataFrame(rows, schema=ENGINE_SCHEMAS["scoreboard"])

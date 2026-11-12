@@ -451,7 +451,15 @@ def test_win_probability_job_returns_options_swap_and_every_objective(client: Te
     out = wait_ok(client, lambda: client.get("/api/leagues/t/win-probability?week=3"))
     assert out["status"] == "ok"
     data = out["data"]
-    assert set(data) == {"script", "swap", "comparison", "options", "lineups", "summaries"}
+    assert set(data) == {
+        "playoff_label",
+        "script",
+        "swap",
+        "comparison",
+        "options",
+        "lineups",
+        "summaries",
+    }
     assert data["comparison"][0]["option"] == "Expected points"
     assert set(data["lineups"]) == set(data["summaries"]) == {
         "expected_points", "win_probability", "max_ceiling", "max_floor",
@@ -676,7 +684,7 @@ def test_scoreboard_returns_one_nested_row_per_matchup_and_follows_the_team(
     out = body(client.get("/api/leagues/t/scoreboard"))
     assert out["status"] == "ok", out
     first = out["data"][0]
-    assert set(first) == {"week", "matchup_id", "status", "a", "b"}
+    assert set(first) == {"week", "matchup_id", "status", "playoff_label", "a", "b"}
     assert first["a"]["is_me"] and first["a"]["team_name"] == "Mine"
     assert first["a"]["win_prob"] + first["b"]["win_prob"] == pytest.approx(1.0)
     other = body(client.get("/api/leagues/t/scoreboard?team=5"))["data"][0]
@@ -855,3 +863,9 @@ def test_serving_keeps_the_access_log_off_so_invite_tokens_stay_out_of_it(
     monkeypatch.setattr(uvicorn, "run", lambda app, **kwargs: seen.update(kwargs))
     api.main([])
     assert seen["access_log"] is False
+
+
+def test_bracket_route_is_no_data_with_a_message_before_the_playoffs(client: TestClient) -> None:
+    out = client.get("/api/leagues/t/bracket").json()
+    assert out["status"] == "error" and out["error"]["code"] == "no_data"
+    assert out["error"]["message"] == "The bracket is set after week 14"

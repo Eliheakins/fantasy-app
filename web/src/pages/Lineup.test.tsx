@@ -43,6 +43,7 @@ const option = (name: string, o: Partial<WinProbability["options"][number]> = {}
     ...o,
   }) as WinProbability["options"][number];
 const odds: WinProbability = {
+  playoff_label: null,
   script: "You are a slight favourite",
   swap: { differs: false, players_in: [], players_out: [], text: null },
   comparison: [cmp("Expected points"), cmp("Win probability")],
