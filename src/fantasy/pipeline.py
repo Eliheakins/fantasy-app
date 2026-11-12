@@ -9,7 +9,7 @@ log and the service show it.
 `make refresh` runs this inside `python -m fantasy._lock`, which holds the pipeline lock for the
 whole run. Each stage still goes through `run_recorded`, which records its own outcome.
 
-Run: uv run python -m fantasy.pipeline
+Run: uv run python -m fantasy.pipeline [full|daily|sleeper]   (PROFILES; full when omitted)
 """
 
 import os
@@ -84,6 +84,27 @@ STAGES: tuple[Stage, ...] = (
     Stage("market_values", "fantasy.stages.market_values", False, True),
     Stage("stat_data", "nfl_stat.pipeline.cli", False, True, ("--refresh",)),
 )
+
+# The morning model run on days without a full one: odds_snapshot --auto would pull Saturday
+# 06:00 lines for Sunday and again at Sunday 08:00 (24 h reuse), doubling the credit spend.
+DAILY_STAGES = tuple(s for s in STAGES if s.name != "odds_snapshot")
+
+# Rosters, transactions and matchups between model runs, on the projections already built.
+# No archive write (simulate skips its history), so no backup. week_rollover must follow every
+# sync: Sleeper's own week lags until Wednesday and the sync writes it back.
+SLEEPER_STAGES = (
+    Stage("sync_sleeper", "fantasy.stages.sync_sleeper", network=True),
+    Stage("week_rollover", "fantasy.stages.week_rollover"),
+    Stage("score", "fantasy.stages.score"),
+    Stage("simulate", "fantasy.stages.simulate", args=("--no-archive",)),
+    Stage("digest", "fantasy.stages.digest", required=False),
+)
+
+PROFILES: dict[str, tuple[Stage, ...]] = {
+    "full": STAGES,
+    "daily": DAILY_STAGES,
+    "sleeper": SLEEPER_STAGES,
+}
 
 
 def argv_for(stage: Stage) -> list[str]:
@@ -213,9 +234,13 @@ def refresh(stages: Sequence[Stage], runner: Runner, **options: Any) -> tuple[di
     return results, published
 
 
-def main() -> int:
+def main(argv: Sequence[str] = ()) -> int:
+    name = argv[0] if argv else "full"
+    if name not in PROFILES or len(argv) > 1:
+        print(f"usage: python -m fantasy.pipeline [{'|'.join(PROFILES)}]", file=sys.stderr)
+        return 2
     started = datetime.now(UTC).isoformat(timespec="seconds")
-    _, published = refresh(STAGES, lambda stage: run_command(argv_for(stage)))
+    _, published = refresh(PROFILES[name], lambda stage: run_command(argv_for(stage)))
     code = refresh_report.main(["--since", started])
     if published:
         return code
@@ -224,4 +249,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

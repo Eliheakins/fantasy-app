@@ -4,10 +4,11 @@ Writes sim_season (latest) and appends to sim_season_history (one row per team p
 Outlook chart can show odds over time). Odds assume current rosters: no waiver moves, trades or
 injuries beyond the spread already in each player's outcome distribution.
 
-Run: uv run python -m fantasy.stages.simulate
+Run: uv run python -m fantasy.stages.simulate [--no-archive]   (no history row: the Sleeper refresh)
 """
 
 import json
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -149,7 +150,7 @@ def run(
 
 
 def main() -> None:
-    latest = run()
+    latest = run(archive="--no-archive" not in sys.argv[1:])
     leagues = store.read_table("leagues", "raw").select("league_id", "league_key")
     pl.Config.set_tbl_rows(30)
     shown = latest.join(leagues, on="league_id").sort(

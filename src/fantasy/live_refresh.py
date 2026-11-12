@@ -18,7 +18,7 @@ from fantasy.config import load_config
 from fantasy.sim.availability import games_on, kickoffs
 
 log = logging.getLogger(__name__)
-LIVE_REFRESH_MINUTES = 10
+LIVE_REFRESH_MINUTES = 5  # 2 Sleeper calls a league plus a 0.5 s simulate per tick
 POLL_SECONDS = 30
 ENV_VAR = "LIVE_REFRESH"
 

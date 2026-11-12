@@ -175,6 +175,39 @@ def test_the_stages_the_simulation_cannot_do_without_are_required() -> None:
     assert {"backup", "sync_sleeper", "ingest_nfl", "project", "learn", "simulate"} <= required
 
 
+def test_the_daily_profile_is_the_full_run_without_spending_odds_credits() -> None:
+    assert [s for s in pipeline.STAGES if s.name != "odds_snapshot"] == list(pipeline.DAILY_STAGES)
+
+
+def test_the_sleeper_profile_writes_no_archive_and_keeps_the_week_rolled_over() -> None:
+    names = [s.name for s in pipeline.SLEEPER_STAGES]
+    assert names.index("sync_sleeper") < names.index("week_rollover") < names.index("simulate")
+    assert "backup" not in names  # safe only because nothing below appends to the archive
+    archive_writers = {"news_archive", "sleeper_projections", "outside_projections", "learn"}
+    assert not archive_writers & set(names)
+    assert {"streaming", "odds_snapshot"}.isdisjoint(names)
+    simulate = next(s for s in pipeline.SLEEPER_STAGES if s.name == "simulate")
+    assert simulate.args == ("--no-archive",)
+
+
+def test_main_rejects_an_unknown_profile() -> None:
+    assert pipeline.main(["hourly"]) == 2
+
+
+@pytest.mark.parametrize("profile", list(pipeline.PROFILES))
+def test_main_runs_the_named_profile(monkeypatch: pytest.MonkeyPatch, profile: str) -> None:
+    seen: list[tuple[Stage, ...]] = []
+
+    def fake_refresh(stages: tuple[Stage, ...], runner: object, **kw: object) -> tuple[dict, bool]:
+        seen.append(stages)
+        return {}, True
+
+    monkeypatch.setattr(pipeline, "refresh", fake_refresh)
+    monkeypatch.setattr(refresh_report, "main", lambda argv: 0)
+    assert pipeline.main([profile]) == 0
+    assert seen == [pipeline.PROFILES[profile]]
+
+
 class Building:
     """A runner that, like a stage, writes a table into whatever release is being built."""
 

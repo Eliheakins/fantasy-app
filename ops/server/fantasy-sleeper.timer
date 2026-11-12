@@ -1,0 +1,11 @@
+[Unit]
+Description=fantasy-app Sleeper refresh: rosters, transactions, matchups and season odds
+
+[Timer]
+# About 40 Sleeper calls a league, made one at a time (well under 1,000 a minute), and about 45 s of
+# work on the Mac. Game-time scores come faster from the app's own live tick (every 5 minutes).
+OnCalendar=*:0/15
+Unit=fantasy-pipeline@sleeper.service
+
+[Install]
+WantedBy=timers.target

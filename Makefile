@@ -6,7 +6,7 @@ stage = uv run python -m fantasy.stages.run_recorded $(1) fantasy.stages.$(1)
 ACTIONLINT = 1.7.12.25
 PIP_AUDIT = 2.10.1
 
-.PHONY: setup test lint audit fmt check refresh backup schedule-install schedule-remove serve dev web-build odds odds-slate stat-data stat-data-refresh ask-model
+.PHONY: setup test lint audit fmt check refresh refresh-sleeper backup schedule-install schedule-remove serve dev web-build odds odds-slate stat-data stat-data-refresh ask-model
 
 backup:
 	$(call stage,backup)
@@ -16,6 +16,10 @@ backup:
 # live score tick, never write the tables at once. A second `make refresh` waits for the first.
 refresh:
 	uv run python -m fantasy._lock uv run python -m fantasy.pipeline
+
+# Rosters, transactions and matchups only, then season odds on the current projections (pipeline.SLEEPER_STAGES)
+refresh-sleeper:
+	uv run python -m fantasy._lock uv run python -m fantasy.pipeline sleeper
 
 # nflverse play-by-play shards for the stat app, into data/stat (needs the network, takes minutes)
 stat-data:

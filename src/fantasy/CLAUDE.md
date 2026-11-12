@@ -33,7 +33,7 @@ The FastAPI app (`api.py`, the route package `api_routes/` with one module per a
 
 ## Live refresh
 
-- `make serve` runs `live_refresh.py` every 10 minutes while a game of the current week is on: `sync_week`, then `simulate.run(archive=False)`. `LIVE_REFRESH=off` disables it.
+- `make serve` runs `live_refresh.py` every 5 minutes while a game of the current week is on: `sync_week`, then `simulate.run(archive=False)`. `LIVE_REFRESH=off` disables it.
 - Never let a live tick append to `sim_season_history`.
 - A live tick, and the Refresh scores button, append one row per league for my team to `live_win_history` (current week only, deduplicated by `run_at`, written by `data_api.record_live_tick`). The game-day block on This week reads it.
 
