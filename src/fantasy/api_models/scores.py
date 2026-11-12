@@ -58,7 +58,6 @@ class ScorecardData(Row):
     excluded: ScorecardExcluded
     weeks_archived: list[int]
     weeks_scored: list[int]
-    has_quantiles: bool  # false: snapshots hold means only, so no interval coverage
     sleeper_first_fetch: str | None
 
 

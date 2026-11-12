@@ -11,17 +11,26 @@ from fantasy.sim.schedule import standings
 POINTS_TOLERANCE = 0.011
 
 
-def compare(computed: pl.DataFrame, sleeper: pl.DataFrame) -> pl.DataFrame:
-    joined = computed.join(
-        sleeper, on=["league_id", "roster_id"], how="full", suffix="_sleeper", coalesce=True
-    )
-    off = (
+def flagged(computed: pl.DataFrame, sleeper: pl.DataFrame) -> pl.DataFrame:
+    """Every team from either side with `record_off`, `points_off` (a team missing on one side is
+    off on both) and `points_gap`."""
+    gap = (pl.col("points_for") - pl.col("points_for_sleeper")).abs()
+    record_off = (
         (pl.col("wins") != pl.col("wins_sleeper"))
         | (pl.col("losses") != pl.col("losses_sleeper"))
         | (pl.col("ties") != pl.col("ties_sleeper"))
-        | ((pl.col("points_for") - pl.col("points_for_sleeper")).abs() > POINTS_TOLERANCE)
     )
-    return joined.filter(off.fill_null(True))
+    return computed.join(
+        sleeper, on=["league_id", "roster_id"], how="full", suffix="_sleeper", coalesce=True
+    ).with_columns(
+        record_off.fill_null(True).alias("record_off"),
+        (gap > POINTS_TOLERANCE).fill_null(True).alias("points_off"),
+        gap.alias("points_gap"),
+    )
+
+
+def compare(computed: pl.DataFrame, sleeper: pl.DataFrame) -> pl.DataFrame:
+    return flagged(computed, sleeper).filter(pl.col("record_off") | pl.col("points_off"))
 
 
 def run() -> None:
@@ -35,19 +44,14 @@ def run() -> None:
         league_matchups = matchups.filter(pl.col("league_id") == row["league_id"])
         computed = standings(league_matchups, through)
         sleeper = teams.filter(pl.col("league_id") == row["league_id"])
-        bad = compare(computed, sleeper)
-        joined = computed.join(sleeper, on=["league_id", "roster_id"], suffix="_sleeper")
-        records_off = joined.filter(
-            (pl.col("wins") != pl.col("wins_sleeper"))
-            | (pl.col("losses") != pl.col("losses_sleeper"))
-            | (pl.col("ties") != pl.col("ties_sleeper"))
-        ).height
-        diff = (pl.col("points_for") - pl.col("points_for_sleeper")).abs()
-        gap = joined.select(diff.max()).item()
+        flags = flagged(computed, sleeper)
+        records_off = int(flags["record_off"].sum())
+        points_off = int(flags["points_off"].sum())
+        gap = flags.select(pl.col("points_gap").max()).item()
         total = sleeper.height
         print(
             f"{row['league_key']} through week {through}: records match {total - records_off} of "
-            f"{total}; points for exact {total - bad.height} of {total}, largest gap {gap:.2f}"
+            f"{total}; points for exact {total - points_off} of {total}, largest gap {gap:.2f}"
         )
 
 

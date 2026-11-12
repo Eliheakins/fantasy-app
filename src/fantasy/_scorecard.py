@@ -16,6 +16,7 @@ from typing import Any
 import polars as pl
 
 from fantasy import store
+from fantasy._engine import _id_map
 from fantasy._schemas import ENGINE_SCHEMAS, empty
 from fantasy.scoring import score_stats
 from fantasy.sim.availability import kickoffs
@@ -36,7 +37,6 @@ class Scorecard:
     excluded: dict[str, int]
     weeks_archived: list[int]
     weeks_scored: list[int]
-    has_quantiles: bool  # the snapshots carry only means, so there is no interval coverage
     sleeper_first_fetch: str | None
 
 
@@ -241,7 +241,7 @@ def scorecard_of(league_id: str, data_dir: Path | None = None) -> Scorecard:
         ("games", "scored", "not_final", "no_kickoff", "no_snapshot", "sleeper_missing"), 0
     )
     if snaps.is_empty():
-        return Scorecard(empty("scorecard"), no_counts, [], [], False, None)
+        return Scorecard(empty("scorecard"), no_counts, [], [], None)
     baseline = store.read_table("proj_baseline", "derived", data_dir).filter(
         pl.col("league_id") == league_id
     )
@@ -265,21 +265,18 @@ def scorecard_of(league_id: str, data_dir: Path | None = None) -> Scorecard:
         .row(0, named=True)
     )
     sleeper_archive = store.read_table("sleeper_proj_snapshots", "archive", data_dir)
-    id_map = store.read_table("id_map", "derived", data_dir).select("sleeper_id", "gsis_id")
+    id_map = _id_map(data_dir)
     sleeper = _sleeper_points(sleeper_archive, league, id_map, games)
     scored, excluded = score_games(games, snaps, sleeper, actuals, kick)
     train = baseline.filter(
         (~pl.col("is_future")) & pl.col("has_history") & (pl.col("season") <= TRAIN_END)
     ).drop_nulls("projection")
     scored = add_tiers(scored.with_columns(pl.col("position").fill_null("?")), train)
-    table = error_table(
-        scored.rename({"gsis_id": "_g"}).select("week", "position", "tier", "actual", *MODELS)
-    )
+    table = error_table(scored.select("week", "position", "tier", "actual", *MODELS))
     return Scorecard(
         table,
         excluded,
         weeks,
         sorted(scored["week"].unique().to_list()),
-        False,
         str(sleeper_archive["fetched_at"].min()) if sleeper_archive.height else None,
     )

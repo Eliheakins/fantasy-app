@@ -175,12 +175,7 @@ OWNER_ONLY = "That league belongs to the app's owner and cannot be added."
 
 def _limited(account: dict[str, Any]) -> bool:
     """Count one Sleeper lookup for the account; True when it has had its share this minute."""
-    key = f"lookup:{account['id']}"
-    now = time.monotonic()
-    if lookup_limiter.blocked(key, now):
-        return True
-    lookup_limiter.record(key, now)
-    return False
+    return not lookup_limiter.attempt((f"lookup:{account['id']}",), time.monotonic())
 
 
 @router.post("/sleeper/lookup", response_model=Envelope[Lookup])

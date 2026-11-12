@@ -17,13 +17,14 @@ from fantasy._engine import (
     _constant_points,
     _opponent_lineup,
     _week_points,
+    _week_values,
 )
 from fantasy._schemas import ENGINE_SCHEMAS, empty
 from fantasy.sim import moves
 from fantasy.sim.lineup import lineup_slots
-from fantasy.sim.odds import LeagueData
+from fantasy.sim.odds import DEFAULT_SIMS, LeagueData
 
-SCOREBOARD_SIMS = 20000
+SCOREBOARD_SIMS = DEFAULT_SIMS
 NOT_STARTED, LIVE, FINAL = "Not started", "Live", "Final"
 LOW, MID, HIGH = 0.1, 0.5, 0.9
 
@@ -129,7 +130,8 @@ def _projected_week(
     data_dir: Path | None,
 ) -> list[dict[str, Any]]:
     pairs = data.pairings[week]
-    positions, values = moves.position_of(data), moves.week_values(data).get(week, {})
+    positions = moves.position_of(data)
+    values = _week_values(data, week, positions)
     slots = lineup_slots(data.roster_positions)
     lineups = {
         t: _opponent_lineup(data, t, week, positions, values, slots, data_dir)

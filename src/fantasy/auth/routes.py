@@ -216,11 +216,13 @@ def install(app: FastAPI) -> None:
                 return fail("unauthorized", "Sign in to continue.", 401)
             if decision == "forbidden":
                 return fail("forbidden", "Only the admin can do that.", 403)
-            if account is not None and request.method == "POST" and request.url.path == MODEL_ROUTE:
-                key, now = f"ask:{account['id']}", time.monotonic()
-                if intent_limiter.blocked(key, now):
-                    return fail("busy", "Too many questions. Wait a minute and try again.", 429)
-                intent_limiter.record(key, now)
+            if (
+                account is not None
+                and request.method == "POST"
+                and request.url.path == MODEL_ROUTE
+                and not intent_limiter.attempt((f"ask:{account['id']}",), time.monotonic())
+            ):
+                return fail("busy", "Too many questions. Wait a minute and try again.", 429)
             league = access.LEAGUE_PATH.match(request.url.path)
             if league and account is not None:
                 data_dir = request.app.state.data_dir

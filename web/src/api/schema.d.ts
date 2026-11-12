@@ -2668,8 +2668,6 @@ export interface components {
             weeks_archived: number[];
             /** Weeks Scored */
             weeks_scored: number[];
-            /** Has Quantiles */
-            has_quantiles: boolean;
             /** Sleeper First Fetch */
             sleeper_first_fetch: string | null;
         };

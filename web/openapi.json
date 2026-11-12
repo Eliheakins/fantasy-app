@@ -9011,10 +9011,6 @@
             "type": "array",
             "title": "Weeks Scored"
           },
-          "has_quantiles": {
-            "type": "boolean",
-            "title": "Has Quantiles"
-          },
           "sleeper_first_fetch": {
             "anyOf": [
               {
@@ -9034,7 +9030,6 @@
           "excluded",
           "weeks_archived",
           "weeks_scored",
-          "has_quantiles",
           "sleeper_first_fetch"
         ],
         "title": "ScorecardData"
