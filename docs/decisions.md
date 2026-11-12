@@ -1356,3 +1356,8 @@ A whole-repo review (quality, language and security reviewers per slice, plus re
 - `copyText` moved to `web/src/lib/clipboard.ts` (Clipboard API, then execCommand) so This week can use it without importing Moves. InviteLink keeps its own copy: it must select its input on failure, so the helper is not a drop-in.
 - `summaryText` (features/thisweek/summary.ts) makes 5 to 8 plain lines with two leagues: last result and odds per league, then the to-dos (title, league name, effect), cut at 8. Odds are playoff odds in the season, title odds in the playoffs, "out of the playoffs" when out (the phase stands in for the playoff label). It uses league display names only and carries no ids, links or ECR ranks (guard test).
 - The "Copy summary" button is disabled with a reason while to-dos load. The text is built before the click; on failure a read-only textarea is shown, focused and selected.
+
+## 2026-11-12: playoff horizon infrastructure (PR 13)
+
+- `sim/horizon.horizon_weeks(data, "ros" | "playoffs")`: "ros" is every projected week from `current_week` (today's behaviour); "playoffs" is `playoff_start` through `playoff_start + playoff_weeks - 1` (bracket size and round type, never 15 to 17), cut to weeks not yet played, so empty after the final.
+- `Valuer(data, weeks=None)`, `ros_value(..., weeks=None)`, `waiver_candidates(..., weeks=None)` and `best_swap(..., weeks=None)` sum only the given weeks. The Valuer still builds absence chances over every projected week and `season_value` skips the unwanted weeks without re-indexing, so week 15 keeps its true offset from the current week (filtering projections first would have used week 12's chance for week 15). Default None is unchanged; goldens did not move. No consumers yet.

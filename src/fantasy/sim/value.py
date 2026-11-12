@@ -12,6 +12,8 @@ own. Shortcut: stand-ins are assumed available and picked up in time; players a 
 not assumed available, since someone else will claim them.
 """
 
+from collections.abc import Collection
+
 import polars as pl
 
 from fantasy.config import SKILL_POSITIONS
@@ -115,14 +117,18 @@ def season_value(
     ids: list[str],
     absence: dict[str, list[float]],
     replacements: dict[int, list[Player]],
+    weeks: Collection[int] | None = None,
 ) -> float:
     """Expected points over the weeks in `values_by_week`, counting absences and replacements.
 
     `absence[id]` lists the chance the player is out in each week, in week order; players
-    without an entry are treated as healthy."""
+    without an entry are treated as healthy. With `weeks` only those weeks are summed, each
+    still using the absence chance at its position among all of `values_by_week`."""
     mine = set(ids)
     total = 0.0
     for index, (week, values) in enumerate(sorted(values_by_week.items())):
+        if weeks is not None and week not in weeks:
+            continue
         pool = week_pool(ids, positions, values)
         floor = stand_ins(replacements.get(week, []), mine)
         lineup = auto_lineup(pool + floor, slots)
