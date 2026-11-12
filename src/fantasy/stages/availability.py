@@ -5,8 +5,10 @@ last three games, so a player who is hurt and does not play is in it. The label 
 any offensive snaps. Features: depth rank, injury report status and practice participation, snap
 share in earlier games, weeks since he last played, position and age. Scored on every listed
 player, it beat the injury-status table by 6% Brier on report-listed players even though the table
-had seen the test seasons (research/availability_check.py), so the simulation uses it for a
-flagged player's chance of playing the next game; later games keep the table's curve.
+had seen the test seasons (research/availability_check.py). It is trained on final reports, so the
+simulation uses it only for a player Sleeper calls Questionable once this week's report gives him a
+game status; everyone else, and later games, keep the table's curve
+(`league_projections._first_game_chance`, research/availability_midweek_check.py).
 
 Writes `availability` (gsis_id, season, week, p_play) for the current week.
 

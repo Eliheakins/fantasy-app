@@ -1,0 +1,12 @@
+[Unit]
+Description=fantasy-app morning model refresh on days without a full one
+
+[Timer]
+# Every stage but odds_snapshot (pipeline.DAILY_STAGES), so prop lines are still pulled only by the
+# full runs in fantasy-refresh.timer (Tuesday and Sunday mornings are full runs already).
+OnCalendar=Mon,Wed,Thu,Fri,Sat *-*-* 06:00:00 America/New_York
+Persistent=true
+Unit=fantasy-pipeline@daily.service
+
+[Install]
+WantedBy=timers.target

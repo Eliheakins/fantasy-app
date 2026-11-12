@@ -87,10 +87,12 @@ install -m 440 "$sudoers_tmp" /etc/sudoers.d/fantasy-app
 rm "$sudoers_tmp"
 
 install -m 644 "$HERE"/fantasy-app.service "$HERE"/fantasy-refresh.service \
-  "$HERE"/fantasy-refresh.timer "$HERE"/fantasy-refresh.path /etc/systemd/system/
+  "$HERE"/fantasy-refresh.timer "$HERE"/fantasy-refresh.path "$HERE"/fantasy-pipeline@.service \
+  "$HERE"/fantasy-daily.timer "$HERE"/fantasy-sleeper.timer /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable fantasy-app.service # starts on the first push, once the code is there
-systemctl enable --now fantasy-refresh.timer fantasy-refresh.path
+systemctl enable --now fantasy-refresh.timer fantasy-refresh.path fantasy-daily.timer \
+  fantasy-sleeper.timer
 
 echo "Server ready. Next: ops/server/push.sh --data $APP_USER@$SITE_HOST"
 echo "Then create the admin: ssh -t $APP_USER@$SITE_HOST 'cd fantasy-app && uv run --no-dev python -m fantasy.auth create-admin you@example.com'"

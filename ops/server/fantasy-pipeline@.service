@@ -1,0 +1,34 @@
+[Unit]
+Description=fantasy-app %i refresh (fantasy.pipeline profile)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=fantasy
+WorkingDirectory=/home/fantasy/fantasy-app
+# Same sandbox as fantasy-refresh.service.
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+ReadWritePaths=/home/fantasy/fantasy-app /home/fantasy/.cache
+ReadWritePaths=/home/fantasy/fantasy-app-backups
+Environment=UV_NO_SYNC=1
+Environment=PATH=/home/fantasy/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Waits for the lock while a full refresh runs, then goes.
+ExecStart=/home/fantasy/.local/bin/uv run python -m fantasy._lock /home/fantasy/.local/bin/uv run python -m fantasy.pipeline %i
+# Exit 1: an optional stage failed but the data was published. No Restart and no start limit, unlike
+# fantasy-refresh.service: the timer is the retry, and a 15-minute timer would trip any start limit.
+SuccessExitStatus=1
+Nice=10
+TimeoutStartSec=30min
+# Output goes to the journal (journalctl -u 'fantasy-pipeline@*'), which rotates itself; a run every
+# 15 minutes would grow data/refresh.log by megabytes a month. Failures still reach the stale banner
+# through refresh_runs.
