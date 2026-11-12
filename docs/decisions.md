@@ -1253,3 +1253,22 @@ Plan: `.plans/accounts-and-refresh-20261109-2155.md`. Supersedes the Caddy-passw
 - **Side effects.** Full-pipeline runs per week go from 4 to 9, so the 30 kept archive backups cover about 3.3 weeks, not 7.5. `outside_projections` scrapes daily, not 4 times a week. The `sleeper` and `daily` services log to the journal (`journalctl -u 'fantasy-pipeline@*'`), not `data/refresh.log`; failures still show in the stale banner through `refresh_runs`. Between the Sleeper and the model runs the banner's Sleeper and Simulation ages look fresh while projections can be up to a day old; the banner has no projections row.
 - **Deploy.** Re-run `ops/server/provision.sh` (bootstrap is safe to re-run): `push.sh` does not install unit files. Not deployed by this change.
 - **Not a model change:** no projection or distribution method changed, so the model standard does not apply.
+
+## 2026-11-12: The availability classifier no longer overrides Sleeper's Out and Doubtful before the final report
+
+- **Symptom.** Puka Nacua (Sleeper: Out, knee MCL sprain; McVay: out "an extended period") and Rhamondre Stevenson (Sleeper: Doubtful, knee; DNP Wednesday, reported out "a few weeks") were 0.86 and 0.84 to play week 10 on Thursday 2026-11-12. The injury table gave them 0.0001 and 0.003.
+- **Cause.** Train/serve skew. The classifier (`stages/availability.py`) is trained on final reports, where a blank game status means "not designated". On Thursday the week 10 report had 276 rows and 6 game statuses (the Thursday game's teams), so every other player reached the classifier as status none, and its chance replaced the injury table for the next game of every flagged player. `_injury_flags` already ignored practice until a game status was issued; the classifier had no such guard.
+- **Check** (`research/availability_midweek_check.py`; designated players on the final report, fit 2019 to 2023, scored 2024 to week 9 of 2026; the final status stands in for Sleeper's mid-week call, which is archived only since 2026-10-27):
+
+  | Status (n, played) | Classifier, mid-week input | Injury table by status | Classifier, final report |
+  |---|---|---|---|
+  | Out (680, 0.000) | mean 0.639, Brier 0.4467 | 0.001, 0.0000 | 0.003, 0.0000 |
+  | Doubtful (93, 0.000) | 0.730, 0.5680 | 0.007, 0.0001 | 0.036, 0.0016 |
+  | Questionable (680, 0.624) | 0.803, 0.2463 | 0.650, 0.2324 | 0.666, 0.2100 |
+  | All (1453, 0.292) | 0.721, 0.3607 | 0.305, 0.1088 | 0.316, 0.0984 |
+
+  The injury table is fit on every season, so it is in sample here; its Out and Doubtful cells are near 0 whatever the sample. Mid-week practice is not stored, so the mid-week column uses the final-day practice, which flatters it if anything.
+- **Change.** `league_projections._first_game_chance` keeps the classifier's chance only for a player Sleeper calls Questionable whose game status this week's report has issued. Out, Doubtful, long-term designations, and anyone before the final report take the injury table. A Questionable player Sleeper downgrades to Out after the report also takes the table. The `availability` table itself is unchanged (`research/blend_weight.py` reads it).
+- **Result** (both leagues, worktree data refreshed 2026-11-12): week 10 Nacua 0.86 to 0.000, Stevenson 0.84 to 0.003. Later games are unchanged: Nacua 0.25, 0.43, 0.53 for weeks 12 to 14 (Rams bye in 11), Stevenson 0.48, 0.71, 0.68.
+- **Model standard.** Held-out Brier on the games affected falls from 0.361 to 0.109 (the classifier on mid-week input against the table). Questionable players after the final report keep the classifier, so the shipped 0.098 is kept where it applies.
+- **Not fixed: severity beyond the next game.** The table's later games are the average Out-with-a-knee curve. Nacua's news says he is out until about week 15, which the curve puts at 0.25 to 0.53 for weeks 12 to 14. Neither Sleeper nor the nflverse report carries a return timeline.

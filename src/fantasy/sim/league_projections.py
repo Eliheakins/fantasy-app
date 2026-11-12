@@ -6,6 +6,7 @@ give the kicker and defense moments and each team's own K and DEF projections by
 """
 
 import warnings
+from collections.abc import Mapping
 from pathlib import Path
 
 import polars as pl
@@ -31,6 +32,8 @@ MIN_DEF_ROWS = 20  # otherwise use the league's own starting-defense scores
 
 # Sleeper projects 0 for these, but the injury layer already applies their chance of playing
 SLEEPER_ZEROED_STATUSES = frozenset({"Questionable", "Doubtful"})
+# The only status where the availability classifier beats the injury table on the next game
+CLASSIFIER_STATUSES = frozenset({"Questionable"})
 
 
 def _other_sources(
@@ -102,8 +105,13 @@ def stat_line(current: int, data_dir: Path | None) -> dict[tuple[str, int], floa
     return {(g, w): q for g, w, q in rows.select("gsis_id", "week", "q").iter_rows()}
 
 
-def _first_game_chance(current: int, data_dir: Path | None) -> dict[str, float]:
-    """gsis id -> classifier chance of playing this week's game, when the stage has run."""
+def _first_game_chance(
+    current: int, flags: Mapping[str, Flag], data_dir: Path | None
+) -> dict[str, float]:
+    """gsis id -> classifier chance of playing this week's game, for the players it scores better
+    than the injury table: Questionable in Sleeper, with a game status on this week's report. The
+    classifier learned from final reports, so before one it reads a player Sleeper calls Out as
+    healthy; on Out and Doubtful the table is as good (research/availability_midweek_check.py)."""
     try:
         table = store.read_table("availability", data_dir=data_dir)
     except FileNotFoundError:
@@ -120,7 +128,19 @@ def _first_game_chance(current: int, data_dir: Path | None) -> dict[str, float]:
             "run the availability stage. First-game chances use the injury curves",
             stacklevel=2,
         )
-    return dict(zip(now["gsis_id"], now["p_play"], strict=True))
+    report = store.read_table("nfl_injuries", "raw", data_dir)
+    issued = set(
+        report.filter(
+            (pl.col("season") == season)
+            & (pl.col("week") == current)
+            & pl.col("report_status").is_not_null()
+        )["gsis_id"]
+    )
+    return {
+        g: p
+        for g, p in zip(now["gsis_id"], now["p_play"], strict=True)
+        if g in issued and g in flags and flags[g][0] in CLASSIFIER_STATUSES
+    }
 
 
 def _injury_flags(flagged: pl.DataFrame, current: int, data_dir: Path | None) -> dict[str, Flag]:
@@ -174,7 +194,7 @@ def layered_projections(
         model = InjuryModel(store.read_table("injury_effects", data_dir=data_dir))
     except FileNotFoundError:
         model = None
-    first_game = _first_game_chance(current, data_dir) if model is not None else {}
+    first_game = _first_game_chance(current, flags, data_dir) if model is not None else {}
     # our baseline is calibrated by size before it is blended with the other sources; an outside
     # 0 for a Questionable or Doubtful player is dropped like Sleeper's
     zeroed = frozenset(g for g, f in flags.items() if f[0] in SLEEPER_ZEROED_STATUSES)
