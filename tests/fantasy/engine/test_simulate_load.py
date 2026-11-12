@@ -114,9 +114,13 @@ def build_store(
         for pos in ("QB", "RB", "WR", "TE")
     ]
     write_rows(tmp_path, "marginals", spread)
-    for name in ("correlation_pairs", "player_points", "matchup_players"):
-        write_rows(tmp_path, name)
-    for name in ("nfl_injuries", "nfl_schedules"):
+    for name in (
+        "correlation_pairs",
+        "player_points",
+        "matchup_players",
+        "nfl_injuries",
+        "nfl_schedules",
+    ):
         write_rows(tmp_path, name)
 
 

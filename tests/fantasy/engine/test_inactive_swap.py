@@ -6,9 +6,8 @@ from pathlib import Path
 
 import polars as pl
 import pytest
-from store_fixture import write_rows
-from test_data_api_characterization import NOW, _engine_store
-from test_lineup_live import _with
+from store_fixture import engine_store, patch_league, write_rows
+from test_data_api_characterization import NOW
 
 from fantasy import _engine, _lineup, data_api, store
 from fantasy.config import load_config
@@ -17,7 +16,7 @@ from fantasy.sim.injuries import Flag
 
 
 def test_kickoffs_by_player_leave_out_players_with_no_team_or_no_game(tmp_path: Path) -> None:
-    _engine_store(tmp_path)
+    engine_store(tmp_path)
     ids = store.read_table("id_map", "derived", tmp_path)
     extra = pl.DataFrame(
         {"sleeper_id": ["nt", "bye"], "gsis_id": ["G_NOTEAM", "G_BYE"], "nfl_team": [None, "NYJ"]}
@@ -36,8 +35,8 @@ def test_kickoffs_by_player_leave_out_players_with_no_team_or_no_game(tmp_path: 
 def test_lineup_names_the_swap_for_a_questionable_starter(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path)
-    _with(monkeypatch, injuries={"G_WR": ("Questionable", "Hamstring", None)})
+    engine_store(tmp_path)
+    patch_league(monkeypatch, injuries={"G_WR": ("Questionable", "Hamstring", None)})
     sunday = datetime(2026, 9, 20, 13, 0, tzinfo=EASTERN)
     kicks = {"G_WR": sunday, "G_DL": sunday + timedelta(hours=3), "G_QB": sunday}
     monkeypatch.setattr(_lineup, "_kickoffs_by_player", lambda week, data_dir=None: kicks)
@@ -55,7 +54,7 @@ def test_lineup_names_the_swap_for_a_questionable_starter(
 def test_long_term_notes_say_out_at_least_four_games_unless_the_curve_gives_a_chance(
     tmp_path: Path,
 ) -> None:
-    _engine_store(tmp_path)
+    engine_store(tmp_path)
     data, _ = _engine._league("t", data_dir=tmp_path)
     chances = pl.DataFrame(
         {

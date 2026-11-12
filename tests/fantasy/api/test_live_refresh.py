@@ -2,11 +2,13 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import polars as pl
 import pytest
 from fastapi.testclient import TestClient
 from store_fixture import write_rows
 
 from fantasy import api, data_api, live_refresh, store
+from fantasy._engine import current_week
 from fantasy._lock import pipeline_lock
 from fantasy.api_jobs import JobRunner
 from fantasy.live_refresh import LIVE_REFRESH_MINUTES, LiveRefresher
@@ -112,6 +114,11 @@ def test_error_is_recorded_lock_released_and_next_tick_runs(
     monkeypatch.setattr(sync_sleeper, "sync_week", sync)
     assert live.step(KICK + timedelta(minutes=LIVE_REFRESH_MINUTES))
     assert live.status()["last_error"] is None
+
+
+def test_current_week_is_the_highest_and_none_without_one() -> None:
+    assert current_week(pl.DataFrame({"current_week": [8, None, 9]})) == 9
+    assert current_week(pl.DataFrame(schema={"current_week": pl.Int64})) is None
 
 
 def test_schedule_read_failure_is_recorded(monkeypatch: pytest.MonkeyPatch) -> None:

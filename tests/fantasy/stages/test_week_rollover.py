@@ -1,6 +1,7 @@
 import polars as pl
 
-from fantasy.stages.week_rollover import LAST_WEEK, advance_finished_week
+from fantasy.config import REGULAR_SEASON_WEEKS
+from fantasy.stages.week_rollover import advance_finished_week
 
 SEASON = 2026
 
@@ -41,9 +42,9 @@ def test_stays_when_the_week_has_no_games() -> None:
 
 
 def test_does_not_pass_the_last_week_and_keeps_a_null_week() -> None:
-    games = schedule([(LAST_WEEK, 1, 0)])
+    games = schedule([(REGULAR_SEASON_WEEKS, 1, 0)])
 
-    assert advance_finished_week(leagues(LAST_WEEK), games, SEASON)["current_week"].to_list() == [
-        LAST_WEEK
-    ]
+    assert advance_finished_week(leagues(REGULAR_SEASON_WEEKS), games, SEASON)[
+        "current_week"
+    ].to_list() == [REGULAR_SEASON_WEEKS]
     assert advance_finished_week(leagues(None), games, SEASON)["current_week"].to_list() == [None]

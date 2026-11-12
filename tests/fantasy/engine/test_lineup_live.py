@@ -1,36 +1,25 @@
 """Lineup mid-week: finished games count their points; a player who is out is not slotted."""
 
-from dataclasses import replace
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
 
 import polars as pl
 import pytest
-from test_data_api_characterization import NOW, _engine_store
+from store_fixture import engine_store, patch_league
+from test_data_api_characterization import NOW
 
-from fantasy import _engine, _lineup, data_api
+from fantasy import _engine, data_api
 from fantasy.sim.availability import EASTERN, GAME_MINUTES
-
-
-def _with(monkeypatch: pytest.MonkeyPatch, **changes: Any) -> None:
-    real = _engine._league
-
-    def patched(league_key: str, *args, **kwargs):
-        data, mine = real(league_key, *args, **kwargs)
-        return replace(data, **changes), mine
-
-    monkeypatch.setattr(_lineup, "_league", patched)
 
 
 def test_a_player_whose_game_is_over_stays_in_the_lineup_with_his_points(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path)
+    engine_store(tmp_path)
     data, _ = _engine._league("t", data_dir=tmp_path)
     # his projection is gone (no future game row) but his game finished with 17.5 points
     gone = data.projections.filter(pl.col("gsis_id") != "G_WR")
-    _with(monkeypatch, projections=gone, live={"G_WR": (17.5, 0.0)})
+    patch_league(monkeypatch, projections=gone, live={"G_WR": (17.5, 0.0)})
     out = data_api.lineup("t", now=NOW, data_dir=tmp_path).filter(pl.col("gsis_id") == "G_WR")
     row = out.row(0, named=True)
     assert (row["projection"], row["actual"], row["game"]) == (17.5, 17.5, "Final")
@@ -39,8 +28,8 @@ def test_a_player_whose_game_is_over_stays_in_the_lineup_with_his_points(
 def test_a_player_who_is_out_is_left_on_the_bench(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path)
-    _with(monkeypatch, injuries={"G_WR": ("Out", "", "")})
+    engine_store(tmp_path)
+    patch_league(monkeypatch, injuries={"G_WR": ("Out", "", "")})
     row = (
         data_api.lineup("t", now=NOW, data_dir=tmp_path)
         .filter(pl.col("gsis_id") == "G_WR")
@@ -64,9 +53,9 @@ def test_the_cache_key_moves_with_the_clock_only_while_a_game_is_on() -> None:
 def test_a_player_mid_game_and_a_finished_one_keep_their_projection_inside_their_range(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _engine_store(tmp_path)
+    engine_store(tmp_path)
     # the QB banked 25 with 40% of his game left; the WR finished with 17.5
-    _with(monkeypatch, live={"G_QB": (25.0, 0.4), "G_WR": (17.5, 0.0)})
+    patch_league(monkeypatch, live={"G_QB": (25.0, 0.4), "G_WR": (17.5, 0.0)})
     out = data_api.lineup("t", now=NOW, data_dir=tmp_path)
     qb = out.filter(pl.col("gsis_id") == "G_QB").row(0, named=True)
     wr = out.filter(pl.col("gsis_id") == "G_WR").row(0, named=True)

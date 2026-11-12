@@ -2,11 +2,11 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from auth_fixture import GOOD
 
 from fantasy.auth import accounts, passwords
 
 NOW = datetime(2026, 11, 9, 12, 0, tzinfo=UTC)
-GOOD = "a long enough password"
 
 
 @pytest.fixture(autouse=True)

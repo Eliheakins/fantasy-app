@@ -227,20 +227,17 @@ def test_unpublished_earlier_season_still_stops_the_run(monkeypatch: pytest.Monk
 
 
 def test_pace_reads_only_the_columns_it_uses(monkeypatch: pytest.MonkeyPatch):
-    seen: dict[str, list[str] | None] = {}
+    seen: list[list[str]] = []
     full = _pace_frame(2024).with_columns(defteam=pl.lit("BBB"), sack=pl.lit(0.0), junk=pl.lit(1))
 
-    def reader(name: str):
-        def read(season: int, columns: list[str] | None = None) -> pl.DataFrame:
-            seen[name] = columns
-            assert columns is not None
-            return full.select(columns)  # a column the reader forgot to ask for would raise
-
-        return read
+    def read(season: int, columns: list[str] | None = None) -> pl.DataFrame:
+        assert columns is not None
+        seen.append(columns)
+        return full.select(columns)  # a column the reader forgot to ask for would raise
 
     monkeypatch.setattr(ingest_role, "seasons", lambda: [2024])
-    monkeypatch.setattr(ingest_role, "read_pbp", reader("pace"))
+    monkeypatch.setattr(ingest_role, "read_pbp", read)
 
     assert ingest_role.load_pace().height == 1
-    assert seen["pace"]
-    assert "junk" not in seen["pace"]
+    assert len(seen) == 1 and seen[0]
+    assert "junk" not in seen[0]

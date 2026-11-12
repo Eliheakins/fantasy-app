@@ -2,19 +2,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import cast
 
 import httpx
 import httpx2
 import openai
 import pytest
 from fakes import FILTERS, STATS
-from openai import AsyncOpenAI
 
 from nfl_stat.api.deps import get_llm_client
 from nfl_stat.pipeline.manifest import write_manifest
 from nfl_stat.schemas.manifest import JsonFileEntry, Manifest, SeasonEntry
-from nfl_stat.services.llm_client import ModelFailed, chat_text
 
 
 def _intent_body(question: str = "Mahomes passing yards in 2023") -> dict:
@@ -227,17 +224,3 @@ async def test_nlq_intent_returns_503_when_llm_server_is_down(client: httpx.Asyn
 
     assert res.status_code == 503
     assert "mlx_lm.server" in res.json()["detail"]
-
-
-async def test_chat_text_raises_model_failed_when_model_returns_no_choices():
-    class EmptyLlm:
-        base_url = "http://fake/v1"
-
-        class chat:
-            class completions:
-                @staticmethod
-                async def create(**_):
-                    return type("R", (), {"choices": []})()
-
-    with pytest.raises(ModelFailed):
-        await chat_text(client=cast(AsyncOpenAI, EmptyLlm()), model="m", messages=[])

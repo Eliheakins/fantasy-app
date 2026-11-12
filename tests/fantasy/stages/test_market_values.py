@@ -219,9 +219,7 @@ def test_past_trade_ratios_use_each_leagues_values_and_skip_unvalued_sides(tmp_p
         {**base, "roster_id": 3, "sleeper_id": "9", "action": "add"},  # no value
         {**base, "roster_id": 3, "sleeper_id": "2", "action": "drop"},
     ]
-    schema = store.SCHEMAS["transactions"]
-    frame = pl.DataFrame([{**dict.fromkeys(schema), **r} for r in sides], schema=schema)
-    store.write_table("transactions", frame, "raw", tmp_path)
+    write_rows(tmp_path, "transactions", sides, area="raw")
 
     ratios = sorted(past_trade_ratios(tmp_path))
 
@@ -252,9 +250,7 @@ def test_trade_market_reports_the_share_from_the_partners_side_and_skips_unfinis
         {**failed, "roster_id": 1, "sleeper_id": "2", "action": "add"},
         {**failed, "roster_id": 1, "sleeper_id": "1", "action": "drop"},
     ]
-    schema = store.SCHEMAS["transactions"]
-    frame = pl.DataFrame([{**dict.fromkeys(schema), **r} for r in sides], schema=schema)
-    store.write_table("transactions", frame, "raw", tmp_path)
+    write_rows(tmp_path, "transactions", sides, area="raw")
 
     overpay, underpay, unvalued = data_api.trade_market(
         "t", [(["00-1"], ["00-2"]), (["00-2"], ["00-1"]), (["00-2"], ["00-9"])], tmp_path

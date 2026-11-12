@@ -1,11 +1,14 @@
 """Team grades: the rank-to-letter rule and the per-position table."""
 
+from dataclasses import replace
+
 import polars as pl
 import pytest
 from test_odds import WEEKS, toy_league
 
 from fantasy.sim.depth import position_depth
 from fantasy.sim.grades import DEPTH_WEIGHT, STARTER_WEIGHT, grade_for_rank, team_grades
+from fantasy.sim.odds import LeagueData
 
 POSITIONS = ("QB", "RB", "WR", "TE")
 
@@ -118,7 +121,7 @@ def test_is_me_comes_from_the_teams_table() -> None:
     assert table.filter(pl.col("is_me"))["roster_id"].unique().to_list() == [2]
 
 
-def _with_bench() -> "object":
+def _with_bench() -> LeagueData:
     """Toy league where team 1 has two extra backup RBs and a starter RB on bye for 5 weeks."""
     data = toy_league()
     extra = [("t1_rb3", "RB", 10.0), ("t1_rb4", "RB", 9.0)]
@@ -133,13 +136,11 @@ def _with_bench() -> "object":
     proj = data.projections.filter(~((pl.col("gsis_id") == "t1_rb1") & (pl.col("week") <= 5)))
     rows = [(g, w, v) for g, _, v in extra for w in WEEKS]
     proj = pl.concat([proj, pl.DataFrame(rows, schema=proj.schema, orient="row")])
-    from dataclasses import replace
-
     return replace(data, rosters=rosters, projections=proj)
 
 
 def test_depth_is_zero_without_a_bench_and_positive_behind_a_bye_prone_starter() -> None:
-    depth = position_depth(_with_bench())  # type: ignore[arg-type]
+    depth = position_depth(_with_bench())
     cell = {(r["roster_id"], r["position"]): r["depth_per_week"] for r in depth.to_dicts()}
     assert cell[2, "QB"] == 0.0 and cell[2, "RB"] == 0.0 and cell[1, "QB"] == 0.0
     assert cell[1, "RB"] > 0.0

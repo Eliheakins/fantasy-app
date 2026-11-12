@@ -49,7 +49,24 @@ def test_columns_are_cast_to_their_storage_types():
     assert out.schema["number_of_pass_rushers"] == pl.Int32
     assert out.schema["offense_personnel"] == pl.String
     assert out.schema["avg_separation"] == pl.Float64
+
+
+def test_pbp_base_keeps_pass_and_run_plays_and_casts_the_join_keys():
+    pbp = pl.DataFrame(
+        {
+            "play_id": [1, 2, 3],
+            "season": [2023, 2023, 2023],
+            "week": [1, 1, 1],
+            "play_type": ["pass", "punt", "run"],
+            "passer_player_id": ["a", None, None],
+        }
+    )
+
+    out = nfl_pipeline._prepare_pbp_base(pbp)
+
+    assert out["play_id"].to_list() == [1, 3]
     assert out.schema["season"] == pl.Int32
+    assert out.schema["week"] == pl.Int32
     assert out.schema["passer_player_id"] == pl.String
 
 

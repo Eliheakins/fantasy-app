@@ -111,8 +111,6 @@ def test_sync_week_replaces_only_that_weeks_rows(tmp_path: Path) -> None:
 
 
 def test_missing_kickoffs_names_teams_with_a_game_but_no_time() -> None:
-    import polars as pl
-
     from fantasy.sim.availability import missing_kickoffs
 
     schedule = pl.DataFrame(

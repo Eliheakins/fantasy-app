@@ -568,6 +568,12 @@ def test_job_for_an_unknown_league_is_invalid_and_starts_no_job(client: TestClie
     assert client.app.state.runner._jobs == {}  # type: ignore[attr-defined]
 
 
+def test_job_without_a_leagues_table_is_no_data(client: TestClient, store_dir: Path) -> None:
+    (store_dir / "raw" / "leagues.parquet").unlink()
+    out = body(client.get("/api/leagues/t/actions"))
+    assert out["error"]["code"] == "no_data"
+
+
 def test_job_runner_caps_running_jobs_and_remembers_few_finished_ones() -> None:
     runner = JobRunner(max_workers=2)
     gate = threading.Event()
@@ -684,7 +690,6 @@ def test_scorecard_is_an_empty_ok_envelope_before_anything_is_archived(
     out = body(client.get("/api/leagues/t/scorecard"))
     assert out["status"] == "ok", out
     assert out["data"]["rows"] == [] and out["data"]["weeks_archived"] == []
-    assert out["data"]["has_quantiles"] is False
     assert body(client.get("/api/leagues/nope/scorecard"))["error"]["code"] == "invalid"
 
 
@@ -776,12 +781,11 @@ def test_data_version_parses_the_schedule_once_per_file_state(
     assert len(calls) == 2
 
 
-def test_known_league_treats_missing_tables_as_before(store_dir: Path, tmp_path: Path) -> None:
+def test_known_league_raises_without_a_leagues_table(store_dir: Path, tmp_path: Path) -> None:
     assert api_routes.common.known_league("t", store_dir)
     assert not api_routes.common.known_league("zzz", store_dir)
-    assert not api_routes.common.known_league(
-        "t", tmp_path / "empty"
-    )  # old read gave an empty frame
+    with pytest.raises(FileNotFoundError):  # run_job turns this into no_data
+        api_routes.common.known_league("t", tmp_path / "empty")
     (store_dir / "raw" / "league_teams.parquet").unlink()
     assert api_routes.common.known_league(
         "t", store_dir

@@ -3,6 +3,7 @@ from typing import Any
 
 import polars as pl
 
+from fantasy.sim.blend import blend
 from fantasy.stages.sleeper_projections import snapshot_frame
 
 
@@ -30,10 +31,6 @@ def test_score_stats_maps_sleepers_coarse_kicker_buckets_to_league_scoring() -> 
 
 
 def test_blend_averages_where_sleeper_has_a_projection_and_keeps_ours_elsewhere() -> None:
-    import polars as pl
-
-    from fantasy.sim.blend import blend
-
     ours = pl.DataFrame({"gsis_id": ["a", "b"], "week": [7, 7], "projection": [10.0, 8.0]})
     theirs = pl.DataFrame({"gsis_id": ["a"], "week": [7], "other": [14.0]})
     out = blend(ours, theirs, "gsis_id")
@@ -41,20 +38,12 @@ def test_blend_averages_where_sleeper_has_a_projection_and_keeps_ours_elsewhere(
 
 
 def test_blend_does_not_duplicate_rows_when_sleeper_has_two_rows_for_one_player_week() -> None:
-    import polars as pl
-
-    from fantasy.sim.blend import blend
-
     ours = pl.DataFrame({"gsis_id": ["a"], "week": [7], "projection": [10.0]})
     theirs = pl.DataFrame({"gsis_id": ["a", "a"], "week": [7, 7], "other": [14.0, 20.0]})
     assert blend(ours, theirs, "gsis_id").height == 1
 
 
 def test_blend_ignores_a_sleeper_zero_only_for_keys_marked_zero_is_missing() -> None:
-    import polars as pl
-
-    from fantasy.sim.blend import blend
-
     ours = pl.DataFrame({"gsis_id": ["a", "b"], "week": [8, 8], "projection": [10.0, 10.0]})
     theirs = pl.DataFrame({"gsis_id": ["a", "b"], "week": [8, 8], "other": [0.0, 0.0]})
     out = blend(ours, theirs, "gsis_id", frozenset({"a"}))

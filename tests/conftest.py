@@ -5,17 +5,16 @@ from pathlib import Path
 
 import polars as pl
 import pytest
+from auth_fixture import make_client
 from fastapi.testclient import TestClient
-from store_fixture import LID, PAIRS, POSITIONS, SCORES, _engine_store, write_rows
+from store_fixture import LID, PAIRS, POSITIONS, SCORES, engine_store, write_rows
 
-from fantasy import _engine, api, store
-
-CSRF_HEADER = {"X-Requested-With": "fantasy-app"}
+from fantasy import _engine, store
 
 
 @pytest.fixture
 def store_dir(tmp_path: Path) -> Path:
-    _engine_store(tmp_path)
+    engine_store(tmp_path)
     write_rows(
         tmp_path,
         "sim_season",
@@ -46,9 +45,7 @@ def store_dir(tmp_path: Path) -> Path:
 @pytest.fixture
 def client(store_dir: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     monkeypatch.setenv("LIVE_REFRESH", "off")  # no background thread in API tests
-    with TestClient(
-        api.create_app(data_dir=store_dir), base_url="http://localhost", headers=CSRF_HEADER
-    ) as c:
+    with make_client(store_dir) as c:
         yield c
 
 

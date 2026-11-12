@@ -136,11 +136,9 @@ def test_a_big_projection_uses_its_own_size_tiers_spread() -> None:
 
 
 def test_persistent_variance_of_a_game_in_progress_scales_with_the_share_left() -> None:
-    from fantasy.sim.odds import TAU, lineup_moments
-
     players = [Player("a", "WR", 5.0), Player("b", "WR", 8.0)]
     cv = {"WR": 0.5}
-    _, _, full = lineup_moments(players, cv, {})
-    _, _, half = lineup_moments(players, cv, {}, shares={"a": 0.5})
-    assert full == pytest.approx(2 * TAU["WR"] ** 2)
-    assert half == pytest.approx(TAU["WR"] ** 2 * (1 + 0.25))
+    _, _, full = odds.lineup_moments(players, cv, {})
+    _, _, half = odds.lineup_moments(players, cv, {}, shares={"a": 0.5})
+    assert full == pytest.approx(2 * odds.TAU["WR"] ** 2)
+    assert half == pytest.approx(odds.TAU["WR"] ** 2 * (1 + 0.25))

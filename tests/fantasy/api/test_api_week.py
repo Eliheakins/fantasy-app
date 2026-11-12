@@ -81,10 +81,7 @@ def test_calendar_with_no_settings_has_no_waiver_day(client: TestClient, league:
 
 
 def snapshot(path: Path, rows: list[dict[str, Any]]) -> None:
-    schema = store.SCHEMAS["sleeper_player_status"]
-    blank = dict.fromkeys(schema)
-    frame = pl.DataFrame([{**blank, **r} for r in rows], schema=schema)
-    store.write_table("sleeper_player_status", frame, "archive", path)
+    write_rows(path, "sleeper_player_status", rows, area="archive")
 
 
 def snap(sleeper_id: str, fetched_at: str, injury: str | None) -> dict[str, Any]:
