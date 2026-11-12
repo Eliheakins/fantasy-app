@@ -1367,3 +1367,10 @@ A whole-repo review (quality, language and security reviewers per slice, plus re
 - The Moves toggle is a Radix single ToggleGroup bound to `?rank=playoffs` (absent means rest of season). The default `waivers` path is unchanged, so the digest-style callers share the cache.
 - Streamers gain `playoff_points` (sum of `streaming_projection` over `horizon_weeks(..., "playoffs")`, so none after the final). Ranking stays by `next_three`; no `sort=playoffs` (not needed yet). The table shows the column only in playoff mode, with a note that far-week K/DEF numbers rest on team strength and byes and are untested.
 - `/api/leagues` rows gain `playoff_weeks` (bracket length from size and round type) so the status line can say "playoff weeks 15 to 17".
+
+## 2026-11-12: injured-player stash planner
+
+- `GET /api/leagues/{l}/stash` lists players flagged IR, PUP or Out (the same `data.injuries` flags the to-do and lineup code read) at QB, RB, WR and TE who are free agents or on my roster: my players all, free agents the top 15, sorted by projected points over the playoff weeks (`horizon_weeks(data, "playoffs")`, empty after the final).
+- Points are the projections as they already are (injury and availability scaled); there is no IR return model. `first_week` is the first projected week from the current one with points above zero, and the UI says it is when projections resume, not a medical estimate.
+- Open IR slots are `reserve_slots` from `leagues.settings` minus my rostered players on IR, floored at 0, and 0 when the setting is missing. `ir_eligible` reuses `_actions.reserve_rules` (IR and PUP always, Out and others only with `reserve_allow_*`).
+- The Moves waivers view shows the section below Adds and an "Open IR slot" note (not an alert) only when a slot is open and a listed player is IR-eligible.

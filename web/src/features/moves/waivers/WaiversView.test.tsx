@@ -26,6 +26,7 @@ const base = {
   def: ready([{ unit: "DEF", name: "Jets", team: "NYJ", is_mine: true, this_week: 8, next_three: 20, playoff_points: 24 }]),
   kickers: { kind: "no_data", message: "x" } as ApiState<never[]>,
   weeks: { kind: "loading" } as ApiState<never[]>,
+  stash: ready({ open_ir_slots: 0, rows: [] }),
   selected: null,
   onSelect: () => {},
   rank: "ros" as const,
@@ -110,5 +111,71 @@ describe("WaiversView", () => {
       expect(screen.getAllByText("Playoff weeks (pts)").length).toBeGreaterThan(0);
       expect(screen.getAllByText(/untested/).length).toBeGreaterThan(0);
     });
+  });
+});
+
+const injured = {
+  gsis_id: "g9",
+  full_name: "Hurt Back",
+  position: "RB",
+  status: "IR",
+  owner: null,
+  is_mine: false,
+  ir_eligible: true,
+  first_week: 12,
+  playoff_points: 31.5,
+};
+
+describe("StashSection", () => {
+  it("shows loading, error and empty states", () => {
+    const { rerender } = render(<WaiversView {...base} stash={{ kind: "loading" }} />);
+    expect(screen.getByRole("heading", { name: "Stash for playoffs" })).toBeInTheDocument();
+    rerender(
+      <MemoryRouter>
+        <WaiversView {...base} stash={{ kind: "error", error: { message: "boom", code: "server" } } as ApiState<never>} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(/boom/)).toBeInTheDocument();
+    rerender(
+      <MemoryRouter>
+        <WaiversView {...base} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("No injured players worth stashing")).toBeInTheDocument();
+  });
+  it("lists rows with owner, status and first projected week", () => {
+    const mine = {
+      ...injured,
+      gsis_id: "g8",
+      full_name: "My Man",
+      status: "Out",
+      is_mine: true,
+      owner: "Mine",
+      ir_eligible: false,
+      first_week: null,
+    };
+    render(<WaiversView {...base} stash={ready({ open_ir_slots: 0, rows: [injured, mine] })} />);
+    const table = screen.getByRole("table", { name: "Injured players to stash" });
+    expect(within(table).getByRole("link", { name: "Hurt Back" })).toHaveAttribute("href", "/players/g9");
+    expect(within(table).getByText("Free agent")).toBeInTheDocument();
+    expect(within(table).getByText("Yours")).toBeInTheDocument();
+    expect(within(table).getByText("12")).toBeInTheDocument();
+    expect(screen.getByText(/not a medical estimate/)).toBeInTheDocument();
+  });
+  it("shows the open IR callout as a note with a link to the section", () => {
+    render(<WaiversView {...base} stash={ready({ open_ir_slots: 1, rows: [injured] })} />);
+    const note = screen.getByRole("complementary", { name: "Open IR slot" });
+    expect(within(note).getByRole("link")).toHaveAttribute("href", "#stash-for-playoffs");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+  it("hides the callout with no open slot or no eligible player", () => {
+    const { rerender } = render(<WaiversView {...base} stash={ready({ open_ir_slots: 0, rows: [injured] })} />);
+    expect(screen.queryByRole("complementary", { name: "Open IR slot" })).toBeNull();
+    rerender(
+      <MemoryRouter>
+        <WaiversView {...base} stash={ready({ open_ir_slots: 2, rows: [{ ...injured, ir_eligible: false }] })} />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole("complementary", { name: "Open IR slot" })).toBeNull();
   });
 });

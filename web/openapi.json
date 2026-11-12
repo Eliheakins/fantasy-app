@@ -1867,6 +1867,63 @@
         }
       }
     },
+    "/api/leagues/{league}/stash": {
+      "get": {
+        "summary": "Stash",
+        "operationId": "stash_api_leagues__league__stash_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_StashData_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/live-score": {
       "get": {
         "summary": "Live Score",
@@ -4342,6 +4399,59 @@
           "started_at"
         ],
         "title": "Envelope[SignedOut]"
+      },
+      "Envelope_StashData_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StashData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[StashData]"
       },
       "Envelope_StatusData_": {
         "properties": {
@@ -10124,6 +10234,96 @@
         ],
         "title": "SlotCall",
         "description": "Display only: how often this slot's starter outscores the best eligible bench player."
+      },
+      "StashData": {
+        "properties": {
+          "open_ir_slots": {
+            "type": "integer",
+            "title": "Open Ir Slots"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/StashRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "open_ir_slots",
+          "rows"
+        ],
+        "title": "StashData"
+      },
+      "StashRow": {
+        "properties": {
+          "gsis_id": {
+            "type": "string",
+            "title": "Gsis Id"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          },
+          "is_mine": {
+            "type": "boolean",
+            "title": "Is Mine"
+          },
+          "ir_eligible": {
+            "type": "boolean",
+            "title": "Ir Eligible"
+          },
+          "first_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Week"
+          },
+          "playoff_points": {
+            "type": "number",
+            "title": "Playoff Points"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gsis_id",
+          "full_name",
+          "position",
+          "status",
+          "owner",
+          "is_mine",
+          "ir_eligible",
+          "first_week",
+          "playoff_points"
+        ],
+        "title": "StashRow"
       },
       "StatusChangeRow": {
         "properties": {

@@ -1,6 +1,8 @@
 import type { components } from "@/api/schema";
 
 export type WaiverRow = components["schemas"]["WaiverRow"];
+export type StashData = components["schemas"]["StashData"];
+export type StashRow = components["schemas"]["StashRow"];
 export type StreamerRow = components["schemas"]["StreamerRow"];
 export type PlayerWeekRow = components["schemas"]["PlayerWeekRow"];
 
@@ -21,3 +23,7 @@ export const STREAM_PLAYOFF_NOTE =
 
 /** "playoff weeks 15 to 17" for the status line and caption; the weeks are omitted until the league is known. */
 export const playoffLabel = (w: PlayoffWeeks): string => (w ? `playoff weeks ${w.first} to ${w.last}` : "playoff weeks");
+
+export const STASH_CAPTION =
+  "Injured free agents and your own injured players, ranked by projected points in the playoff weeks. First projected week is when our projections resume, not a medical estimate.";
+export const STASH_ANCHOR = "stash-for-playoffs";

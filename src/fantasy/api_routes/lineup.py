@@ -13,6 +13,7 @@ from fantasy.api_models import (
     HoleRow,
     LineupRow,
     ScheduleRow,
+    StashData,
     StreamerRow,
     StrengthRow,
 )
@@ -50,3 +51,8 @@ def strength(league: str, ctx: Ctx) -> Any:
 @router.get("/leagues/{league}/holes", response_model=Envelope[list[HoleRow]])
 def holes(league: str, ctx: Ctx) -> Any:
     return guarded(lambda: data_api.holes(league, ctx.data_dir, ctx.team))
+
+
+@router.get("/leagues/{league}/stash", response_model=Envelope[StashData])
+def stash(league: str, ctx: Ctx) -> Any:
+    return guarded(lambda: data_api.stash(league, ctx.data_dir, ctx.team))

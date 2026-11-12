@@ -20,10 +20,12 @@ import {
   type Rank,
   STREAM_CAPTION,
   STREAM_METHOD,
+  type StashData,
   type StreamerRow,
   type WaiverRow,
 } from "./logic";
 import { PlayerWeeksChart } from "./PlayerWeeksChart";
+import { OpenIrCallout, StashSection } from "./StashSection";
 import { StreamerTable } from "./StreamerTable";
 
 type ViewProps = {
@@ -31,6 +33,7 @@ type ViewProps = {
   def: ApiState<StreamerRow[]>;
   kickers: ApiState<StreamerRow[]>;
   weeks: ApiState<PlayerWeekRow[]>;
+  stash: ApiState<StashData>;
   selected: string | null;
   onSelect: (gsisId: string) => void;
   who?: Who;
@@ -54,6 +57,7 @@ export function WaiversView({
   def,
   kickers,
   weeks,
+  stash,
   selected,
   onSelect,
   who = whoFor(null),
@@ -72,6 +76,7 @@ export function WaiversView({
   const count = adds.kind === "ready" ? `, ${adds.data.length} adds` : "";
   return (
     <div className="space-y-8">
+      {stash.kind === "ready" && <OpenIrCallout data={stash.data} />}
       <Section title="Adds" caption={rank === "playoffs" ? ADDS_CAPTION_PLAYOFFS : ADDS_CAPTION} howCalculated={ADDS_METHOD}>
         <ToggleGroup
           type="single"
@@ -109,6 +114,7 @@ export function WaiversView({
           }
         </ApiBoundary>
       </Section>
+      <StashSection state={stash} />
       <Section title="Streaming: defense and kicker" caption={STREAM_CAPTION} howCalculated={STREAM_METHOD}>
         <StreamerTable label="Defenses" state={def} mineMarker={mineMarker} playoffs={rank === "playoffs"} />
         <StreamerTable label="Kickers" state={kickers} mineMarker={mineMarker} playoffs={rank === "playoffs"} />
@@ -147,6 +153,7 @@ export function WaiversContent() {
   const adds = useLeagueApi<WaiverRow[]>(rank === "playoffs" ? "waivers?horizon=playoffs" : "waivers");
   const def = useLeagueApi<StreamerRow[]>("streamers?kind=DEF");
   const kickers = useLeagueApi<StreamerRow[]>("streamers?kind=K");
+  const stash = useLeagueApi<StashData>("stash");
   const weeks = useEnvelopeQuery<PlayerWeekRow[]>(
     league && selected ? `/api/leagues/${encodeURIComponent(league)}/player-weeks?gsis_id=${encodeURIComponent(selected)}&n=4` : null,
   );
@@ -156,6 +163,7 @@ export function WaiversContent() {
       def={def}
       kickers={kickers}
       weeks={weeks}
+      stash={stash}
       selected={selected}
       onSelect={(id) => setSelection({ league, id })}
       who={who}

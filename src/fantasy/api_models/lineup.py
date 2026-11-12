@@ -107,6 +107,23 @@ class HoleRow(Row):
     fill_ins: list[FillInRow]
 
 
+class StashRow(Row):
+    gsis_id: str
+    full_name: str
+    position: str
+    status: str
+    owner: str | None
+    is_mine: bool
+    ir_eligible: bool
+    first_week: int | None
+    playoff_points: float
+
+
+class StashData(Row):
+    open_ir_slots: int
+    rows: list[StashRow]
+
+
 class StreamerRow(Row):
     unit: str
     name: str | None

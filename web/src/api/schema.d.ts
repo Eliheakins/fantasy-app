@@ -726,6 +726,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/stash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stash */
+        get: operations["stash_api_leagues__league__stash_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/live-score": {
         parameters: {
             query?: never;
@@ -1411,6 +1428,18 @@ export interface components {
              */
             status: "ok" | "running" | "error";
             data: components["schemas"]["SignedOut"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[StashData] */
+        Envelope_StashData_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["StashData"] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -2966,6 +2995,34 @@ export interface components {
             alternative: string | null;
             /** Share */
             share: number | null;
+        };
+        /** StashData */
+        StashData: {
+            /** Open Ir Slots */
+            open_ir_slots: number;
+            /** Rows */
+            rows: components["schemas"]["StashRow"][];
+        };
+        /** StashRow */
+        StashRow: {
+            /** Gsis Id */
+            gsis_id: string;
+            /** Full Name */
+            full_name: string;
+            /** Position */
+            position: string;
+            /** Status */
+            status: string;
+            /** Owner */
+            owner: string | null;
+            /** Is Mine */
+            is_mine: boolean;
+            /** Ir Eligible */
+            ir_eligible: boolean;
+            /** First Week */
+            first_week: number | null;
+            /** Playoff Points */
+            playoff_points: number;
         };
         /** StatusChangeRow */
         StatusChangeRow: {
@@ -4564,6 +4621,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_HoleRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stash_api_leagues__league__stash_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_StashData_"];
                 };
             };
             /** @description Validation Error */

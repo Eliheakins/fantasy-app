@@ -10,7 +10,7 @@ vi.mock("@/lib/league", () => ({
   useLeague: () => ({ league: "a", leagues: { kind: "ready", data: [leagueRow] } }),
   useLeagueApi: (path: string): ApiState<never[]> => {
     paths.push(path);
-    return { kind: "ready", data: [] };
+    return { kind: "ready", data: path === "stash" ? { open_ir_slots: 0, rows: [] } : [] } as ApiState<never[]>;
   },
 }));
 vi.mock("@/lib/who", () => ({ useWho: () => ({ name: null }), whoFor: () => ({ name: null }) }));
