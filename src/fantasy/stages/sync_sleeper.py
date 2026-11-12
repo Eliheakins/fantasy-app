@@ -247,14 +247,24 @@ def _bracket_row(league_id: str, bracket: str, week: int, row: dict[str, Any]) -
     return out
 
 
+def _stored_bracket(league_id: str, bracket: str) -> pl.DataFrame:
+    """The bracket rows from the last sync (none if there was no sync or no such table yet)."""
+    try:
+        stored = store.read_table("playoff_brackets", "raw")
+    except FileNotFoundError:
+        return _frame("playoff_brackets", [])
+    return stored.filter((pl.col("league_id") == league_id) & (pl.col("bracket") == bracket))
+
+
 def bracket_frame(league_id: str, bracket: str, rows: Any, week: int) -> pl.DataFrame:
     """One bracket's games (`bracket` is "winners" or "losers"). Null or empty gives no rows; an
-    unreadable row is logged and the whole bracket skipped, so it cannot drop the league."""
+    unreadable payload is logged and the last stored rows of that bracket kept, so one odd
+    response mid-playoffs cannot wipe a good bracket or drop the league."""
     try:
         parsed = [_bracket_row(league_id, bracket, week, r) for r in rows or []]
     except (KeyError, ValueError, TypeError, AttributeError):
         log.warning("league %s: unreadable %s bracket", league_id, bracket, exc_info=True)
-        parsed = []
+        return _stored_bracket(league_id, bracket)
     return _frame("playoff_brackets", parsed)
 
 

@@ -148,7 +148,8 @@ export function tradeDeadlineTodos(
 }
 
 /** Lineup holes and IR moves as to-dos; the deadline is the lineup deadline (next kickoff). */
-export function holeTodos(league: LeagueRef, holes: readonly HoleRow[], lineupDeadline: string | null): Todo[] {
+export function holeTodos(league: LeagueRef, holes: readonly HoleRow[], lineupDeadline: string | null, phase: Phase = "season"): Todo[] {
+  if (phase === "out") return []; // an eliminated or non-playoff team has no lineup to cover
   return holes.map((h, i): Todo => {
     const base = {
       leagueKey: league.league_key,

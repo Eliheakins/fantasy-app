@@ -218,6 +218,30 @@ def test_a_malformed_bracket_keeps_the_league_ok(
     assert table("playoff_brackets").height == 0
 
 
+def test_a_stored_bracket_survives_a_malformed_payload(
+    world: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    good = FakeSleeper()
+    good.brackets = {"winners_bracket": [{"m": 1, "r": 1, "t1": 2, "t2": 1}]}
+    run(good, monkeypatch)
+    bad = FakeSleeper()
+    bad.brackets = {"winners_bracket": [{"m": "bad"}]}
+    run(bad, monkeypatch)
+    assert table("playoff_brackets")["m"].to_list() == [1]
+
+
+def test_an_empty_or_null_bracket_payload_clears_the_stored_bracket(
+    world: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    good = FakeSleeper()
+    good.brackets = {"winners_bracket": [{"m": 1, "r": 1, "t1": 2, "t2": 1}]}
+    run(good, monkeypatch)
+    empty = FakeSleeper()
+    empty.brackets = {"winners_bracket": None}
+    run(empty, monkeypatch)
+    assert table("playoff_brackets").height == 0
+
+
 def test_the_live_tick_makes_no_bracket_call(world: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     run(FakeSleeper(), monkeypatch)
     fake = FakeSleeper()

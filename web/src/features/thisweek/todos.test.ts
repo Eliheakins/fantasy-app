@@ -235,4 +235,9 @@ describe("holeTodos", () => {
     expect(t).toMatchObject({ kind: "ir", title: "Move Hurt to IR to open a roster spot" });
     expect(t.fillIns).toBeUndefined();
   });
+  it("adds no hole to-dos once the team is out", () => {
+    const holes: Parameters<typeof holeTodos>[1] = [{ kind: "ir_move", slot: "IR", player_name: "Hurt", fill_ins: [] }];
+    expect(holeTodos(league, holes, null, "out")).toEqual([]);
+    expect(holeTodos(league, holes, null, "season")).toHaveLength(1);
+  });
 });

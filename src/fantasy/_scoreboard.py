@@ -161,9 +161,10 @@ def _projected_week(
 def _playoff_label(data: LeagueData, mine: int, week: int) -> str | None:
     if data.current_week < data.playoff_start or week < data.playoff_start:
         return None
-    if not data.bracket:
+    winners = [m.r for m in data.bracket if m.bracket == "winners"]
+    if not winners:
         return None
-    n_rounds = max(m.r for m in data.bracket)
+    n_rounds = max(winners)
     round_no = round_of_week(week, data.playoff_start, data.round_type, n_rounds)
     return status_of(data.bracket, data.team_names, mine, round_no)
 

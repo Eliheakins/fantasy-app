@@ -151,3 +151,33 @@ def test_there_is_no_status_before_the_bracket_is_set_or_outside_the_playoffs(
     _store(tmp_path, ROUND_TWO, current=3)
     assert _status(tmp_path, 3, 1) is None
     assert _status(tmp_path, 9, 3) is None
+
+
+def test_losers_rows_do_not_stretch_the_week_to_round_map(tmp_path: Path) -> None:
+    final = {"t1_from_kind": "w", "t1_from_m": 1, "t2_from_kind": "w", "t2_from_m": 2}
+    winners = [
+        {"league_id": "L1", "bracket": "winners", "r": 1, "m": 1, "t1": 1, "t2": 4},
+        {"league_id": "L1", "bracket": "winners", "r": 1, "m": 2, "t1": 2, "t2": 3},
+        {"league_id": "L1", "bracket": "winners", "r": 2, "m": 3, "t1": 1, "t2": 2, "p": 1} | final,
+    ]
+    losers = [
+        {"league_id": "L1", "bracket": "losers", "r": r, "m": r, "t1": 3, "t2": 4}
+        for r in (1, 2, 3)
+    ]
+    _store(tmp_path, [*winners, *losers], current=16, start=14)
+    leagues = store.read_table("leagues", "raw", tmp_path).with_columns(
+        settings=pl.lit('{"playoff_round_type": 1}')
+    )
+    store.write_table("leagues", leagues, "raw", tmp_path)
+    assert _status(tmp_path, 1, 16) == "Round 2 vs Theirs"
+
+
+def test_a_league_with_an_unsupported_round_type_still_lists_with_no_playoff_weeks(
+    tmp_path: Path,
+) -> None:
+    engine_store(tmp_path)
+    leagues = store.read_table("leagues", "raw", tmp_path).with_columns(
+        playoff_teams=pl.lit(6, pl.Int64), settings=pl.lit('{"playoff_round_type": 3}')
+    )
+    store.write_table("leagues", leagues, "raw", tmp_path)
+    assert data_api.leagues(tmp_path)["playoff_weeks"].to_list() == [None]

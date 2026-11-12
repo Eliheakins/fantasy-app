@@ -125,7 +125,14 @@ def status_of(
     final = next((m for m in title if m.p == 1), None)
     if final is not None and final.w == roster_id and round_no >= final.r:
         return "Champion"
-    here = next((m for m in matches if m.r == round_no and roster_id in (m.t1, m.t2)), None)
+    here = next(
+        (
+            m
+            for m in matches
+            if m.bracket == "winners" and m.r == round_no and roster_id in (m.t1, m.t2)
+        ),
+        None,
+    )
     if here is not None:
         other = here.t2 if here.t1 == roster_id else here.t1
         opponent = names.get(other, str(other)) if isinstance(other, int) else "TBD"
@@ -156,5 +163,8 @@ def playoff_status(
     matches = _matches(lid, data_dir)
     if not matches:
         return None
-    round_no = round_of_week(week, start, _round_type(lid, data_dir), max(m.r for m in matches))
+    winners = [m for m in matches if m.bracket == "winners"]
+    if not winners:
+        return None
+    round_no = round_of_week(week, start, _round_type(lid, data_dir), max(m.r for m in winners))
     return status_of(matches, _names(lid, data_dir), roster_id, round_no)

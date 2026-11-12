@@ -5,6 +5,7 @@ Package-internal: `data_api` re-exports `leagues` and `scoring_labels`; `_live` 
 """
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,8 @@ import polars as pl
 
 from fantasy._engine import _read
 from fantasy.sim.bracket import playoff_weeks, round_type_of
+
+log = logging.getLogger(__name__)
 
 TEAM_COLUMNS = ["roster_id", "team_name", "wins", "losses", "ties", "points_for"]
 
@@ -25,6 +28,17 @@ def scoring_labels(scoring: dict[str, float], roster_positions: list[str]) -> li
     return labels
 
 
+def _playoff_weeks_or_none(teams: Any, settings: str | None) -> int | None:
+    """Weeks the bracket lasts; None with no playoff teams or a round type we cannot lay out."""
+    if not teams:
+        return None
+    try:
+        return playoff_weeks(int(teams), round_type_of(settings))
+    except ValueError:
+        log.warning("league settings have an unsupported playoff round type: no playoff weeks")
+        return None
+
+
 def leagues(data_dir: Path | None = None) -> pl.DataFrame:
     """One row per league with my team, record and scoring labels."""
     mine = _read("league_teams", data_dir).filter(pl.col("is_me"))
@@ -36,7 +50,7 @@ def leagues(data_dir: Path | None = None) -> pl.DataFrame:
         )
     ]
     lengths = [
-        playoff_weeks(int(teams), round_type_of(settings)) if teams else None
+        _playoff_weeks_or_none(teams, settings)
         for teams, settings in zip(joined["playoff_teams"], joined["settings"], strict=True)
     ]
     return joined.with_columns(

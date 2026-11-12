@@ -1382,3 +1382,10 @@ A whole-repo review (quality, language and security reviewers per slice, plus re
 - Flags, first match wins: "out" when the starter is Out or on IR (`_is_out`); "bye" when one of my players eligible for the slot has no game that week (the week is on the schedule and his team is not in it) and his average projection beats the slot's points; "weak" when the best free stand-in (`replacement_pool`, `stand_ins`, the same pool the valuer uses) beats the slot's points. Weeks with no schedule rows flag no byes.
 - The Lineup page switches views with `?view=ahead`. A flagged cell shows the flag as text with a hidden reason and a link to `/moves?league=...&pos=<slot>`; a flex slot links to Moves with no position.
 - The Moves adds table honours `?pos=QB|RB|WR|TE|K|DEF` client-side with a "Showing WR only, Show all" control. Adds hold skill players only, so K or DEF shows a note linking to the streaming section.
+
+## 2026-11-12: review fixes
+
+- Week-to-round mapping and the current-round match lookup use winners rows only; a losers bracket with more rounds no longer shifts the final week to the wrong round.
+- `leagues()` returns null `playoff_weeks` for a league whose round type or size has no template (logged), instead of failing `/api/leagues`. The web already treats null as no playoff window.
+- Cover and IR hole to-dos are skipped when the team's phase is "out"; they stay in the regular season.
+- `bracket_frame` keeps the league's last stored rows for that bracket when the payload is unreadable (logged); a null or empty payload still means no rows.

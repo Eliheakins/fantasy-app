@@ -52,7 +52,7 @@ export function useTodos(): TodosState {
     const digest = d?.kind === "ready" ? d.data : null;
     const state = deadlineWeekState(l.current_week, l.trade_deadline, l.playoff_week_start == null ? null : l.playoff_week_start - 1);
     return [
-      ...holeTodos(l, h?.kind === "ready" ? h.data : [], deadlines.lineup),
+      ...holeTodos(l, h?.kind === "ready" ? h.data : [], deadlines.lineup, phase),
       ...leagueTodos(l, a?.kind === "ready" ? a.data : [], digest?.waivers ?? [], deadlines, phase),
       ...tradeDeadlineTodos(l, digest?.trades ?? [], state, l.trade_deadline ?? null, deadlines.waiver, phase),
     ];
