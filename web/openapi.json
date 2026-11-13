@@ -966,6 +966,64 @@
         }
       }
     },
+    "/api/leagues/{league}/bracket": {
+      "get": {
+        "summary": "Bracket",
+        "description": "The winners bracket with each side's chance to win its round; no_data before it is set.",
+        "operationId": "bracket_api_leagues__league__bracket_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_BracketData_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/odds-history": {
       "get": {
         "summary": "Odds History",
@@ -1752,6 +1810,177 @@
         }
       }
     },
+    "/api/leagues/{league}/holes": {
+      "get": {
+        "summary": "Holes",
+        "operationId": "holes_api_leagues__league__holes_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_HoleRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/stash": {
+      "get": {
+        "summary": "Stash",
+        "operationId": "stash_api_leagues__league__stash_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_StashData_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/lineup-grid": {
+      "get": {
+        "summary": "Lineup Grid",
+        "operationId": "lineup_grid_api_leagues__league__lineup_grid_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "team",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Roster id to view as; omitted means my team (Sleeper is_me)",
+              "title": "Team"
+            },
+            "description": "Roster id to view as; omitted means my team (Sleeper is_me)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_LineupGrid_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/leagues/{league}/live-score": {
       "get": {
         "summary": "Live Score",
@@ -2085,6 +2314,55 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Envelope_list_MarketValueRow__"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leagues/{league}/market-history": {
+      "get": {
+        "summary": "Market History",
+        "operationId": "market_history_api_leagues__league__market_history_get",
+        "parameters": [
+          {
+            "name": "league",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "League"
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 40,
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Envelope_list_MarketHistoryRow__"
                 }
               }
             }
@@ -2604,6 +2882,20 @@
             }
           },
           {
+            "name": "horizon",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "ros",
+                "playoffs"
+              ],
+              "type": "string",
+              "default": "ros",
+              "title": "Horizon"
+            }
+          },
+          {
             "name": "team",
             "in": "query",
             "required": false,
@@ -3045,6 +3337,197 @@
         ],
         "title": "AssetRow"
       },
+      "BracketData": {
+        "properties": {
+          "rounds": {
+            "items": {
+              "$ref": "#/components/schemas/BracketRound"
+            },
+            "type": "array",
+            "title": "Rounds"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rounds"
+        ],
+        "title": "BracketData"
+      },
+      "BracketMatch": {
+        "properties": {
+          "m": {
+            "type": "integer",
+            "title": "M"
+          },
+          "place": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Place"
+          },
+          "winner": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Winner"
+          },
+          "t1": {
+            "$ref": "#/components/schemas/BracketSide"
+          },
+          "t2": {
+            "$ref": "#/components/schemas/BracketSide"
+          },
+          "t1_p_win": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "T1 P Win"
+          },
+          "t2_p_win": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "T2 P Win"
+          },
+          "is_mine": {
+            "type": "boolean",
+            "title": "Is Mine"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "m",
+          "place",
+          "winner",
+          "t1",
+          "t2",
+          "t1_p_win",
+          "t2_p_win",
+          "is_mine"
+        ],
+        "title": "BracketMatch"
+      },
+      "BracketRound": {
+        "properties": {
+          "round": {
+            "type": "integer",
+            "title": "Round"
+          },
+          "weeks": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Weeks"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/BracketMatch"
+            },
+            "type": "array",
+            "title": "Matches"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "round",
+          "weeks",
+          "matches"
+        ],
+        "title": "BracketRound"
+      },
+      "BracketSide": {
+        "properties": {
+          "roster_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Roster Id"
+          },
+          "team_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Name"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "from_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Kind"
+          },
+          "from_m": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From M"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "roster_id",
+          "team_name",
+          "seed",
+          "from_kind",
+          "from_m"
+        ],
+        "title": "BracketSide"
+      },
       "CatalogFilter": {
         "properties": {
           "id": {
@@ -3232,6 +3715,59 @@
         ],
         "title": "DigestData"
       },
+      "Envelope_BracketData_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BracketData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[BracketData]"
+      },
       "Envelope_DigestData_": {
         "properties": {
           "status": {
@@ -3390,6 +3926,59 @@
           "started_at"
         ],
         "title": "Envelope[InviteCreated]"
+      },
+      "Envelope_LineupGrid_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LineupGrid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[LineupGrid]"
       },
       "Envelope_Lookup_": {
         "properties": {
@@ -3920,6 +4509,59 @@
           "started_at"
         ],
         "title": "Envelope[SignedOut]"
+      },
+      "Envelope_StashData_": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StashData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[StashData]"
       },
       "Envelope_StatusData_": {
         "properties": {
@@ -4467,6 +5109,63 @@
         ],
         "title": "Envelope[list[FoundTradeRow]]"
       },
+      "Envelope_list_HoleRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/HoleRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[HoleRow]]"
+      },
       "Envelope_list_LeagueRow__": {
         "properties": {
           "status": {
@@ -4751,6 +5450,63 @@
           "started_at"
         ],
         "title": "Envelope[list[ManagerGradeRow]]"
+      },
+      "Envelope_list_MarketHistoryRow__": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "running",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "data": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MarketHistoryRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "data",
+          "error",
+          "started_at"
+        ],
+        "title": "Envelope[list[MarketHistoryRow]]"
       },
       "Envelope_list_MarketValueRow__": {
         "properties": {
@@ -6063,6 +6819,47 @@
         ],
         "title": "Envelope[list[WinNeedRow]]"
       },
+      "FillInRow": {
+        "properties": {
+          "gsis_id": {
+            "type": "string",
+            "title": "Gsis Id"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "projection": {
+            "type": "number",
+            "title": "Projection"
+          },
+          "drop_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Drop Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gsis_id",
+          "full_name",
+          "position",
+          "projection",
+          "drop_name"
+        ],
+        "title": "FillInRow"
+      },
       "FoundTradeRow": {
         "properties": {
           "partner": {
@@ -6383,6 +7180,71 @@
         ],
         "title": "GameDayPoint"
       },
+      "GridRow": {
+        "properties": {
+          "week": {
+            "type": "integer",
+            "title": "Week"
+          },
+          "slot": {
+            "type": "string",
+            "title": "Slot"
+          },
+          "gsis_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gsis Id"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "points": {
+            "type": "number",
+            "title": "Points"
+          },
+          "flag": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "bye",
+                  "out",
+                  "weak"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flag"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "week",
+          "slot",
+          "gsis_id",
+          "full_name",
+          "points",
+          "flag"
+        ],
+        "title": "GridRow"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -6446,6 +7308,51 @@
           "data_ready"
         ],
         "title": "HealthResponse"
+      },
+      "HoleRow": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bye",
+              "out",
+              "empty",
+              "ir_move"
+            ],
+            "title": "Kind"
+          },
+          "slot": {
+            "type": "string",
+            "title": "Slot"
+          },
+          "player_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Player Name"
+          },
+          "fill_ins": {
+            "items": {
+              "$ref": "#/components/schemas/FillInRow"
+            },
+            "type": "array",
+            "title": "Fill Ins"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "slot",
+          "player_name",
+          "fill_ins"
+        ],
+        "title": "HoleRow"
       },
       "IdeasInfo": {
         "properties": {
@@ -6726,6 +7633,39 @@
             ],
             "title": "Current Week"
           },
+          "playoff_week_start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Week Start"
+          },
+          "playoff_teams": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Teams"
+          },
+          "playoff_weeks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Weeks"
+          },
           "num_teams": {
             "anyOf": [
               {
@@ -6821,6 +7761,37 @@
               }
             ],
             "title": "Trade Deadline"
+          },
+          "playoff_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Label"
+          },
+          "team_phase": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "regular",
+                  "playing",
+                  "bye",
+                  "consolation",
+                  "eliminated",
+                  "champion",
+                  "over"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Phase"
           }
         },
         "additionalProperties": false,
@@ -6830,6 +7801,9 @@
           "league_id",
           "name",
           "current_week",
+          "playoff_week_start",
+          "playoff_teams",
+          "playoff_weeks",
           "num_teams",
           "roster_id",
           "team_name",
@@ -6839,9 +7813,44 @@
           "points_for",
           "scoring_labels",
           "record",
-          "trade_deadline"
+          "trade_deadline",
+          "playoff_label",
+          "team_phase"
         ],
         "title": "LeagueRow"
+      },
+      "LineupGrid": {
+        "properties": {
+          "weeks": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Weeks"
+          },
+          "playoff_weeks": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Playoff Weeks"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/GridRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "weeks",
+          "playoff_weeks",
+          "rows"
+        ],
+        "title": "LineupGrid"
       },
       "LineupRow": {
         "properties": {
@@ -7207,6 +8216,25 @@
           "bench_points_left"
         ],
         "title": "ManagerGradeRow"
+      },
+      "MarketHistoryRow": {
+        "properties": {
+          "day": {
+            "type": "string",
+            "title": "Day"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "day",
+          "value"
+        ],
+        "title": "MarketHistoryRow"
       },
       "MarketSummary": {
         "properties": {
@@ -8901,6 +9929,17 @@
             ],
             "title": "Status"
           },
+          "playoff_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Label"
+          },
           "a": {
             "$ref": "#/components/schemas/ScoreboardSide"
           },
@@ -8914,6 +9953,7 @@
           "week",
           "matchup_id",
           "status",
+          "playoff_label",
           "a",
           "b"
         ],
@@ -9011,10 +10051,6 @@
             "type": "array",
             "title": "Weeks Scored"
           },
-          "has_quantiles": {
-            "type": "boolean",
-            "title": "Has Quantiles"
-          },
           "sleeper_first_fetch": {
             "anyOf": [
               {
@@ -9034,7 +10070,6 @@
           "excluded",
           "weeks_archived",
           "weeks_scored",
-          "has_quantiles",
           "sleeper_first_fetch"
         ],
         "title": "ScorecardData"
@@ -9441,6 +10476,96 @@
         "title": "SlotCall",
         "description": "Display only: how often this slot's starter outscores the best eligible bench player."
       },
+      "StashData": {
+        "properties": {
+          "open_ir_slots": {
+            "type": "integer",
+            "title": "Open Ir Slots"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/StashRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "open_ir_slots",
+          "rows"
+        ],
+        "title": "StashData"
+      },
+      "StashRow": {
+        "properties": {
+          "gsis_id": {
+            "type": "string",
+            "title": "Gsis Id"
+          },
+          "full_name": {
+            "type": "string",
+            "title": "Full Name"
+          },
+          "position": {
+            "type": "string",
+            "title": "Position"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner"
+          },
+          "is_mine": {
+            "type": "boolean",
+            "title": "Is Mine"
+          },
+          "ir_eligible": {
+            "type": "boolean",
+            "title": "Ir Eligible"
+          },
+          "first_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Week"
+          },
+          "playoff_points": {
+            "type": "number",
+            "title": "Playoff Points"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "gsis_id",
+          "full_name",
+          "position",
+          "status",
+          "owner",
+          "is_mine",
+          "ir_eligible",
+          "first_week",
+          "playoff_points"
+        ],
+        "title": "StashRow"
+      },
       "StatusChangeRow": {
         "properties": {
           "sleeper_id": {
@@ -9622,6 +10747,17 @@
               }
             ],
             "title": "Next Three"
+          },
+          "playoff_points": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Points"
           }
         },
         "additionalProperties": false,
@@ -9632,7 +10768,8 @@
           "team",
           "is_mine",
           "this_week",
-          "next_three"
+          "next_three",
+          "playoff_points"
         ],
         "title": "StreamerRow"
       },
@@ -10456,6 +11593,17 @@
       },
       "WinProbabilityData": {
         "properties": {
+          "playoff_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Label"
+          },
           "script": {
             "anyOf": [
               {
@@ -10512,6 +11660,7 @@
         "additionalProperties": false,
         "type": "object",
         "required": [
+          "playoff_label",
           "script",
           "swap",
           "comparison",

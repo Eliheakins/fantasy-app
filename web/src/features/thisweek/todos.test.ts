@@ -1,5 +1,6 @@
 import { rankTodos } from "@/features/effects/effect";
-import { type Todo, leagueTodos, orderByDeadline } from "./todos";
+import { phaseOf } from "@/features/effects/phase";
+import { type Todo, holeTodos, leagueTodos, orderByDeadline, tradeDeadlineTodos } from "./todos";
 
 const todo = (id: string, over: Partial<Todo> = {}): Todo => ({
   id,
@@ -11,6 +12,7 @@ const todo = (id: string, over: Partial<Todo> = {}): Todo => ({
   href: "/lineup?league=a",
   effect: { playoffPoints: null, points: null },
   deadlineDay: null,
+  sleeperUrl: null,
   ...over,
 });
 
@@ -131,5 +133,123 @@ describe("leagueTodos", () => {
   it("works with unknown deadlines", () => {
     const [t] = leagueTodos(league, [], [waiver], { lineup: null, waiver: null });
     expect(t?.deadlineDay).toBeNull();
+  });
+});
+
+describe("leagueTodos in the playoffs", () => {
+  const add = {
+    kind: "waiver",
+    get: "Coleman",
+    give: "Bernard",
+    playoff_delta: 0,
+    title_delta: 0.012,
+    delta_points: 3.1,
+    rank: 1,
+  } as never;
+  it("gates and ranks the stored add on the title change, since seeds are fixed", () => {
+    const [t] = leagueTodos(league, [], [add], deadlines, "playoffs");
+    expect(t?.title).toBe("Add Coleman, drop Bernard");
+    expect(t?.effect.playoffPoints).toBeCloseTo(1.2);
+    expect(t?.effect.odds).toBe("title");
+  });
+  it("skips an add whose title change is under the bar even if its playoff change is big", () => {
+    const small = { ...(add as object), playoff_delta: 0.05, title_delta: 0.001 } as never;
+    expect(leagueTodos(league, [], [small], deadlines, "playoffs")).toEqual([]);
+  });
+  it("gives an eliminated team no waiver to-do but keeps its lineup to-dos", () => {
+    const actions = [{ kind: "Injury", text: "Cook is Out and in your lineup", delta_points: null }];
+    expect(leagueTodos(league, actions as never, [add], deadlines, "out").map((t) => t.kind)).toEqual(["injury"]);
+  });
+  it("gives no to-dos at all once the season is over", () => {
+    const actions = [{ kind: "Injury", text: "Cook is Out and in your lineup", delta_points: null }];
+    expect(leagueTodos(league, actions as never, [add], deadlines, "over")).toEqual([]);
+  });
+});
+
+describe("tradeDeadlineTodos", () => {
+  const t = (give: string, get: string, playoff_delta: number | null, title_delta: number | null = null) =>
+    ({ kind: "trade", give, get, partner: "R", playoff_delta, title_delta, delta_points: 1, rank: 1 }) as never;
+  const run = (state: "open" | "closing" | "passed" | "none", trades: never[], phase: "season" | "playoffs" | "out" = "season") =>
+    tradeDeadlineTodos(league, trades, state, 11, "2026-11-04", phase);
+
+  it("gives one to-do for the best trade in deadline week", () => {
+    const out = run("closing", [t("A", "B", 0.02), t("C", "D", 0.05)]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      kind: "trade",
+      title: "Trade deadline: C for D",
+      detail: "Trades close after week 11",
+      href: "/moves?league=a&view=trades",
+      deadlineDay: "2026-11-04",
+      effect: { playoffPoints: 5 },
+    });
+  });
+
+  it("gives nothing outside deadline week", () => {
+    for (const s of ["open", "passed", "none"] as const) expect(run(s, [t("A", "B", 0.05)])).toEqual([]);
+  });
+
+  it("gives nothing under the gain bar, with no trades, or when out", () => {
+    expect(run("closing", [t("A", "B", 0.001)])).toEqual([]);
+    expect(run("closing", [])).toEqual([]);
+    expect(run("closing", [t("A", "B", 0.05)], "out")).toEqual([]);
+  });
+
+  it("judges on title odds in the playoffs", () => {
+    expect(run("closing", [t("A", "B", 0.09, 0.001), t("C", "D", 0.0, 0.04)], "playoffs")[0]?.title).toBe("Trade deadline: C for D");
+  });
+});
+
+describe("sleeperUrl", () => {
+  it("is the league page when the id is known, null when not", () => {
+    const waiver = { get: "A", give: "B", delta_points: 1, playoff_delta: 5, title_delta: 5 } as never;
+    expect(leagueTodos({ ...league, league_id: "77" }, [], [waiver], deadlines)[0]?.sleeperUrl).toBe("https://sleeper.com/leagues/77");
+    expect(leagueTodos(league, [], [waiver], deadlines)[0]?.sleeperUrl).toBeNull();
+  });
+});
+
+describe("holeTodos", () => {
+  const league = { league_key: "a", league_id: "9", name: "A" };
+  const fill = (n: string, p: number, d: string | null) => ({ gsis_id: n, full_name: n, position: "TE", projection: p, drop_name: d });
+  it("maps a bye hole to a cover to-do with fill-ins and the lineup deadline", () => {
+    const [t = todo("missing")] = holeTodos(
+      league,
+      [{ kind: "bye", slot: "TE", player_name: "Kelce", fill_ins: [fill("Lowe", 12.34, "Bench")] }],
+      "2026-11-15",
+    );
+    expect(t).toMatchObject({ kind: "cover", title: "No TE this week: Kelce is on bye", deadlineDay: "2026-11-15" });
+    expect(t.fillIns).toEqual(["Add Lowe (12.3 pts), drop Bench"]);
+    expect(t.sleeperUrl).toContain("9");
+  });
+  it("words out and empty holes, and keeps an empty fill-in list", () => {
+    const todos = holeTodos(
+      league,
+      [
+        { kind: "out", slot: "QB", player_name: "Allen", fill_ins: [] },
+        { kind: "empty", slot: "RB", player_name: null, fill_ins: [fill("X", 1, null)] },
+      ],
+      null,
+    );
+    expect(todos[0]?.title).toBe("No QB this week: Allen is out");
+    expect(todos[0]?.fillIns).toEqual([]);
+    expect(todos[1]?.title).toBe("No RB this week: the slot is empty");
+    expect(todos[1]?.fillIns).toEqual(["Add X (1.0 pts)"]);
+  });
+  it("maps an IR move to an ir to-do", () => {
+    const [t = todo("missing")] = holeTodos(league, [{ kind: "ir_move", slot: "IR", player_name: "Hurt", fill_ins: [] }], null);
+    expect(t).toMatchObject({ kind: "ir", title: "Move Hurt to IR to open a roster spot" });
+    expect(t.fillIns).toBeUndefined();
+  });
+  it("adds no hole to-dos once the team is out", () => {
+    const holes: Parameters<typeof holeTodos>[1] = [{ kind: "ir_move", slot: "IR", player_name: "Hurt", fill_ins: [] }];
+    expect(holeTodos(league, holes, null, "out")).toEqual([]);
+    expect(holeTodos(league, holes, null, "over")).toEqual([]);
+    expect(holeTodos(league, holes, null, "season")).toHaveLength(1);
+  });
+  it("keeps hole to-dos in the playoffs, a consolation game included", () => {
+    const holes: Parameters<typeof holeTodos>[1] = [{ kind: "bye", slot: "TE", player_name: "Kelce", fill_ins: [] }];
+    expect(holeTodos(league, holes, null, phaseOf({ current_week: 16, playoff_week_start: 15, team_phase: "consolation" }))).toHaveLength(
+      1,
+    );
   });
 });

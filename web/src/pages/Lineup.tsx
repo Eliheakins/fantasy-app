@@ -1,17 +1,20 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PageHeader } from "@/components/PageHeader";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { RadioGroup } from "@/components/RadioGroup";
 import { useLeague, useLeagueApi } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
+import { useSearchParam } from "@/lib/useSearchParam";
 import { usePageEyebrow, useWeek } from "@/lib/week";
 import type { ScoreboardRow } from "@/lib/scoreboard";
 import { ChevronDown } from "lucide-react";
 import { Explain, ExplainDelta, NOISE_PERCENT, formatNumber, formatPercent } from "@/viz";
 import { CloseCalls } from "@/features/lineup/CloseCalls";
 import { ResultPanel } from "@/features/lineup/ResultPanel";
-import { OPTION_OF, recommendedObjective, slotCalls, startAnswer, weekOverText, weekResult } from "@/features/lineup/calls";
+import { OPTION_OF, RECOMMENDED_OBJECTIVE, slotCalls, startAnswer, weekOverText, weekResult } from "@/features/lineup/calls";
 import { SLEEPER_WIN_WHY, winChanceWhy } from "@/features/lineup/explain";
+import { WeeksAheadGrid } from "@/features/lineup/WeeksAheadGrid";
 import { Comparison } from "@/features/lineup/Comparison";
 import { PlayerTable } from "@/features/lineup/PlayerTables";
 import {
@@ -70,24 +73,32 @@ function Answer({
   );
 }
 
-type ViewProps = { base: LineupRow[]; odds: WinProbability | null; week: number; eyebrow?: string; board?: ScoreboardRow[] | null };
+type ViewProps = {
+  base: LineupRow[];
+  odds: WinProbability | null;
+  week: number;
+  eyebrow?: string;
+  board?: ScoreboardRow[] | null;
+  /** The view toggle, shown right under the page header. */
+  toggle?: ReactNode;
+};
 
-export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProps) {
+export function LineupView({ base, odds, week, eyebrow, board = null, toggle }: ViewProps) {
   // a manual pick belongs to the label it was made under: when the label flips, the default returns
   const [picked, setPicked] = useState<{ key: ObjectiveKey; under: ObjectiveKey } | null>(null);
   if (base.length === 0) {
     return (
       <>
         <PageHeader title="Lineup" eyebrow={eyebrow} />
+        {toggle}
         <p className="py-6 text-body text-muted">No projections for week {week}: either a past week or your players are on bye.</p>
       </>
     );
   }
   const hasOdds = odds !== null && odds.options.length > 0;
-  const recommended = recommendedObjective();
   const differ = hasOdds && lineupsDiffer(odds.comparison);
-  const chosen = differ && picked?.under === recommended ? picked.key : null;
-  const objective = chosen ?? recommended;
+  const chosen = differ && picked?.under === RECOMMENDED_OBJECTIVE ? picked.key : null;
+  const objective = chosen ?? RECOMMENDED_OBJECTIVE;
   const rows = rowsFor(base, odds, objective);
   const { start, bench } = splitLineup(rows);
   const known = sleeperKnown(rows);
@@ -115,7 +126,16 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
           )
         }
       />
-      <ResultPanel result={result} option={shownOption} win={hasOdds ? h.win : null} shown={h.shown} now={h.now} gap={h.gap} />
+      {toggle}
+      <ResultPanel
+        result={result}
+        option={shownOption}
+        win={hasOdds ? h.win : null}
+        shown={h.shown}
+        now={h.now}
+        gap={h.gap}
+        playoffLabel={odds?.playoff_label}
+      />
       <CloseCalls calls={slotCalls(odds, objective)} rows={rows} objective={objective} />
       {hasOdds && !result && (
         <details className="group mt-8">
@@ -128,7 +148,7 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
           </p>
           {odds.script && (
             <p className="mt-4 text-body">
-              {odds.script}. We start from {labelOf(recommended)}
+              {odds.script}. We start from {labelOf(RECOMMENDED_OBJECTIVE)}
               {chosen ? ` (showing ${labelOf(chosen)})` : ""}.
             </p>
           )}
@@ -137,7 +157,7 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
               label="Optimize for"
               options={OBJECTIVES}
               value={objective}
-              onChange={(key) => setPicked({ key, under: recommended })}
+              onChange={(key) => setPicked({ key, under: RECOMMENDED_OBJECTIVE })}
               className="mt-3 flex flex-wrap gap-2"
               optionClassName={(on) =>
                 `rounded-full border px-3 text-body ${on ? "border-forest bg-forest font-medium text-white" : "border-panel-line bg-surface text-forest hover:border-forest"}`
@@ -174,17 +194,57 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
   );
 }
 
-export default function Lineup() {
+const LINEUP_VIEWS = [
+  { value: "week", label: "This week" },
+  { value: "ahead", label: "Weeks ahead" },
+] as const;
+
+function ViewToggle({ view }: { view: "week" | "ahead" }) {
+  const [, setView] = useSearchParam("view");
+  const choose = (next: string) => {
+    if (!next) return; // clicking the selected item would clear a single-select group
+    setView(next === "week" ? null : next);
+  };
+  return (
+    <ToggleGroup type="single" aria-label="Lineup view" value={view} onValueChange={choose} className="mb-4 justify-start">
+      {LINEUP_VIEWS.map((v) => (
+        <ToggleGroupItem key={v.value} value={v.value}>
+          {v.label}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  );
+}
+
+function WeeksAhead({ eyebrow }: { eyebrow?: string }) {
+  const { league } = useLeague();
+  const grid = useLeagueApi("/api/leagues/{league}/lineup-grid");
+  return (
+    <>
+      <PageHeader title="Lineup" eyebrow={eyebrow} />
+      <ViewToggle view="ahead" />
+      <ApiBoundary state={grid}>{(g) => <WeeksAheadGrid grid={g} league={league ?? ""} />}</ApiBoundary>
+    </>
+  );
+}
+
+/** This week's lineup, win chances and scores; only mounted in the week view, so Weeks ahead starts no simulation. */
+function ThisWeekLineup({ eyebrow }: { eyebrow?: string }) {
   const { league } = useLeague();
   const { week } = useWeek();
-  const eyebrow = usePageEyebrow("Lineup", true);
-  const lineup = useLeagueApi<LineupRow[]>(`lineup?week=${week}`);
-  const odds = useLeagueApi<WinProbability>(`win-probability?week=${week}`);
-  const board = useLeagueApi<ScoreboardRow[]>(`scoreboard?week=${week}`);
   const { team } = useTeam();
+  const lineup = useLeagueApi("/api/leagues/{league}/lineup", { week });
+  const odds = useLeagueApi("/api/leagues/{league}/win-probability", { week });
+  const board = useLeagueApi("/api/leagues/{league}/scoreboard", { week });
+  const toggle = <ViewToggle view="week" />;
   return (
-    <div key={league}>
-      {lineup.kind !== "ready" && <PageHeader title="Lineup" eyebrow={eyebrow} />}
+    <>
+      {lineup.kind !== "ready" && (
+        <>
+          <PageHeader title="Lineup" eyebrow={eyebrow} />
+          {toggle}
+        </>
+      )}
       <ApiBoundary state={lineup}>
         {(base) => (
           <>
@@ -200,10 +260,18 @@ export default function Lineup() {
               week={week}
               eyebrow={eyebrow}
               board={board.kind === "ready" ? board.data : null}
+              toggle={toggle}
             />
           </>
         )}
       </ApiBoundary>
-    </div>
+    </>
   );
+}
+
+export default function Lineup() {
+  const { league } = useLeague();
+  const [view] = useSearchParam("view");
+  const eyebrow = usePageEyebrow("Lineup", true);
+  return <div key={league}>{view === "ahead" ? <WeeksAhead eyebrow={eyebrow} /> : <ThisWeekLineup eyebrow={eyebrow} />}</div>;
 }

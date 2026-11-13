@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2
 import polars as pl
 import pytest
 from fastapi.testclient import TestClient
@@ -10,7 +10,7 @@ from store_fixture import write_rows
 from test_api import wait_ok
 
 from fantasy import api, data_api, store
-from fantasy._values import past_trade_ratios
+from fantasy._values import market_history, past_trade_ratios
 from fantasy.sim.setting import Setting, setting_for
 from fantasy.sim.value import MIN_ACCEPTED_SIDES, accepted_share, market_hint
 from fantasy.stages import market_values as stage
@@ -121,7 +121,7 @@ def test_fetch_values_sends_the_query_and_a_user_agent_and_rejects_bad_bodies(
         seen.update(url=url, **kw)
         return Resp()
 
-    monkeypatch.setattr(httpx, "get", get)
+    monkeypatch.setattr(httpx2, "get", get)
     assert fetch_values(Setting(2, 10, 0.5)) == [item("1")]
     assert seen["params"] == {"isDynasty": "false", "numQbs": 2, "numTeams": 10, "ppr": 0.5}
     assert seen["headers"]["User-Agent"] and seen["timeout"] > 0
@@ -219,9 +219,7 @@ def test_past_trade_ratios_use_each_leagues_values_and_skip_unvalued_sides(tmp_p
         {**base, "roster_id": 3, "sleeper_id": "9", "action": "add"},  # no value
         {**base, "roster_id": 3, "sleeper_id": "2", "action": "drop"},
     ]
-    schema = store.SCHEMAS["transactions"]
-    frame = pl.DataFrame([{**dict.fromkeys(schema), **r} for r in sides], schema=schema)
-    store.write_table("transactions", frame, "raw", tmp_path)
+    write_rows(tmp_path, "transactions", sides, area="raw")
 
     ratios = sorted(past_trade_ratios(tmp_path))
 
@@ -252,9 +250,7 @@ def test_trade_market_reports_the_share_from_the_partners_side_and_skips_unfinis
         {**failed, "roster_id": 1, "sleeper_id": "2", "action": "add"},
         {**failed, "roster_id": 1, "sleeper_id": "1", "action": "drop"},
     ]
-    schema = store.SCHEMAS["transactions"]
-    frame = pl.DataFrame([{**dict.fromkeys(schema), **r} for r in sides], schema=schema)
-    store.write_table("transactions", frame, "raw", tmp_path)
+    write_rows(tmp_path, "transactions", sides, area="raw")
 
     overpay, underpay, unvalued = data_api.trade_market(
         "t", [(["00-1"], ["00-2"]), (["00-2"], ["00-1"]), (["00-2"], ["00-9"])], tmp_path
@@ -323,3 +319,99 @@ def test_a_response_with_no_usable_rows_is_a_soft_failure_that_keeps_the_values(
     assert store.read_table("market_values", "raw", tmp_path).equals(before)
     assert len(_runs._soft_failures) == 2  # one per setting
     _runs._soft_failures.clear()
+
+
+def history(path: Path) -> pl.DataFrame:
+    return store.read_table("market_values_history", "archive", path)
+
+
+def test_each_fetch_is_appended_to_the_history_archive(tmp_path: Path) -> None:
+    write_leagues(tmp_path)
+    stage.run(tmp_path, lambda s: [item("1")], YESTERDAY)
+    stage.run(tmp_path, lambda s: [item("1", value=6000)], TODAY)
+    out = history(tmp_path)
+    assert out.height == 4  # two settings, two days
+    assert sorted(out["fetched_at"].unique().to_list()) == [YESTERDAY, TODAY]
+    assert list(out.columns) == list(store.SCHEMAS["market_values"])
+
+
+def test_a_retry_under_the_same_run_id_does_not_append_twice(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(store.RUN_ID_ENV, "run-1")
+    write_leagues(tmp_path)
+    stage.run(tmp_path, lambda s: [item("1")], TODAY)
+    store.table_path("market_values", "raw", tmp_path).unlink()  # the retry fetches again
+    stage.run(tmp_path, lambda s: [item("1")], TODAY)
+    assert history(tmp_path).height == 2
+
+
+def test_an_empty_or_failed_fetch_is_not_archived(tmp_path: Path) -> None:
+    write_leagues(tmp_path)
+
+    def boom(setting: Setting) -> list[Any]:
+        raise RuntimeError("down")
+
+    stage.run(tmp_path, lambda s: [], TODAY)
+    stage.run(tmp_path, boom, TODAY)
+    path = store.table_path("market_values_history", "archive", tmp_path)
+    assert not path.exists() or history(tmp_path).is_empty()
+
+
+def test_a_missing_history_table_beside_other_archive_tables_is_a_soft_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_leagues(tmp_path)
+    write_rows(tmp_path, "proj_snapshots", [], area="archive")  # the archive is not a fresh one
+    real_run = stage.run
+    monkeypatch.setattr(stage, "run", lambda: real_run(tmp_path))
+    from fantasy import _runs
+
+    _runs._soft_failures.clear()
+    assert stage.main() == 0
+    assert any("market_values_history" in f for f in _runs._soft_failures)
+    _runs._soft_failures.clear()
+
+
+def seed_history(path: Path, rows: list[tuple[str, float]]) -> None:
+    write_rows(path, "id_map", [{"sleeper_id": "1", "gsis_id": "00-1"}])
+    lg = store.read_table("leagues", "raw", path).row(0, named=True)
+    key = setting_for(lg["scoring_settings"], lg["roster_positions"], lg["num_teams"]).key
+    write_rows(
+        path,
+        "market_values_history",
+        [{"format": key, "sleeper_id": "1", "value": v, "fetched_at": at} for at, v in rows]
+        + [{"format": "other", "sleeper_id": "1", "value": 1.0, "fetched_at": "2026-11-01"}],
+        area="archive",
+    )
+
+
+def test_market_history_gives_the_latest_fetch_of_each_day_for_the_leagues_format(
+    tmp_path: Path,
+) -> None:
+    write_rows(tmp_path, "leagues", [league("t", {}, ["QB"])])
+    write_rows(tmp_path, "id_map", [{"sleeper_id": "1", "gsis_id": "00-1"}])
+    assert market_history("t", "00-1", tmp_path) == []  # nothing there yet
+    seed_history(
+        tmp_path,
+        [
+            ("2026-11-02T08:00:00", 100.0),
+            ("2026-11-01T20:00:00", 90.0),
+            ("2026-11-01T08:00:00", 80.0),
+            ("2026-11-02T20:00:00", 110.0),
+        ],
+    )
+    assert market_history("t", "00-1", tmp_path) == [
+        {"day": "2026-11-01", "value": 90.0},
+        {"day": "2026-11-02", "value": 110.0},
+    ]
+    assert market_history("t", "00-9", tmp_path) == []
+
+
+def test_history_route_serves_rows_and_an_empty_list_without_the_archive(store_dir: Path) -> None:
+    with TestClient(api.create_app(data_dir=store_dir), base_url="http://localhost") as c:
+        r = c.get("/api/leagues/t/market-history", params={"id": "00-1"}).json()
+        assert r["status"] == "ok" and r["data"] == []
+        seed_history(store_dir, [("2026-11-02T08:00:00", 100.0)])
+        r = c.get("/api/leagues/t/market-history", params={"id": "00-1"}).json()
+    assert r["data"] == [{"day": "2026-11-02", "value": 100.0}]

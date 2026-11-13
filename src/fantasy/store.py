@@ -14,7 +14,7 @@ from pathlib import Path
 
 import polars as pl
 
-from fantasy.config import ROOT, load_config
+from fantasy.config import ROOT, SKILL_POSITIONS, load_config
 from nfl_stat.pipeline.atomic import atomic_path
 
 log = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ CURRENT = "current"
 RELEASE_ENV = "FANTASY_RELEASE_DIR"  # set by the pipeline for its stages: the release being built
 RUN_ID_ENV = "FANTASY_RUN_ID"  # one id per `make refresh`, kept across a retry of a failed run
 RUNS_DIR = ".runs"  # inside data/archive: which rows of each table the current run appended
-SKILL = ["QB", "RB", "WR", "TE"]  # positions the projection and simulation layers cover
+SKILL = list(SKILL_POSITIONS)  # positions the projection and simulation layers cover
 WEEK_STRIDE = 25  # weeks per season in the running index; playoffs reach week 22
 _NAME = re.compile(r"^[a-z][a-z0-9_]*$")
 
@@ -119,6 +119,8 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "is_starter": _B,
         "is_ir": _B,
     },
+    # written by sync_sleeper: the division of each roster that has one (settings.division)
+    "roster_divisions": {"league_id": _S, "roster_id": _I, "division": _I},
     "matchups": {
         "league_id": _S,
         "week": _I,
@@ -146,6 +148,12 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "action": _S,
         "waiver_bid": _I,
     },
+    # written by sync_sleeper: Sleeper's playoff brackets; rows are provisional (seeds still move)
+    # while fetched_week is before the league's playoff_week_start
+    "playoff_brackets": _cols(
+        strings="league_id bracket t1_from_kind t2_from_kind",
+        ints="r m t1 t2 t1_from_m t2_from_m w l p fetched_week",
+    ),
     "trending": {"fetched_at": _S, "kind": _S, "sleeper_id": _S, "count": _I},
     # written by news_archive (area: archive, only ever appended): one snapshot a day of the
     # players-file fields that change through the week; fetched_at is the file's fetch time
@@ -206,6 +214,12 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         ints="overall_rank position_rank tier",
         floats="value trend_30_day",
     ),
+    # written by market_values (area: archive, only ever appended): every fetch, same columns
+    "market_values_history": _cols(
+        strings="format sleeper_id name position fetched_at",
+        ints="overall_rank position_rank tier",
+        floats="value trend_30_day",
+    ),
     # written by sleeper_projections (area: archive, only ever appended)
     "sleeper_proj_snapshots": _cols(strings="fetched_at sleeper_id stats", ints="week"),
     # written by outside_projections (area: archive, only ever appended): other sites' stat lines
@@ -229,6 +243,9 @@ SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
     "availability": _cols(strings="gsis_id", ints="season week", floats="p_play"),
     # written by outlook (area: derived): return-from-absence ratios and teammate-vacancy slopes
     "outlook_effects": _cols(strings="position kind", ints="n", floats="value"),
+    # written by simulate with sim_season: a team's chance to play (p_reach) and win (p_win) a
+    # title-path bracket game in each round; teams that never reach a round have no row
+    "sim_bracket": _cols(strings="league_id", ints="roster_id round", floats="p_reach p_win"),
     "sim_seeds": _cols(strings="league_id", ints="roster_id seed", floats="p"),
     # written by simulate with sim_season: a team's expected score (mean plus mean shift) and spread
     # in each remaining regular-season week

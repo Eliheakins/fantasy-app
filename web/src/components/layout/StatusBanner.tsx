@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import type { StatHealth, Status } from "@/api/types";
-import { useEnvelopeQuery } from "@/api/useEnvelope";
+import { api } from "@/api/client";
+import type { StatHealth } from "@/api/types";
+import { apiKey, useEnvelopeQuery } from "@/api/useEnvelope";
 import { bannerMessages } from "@/lib/status";
 
 function WithCode({ text }: { text: string }) {
@@ -20,26 +21,26 @@ function WithCode({ text }: { text: string }) {
 
 const STAT_HEALTH_REFETCH_MS = 5 * 60_000;
 
-/** The stat app's health (plain JSON, not the envelope); null until it loads or if it fails. */
+/** The stat app's health (plain JSON, not the envelope); null until it loads or if it fails.
+ * Keyed like every /api GET, so it retries once and `["api"]` invalidation refetches it. */
 function useStatHealth(): StatHealth | null {
   const { data } = useQuery<StatHealth, Error>({
-    queryKey: ["stat-health"],
+    queryKey: apiKey("/api/stat/health"),
     queryFn: async () => {
-      const res = await fetch("/api/stat/health");
-      if (!res.ok) throw new Error(`stat health ${res.status}`);
-      return (await res.json()) as StatHealth;
+      const { data, response } = await api.GET("/api/stat/health");
+      if (data === undefined) throw new Error(`stat health ${response.status}`);
+      return data;
     },
     refetchInterval: STAT_HEALTH_REFETCH_MS,
-    retry: false,
   });
   return typeof data?.data_ready === "boolean" ? data : null;
 }
 
-const INNER = "mx-auto w-full max-w-[1200px] px-[var(--page-pad)]";
+const INNER = "mx-auto w-full max-w-page px-[var(--page-pad)]";
 
 /** One amber line at every width with a details disclosure; stacked rows pushed each page's answer down. */
 export function StatusBanner() {
-  const state = useEnvelopeQuery<Status>("/api/status");
+  const state = useEnvelopeQuery("/api/status");
   const [open, setOpen] = useState(false);
   const statHealth = useStatHealth();
   const messages = bannerMessages(state.kind === "ready" ? state.data : null, statHealth);

@@ -3,8 +3,8 @@ import { ApiBoundary } from "@/components/ApiBoundary";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { formatNumber } from "@/viz";
 import { Advice } from "./Advice";
-import { leagueUrl, useRefreshScores } from "@/lib/league";
-import { type LiveScore, type RosterRow, type SeasonOdds, type Unmatched, liveScoreParts, myOdds, oddsPercent, recordLine } from "./logic";
+import { useRefreshScores } from "@/lib/league";
+import { type SeasonOdds, liveScoreParts, myOdds, oddsPercent, recordLine } from "./logic";
 import { Block, Stat } from "./parts";
 import { RosterList } from "./RosterList";
 
@@ -25,12 +25,12 @@ function Odds({ rows }: { rows: SeasonOdds[] }) {
 }
 
 function LiveScoreSection({ leagueKey }: { leagueKey: string }) {
-  const state = useEnvelopeQuery<LiveScore[]>(leagueUrl(leagueKey, "live-score"));
+  const state = useEnvelopeQuery("/api/leagues/{league}/live-score", { path: { league: leagueKey } });
   const refresh = useRefreshScores();
   const button = (
     <button
       type="button"
-      onClick={() => refresh.mutate()}
+      onClick={() => refresh.mutate({})}
       disabled={refresh.isPending}
       className="min-h-[44px] rounded border border-line px-3 text-caption text-muted"
     >
@@ -69,9 +69,9 @@ type CardProps = { league: League; mine?: boolean };
 
 export function LeagueCard({ league, mine = true }: CardProps) {
   const key = league.league_key;
-  const odds = useEnvelopeQuery<SeasonOdds[]>(leagueUrl(key, "season-odds"));
-  const roster = useEnvelopeQuery<RosterRow[]>(leagueUrl(key, "roster"));
-  const unmatched = useEnvelopeQuery<Unmatched>("/api/unmatched");
+  const odds = useEnvelopeQuery("/api/leagues/{league}/season-odds", { path: { league: key } });
+  const roster = useEnvelopeQuery("/api/leagues/{league}/roster", { path: { league: key } });
+  const unmatched = useEnvelopeQuery("/api/unmatched");
   return (
     <article className="@container min-w-0 border-t border-line pt-5">
       <header>

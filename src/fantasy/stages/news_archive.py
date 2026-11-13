@@ -22,7 +22,7 @@ import polars as pl
 
 from fantasy import store
 from fantasy._runs import note_soft_failure
-from fantasy.stages.sync_sleeper import PLAYERS_CACHE, _int
+from fantasy.stages.sync_sleeper import PLAYERS_CACHE, as_int
 
 TABLE = "sleeper_player_status"
 INT_FIELDS = {"depth_chart_order", "news_updated"}
@@ -38,7 +38,7 @@ def status_frame(raw: dict[str, dict[str, Any]], fetched_at: str) -> pl.DataFram
     rows = [
         {
             "sleeper_id": str(player_id),
-            **{f: (_int if f in INT_FIELDS else _str)(p.get(f)) for f in fields},
+            **{f: (as_int if f in INT_FIELDS else _str)(p.get(f)) for f in fields},
             "fetched_at": fetched_at,
         }
         for player_id, p in raw.items()

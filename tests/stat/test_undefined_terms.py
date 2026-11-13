@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import httpx
+import httpx2
 import pytest
 
 from nfl_stat.schemas.nlq import CatalogStat, IntentRequest, UnsupportedOutcome
@@ -36,7 +36,7 @@ def test_defined_terms_pass(question: str):
 
 
 async def test_jev_is_not_asked_about_an_undefined_term():
-    def fail(request: httpx.Request) -> httpx.Response:
+    def fail(request: httpx2.Request) -> httpx2.Response:
         raise AssertionError("Jev must not be called")
 
     req = IntentRequest(
@@ -45,7 +45,7 @@ async def test_jev_is_not_asked_about_an_undefined_term():
     )
 
     outcome = await translate_with_jev(
-        req, api_key="k", model="m", timeout=1, transport=httpx.MockTransport(fail)
+        req, api_key="k", model="m", timeout=1, transport=httpx2.MockTransport(fail)
     )
 
     assert isinstance(outcome, UnsupportedOutcome)

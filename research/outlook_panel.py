@@ -1,6 +1,6 @@
 import json, numpy as np, polars as pl
 from fantasy import store
-from fantasy.stages.project import expected_frame, POSITIONS
+from fantasy.stages.project import expected_frame
 leagues=store.read_table("leagues","raw"); lg=leagues.row(0,named=True); lid=lg["league_id"]
 pp=store.read_table("player_points"); opp=store.read_table("nfl_ff_opportunity","raw")
 exp=expected_frame(opp,pp,leagues.filter(pl.col("league_id")==lid))

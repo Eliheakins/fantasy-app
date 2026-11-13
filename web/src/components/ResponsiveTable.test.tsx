@@ -1,5 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type Column, ResponsiveTable } from "./ResponsiveTable";
 
 type Row = { name: string; pts: number; note: string };
@@ -10,8 +10,6 @@ const COLUMNS: Column<Row>[] = [
 ];
 const ROWS: Row[] = [{ name: "Ann", pts: 12.5, note: "hamstring" }];
 const table = () => <ResponsiveTable caption="Players" columns={COLUMNS} rows={ROWS} rowKey={(r) => r.name} />;
-
-afterEach(() => vi.unstubAllGlobals());
 
 function stubWidth(matches: boolean) {
   vi.stubGlobal("matchMedia", () => ({ matches, addEventListener: () => {}, removeEventListener: () => {} }));

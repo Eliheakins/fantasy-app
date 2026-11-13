@@ -12,7 +12,8 @@ export function orderedSides(row: ScoreboardRow): [ScoreboardSide, ScoreboardSid
 
 export const isMine = (row: ScoreboardRow): boolean => row.a.is_me || row.b.is_me;
 
-export function sideName(side: ScoreboardSide): string {
+/** A team's name, marked "(you)" for the viewed team. */
+export function sideName(side: { team_name: string; is_me: boolean }): string {
   return side.is_me ? `${side.team_name} (you)` : side.team_name;
 }
 

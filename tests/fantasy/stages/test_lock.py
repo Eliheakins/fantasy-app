@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from fantasy import _lock
+from fantasy import _lock, store
 from fantasy._lock import PipelineBusy, hold_and_run, pipeline_lock
 
 HOLDER = (
@@ -94,9 +94,12 @@ def test_a_child_of_the_holder_does_not_wait_for_its_parent(
         pass
 
 
-def test_main_needs_a_command_and_passes_the_exit_code_through(tmp_path: Path) -> None:
+def test_main_needs_a_command_and_passes_the_exit_code_through(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(store, "DATA_DIR", tmp_path)  # main uses the default lock dir
     assert _lock.main([]) == 2
-    assert _lock.hold_and_run([sys.executable, "-c", "import sys; sys.exit(4)"], tmp_path) == 4
+    assert _lock.main([sys.executable, "-c", "import sys; sys.exit(4)"]) == 4
 
 
 def _ids_seen(tmp_path: Path, code: int) -> str:

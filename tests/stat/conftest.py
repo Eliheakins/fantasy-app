@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Callable, Iterator
 from pathlib import Path
 
-import httpx
+import httpx2
 import pytest
 from fakes import FakeLlm
 from fastapi import FastAPI
@@ -37,9 +37,9 @@ def app(data_dir: Path) -> Iterator[FastAPI]:
 
 
 @pytest.fixture
-async def client(app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+async def client(app: FastAPI) -> AsyncIterator[httpx2.AsyncClient]:
+    transport = httpx2.ASGITransport(app=app)
+    async with httpx2.AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
 
 

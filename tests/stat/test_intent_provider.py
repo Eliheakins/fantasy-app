@@ -4,7 +4,6 @@ import logging
 from types import SimpleNamespace
 from typing import Any, cast
 
-import httpx
 import httpx2
 import openai
 import pytest
@@ -127,7 +126,7 @@ async def test_a_jev_failure_with_the_local_server_down_is_the_model_unavailable
 
 
 async def test_the_endpoint_falls_back_to_the_local_model_when_jev_fails(
-    jev, app, client: httpx.AsyncClient, use_llm
+    jev, app, client: httpx2.AsyncClient, use_llm
 ):
     jev.error = JevError("Jev returned 500")
     app.state.stat_settings = _settings("jev")

@@ -9,8 +9,9 @@ from fastapi import APIRouter
 from fantasy import _view as view
 from fantasy import data_api
 from fantasy.api_deps import Ctx, RequestContext
-from fantasy.api_envelope import guarded, rows
+from fantasy.api_envelope import NO_DATA_MESSAGE, fail, guarded, ok, rows
 from fantasy.api_models import (
+    BracketData,
     DigestData,
     Envelope,
     LuckRow,
@@ -33,6 +34,19 @@ IDEA_STAMPS = frozenset({"league_id", "created_at", "as_of_week"})  # in `ideas`
 @router.get("/leagues/{league}/seeds", response_model=Envelope[list[SeedRow]])
 def seeds(league: str, ctx: Ctx) -> Any:
     return guarded(lambda: rows(data_api.seed_distribution(league, ctx.data_dir, ctx.team)))
+
+
+@router.get("/leagues/{league}/bracket", response_model=Envelope[BracketData])
+def bracket(league: str, ctx: Ctx) -> Any:
+    """The winners bracket with each side's chance to win its round; no_data before it is set."""
+    try:
+        view = data_api.bracket(league, ctx.data_dir, ctx.team)
+    except FileNotFoundError as err:
+        log.warning("bracket %s: %s", league, err)
+        return fail("no_data", NO_DATA_MESSAGE)
+    except ValueError as err:
+        return fail("invalid", str(err))
+    return fail("no_data", view.message) if view.message else ok({"rounds": view.rounds})
 
 
 @router.get("/leagues/{league}/odds-history", response_model=Envelope[list[OddsHistoryRow]])

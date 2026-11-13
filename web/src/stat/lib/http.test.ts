@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import { requestJson } from "./http";
@@ -16,10 +16,6 @@ const ORIGIN = window.location.origin;
 function respond(body: unknown, init: ResponseInit = { status: 200 }) {
   return vi.fn().mockResolvedValue(new Response(typeof body === "string" ? body : JSON.stringify(body), init));
 }
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
 
 describe("requestJson outside a browser", () => {
   it("still reports an unreachable server when there is no location", async () => {

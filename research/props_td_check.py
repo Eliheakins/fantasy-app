@@ -21,7 +21,6 @@ Run from the repo root: OMP_NUM_THREADS=3 uv run python research/props_td_check.
 """
 
 import json
-import re
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -30,7 +29,11 @@ import numpy as np
 import polars as pl
 from scipy.optimize import brentq
 
-from fantasy import store
+sys.path.insert(0, str(Path(__file__).parent))
+import props_check as pc  # noqa: E402
+
+from fantasy import store  # noqa: E402
+from fantasy.stages.prop_points import TEAM_NAMES  # noqa: E402
 
 ODDS_DIR = store.DATA_DIR / "archive" / "odds"
 SLEEPER_SNAPSHOTS = store.DATA_DIR / "archive" / "sleeper_proj_snapshots.parquet"
@@ -42,25 +45,6 @@ EPS = 1e-6
 MIN_T = 2.0
 SKILL = ("QB", "RB", "WR", "TE")
 SLEEPER_TEAM = {"LAR": "LA"}  # Sleeper abbreviation -> nflverse
-SUFFIX = r"\b(jr|sr|ii|iii|iv|v)\b"
-TEAMS = {
-    "Arizona Cardinals": "ARI", "Atlanta Falcons": "ATL", "Baltimore Ravens": "BAL",
-    "Buffalo Bills": "BUF", "Carolina Panthers": "CAR", "Chicago Bears": "CHI",
-    "Cincinnati Bengals": "CIN", "Cleveland Browns": "CLE", "Dallas Cowboys": "DAL",
-    "Denver Broncos": "DEN", "Detroit Lions": "DET", "Green Bay Packers": "GB",
-    "Houston Texans": "HOU", "Indianapolis Colts": "IND", "Jacksonville Jaguars": "JAX",
-    "Kansas City Chiefs": "KC", "Las Vegas Raiders": "LV", "Los Angeles Chargers": "LAC",
-    "Los Angeles Rams": "LA", "Miami Dolphins": "MIA", "Minnesota Vikings": "MIN",
-    "New England Patriots": "NE", "New Orleans Saints": "NO", "New York Giants": "NYG",
-    "New York Jets": "NYJ", "Philadelphia Eagles": "PHI", "Pittsburgh Steelers": "PIT",
-    "San Francisco 49ers": "SF", "Seattle Seahawks": "SEA", "Tampa Bay Buccaneers": "TB",
-    "Tennessee Titans": "TEN", "Washington Commanders": "WAS",
-}
-
-
-def norm_name(name: pl.Expr) -> pl.Expr:
-    lowered = name.str.to_lowercase().str.replace_all(r"[.'\-]", "")
-    return lowered.str.replace_all(SUFFIX, "").str.replace_all(r"\s+", " ").str.strip_chars()
 
 
 def implied(price: pl.Expr) -> pl.Expr:
@@ -82,7 +66,7 @@ def load_prices(odds_dir: Path) -> pl.DataFrame:
                     rows += [
                         {
                             "event_id": event["id"], "kick": event["commence_time"],
-                            "home": TEAMS.get(event["home_team"]), "away": TEAMS.get(event["away_team"]),
+                            "home": TEAM_NAMES.get(event["home_team"]), "away": TEAM_NAMES.get(event["away_team"]),
                             "book": book["key"], "player": o["description"], "price": float(o["price"]),
                             "taken": taken,
                         }
@@ -92,7 +76,7 @@ def load_prices(odds_dir: Path) -> pl.DataFrame:
     if not rows:
         return pl.DataFrame()
     d = pl.DataFrame(rows).with_columns(
-        kick=pl.col("kick").str.to_datetime(time_zone="UTC"), name=norm_name(pl.col("player"))
+        kick=pl.col("kick").str.to_datetime(time_zone="UTC"), name=pc.norm_name(pl.col("player"))
     )
     return (
         d.filter(pl.col("taken") < pl.col("kick"))
@@ -109,7 +93,7 @@ def match_players(prices: pl.DataFrame, players: pl.DataFrame, id_map: pl.DataFr
     p = players.filter(pl.col("team").is_not_null()).select(
         "sleeper_id", "position",
         pl.col("team").replace(SLEEPER_TEAM).alias("team"),
-        norm_name(pl.col("full_name")).alias("name"),
+        pc.norm_name(pl.col("full_name")).alias("name"),
     )
     ids = id_map.select("sleeper_id", pl.col("gsis_id").str.strip_chars()).drop_nulls().unique("sleeper_id")
     out = prices.join(p, on="name").filter((pl.col("team") == pl.col("home")) | (pl.col("team") == pl.col("away")))

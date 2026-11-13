@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
+import { leaguePath, onlyRoutes } from "@/test/fakeApi";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router";
 import type { ApiState } from "@/api/envelope";
 import Moves from "./Moves";
 
@@ -32,17 +33,55 @@ const trade = {
 
 let waivers: ApiState<unknown>;
 let digest: ApiState<unknown>;
+type Row = {
+  league_key: string;
+  name: string;
+  current_week: number;
+  playoff_week_start: number;
+  team_phase?: string | null;
+  playoff_label?: string | null;
+};
+let leagueRow: Row = { league_key: "a", name: "L", current_week: 9, playoff_week_start: 15 };
 vi.mock("@/lib/league", () => ({
-  useLeague: () => ({ league: "a", leagues: { kind: "ready", data: [{ league_key: "a", name: "L", current_week: 9 }] } }),
+  useLeague: () => ({ league: "a", leagues: { kind: "ready", data: [leagueRow] } }),
   useLeagueName: () => "L",
-  useLeagueApi: (path: string) => (path === "waivers" ? waivers : digest),
+  useLeagueRow: () => leagueRow,
+  useLeagueApi: (route: string, query?: object) => onlyRoutes({ waivers, digest })(leaguePath(route, query)),
 }));
-vi.mock("@/features/moves/waivers/WaiversView", () => ({ WaiversContent: () => <p>waivers details</p> }));
+vi.mock("@/features/moves/waivers/WaiversView", () => ({
+  WaiversContent: ({
+    rank,
+    pos,
+    onRank,
+    onShowAll,
+  }: {
+    rank: string;
+    pos: string | null;
+    onRank: (r: string) => void;
+    onShowAll: () => void;
+  }) => (
+    <div>
+      <p>waivers details</p>
+      <p data-testid="waiver-params">{`rank ${rank}, pos ${pos ?? "all"}`}</p>
+      <button type="button" onClick={() => onRank("playoffs")}>
+        rank by playoffs
+      </button>
+      <button type="button" onClick={() => onRank("ros")}>
+        rank by season
+      </button>
+      <button type="button" onClick={onShowAll}>
+        all positions
+      </button>
+    </div>
+  ),
+}));
 vi.mock("@/features/moves/trade/TradeBuilder", () => ({ TradeBuilder: () => <p>trade builder</p> }));
 vi.mock("@/features/moves/trade/TradeDetails", () => ({ TradeDetails: () => <p>trade details</p> }));
 
 const ready = (data: unknown): ApiState<unknown> => ({ kind: "ready", data }) as ApiState<unknown>;
-const digestWith = (trades: unknown[]) => ready({ waivers: [], trades, ideas: { is_mine: true } });
+const digestWith = (trades: unknown[], odds_change: unknown[] = []) =>
+  ready({ waivers: [], trades, odds_change, ideas: { is_mine: true } });
+const myOdds = (p_title: number) => ({ is_me: true, as_of_week: 15, p_title, p_playoffs: 1 });
 
 function Where() {
   return <p data-testid="search">{useLocation().search}</p>;
@@ -56,8 +95,23 @@ const renderAt = (entry: string) =>
   );
 
 beforeEach(() => {
+  leagueRow = { league_key: "a", name: "L", current_week: 9, playoff_week_start: 15 };
   waivers = ready([waiver("Coleman"), waiver("Small", { playoff_delta: 0.001, delta_points: 1, trending_adds: 200000 })]);
   digest = digestWith([trade]);
+});
+
+describe("Moves page trade deadline callout", () => {
+  it("shows the warning only in deadline week", () => {
+    leagueRow = { ...leagueRow, trade_deadline: 9 } as typeof leagueRow;
+    renderAt("/moves");
+    expect(screen.getByText("Trades close after week 9.")).toBeInTheDocument();
+  });
+
+  it.each([null, 99, 11, 5])("shows nothing when the deadline is %s", (deadline) => {
+    leagueRow = { ...leagueRow, trade_deadline: deadline } as typeof leagueRow;
+    renderAt("/moves");
+    expect(screen.queryByText(/Trades close after/)).not.toBeInTheDocument();
+  });
 });
 
 describe("Moves page", () => {
@@ -135,5 +189,70 @@ describe("Moves page", () => {
     expect(screen.getByText("trade builder")).toBeInTheDocument();
     expect(screen.getByText("waivers details")).toBeInTheDocument();
     expect(screen.getByText("trade details")).toBeInTheDocument();
+  });
+});
+
+describe("Moves page waiver params", () => {
+  it("hands ?rank= and ?pos= to the waiver tables, rest of season and every position by default", () => {
+    renderAt("/moves?league=a&rank=playoffs&pos=RB");
+    expect(screen.getByTestId("waiver-params")).toHaveTextContent("rank playoffs, pos RB");
+  });
+
+  it("reads anything else as rest of season and every position", () => {
+    renderAt("/moves?rank=weird&pos=XX");
+    expect(screen.getByTestId("waiver-params")).toHaveTextContent("rank ros, pos all");
+  });
+
+  it("writes the ranking to the URL, drops it for rest of season, and Show all drops ?pos=, keeping the other params", async () => {
+    renderAt("/moves?league=a&pos=RB");
+    await userEvent.click(screen.getByRole("button", { name: "rank by playoffs" }));
+    expect(screen.getByTestId("search")).toHaveTextContent("rank=playoffs");
+    await userEvent.click(screen.getByRole("button", { name: "rank by season" }));
+    expect(screen.getByTestId("search")).not.toHaveTextContent("rank");
+    await userEvent.click(screen.getByRole("button", { name: "all positions" }));
+    expect(screen.getByTestId("search")).not.toHaveTextContent("pos");
+    expect(screen.getByTestId("search")).toHaveTextContent("league=a");
+  });
+});
+
+describe("Moves page in the playoffs", () => {
+  beforeEach(() => {
+    leagueRow = { ...leagueRow, current_week: 15 };
+  });
+
+  it("ranks by title odds and says so", () => {
+    waivers = ready([
+      waiver("Coleman", { playoff_delta: 0, title_delta: 0.02 }),
+      waiver("Small", { playoff_delta: 0.5, title_delta: 0.001 }),
+    ]);
+    digest = digestWith([], [myOdds(0.3)]);
+    renderAt("/moves");
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Add Coleman, drop Bernard");
+    expect(screen.getAllByText("title pts").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Ordered by title-odds change/)).toBeInTheDocument();
+  });
+
+  it("tells an eliminated team it is out instead of listing zero-value adds", () => {
+    leagueRow = { ...leagueRow, team_phase: "eliminated" };
+    waivers = ready([waiver("Coleman", { playoff_delta: 0, title_delta: 0 })]);
+    renderAt("/moves");
+    expect(screen.getAllByText(/You are out of the playoffs/).length).toBeGreaterThan(0);
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+  });
+
+  it("never calls a team out while its phase is unknown, even with zero title odds", () => {
+    leagueRow = { ...leagueRow, team_phase: null };
+    digest = digestWith([], [myOdds(0)]);
+    renderAt("/moves");
+    expect(screen.queryByText(/You are out of the playoffs/)).not.toBeInTheDocument();
+  });
+
+  it("shows the playoff label, not the out message, once the season is over", () => {
+    leagueRow = { ...leagueRow, current_week: 18, team_phase: "over", playoff_label: "Eliminated" };
+    digest = digestWith([], [myOdds(0)]);
+    renderAt("/moves");
+    expect(screen.queryByText(/You are out of the playoffs/)).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Eliminated");
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
   });
 });

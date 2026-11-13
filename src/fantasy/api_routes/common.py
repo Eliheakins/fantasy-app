@@ -26,10 +26,9 @@ Runner = Annotated[JobRunner, Depends(get_runner)]
 
 
 def known_league(league: str, data_dir: Path) -> bool:
-    try:  # the keys alone: no join with league_teams, no scoring JSON
-        return league in store.read_table("leagues", "raw", data_dir)["league_key"].to_list()
-    except FileNotFoundError:
-        return False
+    """Raises FileNotFoundError without a leagues table, so callers can answer `no_data`."""
+    # the keys alone: no join with league_teams, no scoring JSON
+    return league in store.read_table("leagues", "raw", data_dir)["league_key"].to_list()
 
 
 def known_team(league: str, team: int, data_dir: Path) -> bool:

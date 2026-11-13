@@ -1,4 +1,4 @@
-"""FantasyCalc market values, one fetch a day per distinct league setting.
+"""FantasyCalc market values, one fetch a day per distinct league setting, each kept in the archive.
 
 The endpoint is undocumented with no stated terms or rate limit, so any failure is logged and
 the stage still exits 0 with the previous table left in place.
@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2
 import polars as pl
 
 from fantasy import store
@@ -32,7 +32,7 @@ def fetch_values(setting: Setting) -> list[dict[str, Any]]:
         "numTeams": setting.num_teams,
         "ppr": setting.ppr,
     }
-    resp = httpx.get(
+    resp = httpx2.get(
         URL, params=params, headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT_SECONDS
     )
     resp.raise_for_status()
@@ -103,6 +103,9 @@ def run(
     replaced = {f["format"][0] for f in new if f.height}
     out = pl.concat([kept.filter(~pl.col("format").is_in(replaced)), *new])
     store.write_table("market_values", out, "raw", data_dir)
+    # raises ArchiveMissing when the table is lost beside its siblings; main() records it
+    history = store.with_archive("market_values_history", pl.concat(new), data_dir)
+    store.write_table("market_values_history", history, "archive", data_dir)
     return sum(f.height for f in new)
 
 

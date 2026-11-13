@@ -1,6 +1,4 @@
 import { PageHeader } from "@/components/PageHeader";
-import type { DigestData } from "@/lib/digestTypes";
-import type { SeasonOddsRow } from "@/lib/outlookTypes";
 import { useWho } from "@/lib/who";
 import { useLeague, useLeagueApi } from "@/lib/league";
 import { useHeld } from "@/lib/useHeld";
@@ -15,8 +13,8 @@ const changeWhy = (week: number | undefined, prev: number | null | undefined) =>
 /** h1 = the playoff odds; the sentence adds the week's change, the bye and the title chance. */
 export function SeasonHeader({ eyebrow }: { eyebrow: string }) {
   const who = useWho();
-  const odds = useLeagueApi<SeasonOddsRow[]>("season-odds");
-  const digest = useLeagueApi<DigestData>("digest");
+  const odds = useLeagueApi("/api/leagues/{league}/season-odds");
+  const digest = useLeagueApi("/api/leagues/{league}/digest");
   const { league } = useLeague();
   const mine = odds.kind === "ready" ? odds.data.find((r) => r.is_me) : undefined;
   const changeRow = digest.kind === "ready" ? digest.data.odds_change.find((r) => r.is_me) : undefined;

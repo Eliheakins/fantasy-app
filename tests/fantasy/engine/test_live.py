@@ -1,3 +1,4 @@
+import warnings
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest import mock
@@ -111,8 +112,6 @@ def test_sync_week_replaces_only_that_weeks_rows(tmp_path: Path) -> None:
 
 
 def test_missing_kickoffs_names_teams_with_a_game_but_no_time() -> None:
-    import polars as pl
-
     from fantasy.sim.availability import missing_kickoffs
 
     schedule = pl.DataFrame(
@@ -121,3 +120,16 @@ def test_missing_kickoffs_names_teams_with_a_game_but_no_time() -> None:
         orient="row",
     )
     assert missing_kickoffs(schedule, 2026, 7) == {"A", "B"}
+
+
+def test_kickoffs_can_skip_the_missing_time_warning() -> None:
+    schedule = pl.DataFrame(
+        [(2026, 7, None, "13:00", "A", "B"), (2026, 7, "2026-10-25", "13:00", "C", "D")],
+        schema=["season", "week", "gameday", "gametime", "away_team", "home_team"],
+        orient="row",
+    )
+    with pytest.warns(UserWarning, match="no kickoff time"):
+        kickoffs(schedule, 2026, 7)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert set(kickoffs(schedule, 2026, 7, warn=False)) == {"C", "D"}

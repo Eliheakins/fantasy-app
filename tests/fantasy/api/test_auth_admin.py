@@ -2,42 +2,19 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from auth_fixture import GOOD, isolate_auth, make_client, sign_in
 from fastapi.testclient import TestClient
 
-from fantasy import _runs, api, refresh_queue
-from fantasy.auth import accounts, passwords
+from fantasy import _runs, refresh_queue
+from fantasy.auth import accounts
 
-CSRF = {"X-Requested-With": "fantasy-app"}
-GOOD = "a long enough password"
 ADMIN = "boss@example.com"
 FRIEND = "friend@example.com"
 
 
 @pytest.fixture(autouse=True)
 def quick_and_isolated(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(passwords, "COST_N", 2**10)
-    monkeypatch.setenv("AUTH_COOKIE_SECURE", "0")
-    monkeypatch.setenv("LIVE_REFRESH", "off")
-    monkeypatch.delenv("FANTASY_AUTH", raising=False)
-
-
-def client_for(store_dir: Path) -> TestClient:
-    return TestClient(api.create_app(data_dir=store_dir), base_url="http://localhost", headers=CSRF)
-
-
-def sign_in(store_dir: Path, email: str, *, admin: bool = False) -> TestClient:
-    conn = accounts.connect(store_dir)
-    if admin:
-        accounts.create_admin(conn, email, GOOD)
-    else:
-        token = accounts.create_invite(conn, email, datetime.now(UTC))
-        accounts.redeem_invite(conn, token, GOOD, datetime.now(UTC))
-    conn.close()
-    client = client_for(store_dir)
-    assert (
-        client.post("/api/auth/login", json={"email": email, "password": GOOD}).status_code == 200
-    )
-    return client
+    isolate_auth(monkeypatch)
 
 
 @pytest.fixture
@@ -79,7 +56,7 @@ def test_a_new_invite_returns_a_link_that_lets_that_person_in(
     assert data["valid_days"] == accounts.INVITE_DAYS
 
     token = data["path"].removeprefix("/invite/")
-    friend = client_for(store_dir)
+    friend = make_client(store_dir)
     redeemed = friend.post("/api/auth/redeem", json={"token": token, "password": GOOD})
     assert redeemed.status_code == 200
     assert friend.get("/api/auth/me").json()["data"]["email"] == "new@example.com"
@@ -91,7 +68,7 @@ def test_a_second_link_for_the_same_email_replaces_the_first_and_resets_the_pass
     friend = sign_in(store_dir, FRIEND)
     link = admin.post("/api/admin/invites", json={"email": FRIEND}).json()["data"]["path"]
     token = link.removeprefix("/invite/")
-    other = client_for(store_dir)
+    other = make_client(store_dir)
     assert (
         other.post(
             "/api/auth/redeem", json={"token": token, "password": "a brand new password"}
@@ -99,7 +76,7 @@ def test_a_second_link_for_the_same_email_replaces_the_first_and_resets_the_pass
         == 200
     )
     assert (
-        client_for(store_dir)
+        make_client(store_dir)
         .post("/api/auth/login", json={"email": FRIEND, "password": GOOD})
         .status_code
         == 401
@@ -122,7 +99,7 @@ def test_removing_an_account_signs_the_person_out_and_ends_their_login(
     assert admin.delete(f"/api/admin/accounts/{friend_id}").status_code == 200
     assert friend.get("/api/auth/me").status_code == 401
     assert (
-        client_for(store_dir)
+        make_client(store_dir)
         .post("/api/auth/login", json={"email": FRIEND, "password": GOOD})
         .status_code
         == 401

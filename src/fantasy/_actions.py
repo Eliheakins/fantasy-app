@@ -1,15 +1,17 @@
-"""Streaming candidates and the This week action list."""
+"""Streaming candidates and the This week action list. Lineup holes and IR moves are in
+`_holes`."""
 
 from pathlib import Path
 
 import polars as pl
 
-from fantasy._engine import _league, _names, _read
+from fantasy._engine import _league, _read
+from fantasy._holes import UNAVAILABLE, _kd_names, _kd_owned
 from fantasy._leagues import my_league
 from fantasy._lineup import lineup, win_probability
 from fantasy._market import waivers
 from fantasy._schemas import ENGINE_SCHEMAS, empty
-from fantasy.teams import TEAM_MAP
+from fantasy.sim.horizon import horizon_weeks
 
 STREAM_WEEKS = 3
 
@@ -26,31 +28,27 @@ def streamers(
     if me is None or kind not in ("K", "DEF"):
         return empty("streamers")
     lid, current, mine = me["league_id"], int(me["current_week"]), me["roster_id"]
+    playoff_weeks = horizon_weeks(_league(league_key, data_dir, team)[0], "playoffs")
     proj = (
         _read("streaming_projection", data_dir, area="derived")
         .filter((pl.col("league_id") == lid) & (pl.col("kind") == kind))
-        .filter(pl.col("week") < current + STREAM_WEEKS)
+        .filter((pl.col("week") < current + STREAM_WEEKS) | pl.col("week").is_in(playoff_weeks))
     )
     rostered = _read("rosters", data_dir).filter(pl.col("league_id") == lid)
-    players = _read("sleeper_players", data_dir).select("sleeper_id", "full_name", "position")
-    if kind == "DEF":
-        owned = rostered.join(players, on="sleeper_id").filter(pl.col("position") == "DEF")
-        owned = owned.with_columns(
-            pl.col("sleeper_id")
-            .replace_strict(TEAM_MAP, default=pl.col("sleeper_id"))
-            .alias("unit")
-        )
-        name = {u: f"{u} D/ST" for u in proj["unit"].unique()}
-    else:
-        id_map = _read("id_map", data_dir, area="derived").select("sleeper_id", "gsis_id")
-        owned = rostered.join(id_map, on="sleeper_id").join(players, on="sleeper_id")
-        owned = owned.filter(pl.col("position") == "K").rename({"gsis_id": "unit"})
-        name = _names(data_dir)
+    owned = _kd_owned(kind, rostered, data_dir)
+    name = _kd_names(kind, proj["unit"].unique(), data_dir)
     mine_units = set(owned.filter(pl.col("roster_id") == mine)["unit"])
     taken_units = set(owned["unit"]) - mine_units
     totals = proj.group_by("unit", "team").agg(
         pl.col("projection").filter(pl.col("week") == current).sum().alias("this_week"),
-        pl.col("projection").sum().alias("next_three"),
+        pl.col("projection")
+        .filter(pl.col("week") < current + STREAM_WEEKS)
+        .sum()
+        .alias("next_three"),
+        pl.col("projection")
+        .filter(pl.col("week").is_in(playoff_weeks))
+        .sum()
+        .alias("playoff_points"),
     )
     rows = totals.with_columns(
         pl.col("unit").replace_strict(name, default=pl.col("unit")).alias("name"),
@@ -63,13 +61,11 @@ def streamers(
     return keep.select(*ENGINE_SCHEMAS["streamers"]).sort("next_three", descending=True)
 
 
-UNAVAILABLE = frozenset({"Out", "Doubtful", "IR", "PUP", "Sus", "NFI"})
-
-
 LINEUP_GAP = 1.0  # expected points below the best lineup before the gap is worth a note
 
 
 WAIVER_PLAYOFF_GAIN = 0.005  # playoff odds change that makes an add worth mentioning
+WAIVER_TITLE_GAIN = 0.005  # title odds change that does the same once the bracket is seeded
 
 
 def actions(
@@ -126,13 +122,21 @@ def actions(
     if adds is None:
         adds = waivers(league_key, loaded=loaded, data_dir=data_dir, team=team)
     if not adds.is_empty():
-        top = adds.sort("playoff_delta", descending=True).row(0, named=True)
-        if top["playoff_delta"] >= WAIVER_PLAYOFF_GAIN:
+        data = loaded[0]
+        # from the playoff start the seeds are fixed, so playoff_delta is always 0: use the title
+        odds_kind, gain = (
+            ("title", WAIVER_TITLE_GAIN)
+            if data.current_week >= data.playoff_start
+            else ("playoff", WAIVER_PLAYOFF_GAIN)
+        )
+        col = f"{odds_kind}_delta"
+        top = adds.sort(col, descending=True).row(0, named=True)
+        if top[col] >= gain:
             found.append(
                 (
                     "Waiver",
                     f"Add {top['full_name']}, drop {top['drop_name']}: "
-                    f"{top['playoff_delta']:+.1%} playoff odds, {top['delta_points']:+.1f} points",
+                    f"{top[col]:+.1%} {odds_kind} odds, {top['delta_points']:+.1f} points",
                 )
             )
     return pl.DataFrame(found[:n], schema={"kind": pl.String, "text": pl.String}, orient="row")

@@ -1,11 +1,11 @@
 import type { components } from "@/api/schema";
+import { copyShared } from "@/lib/sharedParams";
 import { formatNumber, formatPercent } from "@/viz";
 
 export type PlayerProfile = components["schemas"]["PlayerProfile"];
 type RoleWeek = components["schemas"]["RoleWeek"];
 
 export const MAX_COMPARE = 3;
-const SHARED_KEYS = ["league", "team", "week"];
 
 const pts = formatNumber;
 const OUT = (p: PlayerProfile) => (p.is_out ? " He is out, so this is what he is worth if he returns." : "");
@@ -61,12 +61,8 @@ export const withoutPlayer = (ids: readonly string[], id: string): string[] => i
 
 /** /players/compare for these players, keeping the viewed league, team and week of `search`. */
 export function compareHref(ids: readonly string[], search: string): string {
-  const current = new URLSearchParams(search);
   const query = new URLSearchParams();
-  SHARED_KEYS.forEach((k) => {
-    const v = current.get(k);
-    if (v !== null) query.set(k, v);
-  });
+  copyShared(new URLSearchParams(search), query);
   ids.forEach((id) => query.append("p", id));
   const text = query.toString();
   return text ? `/players/compare?${text}` : "/players/compare";

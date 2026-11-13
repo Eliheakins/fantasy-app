@@ -1,6 +1,6 @@
 import { PlayerLink } from "@/components/PlayerLink";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router";
 
 import { buildScatterPoints, StatScatterChart } from "@/features/explore/StatScatterChart";
 import { Callout } from "@/components/Callout";
@@ -16,7 +16,7 @@ import { useQueryState } from "@/stat/react/useQueryState";
 import { useLeagueName } from "@/lib/league";
 import { useLeagueOwners } from "@/features/explore/useLeagueOwners";
 import { isLeagueQuery } from "@/stat/lib/queryUrl";
-import { compareHref, MAX_COMPARE, withoutPlayer } from "@/features/players/profile";
+import { compareHref, MAX_COMPARE, withoutPlayer, withPlayer } from "@/features/players/profile";
 
 export interface ExploreResultsCanvasProps {
   result: QueryResult | null;
@@ -64,61 +64,36 @@ export function ExploreResultsCanvas({ result, error, details, running, pinnedPl
   const { byPlayer: owners } = useLeagueOwners();
   const idColumn = forTeams ? "team_id" : "player_id";
 
+  const playerById = useMemo(() => new Map((namedPlayers ?? pinnedPlayers).map((p) => [p.gsis_id, p])), [pinnedPlayers, namedPlayers]);
   // Who each row is: a player's name, or a team's.
-  const nameByGsis = useMemo(() => {
-    if (forTeams) {
-      return new Map(TEAMS.map((t) => [t.id, t.name]));
-    }
-    const m = new Map<string, string>();
-    for (const p of namedPlayers ?? pinnedPlayers) {
-      m.set(p.gsis_id, p.full_name ?? p.gsis_id);
-    }
-    return m;
-  }, [forTeams, pinnedPlayers, namedPlayers]);
-  const positionByGsis = useMemo(
-    () => new Map((namedPlayers ?? pinnedPlayers).map((p) => [p.gsis_id, p.position ?? ""])),
-    [pinnedPlayers, namedPlayers],
+  const nameByGsis = useMemo(
+    () => (forTeams ? new Map(TEAMS.map((t) => [t.id, t.name])) : new Map([...playerById].map(([id, p]) => [id, p.full_name ?? id]))),
+    [forTeams, playerById],
   );
   const hasSubject = isLeagueQuery(state) || (forTeams ? state.teams.length > 0 : pinnedPlayers.length > 0);
+
+  const [firstStat = "", secondStat = ""] = selectedStatIds;
+  const [xId, yId] = swapScatterAxes ? [secondStat, firstStat] : [firstStat, secondStat];
+  const axisLabel = (statId: string) =>
+    columnHeaders.get(metricSelectAlias(statId)) ?? formatMetricValueHeader(getStatById(statId), activeGranularity);
 
   const scatterPoints = useMemo(() => {
     if (!result || !twoStatsMode) {
       return [];
     }
-    const [a, b] = selectedStatIds;
-    const xId = swapScatterAxes ? b! : a!;
-    const yId = swapScatterAxes ? a! : b!;
-    const xCol = metricSelectAlias(xId);
-    const yCol = metricSelectAlias(yId);
-    return buildScatterPoints(result.rows as Record<string, unknown>[], xCol, yCol, nameByGsis, idColumn);
-  }, [result, twoStatsMode, selectedStatIds, swapScatterAxes, nameByGsis, idColumn]);
-
-  const scatterXLabel = useMemo(() => {
-    if (!twoStatsMode) {
-      return "";
-    }
-    const xId = swapScatterAxes ? selectedStatIds[1]! : selectedStatIds[0]!;
-    const st = getStatById(xId);
-    return columnHeaders.get(metricSelectAlias(xId)) ?? formatMetricValueHeader(st, activeGranularity);
-  }, [twoStatsMode, swapScatterAxes, selectedStatIds, columnHeaders, activeGranularity]);
-
-  const scatterYLabel = useMemo(() => {
-    if (!twoStatsMode) {
-      return "";
-    }
-    const yId = swapScatterAxes ? selectedStatIds[0]! : selectedStatIds[1]!;
-    const st = getStatById(yId);
-    return columnHeaders.get(metricSelectAlias(yId)) ?? formatMetricValueHeader(st, activeGranularity);
-  }, [twoStatsMode, swapScatterAxes, selectedStatIds, columnHeaders, activeGranularity]);
+    return buildScatterPoints(
+      result.rows as Record<string, unknown>[],
+      metricSelectAlias(xId),
+      metricSelectAlias(yId),
+      nameByGsis,
+      idColumn,
+    );
+  }, [result, twoStatsMode, xId, yId, nameByGsis, idColumn]);
 
   const { search } = useLocation();
   const [compared, setCompared] = useState<string[]>([]);
-  const toggleCompared = (id: string) =>
-    setCompared((ids) => (ids.includes(id) ? withoutPlayer(ids, id) : ids.length >= MAX_COMPARE ? ids : [...ids, id]));
-  const teamByGsis = useMemo(
-    () => new Map((namedPlayers ?? pinnedPlayers).map((p) => [p.gsis_id, p.team ?? ""])),
-    [pinnedPlayers, namedPlayers],
-  );
+  const toggleCompared = (id: string) => setCompared((ids) => (ids.includes(id) ? withoutPlayer(ids, id) : withPlayer(ids, id)));
+  const dataColumns = result?.columns.filter((col) => col !== idColumn) ?? [];
   const rowCount = result?.rows.length ?? 0;
 
   return (
@@ -161,7 +136,7 @@ export function ExploreResultsCanvas({ result, error, details, running, pinnedPl
       </div>
       <div className="space-y-3 text-body">
         {running && <p className="text-caption text-muted">Updating…</p>}
-        {error ? <Callout variant="error">{error}</Callout> : null}
+        {error ? <Callout variant="warn">{error}</Callout> : null}
         {(result?.notices ?? []).map((notice) => (
           <Callout key={notice} variant="warn">
             {notice}
@@ -171,7 +146,7 @@ export function ExploreResultsCanvas({ result, error, details, running, pinnedPl
         {result && result.rows.length > 0 ? (
           canvasView === "scatter" && twoStatsMode ? (
             <div className="flex justify-center overflow-x-auto rounded-md border border-line bg-surface py-4">
-              <StatScatterChart points={scatterPoints} xLabel={scatterXLabel} yLabel={scatterYLabel} />
+              <StatScatterChart points={scatterPoints} xLabel={axisLabel(xId)} yLabel={axisLabel(yId)} />
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -186,13 +161,11 @@ export function ExploreResultsCanvas({ result, error, details, running, pinnedPl
                     <th className="px-3 py-2 font-medium text-muted">{forTeams ? "Team" : "Player"}</th>
                     {!forTeams && <th className="px-3 py-2 font-medium text-muted">Team</th>}
                     {!forTeams && <th className="px-3 py-2 font-medium text-muted">Pos</th>}
-                    {result.columns
-                      .filter((col) => col !== idColumn)
-                      .map((col) => (
-                        <th key={col} className="px-3 py-2 text-right font-medium text-muted">
-                          {columnHeaders.get(col) ?? col}
-                        </th>
-                      ))}
+                    {dataColumns.map((col) => (
+                      <th key={col} className="px-3 py-2 text-right font-medium text-muted">
+                        {columnHeaders.get(col) ?? col}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
@@ -214,7 +187,11 @@ export function ExploreResultsCanvas({ result, error, details, running, pinnedPl
                           </td>
                         )}
                         <td className="px-3 py-2 font-medium text-ink">
-                          {forTeams ? label : <PlayerLink gsisId={pid || null} name={label} position={positionByGsis.get(pid) ?? ""} />}
+                          {forTeams ? (
+                            label
+                          ) : (
+                            <PlayerLink gsisId={pid || null} name={label} position={playerById.get(pid)?.position ?? ""} />
+                          )}
                           {/* The owner on every row is intended (issue #70); a free agent is marked once a league is chosen. */}
                           {!forTeams && owners?.get(pid) ? (
                             <span className="ml-2 text-caption font-normal text-muted">
@@ -228,15 +205,13 @@ export function ExploreResultsCanvas({ result, error, details, running, pinnedPl
                             </span>
                           ) : null}
                         </td>
-                        {!forTeams && <td className="px-3 py-2 text-ink">{teamByGsis.get(pid) || "—"}</td>}
-                        {!forTeams && <td className="px-3 py-2 text-ink">{positionByGsis.get(pid) || "—"}</td>}
-                        {result.columns
-                          .filter((col) => col !== idColumn)
-                          .map((col) => (
-                            <td key={col} className="px-3 py-2 text-right tabular-nums text-ink">
-                              {formatQueryValue(row[col])}
-                            </td>
-                          ))}
+                        {!forTeams && <td className="px-3 py-2 text-ink">{playerById.get(pid)?.team || "—"}</td>}
+                        {!forTeams && <td className="px-3 py-2 text-ink">{playerById.get(pid)?.position || "—"}</td>}
+                        {dataColumns.map((col) => (
+                          <td key={col} className="px-3 py-2 text-right tabular-nums text-ink">
+                            {formatQueryValue(row[col])}
+                          </td>
+                        ))}
                       </tr>
                     );
                   })}

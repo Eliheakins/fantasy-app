@@ -71,10 +71,7 @@ from fantasy.stages.project import GROUP, expected_frame, history_targets  # noq
 from fantasy.store import SKILL  # noqa: E402
 
 SCRATCH = Path(__file__).resolve().parent / "scratch" / "news"
-PREDS = Path(
-    "/private/tmp/claude-501/-Users-eliheakins-personal-fantasy-app/"
-    "230639a7-242c-4003-bae2-a92998c4f96c/scratchpad/preds"
-)
+PREDS = SCRATCH / "preds"
 KEY = ["gsis_id", "season", "week"]
 KEYS = [*GROUP, "season", "week"]
 SCORED = (2024, 2025, 2026)

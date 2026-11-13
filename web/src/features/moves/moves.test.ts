@@ -48,6 +48,16 @@ describe("waiverMoves", () => {
   });
 });
 
+describe("playoff phase", () => {
+  it("takes adds and trades from the title change, labelled as title odds", () => {
+    const [a] = waiverMoves([waiver("A", { playoff_delta: 0, title_delta: 0.02 })], "playoffs").map(must);
+    expect(must(a).effect).toEqual({ playoffPoints: 2, points: 5, odds: "title" });
+    const [t] = tradeMoves([idea({ playoff_delta: 0, title_delta: 0.03 })], "playoffs");
+    expect(t?.effect.playoffPoints).toBeCloseTo(3);
+    expect(t?.effect.odds).toBe("title");
+  });
+});
+
 describe("trending adds", () => {
   it("carries Sleeper's count on the move, or null without one", () => {
     const [hot, quiet] = waiverMoves([waiver("Hot", { trending_adds: 200000 }), waiver("Quiet")]).map(must);

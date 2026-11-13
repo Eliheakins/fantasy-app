@@ -16,6 +16,7 @@ OUTSIDE_SOURCES = ("fftoday",)
 # sources simulate averages with ours for the current week (Sleeper also for the next three)
 BLEND_SOURCES = ("sleeper", "fftoday", "props")
 SKILL_POSITIONS = ("QB", "RB", "WR", "TE")
+REGULAR_SEASON_WEEKS = 18  # the NFL regular season; the fantasy season ends earlier
 
 
 @dataclass(frozen=True)

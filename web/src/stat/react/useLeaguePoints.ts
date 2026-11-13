@@ -2,10 +2,7 @@ import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 
 import { fetchEnvelopeData } from "@/api/useEnvelope";
-import type { components } from "@/api/schema";
 import type { LeaguePointsRow } from "@/stat/engine/leaguePointsQuery";
-
-type PointsRow = components["schemas"]["PlayerPointsRow"];
 
 export type LeaguePointsState =
   { kind: "idle" } | { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready"; rows: LeaguePointsRow[] };
@@ -30,9 +27,9 @@ export function useLeaguePoints(
     queries: wanted.map(({ season, id }) => ({
       queryKey: ["league-points", league, season, id],
       queryFn: async (): Promise<LeaguePointsRow[]> => {
-        const who = id === null ? "" : `&gsis_id=${encodeURIComponent(id)}`;
-        const data = await fetchEnvelopeData<PointsRow[]>(
-          `/api/leagues/${encodeURIComponent(league ?? "")}/player-points?season=${season}${who}`,
+        const data = await fetchEnvelopeData(
+          "/api/leagues/{league}/player-points",
+          { path: { league: league ?? "" }, query: { season, gsis_id: id ?? undefined } },
           "League points did not load.",
         );
         return data.map((r) => ({ ...r, season }));

@@ -11,7 +11,7 @@ export const NOISE_PERCENT = 0.1;
 /** Expected wins. */
 export const NOISE_WINS = 0.05;
 
-type FormattedDelta = { text: string; tone: DeltaTone; sign: -1 | 0 | 1 };
+type FormattedDelta = { text: string; tone: DeltaTone };
 
 /** 0.62 becomes "62%". Missing values become an en dash. */
 export function formatPercent(fraction: number | null | undefined): string {
@@ -35,15 +35,15 @@ export function toPoints(fraction: number | null): number | null {
 
 /** Points of probability or fantasy score: "+4.1 ▲", "-2.0 ▼", "~0.4" inside the noise band. */
 export function formatDelta(points: number, noise: number = NOISE_POINTS): FormattedDelta {
-  if (!Number.isFinite(points)) return { text: "–", tone: "neutral", sign: 0 };
+  if (!Number.isFinite(points)) return { text: "–", tone: "neutral" };
   const digits = noise < NOISE_PERCENT ? 2 : 1;
   const magnitude = formatNumber(Math.abs(points), digits);
   if (Math.abs(points) < noise) {
     // "~0.5" would read as the threshold itself, so a value that rounds up to it keeps its sign.
-    if (Number(magnitude) < noise) return { text: `~${magnitude}`, tone: "neutral", sign: 0 };
-    return { text: `${points > 0 ? "+" : "-"}${magnitude}`, tone: "neutral", sign: 0 };
+    if (Number(magnitude) < noise) return { text: `~${magnitude}`, tone: "neutral" };
+    return { text: `${points > 0 ? "+" : "-"}${magnitude}`, tone: "neutral" };
   }
-  return points > 0 ? { text: `+${magnitude} ▲`, tone: "positive", sign: 1 } : { text: `-${magnitude} ▼`, tone: "negative", sign: -1 };
+  return points > 0 ? { text: `+${magnitude} ▲`, tone: "positive" } : { text: `-${magnitude} ▼`, tone: "negative" };
 }
 
 export function confidenceFromShare(share: number): ConfidenceLevel {

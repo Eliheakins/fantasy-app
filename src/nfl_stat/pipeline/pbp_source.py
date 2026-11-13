@@ -34,8 +34,8 @@ TIMEOUT_SECONDS = 120
 CHUNK_BYTES = 1 << 20
 
 
-def get_nfl_url(year: int, kind: str) -> str:
-    """Public nflverse-data release URL (same paths as nflreadpy `downloader.download`)."""
+def pbp_url(season: int) -> str:
+    """Public nflverse-data release URL of a season's PBP (same path as nflreadpy's downloader)."""
     base = os.environ.get("NFLVERSE_DOWNLOAD_BASE", _DEFAULT_NFLVERSE_DL).strip()
     if not base.startswith(("https://", "http://")):
         raise ValueError(
@@ -43,11 +43,7 @@ def get_nfl_url(year: int, kind: str) -> str:
         )
     if not base.endswith("/"):
         base = f"{base}/"
-    if kind == "pbp":
-        rel = f"pbp/play_by_play_{year}.parquet"
-    else:
-        raise ValueError(f"Unknown nflverse asset kind {kind!r} (supported: 'pbp')")
-    return urljoin(base, rel)
+    return urljoin(base, f"pbp/play_by_play_{season}.parquet")
 
 
 def pbp_path(season: int) -> Path:
@@ -57,7 +53,7 @@ def pbp_path(season: int) -> Path:
 def _fetch(season: int, dest: Path) -> None:
     """Download the season's file to `dest`. Failures raise ConnectionError chained to the
     requests error, as nflreadpy's downloader does, so a 404 stays recognisable."""
-    url = get_nfl_url(season, "pbp")
+    url = pbp_url(season)
     try:
         # GitHub's release CDN answers Polars' remote range requests with 501: download whole.
         with requests.get(url, stream=True, timeout=TIMEOUT_SECONDS) as response:

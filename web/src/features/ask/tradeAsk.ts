@@ -2,12 +2,13 @@
  * Trade questions ("trade A for B", "A for B trade", "trade A and B for C"), read by rules only: the
  * model prompt and catalog do not know about them. The answer is the Trades page's own evaluation.
  */
-import { formatValue, points } from "@/features/moves/trade/logic";
+import { formatValue } from "@/features/moves/trade/logic";
 import type { TradeRequest, TradeSide } from "@/features/moves/trade/types";
 import type { PlayerDictionaryRow } from "@/stat/lib/schemas/players";
+import { toPoints } from "@/viz";
 
-import { type PlayerMatch, pickCandidate } from "./resolvePlayers";
-import { sideMatch } from "./startSit";
+import type { PlayerMatch } from "./resolvePlayers";
+import { notFoundMessage, partitionPicks, sideMatch, trimQuestion } from "./startSit";
 
 export interface TradeOutcome {
   kind: "trade";
@@ -32,7 +33,7 @@ const names = (side: string) => side.split(NAME_LIST).map((n) => n.trim());
 
 /** The name phrases on each side of a trade question, or null for any other question. */
 export function parseTrade(question: string): { give: string[]; get: string[]; hasVerb: boolean } | null {
-  const text = question.trim().replace(/[?!.\s]+$/, "");
+  const text = trimQuestion(question);
   const verb = LEADING.exec(text);
   const match = verb ?? TRAILING.exec(text);
   if (!match) {
@@ -54,25 +55,14 @@ export function readTrade(question: string, dict: readonly PlayerDictionaryRow[]
     for (const phrase of phrases) {
       const match = sideMatch(phrase, dict);
       if (match === "extra" || match === "none") {
-        return parsed.hasVerb
-          ? { status: "message", text: `I couldn't find a player called “${phrase}”. Use a last or full name.` }
-          : { status: "none" };
+        return parsed.hasVerb ? { status: "message", text: notFoundMessage(phrase) } : { status: "none" };
       }
       matches.push(match);
     }
     sides.push(matches);
   }
   const [give, get] = sides as [PlayerMatch[], PlayerMatch[]];
-  const sure: PlayerDictionaryRow[] = [];
-  const unsure: PlayerMatch[] = [];
-  for (const match of [...give, ...get]) {
-    const pick = pickCandidate(match, []);
-    if (pick) {
-      sure.push(pick);
-    } else {
-      unsure.push(match);
-    }
-  }
+  const { sure, unsure } = partitionPicks([...give, ...get]);
   return unsure.length > 0 ? { status: "choose", sure, unsure, give } : finishTrade(sure, give);
 }
 
@@ -154,8 +144,8 @@ const clause = (label: string, change: number): [string, string] => {
 
 /** One plain sentence on what the trade does to the viewed team's odds, rounded as the result shows them. */
 export function tradeSummary(me: TradeSide): string {
-  const [playoffVerb, playoff] = clause("playoff", points(me.playoff_after - me.playoff_before));
-  const [titleVerb, title] = clause("title", points(me.title_after - me.title_before));
+  const [playoffVerb, playoff] = clause("playoff", toPoints(me.playoff_after - me.playoff_before));
+  const [titleVerb, title] = clause("title", toPoints(me.title_after - me.title_before));
   // The same verb for both is said once: "lowers A and B", not "lowers A and lowers B".
   return `This trade ${playoffVerb} ${playoff} and ${playoffVerb === titleVerb ? "" : `${titleVerb} `}${title}.`;
 }

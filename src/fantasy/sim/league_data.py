@@ -14,6 +14,14 @@ import polars as pl
 from fantasy import store
 from fantasy.config import load_config
 from fantasy.sim.availability import kickoffs, remaining_share
+from fantasy.sim.bracket import (
+    Match,
+    fixed_only,
+    from_rows,
+    playoff_weeks,
+    round_type_of,
+    settings_dict,
+)
 from fantasy.sim.league_checks import (
     check_league_shape,
     check_projected,
@@ -178,6 +186,73 @@ def _spread_inputs(
     return cv, rho
 
 
+def _standings_inputs(
+    matchups: pl.DataFrame, teams: pl.DataFrame, lid: str, current: int, playoff_start: int
+) -> tuple[dict[int, float], dict[int, float]]:
+    """Wins (a tie is half) and points for each roster through last week, regular season only
+    (playoff and consolation games never count), checked against Sleeper's record."""
+    base = standings(matchups, min(current, playoff_start) - 1)
+    check_standings(base, teams, lid)
+    wins = base["wins"] + 0.5 * base["ties"]
+    return (
+        {int(r): float(w) for r, w in zip(base["roster_id"], wins, strict=True)},
+        {int(r): float(p) for r, p in zip(base["roster_id"], base["points_for"], strict=True)},
+    )
+
+
+def _load_bracket(lid: str, playoff_start: int, data_dir: Path | None) -> tuple[Match, ...]:
+    """The league's fixed bracket rows (`bracket_trust`); empty when the table is missing or has
+    none fixed yet."""
+    if not store.table_path("playoff_brackets", "raw", data_dir).exists():
+        return ()
+    rows = store.read_table("playoff_brackets", "raw", data_dir).filter(pl.col("league_id") == lid)
+    return fixed_only(from_rows(rows.iter_rows(named=True)), playoff_start)
+
+
+def _load_divisions(lid: str, settings_json: str | None, data_dir: Path | None) -> dict[int, int]:
+    """roster id -> division for a league with divisions; empty without them or without the table
+    (a release synced before the table existed)."""
+    if (settings_dict(settings_json).get("divisions") or 0) < 2:
+        return {}
+    if not store.table_path("roster_divisions", "raw", data_dir).exists():
+        return {}
+    rows = store.read_table("roster_divisions", "raw", data_dir).filter(pl.col("league_id") == lid)
+    return dict(zip(rows["roster_id"].to_list(), rows["division"].to_list(), strict=True))
+
+
+def _realized(
+    matchups: pl.DataFrame, current: int, playoff_start: int
+) -> dict[tuple[int, int], float]:
+    """(roster id, week) -> points for playoff weeks already played."""
+    played = matchups.filter((pl.col("week") >= playoff_start) & (pl.col("week") < current))
+    return {
+        (int(r), int(w)): float(p or 0.0)
+        for r, w, p in played.select("roster_id", "week", "points").iter_rows()
+    }
+
+
+def _active_positions(sleeper_players: pl.DataFrame, id_map: pl.DataFrame) -> dict[str, str]:
+    """gsis_id -> position of every active skill player on a team."""
+    active = (
+        sleeper_players.filter((pl.col("status") == "Active") & pl.col("team").is_not_null())
+        .filter(pl.col("position").is_in(SKILL))
+        .join(id_map, on="sleeper_id")
+        .filter(pl.col("gsis_id_right").is_not_null())
+    )
+    return dict(zip(active["gsis_id_right"], active["position"], strict=True))
+
+
+def _live_maps(
+    mp: pl.DataFrame, clock: dict[str, float]
+) -> tuple[frozenset[str], dict[str, tuple[float, float]]]:
+    """This week's mapped players whose game has started, and each one's (points so far, share
+    of his game left)."""
+    rows = [r for r in mp.iter_rows(named=True) if r["gsis_id"]]
+    played = frozenset(r["gsis_id"] for r in rows if clock[r["sleeper_id"]] < 1.0)
+    live = {r["gsis_id"]: (float(r["points"] or 0.0), clock[r["sleeper_id"]]) for r in rows}
+    return played, live
+
+
 def load_league_data(
     league: dict[str, Any], strict: bool = True, data_dir: Path | None = None
 ) -> LeagueData:
@@ -198,6 +273,8 @@ def load_league_data(
     cfg = load_config()
     lid, current = league["league_id"], int(league["current_week"])
     playoff_start = int(league["playoff_week_start"])
+    playoff_teams = int(league.get("playoff_teams") or 6)
+    round_type = round_type_of(league.get("settings"))
     teams = store.read_table("league_teams", "raw", data_dir).filter(pl.col("league_id") == lid)
     matchups = store.read_table("matchups", "raw", data_dir).filter(pl.col("league_id") == lid)
     id_map = store.read_table("id_map", data_dir=data_dir).select("sleeper_id", "gsis_id")
@@ -206,24 +283,17 @@ def load_league_data(
     matchup_players = store.read_table("matchup_players", "raw", data_dir)
     projection_table = store.projection_table(data_dir)
 
-    base = standings(matchups, current - 1)
-    check_standings(base, teams, lid)
-    wins0 = dict(zip(base["roster_id"], base["wins"] + 0.5 * base["ties"], strict=True))
-    points0 = dict(zip(base["roster_id"], base["points_for"], strict=True))
+    wins0, points0 = _standings_inputs(matchups, teams, lid, current, playoff_start)
     roster_ids = sorted(teams["roster_id"].to_list())
 
     rosters = _load_rosters(lid, id_map, players, strict, data_dir=data_dir)
     projections, flags = layered_projections(
         lid, current, id_map, sleeper_players, projection_table, data_dir
     )
-    check_projected(rosters, projections, lid, strict)
-    active = (
-        sleeper_players.filter((pl.col("status") == "Active") & pl.col("team").is_not_null())
-        .filter(pl.col("position").is_in(SKILL))
-        .join(id_map, on="sleeper_id")
-        .filter(pl.col("gsis_id_right").is_not_null())
-    )
-    positions = dict(zip(active["gsis_id_right"], active["position"], strict=True))
+    # after the final no week is left to project, so no rostered player has a projection
+    last_week = playoff_start + playoff_weeks(playoff_teams, round_type) - 1
+    check_projected(rosters, projections, lid, strict and current <= last_week)
+    positions = _active_positions(sleeper_players, id_map)
     marginals = store.read_table("marginals", data_dir=data_dir).filter(pl.col("league_id") == lid)
     cv, rho = _spread_inputs(lid, marginals, data_dir)
     kd = kicker_and_defense(lid, current, cfg.season, players, matchup_players, data_dir)
@@ -243,6 +313,7 @@ def load_league_data(
     week_projection = dict(zip(this_week["gsis_id"], this_week["projection"], strict=True))
     week_pool = dict(zip(rosters["gsis_id"], rosters["position"], strict=True))
     week_pool.update(dict.fromkeys(week_projection, ""))
+    played, live = _live_maps(mp, clock)
 
     return LeagueData(
         roster_ids=roster_ids,
@@ -259,23 +330,21 @@ def load_league_data(
             week: [(int(a), int(b)) for a, b in g.select("roster_a", "roster_b").iter_rows()]
             for (week,), g in pairings(matchups).group_by("week")
         },
-        wins0={int(k): float(v) for k, v in wins0.items()},
-        points0={int(k): float(v) for k, v in points0.items()},
+        wins0=wins0,
+        points0=points0,
         **kd,
         current=current_state(mp, week_projection, week_pool, clock),
         injuries=flags,
-        played=frozenset(
-            r["gsis_id"]
-            for r in mp.iter_rows(named=True)
-            if r["gsis_id"] and clock[r["sleeper_id"]] < 1.0
-        ),
-        live={
-            r["gsis_id"]: (float(r["points"] or 0.0), clock[r["sleeper_id"]])
-            for r in mp.iter_rows(named=True)
-            if r["gsis_id"]
-        },
+        played=played,
+        live=live,
         positions=positions,
         trade_deadline=int(league["trade_deadline"] or 99),
         league_id=lid,
         kd_slot=kd_slot_projections(lid, id_map, current, data_dir),
+        bracket=_load_bracket(lid, playoff_start, data_dir),
+        realized=_realized(matchups, current, playoff_start),
+        playoff_teams=playoff_teams,
+        round_type=round_type,
+        seed_type=int(league.get("playoff_seed_type") or 0),
+        divisions=_load_divisions(lid, league.get("settings"), data_dir),
     )

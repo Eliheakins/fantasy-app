@@ -6,10 +6,11 @@ value over replacement by position.
 
 import polars as pl
 
-from fantasy.sim.lineup import Player, auto_lineup
+from fantasy.config import SKILL_POSITIONS
+from fantasy.sim.lineup import auto_lineup, week_pool
 from fantasy.sim.odds import LeagueData
 from fantasy.sim.roster import Valuer, ros_value, team_ids
-from fantasy.sim.value import POSITIONS, season_value
+from fantasy.sim.value import season_value
 
 NEED_MIN = 3.0  # rest-of-season points (about half a point a week) that count as a need filled
 SURPLUS_COST = 1.0  # a player whose loss costs less than this (points) is surplus
@@ -24,7 +25,7 @@ def benchmarks(data: LeagueData, valuer: Valuer) -> dict[str, list[str]]:
     ones. Adding one to a roster measures how much a starter at that position would help."""
     ros = ros_value(data, data.rosters["gsis_id"].to_list())
     out: dict[str, list[str]] = {}
-    for position in POSITIONS:
+    for position in SKILL_POSITIONS:
         ids = sorted(
             (i for i in ros if valuer.positions.get(i) == position), key=lambda i: (-ros[i], i)
         )
@@ -93,7 +94,9 @@ class TeamNeeds:
         by what is given up. Positions that give and get equally cancel, so a like-for-like swap
         fits 0 however much better the player is."""
         at = self.valuer.positions
-        net = {p: sum(at[g] == p for g in get) - sum(at[g] == p for g in give) for p in POSITIONS}
+        net = {
+            p: sum(at[g] == p for g in get) - sum(at[g] == p for g in give) for p in SKILL_POSITIONS
+        }
         filled = [p for p, n in net.items() if n > 0 and self.need[p] >= NEED_MIN]
         credit = sum(
             min(self.need[p], max(self.gain(g) for g in get if at[g] == p)) for p in filled
@@ -111,7 +114,9 @@ class TeamNeeds:
         surplus bench players, who are the natural currency for a need swap."""
         at = self.valuer.positions
         live = sorted((i for i in self.ids if ros.get(i, 0.0) > 0), key=lambda i: (-ros[i], i))
-        picked = [i for p in POSITIONS for i in [x for x in live if at[x] == p][:PER_POSITION]]
+        picked = [
+            i for p in SKILL_POSITIONS for i in [x for x in live if at[x] == p][:PER_POSITION]
+        ]
         surplus = [i for i in live if i not in picked and self.cost((i,)) < SURPLUS_COST]
         return picked + surplus[:SURPLUS_POOL]
 
@@ -130,13 +135,9 @@ def position_strength(data: LeagueData, valuer: Valuer | None = None) -> pl.Data
     }
     for roster_id in data.roster_ids:
         ids = team_ids(data, roster_id)
-        totals = dict.fromkeys(POSITIONS, 0.0)
+        totals = dict.fromkeys(SKILL_POSITIONS, 0.0)
         for week, values in valuer.values.items():
-            pool = [
-                Player(i, valuer.positions[i], values[i])
-                for i in ids
-                if i in values and i in valuer.positions
-            ]
+            pool = week_pool(ids, valuer.positions, values)
             for pid in auto_lineup(pool, valuer.slots).players:
                 player = next(p for p in pool if p.id == pid)
                 totals[player.position] += max(

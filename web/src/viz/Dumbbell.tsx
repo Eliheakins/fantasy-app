@@ -24,10 +24,10 @@ export function Dumbbell({ before, after, domain, measure, width = 140, percent 
   const x = clampedLinear(domain, [RADIUS + 1, width - RADIUS - 1]);
   const unit = percent ? "%" : "";
   const shown = (v: number) => `${formatNumber(v)}${unit}`;
-  if (!Number.isFinite(before) || !Number.isFinite(after)) {
-    return <span className="text-muted">{`${measure}: ${shown(before)} before, ${shown(after)} after`}</span>;
-  }
   const label = `${measure}: ${shown(before)} before, ${shown(after)} after`;
+  if (!Number.isFinite(before) || !Number.isFinite(after)) {
+    return <span className="text-muted">{label}</span>;
+  }
   return (
     <span className="inline-flex items-center gap-2 align-middle">
       <svg role="img" aria-label={label} width={width} height={HEIGHT} className="shrink-0">

@@ -1,0 +1,8 @@
+{
+  // App code only, without the test globals: `npm run typecheck` runs this after tsconfig.json (every file).
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["vite/client"] },
+  "include": ["src"],
+  // ruleEval.ts and stat/testing/ are Node helpers that only tests import
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/test", "src/stat/testing", "src/features/ask/ruleEval.ts"]
+}

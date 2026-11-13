@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { type Breakpoint, useMinWidth } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
+import { tableHeadRowClass } from "@/components/ui/styles";
 
 /** primary: the row's identity (row header, row title). secondary: key numbers, shown on the row.
  * detail: folded under "More" on the row. Unflagged columns are secondary; with no primary flag, column 1 is primary. */
@@ -33,7 +34,7 @@ function TableForm<T>({ caption, columns, rows, rowKey, isStrong }: FormProps<T>
       <table className="w-full text-body">
         <caption className="sr-only">{caption}</caption>
         <thead>
-          <tr className="border-b-[1.5px] border-forest text-left text-caption text-muted">
+          <tr className={tableHeadRowClass}>
             {columns.map((c) => (
               <th
                 key={c.label}

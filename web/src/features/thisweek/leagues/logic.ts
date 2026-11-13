@@ -9,7 +9,6 @@ export type LiveScore = Schemas["LiveScoreRow"];
 export type RosterRow = Schemas["RosterRow"];
 export type ActionRow = Schemas["ActionRow"];
 export type WinProbability = Schemas["WinProbabilityData"];
-export type Unmatched = Schemas["UnmatchedData"];
 
 /** "Colgate 5-2 · 801.3 PF · week 7": with fallbacks for missing fields. */
 export function recordLine(l: League): string {
@@ -38,19 +37,21 @@ export function myOdds(rows: readonly SeasonOdds[]): SeasonOdds | null {
   return rows.find((r) => r.is_me) ?? null;
 }
 
+const maxPointsOption = (data: WinProbability) => data.options.find((o) => o.option === "max_points");
+
 export function winChance(data: WinProbability): number | null {
-  return data.options.find((o) => o.option === "max_points")?.win_prob ?? null;
+  return maxPointsOption(data)?.win_prob ?? null;
 }
 
 /** Team-total range of my max-points lineup (held-out p10, median, p90). */
 export function myRange(data: WinProbability) {
-  const o = data.options.find((x) => x.option === "max_points");
+  const o = maxPointsOption(data);
   return o ? { p10: o.floor, p50: o.median, p90: o.ceiling } : null;
 }
 
 /** Opponent team-total range; the same on every option row, so read the max-points one. */
 export function opponentRange(data: WinProbability) {
-  const o = data.options.find((x) => x.option === "max_points");
+  const o = maxPointsOption(data);
   return o ? { p10: o.opp_floor, p50: o.opp_median, p90: o.opp_ceiling } : null;
 }
 

@@ -46,7 +46,6 @@ def scorecard(league: str, data_dir: DataDir) -> Any:
             "excluded": card.excluded,
             "weeks_archived": card.weeks_archived,
             "weeks_scored": card.weeks_scored,
-            "has_quantiles": card.has_quantiles,
             "sleeper_first_fetch": card.sleeper_first_fetch,
         }
 

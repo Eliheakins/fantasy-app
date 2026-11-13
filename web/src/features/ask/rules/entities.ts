@@ -5,7 +5,7 @@ import { readOpponents } from "../opponents";
 import { type PlayerMatch, tokenize } from "../resolvePlayers";
 import { findTeams, type TeamMatch } from "../resolveTeams";
 import { ambiguous, proceed, type RuleContext, type Stage, stop } from "./types";
-import { DEFENSE_WORDS, OFFENSE_WORDS, TEAM_WORDS, UNIT_NOUNS, unique, wordsOf, YEAR_RANGE } from "./vocab";
+import { asksDefense, DEFENSE_WORDS, OFFENSE_WORDS, TEAM_WORDS, UNIT_NOUNS, unique, wordsOf, YEAR_RANGE } from "./vocab";
 
 /** Who the question is about: the players, teams and opponents it names, and whether it ranks. */
 export interface Entities {
@@ -30,7 +30,7 @@ export function teamsAsked(question: string): { ids: string[]; side: Side } | nu
   if (named.length === 0 && !tokens.some((t) => TEAM_WORDS.has(t) || UNIT_NOUNS.has(t))) {
     return null;
   }
-  const defense = tokens.some((t, at) => DEFENSE_WORDS.has(t) && !opponentWords.has(at));
+  const defense = asksDefense(tokens, opponentWords);
   return { ids: unique(named.map((t) => t.id)), side: defense ? "defense" : "offense" };
 }
 

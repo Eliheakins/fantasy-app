@@ -6,13 +6,13 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2
 import polars as pl
 import pytest
 from fastapi.testclient import TestClient
 from store_fixture import write_rows
 
-from fantasy import _engine, _live, api, api_envelope, api_routes, data_api
+from fantasy import _engine, _live, api, api_envelope, api_routes, data_api, store
 from fantasy._lock import pipeline_lock
 from fantasy.api_jobs import Busy, JobRunner
 from fantasy.sim.availability import kickoffs
@@ -76,7 +76,24 @@ def test_leagues_has_record_fallback_and_trade_deadline(client: TestClient) -> N
     rows = body(client.get("/api/leagues"))["data"]
     assert [r["league_key"] for r in rows] == ["t"]
     assert rows[0]["record"] == "no record yet" and rows[0]["trade_deadline"] is None
+    assert rows[0]["playoff_label"] is None  # a regular-season week
+    assert rows[0]["team_phase"] == "regular"
     assert rows[0]["team_name"] == "Mine"
+
+
+def test_leagues_answers_with_no_label_for_a_league_with_a_corrupt_bracket(
+    client: TestClient, store_dir: Path
+) -> None:
+    leagues = store.read_table("leagues", "raw", store_dir).with_columns(
+        current_week=pl.lit(3, pl.Int64), playoff_week_start=pl.lit(2, pl.Int64)
+    )
+    store.write_table("leagues", leagues, "raw", store_dir)
+    bad = {"league_id": "L1", "bracket": "winners", "r": 1, "m": 1, "t1": 1, "t2_from_kind": "x"}
+    write_rows(store_dir, "playoff_brackets", [bad | {"t2_from_m": 1}], area="raw")
+    rows = body(client.get("/api/leagues"))["data"]
+    assert [(r["league_key"], r["playoff_label"], r["team_phase"]) for r in rows] == [
+        ("t", None, None)
+    ]
 
 
 def test_data_version_follows_the_files_of_the_given_data_dir(tmp_path: Path) -> None:
@@ -343,7 +360,7 @@ ROWS = {
         "run_at", "as_of_week", "team_name", "roster_id", "p_playoffs", "p_title",
     },
     "/api/leagues/t/streamers?kind=K": {
-        "unit", "name", "team", "is_mine", "this_week", "next_three",
+        "unit", "name", "team", "is_mine", "this_week", "next_three", "playoff_points",
     },
     "/api/leagues/t/lineup?week=3": LINEUP,
     "/api/leagues/t/schedule": {"week", "opponent", "my_points", "their_points", "win_chance"},
@@ -451,7 +468,15 @@ def test_win_probability_job_returns_options_swap_and_every_objective(client: Te
     out = wait_ok(client, lambda: client.get("/api/leagues/t/win-probability?week=3"))
     assert out["status"] == "ok"
     data = out["data"]
-    assert set(data) == {"script", "swap", "comparison", "options", "lineups", "summaries"}
+    assert set(data) == {
+        "playoff_label",
+        "script",
+        "swap",
+        "comparison",
+        "options",
+        "lineups",
+        "summaries",
+    }
     assert data["comparison"][0]["option"] == "Expected points"
     assert set(data["lineups"]) == set(data["summaries"]) == {
         "expected_points", "win_probability", "max_ceiling", "max_floor",
@@ -568,6 +593,12 @@ def test_job_for_an_unknown_league_is_invalid_and_starts_no_job(client: TestClie
     assert client.app.state.runner._jobs == {}  # type: ignore[attr-defined]
 
 
+def test_job_without_a_leagues_table_is_no_data(client: TestClient, store_dir: Path) -> None:
+    (store_dir / "raw" / "leagues.parquet").unlink()
+    out = body(client.get("/api/leagues/t/actions"))
+    assert out["error"]["code"] == "no_data"
+
+
 def test_job_runner_caps_running_jobs_and_remembers_few_finished_ones() -> None:
     runner = JobRunner(max_workers=2)
     gate = threading.Event()
@@ -639,11 +670,11 @@ def test_refresh_second_caller_gets_busy(
 def test_refresh_failure_message_is_fixed_and_hides_the_detail(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def refused(*args: Any, **kwargs: Any) -> httpx.Response:
-        raise httpx.ConnectError("secret-host.internal refused")
+    def refused(*args: Any, **kwargs: Any) -> httpx2.Response:
+        raise httpx2.ConnectError("secret-host.internal refused")
 
     # fail inside the real Sleeper client so the route sees the exception it really raises
-    monkeypatch.setattr(httpx, "get", refused)
+    monkeypatch.setattr(httpx2, "get", refused)
     monkeypatch.setattr(time, "sleep", lambda _: None)
     monkeypatch.setattr(_live, "refresh_live", lambda data_dir: sleeper.fetch("/state/nfl"))
     out = body(client.post("/api/live/refresh"))
@@ -670,7 +701,7 @@ def test_scoreboard_returns_one_nested_row_per_matchup_and_follows_the_team(
     out = body(client.get("/api/leagues/t/scoreboard"))
     assert out["status"] == "ok", out
     first = out["data"][0]
-    assert set(first) == {"week", "matchup_id", "status", "a", "b"}
+    assert set(first) == {"week", "matchup_id", "status", "playoff_label", "a", "b"}
     assert first["a"]["is_me"] and first["a"]["team_name"] == "Mine"
     assert first["a"]["win_prob"] + first["b"]["win_prob"] == pytest.approx(1.0)
     other = body(client.get("/api/leagues/t/scoreboard?team=5"))["data"][0]
@@ -684,7 +715,6 @@ def test_scorecard_is_an_empty_ok_envelope_before_anything_is_archived(
     out = body(client.get("/api/leagues/t/scorecard"))
     assert out["status"] == "ok", out
     assert out["data"]["rows"] == [] and out["data"]["weeks_archived"] == []
-    assert out["data"]["has_quantiles"] is False
     assert body(client.get("/api/leagues/nope/scorecard"))["error"]["code"] == "invalid"
 
 
@@ -776,12 +806,11 @@ def test_data_version_parses_the_schedule_once_per_file_state(
     assert len(calls) == 2
 
 
-def test_known_league_treats_missing_tables_as_before(store_dir: Path, tmp_path: Path) -> None:
+def test_known_league_raises_without_a_leagues_table(store_dir: Path, tmp_path: Path) -> None:
     assert api_routes.common.known_league("t", store_dir)
     assert not api_routes.common.known_league("zzz", store_dir)
-    assert not api_routes.common.known_league(
-        "t", tmp_path / "empty"
-    )  # old read gave an empty frame
+    with pytest.raises(FileNotFoundError):  # run_job turns this into no_data
+        api_routes.common.known_league("t", tmp_path / "empty")
     (store_dir / "raw" / "league_teams.parquet").unlink()
     assert api_routes.common.known_league(
         "t", store_dir
@@ -851,3 +880,9 @@ def test_serving_keeps_the_access_log_off_so_invite_tokens_stay_out_of_it(
     monkeypatch.setattr(uvicorn, "run", lambda app, **kwargs: seen.update(kwargs))
     api.main([])
     assert seen["access_log"] is False
+
+
+def test_bracket_route_is_no_data_with_a_message_before_the_playoffs(client: TestClient) -> None:
+    out = client.get("/api/leagues/t/bracket").json()
+    assert out["status"] == "error" and out["error"]["code"] == "no_data"
+    assert out["error"]["message"] == "The bracket is set after week 14"

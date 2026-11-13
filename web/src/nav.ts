@@ -20,15 +20,27 @@ export const NAV_ITEMS = [
 
 export type NavPath = (typeof NAV_ITEMS)[number]["path"];
 
-/** Routes that are not tabs: reached from the top bar Ask box, the footer, and Players. */
-export const EXTRA_TITLES: Readonly<Record<string, string>> = {
+/** Routes in the shell that are not tabs: reached from the top bar Ask box, the footer, and Players. routes.tsx mounts
+ * a page at each key. The player page's title stands until it names the player (`usePageName`). */
+export const EXTRA_TITLES = {
   "/admin": "Admin",
   "/ask": "Ask",
   "/my-leagues": "My leagues",
   "/model": "Model scorecard",
   "/players/find": "Find players",
   "/players/compare": "Compare players",
-};
+  "/players/:gsisId": "Player",
+} as const satisfies Readonly<Record<string, string>>;
+
+export type ExtraPath = keyof typeof EXTRA_TITLES;
+
+/** The pages a signed-out visitor can reach, outside the shell: sign in, and the page an invite link opens. */
+export const PUBLIC_TITLES = {
+  "/login": "Sign in",
+  "/invite/:token": "Choose a password",
+} as const satisfies Readonly<Record<string, string>>;
+
+export type PublicPath = keyof typeof PUBLIC_TITLES;
 
 /** The routes whose data follows the global ?week=; the week select is disabled elsewhere. */
 export const WEEK_PATHS: readonly string[] = ["/lineup", "/season"];

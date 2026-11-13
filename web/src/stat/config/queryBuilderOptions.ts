@@ -220,6 +220,12 @@ function seasonOption(season: number): FilterChipOption {
   return { id: `season-${season}`, label: String(season), predicate: `season = ${season}` };
 }
 
+/** The season a season chip id names ("season-2025" is 2025), or null for any other chip. */
+export function seasonOfChipId(id: string): number | null {
+  const match = /^season-(\d+)$/.exec(id);
+  return match ? Number(match[1]) : null;
+}
+
 /** The chip groups, with one season chip for every season the data has (oldest first). */
 export function buildFilterChipGroups(seasons: readonly number[]): FilterChipGroup[] {
   const years = [...new Set(seasons)].sort((a, b) => a - b);

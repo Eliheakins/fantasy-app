@@ -1,14 +1,16 @@
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import { FindPlayersCta, PlayersNav } from "./PlayersNav";
 
-const at = (entry: string) =>
+const at = (entry: string) => {
+  const { pathname, search } = new URL(entry, "http://localhost");
   render(
     <MemoryRouter initialEntries={[entry]}>
-      <PlayersNav />
-      <FindPlayersCta />
+      <PlayersNav here={{ pathname, search }} />
+      <FindPlayersCta here={{ pathname, search }} />
     </MemoryRouter>,
   );
+};
 
 describe("Players secondary nav", () => {
   it("offers Your players and Find players as tabs, keeping league, team and week", () => {

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router";
 import { addSaved, MAX_NAME_LENGTH, MAX_SAVED, queryWithoutShell, readSaved, removeSaved, savedHref, writeSaved } from "./savedSearchStore";
+import { linkButtonClass } from "@/components/ui/styles";
 
 /** Name the query in the URL, keep it in this browser, run it again or delete it. */
 export function SavedSearches() {
@@ -56,7 +57,7 @@ export function SavedSearches() {
         <ul>
           {saved.map((s) => (
             <li key={s.name} className="flex items-center justify-between gap-2 border-t border-line first:border-t-0">
-              <Link to={savedHref(s, search)} className="inline-flex min-h-[44px] items-center underline">
+              <Link to={savedHref(s, search)} className={linkButtonClass}>
                 {s.name}
               </Link>
               <button

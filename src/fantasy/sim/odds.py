@@ -15,6 +15,7 @@ from functools import lru_cache
 import numpy as np
 import polars as pl
 
+from fantasy.sim.bracket import Match, playoff_weeks, seeds_from, template
 from fantasy.sim.lineup import (
     Player,
     auto_lineup,
@@ -35,7 +36,7 @@ from fantasy.sim.value import (
 # explains, from walk-forward projections 2018 to 2025, averaged over both leagues' scoring.
 TAU = {"QB": 1.5, "RB": 1.7, "WR": 0.8, "TE": 0.55}
 DRIFT_SD = 2.0  # assumed weekly roster drift per team, not measured
-PLAYOFF_WEEKS = 3
+DEFAULT_SIMS = 20000  # API paths; the simulate stage reads n_sims from config.toml
 # Absences after this week, measured on nflverse 2018 to 2025 for skill players with at least 5
 # touches or targets: a player who played misses the next week 6.9% of the time, and a player who
 # missed one misses another 53% of the time (a bit low, since players who never return drop out of
@@ -87,6 +88,17 @@ class LeagueData:
     # position -> ((upper projection edge, cv), ...) by size tier; the starters' spread is smaller
     kd_slot: dict[tuple[str, int, int], float] = field(default_factory=dict)
     # (kind "K" or "DEF", roster id, week) -> projected points of the team's best rostered unit
+    bracket: tuple[Match, ...] = ()  # fixed playoff_brackets rows only (bracket.fixed_only)
+    realized: dict[tuple[int, int], float] = field(default_factory=dict)
+    # (roster id, week) -> points, for playoff weeks already played
+    playoff_teams: int = 6
+    round_type: int = 0  # Sleeper's playoff_round_type
+    seed_type: int = 0  # Sleeper's playoff_seed_type (1 reseeds each round)
+    divisions: dict[int, int] = field(default_factory=dict)  # roster id -> division, if any
+
+    @property
+    def playoff_weeks(self) -> int:
+        return playoff_weeks(self.playoff_teams, self.round_type)
 
 
 def kd_slot_mean(data: LeagueData, kind: str, roster_id: int, week: int) -> float:
@@ -216,6 +228,18 @@ def _subtract_absences(
         shift_row -= loss * gone
 
 
+def _trusted_bracket(
+    data: LeagueData,
+) -> tuple[tuple[Match, ...] | None, tuple[int, ...] | None]:
+    """The real winners rows and seeds (roster ids of seeds 1..N), or None for each when there
+    are none. `data.bracket` holds fixed rows only (the loader drops provisional ones)."""
+    real = tuple(m for m in data.bracket if m.bracket == "winners")
+    if not real:
+        return None, None
+    seeds = seeds_from(real, template(data.playoff_teams, data.round_type))
+    return real, tuple(seeds) if seeds else None
+
+
 def build_inputs(
     data: LeagueData,
     rosters: pl.DataFrame | None,
@@ -227,7 +251,10 @@ def build_inputs(
     of keeping the lineup set in Sleeper. Move evaluators use it for both the before and after
     runs, so an acquired player can fill the slot of one traded away."""
     rosters = data.rosters if rosters is None else rosters
-    weeks = list(range(data.current_week, data.playoff_start + PLAYOFF_WEEKS))
+    last_week = data.playoff_start + data.playoff_weeks - 1
+    weeks = list(range(min(data.current_week, data.playoff_start), last_week + 1))
+    off = sum(1 for wk in weeks if wk < data.current_week)  # indexes below off are realized weeks
+    real, seeds = _trusted_bracket(data)
     slots = lineup_slots(data.roster_positions)
     constants = constant_slot_count(data.roster_positions)
     index = {rid: i for i, rid in enumerate(data.roster_ids)}
@@ -241,13 +268,16 @@ def build_inputs(
     taken = set(data.rosters["gsis_id"].to_list()) | set(rosters["gsis_id"].to_list())
     free_ids = [g for g in data.positions if g not in taken]
     replacements = replacement_pool(free_ids, data.positions, by_week)
-    curves = play_curves(data.projections, weeks)
+    curves = play_curves(data.projections, weeks[off:])
     later = conditional_values(data.projections)
     for rid, t in index.items():
         team = rosters.filter(pl.col("roster_id") == rid)
         position = dict(zip(team["gsis_id"], team["position"], strict=True))
         errors = {g: TAU[pos] * player_error(g, n_sims, seed) for g, pos in position.items()}
         for w, week in enumerate(weeks):
+            if week < data.current_week:  # played: actual points, nothing left to vary
+                mean[t, w] = data.realized.get((rid, week), 0.0)
+                continue
             state = data.current.get(rid) if week == data.current_week else None
             if state is not None:
                 # a player traded away this week leaves the lineup; acquired players start benched
@@ -257,7 +287,7 @@ def build_inputs(
                 offset, k_open, def_open = state.realized, state.open_k, state.open_def
             else:
                 # expected points when playing: absences are drawn below, never discounted twice
-                values = (later if w >= 1 else by_week).get(week, {})
+                values = (later if w > off else by_week).get(week, {})
                 pool = [Player(g, position[g], values[g]) for g in position if g in values]
                 # holes (byes, absences, weak starters) fall back to stand-in free agents
                 floor = stand_ins(replacements.get(week, []), set(position))
@@ -284,11 +314,11 @@ def build_inputs(
                 if p.id not in errors:  # a stand-in free agent
                     errors[p.id] = TAU[p.position] * player_error(p.id, n_sims, seed)
                 shift[t, w] += errors[p.id] * left.get(p.id, 1.0)
-            if w >= 1 and HAZARD > 0 and state is None:
+            if w > off and HAZARD > 0 and state is None:
                 # a starter who is out falls back to the bench or a stand-in
                 _subtract_absences(
                     shift[t, w], lineup, set(position), pool + floor, full.total, slots,
-                    (curves, w, n_weeks, n_sims, seed),
+                    (curves, w - off, n_weeks - off, n_sims, seed),
                 )  # fmt: skip
 
     return SeasonInputs(
@@ -306,13 +336,21 @@ def build_inputs(
         points0=np.array([data.points0.get(r, 0.0) for r in data.roster_ids], dtype=float),
         playoff_start=data.playoff_start,
         seed=seed,
+        bracket=real,
+        seeds=seeds,
+        playoff_teams=data.playoff_teams,
+        round_type=data.round_type,
+        seed_type=data.seed_type,
+        divisions=tuple(data.divisions.get(r, 0) for r in data.roster_ids)
+        if any(data.divisions.values())
+        else (),
     )
 
 
 def league_odds(
     data: LeagueData,
     rosters: pl.DataFrame | None = None,
-    n_sims: int = 20000,
+    n_sims: int = DEFAULT_SIMS,
     seed: int = 0,
     reoptimize: bool = False,
 ) -> SeasonResult:

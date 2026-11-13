@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { possessive } from "@/lib/text";
-import { points } from "./logic";
 import { TradeResult } from "./TradeResult";
 import type { TradeEvaluation } from "./types";
-import { ExplainDelta, NOISE_PERCENT, NOISE_WINS } from "@/viz";
-import { COPIED_NOTE_MS, canPitch, copyText, pitchText } from "./builder";
+import { ExplainDelta, NOISE_PERCENT, NOISE_WINS, toPoints } from "@/viz";
+import { COPIED_NOTE_MS, canPitch, pitchText } from "./builder";
+import { copyText } from "@/lib/clipboard";
 
 type Side = TradeEvaluation["odds"][number];
 
@@ -18,14 +19,14 @@ function SideChange({ side }: { side: Side }) {
       <p className="flex flex-wrap items-baseline gap-x-3">
         <span className="whitespace-nowrap">
           <ExplainDelta
-            points={points(side.playoff_after - side.playoff_before)}
+            points={toPoints(side.playoff_after - side.playoff_before)}
             noise={NOISE_PERCENT}
             why={sideWhy(side, "chance to make the playoffs")}
           />{" "}
           <span className="text-caption text-muted">playoff pts</span>
         </span>
         <span className="whitespace-nowrap">
-          <ExplainDelta points={points(side.title_after - side.title_before)} noise={NOISE_PERCENT} why={sideWhy(side, "title chance")} />{" "}
+          <ExplainDelta points={toPoints(side.title_after - side.title_before)} noise={NOISE_PERCENT} why={sideWhy(side, "title chance")} />{" "}
           <span className="text-caption text-muted">title pts</span>
         </span>
         <span className="whitespace-nowrap">
@@ -50,9 +51,7 @@ function Pitch({ text }: { text: string }) {
         This trade helps both teams. A message you can send, built from the numbers above; nothing is sent from here.
       </p>
       <textarea readOnly aria-label="Message to copy" value={text} rows={4} className="w-full rounded border border-line bg-page p-2" />
-      <button type="button" onClick={() => void copyText(text).then(setCopied)} className="min-h-[44px] rounded bg-focus px-4 text-white">
-        Copy message
-      </button>
+      <Button onClick={() => void copyText(text).then(setCopied)}>Copy message</Button>
       <span role="status" className="ml-3 text-caption text-muted">
         {copied === null ? "" : copied ? "Copied." : "Could not copy; select the text and copy it."}
       </span>

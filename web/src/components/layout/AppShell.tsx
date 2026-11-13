@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router";
 import { Loading } from "@/components/ApiBoundary";
 import { Footer } from "./Footer";
 import { navSearch } from "./navLinks";
@@ -7,7 +7,7 @@ import { NoLeaguesNotice } from "./NoLeaguesNotice";
 import { StatusBanner } from "./StatusBanner";
 import { TeamBanner } from "./TeamBanner";
 import { TopBar } from "./TopBar";
-import { useRouteAnnounce } from "@/hooks/useRouteAnnounce";
+import { PageNameContext, useRouteAnnounce } from "@/hooks/useRouteAnnounce";
 import { TeamProvider } from "@/lib/TeamProvider";
 import { useTeam } from "@/lib/teamContext";
 import { NAV_ITEMS } from "@/nav";
@@ -28,23 +28,23 @@ function useScrolled(): boolean {
 function Frame() {
   const { search, pathname } = useLocation(); // nav links keep only ?league=, ?team= and ?week=
   const { viewed } = useTeam();
-  useRouteAnnounce(viewed ? (viewed.team_name ?? `Team ${viewed.roster_id}`) : null);
+  const setPageName = useRouteAnnounce(viewed ? (viewed.team_name ?? `Team ${viewed.roster_id}`) : null);
   const scrolled = useScrolled();
   return (
     <div className="flex min-h-screen flex-col">
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-focus focus:px-4 focus:py-3 focus:text-white"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-skip-link focus:rounded focus:bg-focus focus:px-4 focus:py-3 focus:text-white"
       >
         Skip to content
       </a>
       <div
         data-scrolled={scrolled || undefined}
-        className="on-chrome bg-forest text-white shadow-[0_2px_6px_rgba(19,32,26,0.18)] transition-shadow md:sticky md:top-0 md:z-30 data-[scrolled]:md:shadow-[0_4px_16px_rgba(19,32,26,0.28)]"
+        className="on-chrome bg-forest text-white shadow-chrome transition-shadow md:sticky md:top-0 md:z-header data-[scrolled]:md:shadow-chrome-scrolled"
       >
         <TopBar />
         <nav aria-label="Main" className="hidden bg-chrome-tabs md:block">
-          <ul className="mx-auto flex w-full max-w-[1200px] gap-8 px-[var(--page-pad)]">
+          <ul className="mx-auto flex w-full max-w-page gap-8 px-[var(--page-pad)]">
             {NAV_ITEMS.map(({ path, label }) => (
               <li key={path}>
                 <NavLink
@@ -68,17 +68,16 @@ function Frame() {
         <StatusBanner />
         <NoLeaguesNotice />
         <TeamBanner />
-        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[1200px] flex-1 outline-none">
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-page flex-1 outline-none">
           <Suspense fallback={<Loading />}>
-            <Outlet />
+            <PageNameContext value={setPageName}>
+              <Outlet />
+            </PageNameContext>
           </Suspense>
         </main>
         <Footer />
       </div>
-      <nav
-        aria-label="Main tabs"
-        className="tab-bar on-chrome fixed inset-x-0 bottom-0 z-10 flex bg-forest shadow-[0_-2px_6px_rgba(19,32,26,0.18)] md:hidden"
-      >
+      <nav aria-label="Main tabs" className="tab-bar on-chrome fixed inset-x-0 bottom-0 z-tab-bar flex bg-forest shadow-tab-bar md:hidden">
         {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
           <NavLink
             key={path}

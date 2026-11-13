@@ -168,7 +168,7 @@ def parse_reply(text: str, *, stat_ids: set[str], filter_ids: set[str]) -> Inten
     if (
         reason is None or reason is False
     ):  # the model sometimes writes null/false beside a real query
-        return QueryOutcome(intent=parse_intent(text, stat_ids=stat_ids, filter_ids=filter_ids))
+        return QueryOutcome(intent=validate_intent(obj, stat_ids=stat_ids, filter_ids=filter_ids))
     if not isinstance(reason, str) or not reason.strip():
         raise IntentError('"unsupported" needs a short reason sentence.')
     return UnsupportedOutcome(reason=reason.strip()[:300])

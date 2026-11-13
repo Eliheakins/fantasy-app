@@ -330,11 +330,7 @@ def test_run_skips_a_league_with_no_team_of_mine(league: Path) -> None:
     assert asked == []
 
 
-def test_run_keeps_the_other_leagues_ideas_when_one_league_breaks_and_says_so(
-    league: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from fantasy import _runs
-
+def two_leagues(monkeypatch: pytest.MonkeyPatch) -> None:
     both = pl.DataFrame(
         {
             "league_key": ["a", "b"],
@@ -344,6 +340,14 @@ def test_run_keeps_the_other_leagues_ideas_when_one_league_breaks_and_says_so(
         }
     )
     monkeypatch.setattr(data_api, "leagues", lambda data_dir=None: both)
+
+
+def test_run_keeps_the_other_leagues_ideas_when_one_league_breaks_and_says_so(
+    league: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fantasy import _runs
+
+    two_leagues(monkeypatch)
 
     def waivers(key: str) -> pl.DataFrame:
         if key == "a":
@@ -357,18 +361,6 @@ def test_run_keeps_the_other_leagues_ideas_when_one_league_breaks_and_says_so(
     assert written > 0 and set(table["league_id"].to_list()) == {"Lb"}
     assert any("a" in note and "KeyError" in note for note in _runs._soft_failures)
     _runs._soft_failures.clear()
-
-
-def two_leagues(monkeypatch: pytest.MonkeyPatch) -> None:
-    both = pl.DataFrame(
-        {
-            "league_key": ["a", "b"],
-            "league_id": ["La", "Lb"],
-            "current_week": [3, 3],
-            "roster_id": [1, 1],
-        }
-    )
-    monkeypatch.setattr(data_api, "leagues", lambda data_dir=None: both)
 
 
 def test_a_league_that_fails_keeps_its_previous_ideas(

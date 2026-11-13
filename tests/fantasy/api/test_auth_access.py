@@ -1,61 +1,21 @@
 import re
-from datetime import UTC, datetime
 from pathlib import Path
 
 import polars as pl
 import pytest
+from auth_fixture import account_id_of, isolate_auth, sign_in
 from fastapi.testclient import TestClient
 
-from fantasy import api, store
-from fantasy.auth import accounts, leagues, passwords
+from fantasy import store
+from fantasy.auth import accounts, leagues
 
-CSRF = {"X-Requested-With": "fantasy-app"}
-GOOD = "a long enough password"
 LEAGUE_ID = "L1"  # the league the shared test store holds, under the key "t"
 FRIEND_SLEEPER_ID = "sleeper-friend"
 
 
 @pytest.fixture(autouse=True)
 def quick_and_isolated(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(passwords, "COST_N", 2**10)
-    monkeypatch.setenv("AUTH_COOKIE_SECURE", "0")
-    monkeypatch.setenv("LIVE_REFRESH", "off")
-    monkeypatch.delenv("FANTASY_AUTH", raising=False)
-
-
-def account_id(store_dir: Path, email: str) -> int:
-    conn = accounts.connect(store_dir)
-    try:
-        return int(conn.execute("SELECT id FROM accounts WHERE email = ?", (email,)).fetchone()[0])
-    finally:
-        conn.close()
-
-
-def sign_in(store_dir: Path, email: str, *, admin: bool = False, grant: bool = False) -> TestClient:
-    """A client signed in as `email`; `grant` gives that account the test league."""
-    conn = accounts.connect(store_dir)
-    if admin:
-        accounts.create_admin(conn, email, GOOD)
-    else:
-        token = accounts.create_invite(conn, email, datetime.now(UTC))
-        accounts.redeem_invite(conn, token, GOOD, datetime.now(UTC))
-    if grant:
-        conn.execute(
-            "INSERT INTO account_leagues (account_id, league_id, added_at) VALUES (?, ?, ?)",
-            (account_id_of(conn, email), LEAGUE_ID, accounts.stamp(datetime.now(UTC))),
-        )
-        conn.commit()
-    conn.close()
-    client = TestClient(
-        api.create_app(data_dir=store_dir), base_url="http://localhost", headers=CSRF
-    )
-    login = client.post("/api/auth/login", json={"email": email, "password": GOOD})
-    assert login.status_code == 200, login.text
-    return client
-
-
-def account_id_of(conn, email: str) -> int:
-    return int(conn.execute("SELECT id FROM accounts WHERE email = ?", (email,)).fetchone()[0])
+    isolate_auth(monkeypatch)
 
 
 def league_keys(client: TestClient) -> list[str]:
@@ -121,7 +81,7 @@ def test_a_friends_default_team_is_the_roster_their_sleeper_id_owns(store_dir: P
     set_friend_as_a_roster(store_dir, roster_id=3)
     friend = sign_in(store_dir, "friend@example.com", grant=True)
     conn = accounts.connect(store_dir)
-    accounts.set_sleeper_user(conn, account_id(store_dir, "friend@example.com"), FRIEND_SLEEPER_ID)
+    accounts.set_sleeper_user(conn, account_id_of(conn, "friend@example.com"), FRIEND_SLEEPER_ID)
     conn.close()
 
     teams = {r["roster_id"]: r["is_me"] for r in friend.get("/api/leagues/t/teams").json()["data"]}
@@ -152,7 +112,7 @@ def test_a_friend_in_the_owners_league_gets_their_own_team_not_the_owners(
     )
     friend = sign_in(store_dir, "friend@example.com", grant=True)
     conn = accounts.connect(store_dir)
-    accounts.set_sleeper_user(conn, account_id(store_dir, "friend@example.com"), FRIEND_SLEEPER_ID)
+    accounts.set_sleeper_user(conn, account_id_of(conn, "friend@example.com"), FRIEND_SLEEPER_ID)
     conn.close()
 
     teams_seen = friend.get("/api/leagues/t/teams").json()["data"]
@@ -165,7 +125,7 @@ def test_the_team_an_account_picked_beats_the_one_its_sleeper_user_owns(store_di
     set_friend_as_a_roster(store_dir, roster_id=3)
     friend = sign_in(store_dir, "friend@example.com", grant=True)
     conn = accounts.connect(store_dir)
-    friend_id = account_id(store_dir, "friend@example.com")
+    friend_id = account_id_of(conn, "friend@example.com")
     accounts.set_sleeper_user(conn, friend_id, FRIEND_SLEEPER_ID)
     leagues.set_team(conn, friend_id, LEAGUE_ID, 2)
     conn.close()

@@ -1,19 +1,15 @@
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import pytest
+from auth_fixture import GOOD, isolate_auth, make_client, sign_in
 from fastapi.testclient import TestClient
 
-from fantasy import api, refresh_queue
-from fantasy.auth import accounts, my_leagues, passwords
+from fantasy import refresh_queue
+from fantasy.auth import accounts, my_leagues
 from fantasy.auth.ratelimit import FailureLimiter
 from fantasy.config import load_config
 from fantasy.sources.sleeper import SleeperError
-
-CSRF = {"X-Requested-With": "fantasy-app"}
-GOOD = "a long enough password"
-
 
 STANDARD = {"num_teams": 10, "playoff_teams": 6, "playoff_week_start": 15}
 CHOPPED = {"num_teams": 16, "playoff_teams": None, "playoff_week_start": 0}  # weekly eliminations
@@ -38,6 +34,29 @@ class FakeSleeper:
                 },
                 {"league_id": "222", "name": "Second", "total_rosters": 12, "settings": STANDARD},
                 {"league_id": "333", "name": "Third", "total_rosters": 8, "settings": STANDARD},
+                {
+                    "league_id": "777",
+                    "name": "Four",
+                    "total_rosters": 8,
+                    "settings": {**STANDARD, "playoff_teams": 4},
+                },
+                {
+                    "league_id": "888",
+                    "name": "Eight two-week",
+                    "total_rosters": 12,
+                    "settings": {
+                        "num_teams": 12,
+                        "playoff_teams": 8,
+                        "playoff_week_start": 12,
+                        "playoff_round_type": 2,
+                    },
+                },
+                {
+                    "league_id": "998",
+                    "name": "Late",
+                    "total_rosters": 10,
+                    "settings": {**STANDARD, "playoff_week_start": 16},
+                },
                 {"league_id": "444", "name": "Chopped", "total_rosters": 16, "settings": CHOPPED},
                 {
                     "league_id": "555",
@@ -73,6 +92,7 @@ class FakeSleeper:
             "222": [{"roster_id": 1, "owner_id": "u-friend"}],
             "333": [{"roster_id": 1, "owner_id": "u-friend"}],
             "444": [{"roster_id": 1, "owner_id": "u-friend"}],
+            **{k: [{"roster_id": 1, "owner_id": "u-friend"}] for k in ("777", "888", "998")},
             "555": [{"roster_id": 1, "owner_id": "u-friend"}],
             "666": [{"roster_id": 1, "owner_id": "u-friend"}],
         }
@@ -103,10 +123,7 @@ class FakeSleeper:
 
 @pytest.fixture(autouse=True)
 def quick_and_isolated(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(passwords, "COST_N", 2**10)
-    monkeypatch.setenv("AUTH_COOKIE_SECURE", "0")
-    monkeypatch.setenv("LIVE_REFRESH", "off")
-    monkeypatch.delenv("FANTASY_AUTH", raising=False)
+    isolate_auth(monkeypatch)
     monkeypatch.setattr(my_leagues, "lookup_limiter", FailureLimiter(limit=10, window_s=60.0))
 
 
@@ -117,23 +134,9 @@ def sleeper(monkeypatch: pytest.MonkeyPatch) -> FakeSleeper:
     return fake
 
 
-def sign_in(store_dir: Path, email: str = "friend@example.com") -> TestClient:
-    conn = accounts.connect(store_dir)
-    token = accounts.create_invite(conn, email, datetime.now(UTC))
-    accounts.redeem_invite(conn, token, GOOD, datetime.now(UTC))
-    conn.close()
-    client = TestClient(
-        api.create_app(data_dir=store_dir), base_url="http://localhost", headers=CSRF
-    )
-    assert (
-        client.post("/api/auth/login", json={"email": email, "password": GOOD}).status_code == 200
-    )
-    return client
-
-
 @pytest.fixture
 def friend(store_dir: Path, sleeper: FakeSleeper) -> TestClient:
-    return sign_in(store_dir)
+    return sign_in(store_dir, "friend@example.com")
 
 
 def lookup(client: TestClient, username: str = "FriendUser") -> Any:
@@ -160,6 +163,9 @@ def test_lookup_lists_the_users_current_leagues_and_which_are_already_added(
         "444": False,
         "555": False,
         "666": False,
+        "777": False,
+        "888": False,
+        "998": False,
     }
     assert data["leagues"][0]["num_teams"] == 10
 
@@ -271,9 +277,7 @@ def test_signed_out_visitors_get_nothing(store_dir: Path, sleeper: FakeSleeper) 
     conn = accounts.connect(store_dir)
     accounts.create_admin(conn, "boss@example.com", GOOD)
     conn.close()
-    client = TestClient(
-        api.create_app(data_dir=store_dir), base_url="http://localhost", headers=CSRF
-    )
+    client = make_client(store_dir)
     assert lookup(client).status_code == 401
     assert add(client, "111").status_code == 401
     assert client.get("/api/me/leagues").status_code == 401
@@ -284,6 +288,16 @@ def test_lookup_marks_the_leagues_the_app_cannot_model_with_the_reason(friend: T
     leagues = {lg["league_id"]: lg for lg in lookup(friend).json()["data"]["leagues"]}
     assert leagues["111"]["problem"] is None
     assert "no playoff" in leagues["444"]["problem"]
+
+
+def test_four_and_eight_team_playoffs_are_accepted_and_a_week_16_start_is_not(
+    friend: TestClient,
+) -> None:
+    leagues = {lg["league_id"]: lg for lg in lookup(friend).json()["data"]["leagues"]}
+    assert leagues["777"]["problem"] is None
+    assert leagues["888"]["problem"] is None
+    assert "start week" in leagues["998"]["problem"]
+    assert add(friend, "888").status_code == 200
 
 
 def test_a_league_the_app_cannot_model_cannot_be_added(friend: TestClient, store_dir: Path) -> None:
@@ -353,18 +367,6 @@ def test_a_league_with_scoring_or_a_slot_the_app_cannot_handle_is_refused_at_add
     assert refresh_queue.status(store_dir)["state"] == "idle"
 
 
-def sign_in_admin(store_dir: Path) -> TestClient:
-    conn = accounts.connect(store_dir)
-    accounts.create_admin(conn, "boss@example.com", GOOD)
-    conn.close()
-    client = TestClient(
-        api.create_app(data_dir=store_dir), base_url="http://localhost", headers=CSRF
-    )
-    body = {"email": "boss@example.com", "password": GOOD}
-    assert client.post("/api/auth/login", json=body).status_code == 200
-    return client
-
-
 def owner_in_sleeper(sleeper: FakeSleeper) -> str:
     """Put the app owner's Sleeper user and one of the config.toml leagues into the fake."""
     cfg = load_config()
@@ -408,7 +410,7 @@ def test_a_friend_cannot_claim_the_owners_sleeper_identity(
 
 def test_the_admin_may_add_the_owners_league(store_dir: Path, sleeper: FakeSleeper) -> None:
     config_league = owner_in_sleeper(sleeper)
-    admin = sign_in_admin(store_dir)
+    admin = sign_in(store_dir, "boss@example.com", admin=True)
     response = add(admin, config_league, username="OwnerName")
     assert response.status_code == 200, response.text
 

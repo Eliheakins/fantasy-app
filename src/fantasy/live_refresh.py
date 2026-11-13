@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from fantasy import data_api, store
-from fantasy._engine import _clear_league_cache
+from fantasy._engine import _clear_league_cache, current_week
 from fantasy._lock import PipelineBusy, pipeline_lock
 from fantasy.api_jobs import JobRunner
 from fantasy.config import load_config
@@ -28,7 +28,9 @@ def enabled_by_env() -> bool:
 
 
 def current_week_kickoffs(data_dir: Path | None = None) -> tuple[int, dict[str, datetime]]:
-    week = int(data_api.leagues(data_dir)["current_week"].to_numpy().max())
+    week = current_week(data_api.leagues(data_dir))
+    if week is None:
+        raise ValueError("no league has a current week")
     schedules = store.read_table("nfl_schedules", "raw", data_dir)
     return week, kickoffs(schedules, load_config().season, week)
 

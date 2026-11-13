@@ -26,7 +26,8 @@ import polars as pl
 import bias_check
 from fantasy import store
 from fantasy.stages import learn
-from fantasy.stages.project import GROUP, POSITIONS, expected_frame, history_targets
+from fantasy.config import SKILL_POSITIONS as POSITIONS
+from fantasy.stages.project import GROUP, expected_frame, history_targets
 
 SCORED = (2024, 2025, 2026)
 KEYS = [*GROUP, "season", "week"]

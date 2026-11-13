@@ -1,6 +1,7 @@
 import { Section } from "@/components/Section";
 import { WinBar, formatNumber, formatPercent } from "@/viz";
 import { COMPARISON_CAPTION, type ComparisonRow, collapseComparison, collapsedNote } from "./logic";
+import { tableHeadRowClass } from "@/components/ui/styles";
 
 /** Nothing to compare when every objective plays the same lineup: say so in one line. */
 export function Comparison({ rows }: { rows: readonly ComparisonRow[] }) {
@@ -25,7 +26,7 @@ export function Comparison({ rows }: { rows: readonly ComparisonRow[] }) {
     <Section title="Compare lineups" caption={note} howCalculated={how}>
       <table className="hidden w-full text-body lg:table">
         <thead>
-          <tr className="border-b-[1.5px] border-forest text-left text-caption text-muted">
+          <tr className={tableHeadRowClass}>
             <th className="py-2 pr-3 font-normal">Lineup</th>
             <th className="pr-3 font-normal">Chance to win</th>
             <th className="pr-3 text-right font-normal">Floor, 10% (pts)</th>

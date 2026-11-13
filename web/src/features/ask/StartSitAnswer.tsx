@@ -1,10 +1,10 @@
 import { possessive } from "@/lib/text";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router";
 
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { PlayerLink } from "@/components/PlayerLink";
 import { Callout } from "@/components/Callout";
-import { navSearch } from "@/components/layout/navLinks";
+import { navSearch, type PageUrl } from "@/components/layout/navLinks";
 import { compareHref } from "@/features/players/profile";
 import type { LineupRow } from "@/features/lineup/logic";
 import { useLeagueApi } from "@/lib/league";
@@ -20,9 +20,8 @@ interface Props {
 const RANGE_WIDTH = 200;
 
 /** Start/sit for the current week from the lineup route; the choice is the Lineup page's own `recommended` flag. */
-export function StartSitAnswer({ a, b, names }: Props) {
-  const lineup = useLeagueApi<LineupRow[]>("lineup");
-  const { pathname, search } = useLocation();
+export function StartSitAnswer({ a, b, names, here: { pathname, search } }: Props & { here: PageUrl }) {
+  const lineup = useLeagueApi("/api/leagues/{league}/lineup");
   const lineupLink = `/lineup${navSearch("/lineup", search, pathname)}`;
   return (
     <section aria-label="Start or sit" className="space-y-3 border-t border-line pt-3">

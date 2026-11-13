@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Section } from "@/components/Section";
 import { AddLeague } from "@/features/leagues/AddLeague";
@@ -6,7 +5,6 @@ import { MyLeagueList } from "@/features/leagues/MyLeagueList";
 
 /** Where a signed-in person adds their own Sleeper leagues and sees how each is doing. */
 export default function MyLeagues() {
-  const [username, setUsername] = useState("");
   return (
     <section className="px-[var(--page-pad)] py-6">
       <PageHeader title="My leagues" subtitle="Add your Sleeper leagues to get the same projections and advice." />
@@ -14,7 +12,7 @@ export default function MyLeagues() {
         <MyLeagueList />
       </Section>
       <Section title="Add a league">
-        <AddLeague username={username} onUsername={setUsername} />
+        <AddLeague />
       </Section>
     </section>
   );

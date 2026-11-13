@@ -90,7 +90,11 @@ function tokenize(sql: string): Token[] {
 class Parser {
   private pos = 0;
 
-  constructor(private readonly tokens: Token[]) {}
+  private readonly tokens: Token[];
+
+  constructor(tokens: Token[]) {
+    this.tokens = tokens;
+  }
 
   parse(): Node {
     const node = this.or();
@@ -294,6 +298,9 @@ class Parser {
 export function parseExpression(sql: string): Node {
   return new Parser(tokenize(sql)).parse();
 }
+
+/** An optional clause: none when the SQL is empty. */
+export const parseOptional = (sql: string): Node | null => (sql === "" ? null : parseExpression(sql));
 
 /** Every column the expression reads, once each. */
 export function columnsIn(node: Node, into = new Set<string>()): string[] {

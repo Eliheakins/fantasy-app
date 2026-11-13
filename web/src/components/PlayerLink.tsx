@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router";
 import { navSearch } from "@/components/layout/navLinks";
 import { statIdsFor } from "@/lib/statLink";
 

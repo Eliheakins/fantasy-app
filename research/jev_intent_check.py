@@ -25,7 +25,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2
 
 EVAL_DIR = Path(__file__).resolve().parents[1] / "tests" / "stat" / "eval"
 SETS = ("cases", "heldout", "corrections")
@@ -202,11 +202,11 @@ async def ask(headers: dict[str, str], sem: asyncio.Semaphore, question: str,
         for attempt in range(5):
             try:
                 # a fresh connection per request: reused TLS connections failed with bad record mac
-                async with httpx.AsyncClient(headers=headers, timeout=60) as client:
+                async with httpx2.AsyncClient(headers=headers, timeout=60) as client:
                     r = await client.post(URL, json={"model": MODEL,
                                                      "state": {"question": question},
                                                      "questions": questions})
-            except (httpx.TransportError, ssl.SSLError):
+            except (httpx2.TransportError, ssl.SSLError):
                 if attempt == 4:
                     raise
                 await asyncio.sleep(2 ** attempt)

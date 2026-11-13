@@ -21,6 +21,8 @@ from fantasy.sim.blend import blend_all
 
 Flag = tuple[str, str | None, str | None]  # report status, body part, practice participation
 DECAY = 0.5  # the play-through discount keeps this share of itself each week
+Curve = tuple[tuple[float, ...], float]  # chances of playing games 0, 1, ... then 1.0; perf ratio
+
 # Chance an IR player plays each of his team's next 18 games, counting from the week he is
 # listed: share of relevant skill players on nflverse IR (R01, R48) 2018 to 2023 who had a touch
 # or target, made non-decreasing (research/ir_curve_check.py). Season-ending injuries keep it
@@ -63,7 +65,7 @@ class InjuryModel:
         }
         self.bodies = {body for _, _, body in self.cells}
 
-    def curve(self, flag: Flag) -> tuple[tuple[float, ...], float] | None:
+    def curve(self, flag: Flag) -> Curve | None:
         """Chances of playing games 0 to 3 then healthy (1.0), and the play-through ratio.
         None when the status is not one the table covers."""
         status, body, practice = flag
@@ -84,9 +86,7 @@ class InjuryModel:
         return None
 
 
-def _curve_or_questionable(
-    model: InjuryModel, flag: Flag
-) -> tuple[tuple[float, ...], float] | None:
+def _curve_or_questionable(model: InjuryModel, flag: Flag) -> Curve | None:
     """The model's curve; a status it does not cover counts as Questionable (warned), except
     Probable, which is healthy (None)."""
     curve = model.curve(flag)
@@ -117,6 +117,15 @@ def _steps(projections: pl.DataFrame, current_week: int) -> pl.DataFrame:
     )
 
 
+def _table_chance(curve: Curve | None, k: int, overridden: bool) -> float | None:
+    """The injury table's chance of playing a player's game `k` (`_steps`); None when that game
+    does not take its chance from the table: no curve, an earlier week, a first game the
+    classifier overrides, or past the curve's measured steps (its last entry means healthy)."""
+    if curve is None or not 0 <= k < len(curve[0]) - 1 or (k == 0 and overridden):
+        return None
+    return curve[0][k]
+
+
 def _table_games(
     projections: pl.DataFrame,
     flagged: Mapping[str, Flag],
@@ -133,13 +142,11 @@ def _table_games(
     override = first_game_chance or {}
     curves = {g: _curve_or_questionable(model, f) for g, f in flagged.items()}
     rows = _steps(projections, current_week)
-    games = set()
-    for gsis, week, k in zip(rows["gsis_id"], rows["week"], rows["_k"], strict=True):
-        curve = curves.get(gsis)
-        if curve is None or not 0 <= k < len(curve[0]) - 1 or (k == 0 and gsis in override):
-            continue
-        games.add((gsis, week))
-    return games
+    return {
+        (gsis, week)
+        for gsis, week, k in zip(rows["gsis_id"], rows["week"], rows["_k"], strict=True)
+        if _table_chance(curves.get(gsis), k, gsis in override) is not None
+    }
 
 
 def stat_line_blend(
@@ -204,12 +211,14 @@ def injury_projections(
             chance.append(1.0)
             factor.append(1.0)
             continue
-        probs, perf = curve
-        if k == 0 and gsis in override:
+        table = _table_chance(curve, k, gsis in override)
+        if table is not None:
+            chance.append(table)
+        elif k == 0 and gsis in override:
             chance.append(override[gsis])
         else:
-            chance.append(probs[k] if k < len(probs) else 1.0)
-        factor.append(1.0 + (perf - 1.0) * DECAY**k)
+            chance.append(1.0)  # healthy past the curve
+        factor.append(1.0 + (curve[1] - 1.0) * DECAY**k)
     p = pl.Series("play_prob", chance, dtype=pl.Float64)
     f = pl.Series("_factor", factor, dtype=pl.Float64)
     return (

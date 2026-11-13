@@ -6,7 +6,7 @@ import { NAME_SUFFIXES, tokenize } from "../resolvePlayers";
 import type { Entities } from "./entities";
 import { findSplit, type SplitRead } from "./split";
 import { ambiguous, proceed, type Stage, stop, type WordMask } from "./types";
-import { COMPARE_WORDS, DEFENSE_WORDS, NAMED_COMPARE_WORDS, OFFENSE_WORDS, TEAM_FILLER, TEAM_WORDS } from "./vocab";
+import { asksDefense, COMPARE_WORDS, DEFENSE_WORDS, NAMED_COMPARE_WORDS, OFFENSE_WORDS, TEAM_FILLER, TEAM_WORDS } from "./vocab";
 
 /** The question's frame: which words are names or framing, the side of the ball, and the split asked for. */
 export interface Structure {
@@ -69,7 +69,7 @@ export function claimStructure(e: Entities): Stage<Structure> {
   const used = claimNames(e);
   let side: Side = "offense";
   if (asksTeams) {
-    const defense = tokens.some((t, at) => DEFENSE_WORDS.has(t) && !opponentWords.has(at));
+    const defense = asksDefense(tokens, opponentWords);
     if (defense && tokens.some((t) => OFFENSE_WORDS.has(t))) {
       return stop(ambiguous("It asks for a team's offense and defense at once."));
     }

@@ -23,8 +23,8 @@ from fantasy.auth import accounts, leagues
 from fantasy.auth.ratelimit import FailureLimiter
 from fantasy.config import load_config
 from fantasy.scoring import UnmappedScoring, check_keys
+from fantasy.sim.bracket import shape_problem
 from fantasy.sim.lineup import UnknownSlot, lineup_slots
-from fantasy.sim.season import format_problem
 from fantasy.sources.sleeper import SleeperError, fetch
 
 USERNAME_PATTERN = r"^[A-Za-z0-9_]{1,40}$"  # Sleeper usernames; nothing that could alter the url
@@ -140,8 +140,13 @@ def _teams(league_id: str) -> list[dict[str, Any]]:
 def _problem(lg: dict[str, Any]) -> str | None:
     """Why the season simulation cannot model this league, from Sleeper's own settings."""
     settings = lg.get("settings") or {}
-    shape = format_problem(
-        settings.get("num_teams"), settings.get("playoff_teams"), settings.get("playoff_week_start")
+    shape = shape_problem(
+        settings.get("num_teams"),
+        settings.get("playoff_teams"),
+        settings.get("playoff_week_start"),
+        settings.get("playoff_round_type"),
+        settings.get("playoff_seed_type"),
+        settings.get("divisions"),
     )
     if shape:
         return shape
@@ -175,12 +180,7 @@ OWNER_ONLY = "That league belongs to the app's owner and cannot be added."
 
 def _limited(account: dict[str, Any]) -> bool:
     """Count one Sleeper lookup for the account; True when it has had its share this minute."""
-    key = f"lookup:{account['id']}"
-    now = time.monotonic()
-    if lookup_limiter.blocked(key, now):
-        return True
-    lookup_limiter.record(key, now)
-    return False
+    return not lookup_limiter.attempt((f"lookup:{account['id']}",), time.monotonic())
 
 
 @router.post("/sleeper/lookup", response_model=Envelope[Lookup])

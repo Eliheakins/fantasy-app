@@ -3,7 +3,7 @@ Each metric's own SQL, run on the built shards, must reproduce the figures recor
 `metrics/metrics.json` (taken from the tier-1 `player_game` table, nflverse's official totals).
 
 A case is skipped when the shard for its season is not built. Run
-`uv run python backend/scripts/build_data.py` first to exercise them all. The query composition
+`make stat-data` first to exercise them all. The query composition
 (role column, play type, play filter) mirrors `runStatQuery` in the frontend engine; the engine's
 own tests pin that side.
 """

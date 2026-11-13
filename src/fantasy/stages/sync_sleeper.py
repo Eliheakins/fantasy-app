@@ -14,6 +14,7 @@ from typing import Any
 import polars as pl
 
 from fantasy import store
+from fantasy._runs import note_soft_failure
 from fantasy.auth import accounts, leagues
 from fantasy.config import Config, load_config
 from fantasy.sources.sleeper import SleeperError, fetch
@@ -23,12 +24,12 @@ log = logging.getLogger(__name__)
 PLAYERS_CACHE = store.DATA_DIR / "raw" / "sleeper_players_cache.json"
 PLAYERS_TTL_SECONDS = 24 * 3600  # Sleeper asks for at most one players pull a day
 FANTASY_POSITIONS = {"QB", "RB", "WR", "TE", "K", "DEF"}
-LAST_WEEK = 17
+LAST_FANTASY_WEEK = 17  # the last week a league plays; matchups are fetched up to it
 EMPTY_SLOT = "0"
 MIN_PLAYERS = 1000  # the real file has about 11,000 entries
 
 
-def _int(value: Any) -> int | None:
+def as_int(value: Any) -> int | None:
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -80,8 +81,8 @@ def players_frame(raw: dict[str, dict[str, Any]]) -> pl.DataFrame:
                 "team": p.get("team"),
                 "status": p.get("status"),
                 "injury_status": p.get("injury_status"),
-                "age": _int(p.get("age")),
-                "years_exp": _int(p.get("years_exp")),
+                "age": as_int(p.get("age")),
+                "years_exp": as_int(p.get("years_exp")),
                 "gsis_id": p.get("gsis_id"),
                 "fantasy_positions": p.get("fantasy_positions") or [],
             }
@@ -95,15 +96,15 @@ def league_frame(league_key: str, lg: dict[str, Any]) -> pl.DataFrame:
         "league_key": league_key,
         "league_id": str(lg["league_id"]),
         "name": lg.get("name"),
-        "season": _int(lg.get("season")),
+        "season": as_int(lg.get("season")),
         "status": lg.get("status"),
-        "num_teams": _int(s.get("num_teams")),
-        "current_week": _int(s.get("leg")),
-        "playoff_week_start": _int(s.get("playoff_week_start")),
-        "playoff_teams": _int(s.get("playoff_teams")),
-        "playoff_seed_type": _int(s.get("playoff_seed_type")),
-        "trade_deadline": _int(s.get("trade_deadline")),
-        "waiver_type": _int(s.get("waiver_type")),
+        "num_teams": as_int(s.get("num_teams")),
+        "current_week": as_int(s.get("leg")),
+        "playoff_week_start": as_int(s.get("playoff_week_start")),
+        "playoff_teams": as_int(s.get("playoff_teams")),
+        "playoff_seed_type": as_int(s.get("playoff_seed_type")),
+        "trade_deadline": as_int(s.get("trade_deadline")),
+        "waiver_type": as_int(s.get("waiver_type")),
         "roster_positions": lg.get("roster_positions") or [],
         "scoring_settings": json.dumps(lg.get("scoring_settings") or {}, sort_keys=True),
         "settings": json.dumps(s, sort_keys=True),
@@ -125,13 +126,13 @@ def teams_frame(
         rows.append(
             {
                 "league_id": league_id,
-                "roster_id": _int(r["roster_id"]),
+                "roster_id": as_int(r["roster_id"]),
                 "owner_id": str(owner or ""),
                 "team_name": names.get(owner, ""),
                 "is_me": owner == my_user_id,
-                "wins": _int(s.get("wins")) or 0,
-                "losses": _int(s.get("losses")) or 0,
-                "ties": _int(s.get("ties")) or 0,
+                "wins": as_int(s.get("wins")) or 0,
+                "losses": as_int(s.get("losses")) or 0,
+                "ties": as_int(s.get("ties")) or 0,
                 "points_for": (s.get("fpts") or 0) + (s.get("fpts_decimal") or 0) / 100,
                 "points_against": (s.get("fpts_against") or 0)
                 + (s.get("fpts_against_decimal") or 0) / 100,
@@ -148,7 +149,7 @@ def rosters_frame(league_id: str, rosters: list[dict[str, Any]]) -> pl.DataFrame
         rows.extend(
             {
                 "league_id": league_id,
-                "roster_id": _int(r["roster_id"]),
+                "roster_id": as_int(r["roster_id"]),
                 "sleeper_id": str(pid),
                 "is_starter": pid in starters,
                 "is_ir": pid in reserve,
@@ -164,13 +165,13 @@ def matchups_frames(
     teams: list[dict[str, Any]] = []
     players: list[dict[str, Any]] = []
     for m in matchups:
-        roster_id = _int(m["roster_id"])
+        roster_id = as_int(m["roster_id"])
         teams.append(
             {
                 "league_id": league_id,
                 "week": week,
                 "roster_id": roster_id,
-                "matchup_id": _int(m.get("matchup_id")),
+                "matchup_id": as_int(m.get("matchup_id")),
                 "points": m.get("points"),
             }
         )
@@ -193,7 +194,7 @@ def matchups_frames(
 def transactions_frame(league_id: str, week: int, txs: list[dict[str, Any]]) -> pl.DataFrame:
     rows = []
     for t in txs:
-        bid = _int((t.get("settings") or {}).get("waiver_bid"))
+        bid = as_int((t.get("settings") or {}).get("waiver_bid"))
         for action, key in (("add", "adds"), ("drop", "drops")):
             for pid, roster_id in (t.get(key) or {}).items():
                 rows.append(
@@ -203,8 +204,8 @@ def transactions_frame(league_id: str, week: int, txs: list[dict[str, Any]]) -> 
                         "transaction_id": str(t["transaction_id"]),
                         "type": t.get("type"),
                         "status": t.get("status"),
-                        "created": _int(t.get("created")),
-                        "roster_id": _int(roster_id),
+                        "created": as_int(t.get("created")),
+                        "roster_id": as_int(roster_id),
                         "sleeper_id": str(pid),
                         "action": action,
                         "waiver_bid": bid,
@@ -219,11 +220,79 @@ def trending_frame(fetched_at: str, kind: str, items: list[dict[str, Any]]) -> p
             "fetched_at": fetched_at,
             "kind": kind,
             "sleeper_id": str(i["player_id"]),
-            "count": _int(i.get("count")),
+            "count": as_int(i.get("count")),
         }
         for i in items
     ]
     return _frame("trending", rows)
+
+
+def _bracket_row(league_id: str, bracket: str, week: int, row: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "league_id": league_id,
+        "bracket": bracket,
+        "r": int(row["r"]),
+        "m": int(row["m"]),
+        "t1": as_int(row.get("t1")),
+        "t2": as_int(row.get("t2")),
+        "w": as_int(row.get("w")),
+        "l": as_int(row.get("l")),
+        "p": as_int(row.get("p")),
+        "fetched_week": week,
+    }
+    for side in ("t1", "t2"):
+        # a slot fed by an earlier game is {"w"|"l": match id}; a bye or seed has none
+        ((kind, source),) = (row.get(f"{side}_from") or {None: None}).items()
+        if kind not in (None, "w", "l"):
+            raise ValueError(f"unknown bracket source {kind!r}")
+        out[f"{side}_from_kind"] = kind
+        out[f"{side}_from_m"] = as_int(source)
+    return out
+
+
+def _stored_bracket(league_id: str, bracket: str) -> pl.DataFrame:
+    """The bracket rows from the last sync (none if there was no sync or no such table yet)."""
+    try:
+        stored = store.read_table("playoff_brackets", "raw")
+    except FileNotFoundError:
+        return _frame("playoff_brackets", [])
+    return stored.filter((pl.col("league_id") == league_id) & (pl.col("bracket") == bracket))
+
+
+def bracket_frame(
+    league_id: str, bracket: str, rows: Any, week: int, playoff_start: int | None = None
+) -> pl.DataFrame:
+    """One bracket's games (`bracket` is "winners" or "losers"). Before the playoffs start, null
+    or empty gives no rows and an unreadable payload keeps the stored rows (logged). From the
+    playoff start, a null, empty or unreadable reply keeps only the stored rows fetched at or after
+    the start (provisional rows are no seeds) and records a soft failure, so one odd response
+    mid-playoffs cannot wipe a good bracket or drop the league."""
+    started = playoff_start is not None and week >= playoff_start
+    if rows:
+        try:
+            parsed = [_bracket_row(league_id, bracket, week, r) for r in rows]
+            return _frame("playoff_brackets", parsed)
+        except (KeyError, ValueError, TypeError, AttributeError):
+            log.warning("league %s: unreadable %s bracket", league_id, bracket, exc_info=True)
+            if not started:
+                return _stored_bracket(league_id, bracket)
+    elif not started:
+        return _frame("playoff_brackets", [])
+    kept = _stored_bracket(league_id, bracket).filter(pl.col("fetched_week") >= playoff_start)
+    why = f"league {league_id}: bad {bracket} bracket reply in the playoffs, kept {kept.height}"
+    log.warning(why)
+    note_soft_failure(why)
+    return kept
+
+
+def divisions_frame(league_id: str, rosters: list[dict[str, Any]]) -> pl.DataFrame:
+    """The division of each roster that has one (Sleeper's roster `settings.division`)."""
+    rows = [
+        {"league_id": league_id, "roster_id": as_int(r["roster_id"]), "division": division}
+        for r in rosters
+        if (division := as_int((r.get("settings") or {}).get("division"))) is not None
+    ]
+    return _frame("roster_divisions", rows)
 
 
 def _concat(name: str, frames: list[pl.DataFrame]) -> pl.DataFrame:
@@ -234,9 +303,11 @@ LEAGUE_TABLES = (
     "leagues",
     "league_teams",
     "rosters",
+    "roster_divisions",
     "matchups",
     "matchup_players",
     "transactions",
+    "playoff_brackets",
 )
 # What a league added by someone else can fail with: Sleeper refusing it or not answering, no
 # rosters, or a payload that is not the shape we read. Anything else is a bug: stop the run.
@@ -264,12 +335,17 @@ def _league_frames(
     frames["leagues"].append(league_frame(key, lg))
     frames["league_teams"].append(teams)
     frames["rosters"].append(rosters_frame(league_id, rosters))
-    for week in range(1, LAST_WEEK + 1):
+    frames["roster_divisions"].append(divisions_frame(league_id, rosters))
+    for week in range(1, LAST_FANTASY_WEEK + 1):
         raw_matchups = fetch(f"/league/{league_id}/matchups/{week}")
         week_teams, week_players = matchups_frames(league_id, week, raw_matchups)
         frames["matchups"].append(week_teams)
         frames["matchup_players"].append(week_players)
-    current = _int((lg.get("settings") or {}).get("leg")) or 1
+    current = as_int((lg.get("settings") or {}).get("leg")) or 1
+    start = as_int((lg.get("settings") or {}).get("playoff_week_start"))
+    for bracket in ("winners", "losers"):
+        raw = fetch(f"/league/{league_id}/{bracket}_bracket")
+        frames["playoff_brackets"].append(bracket_frame(league_id, bracket, raw, current, start))
     for week in range(1, current + 1):
         txs = fetch(f"/league/{league_id}/transactions/{week}")
         frames["transactions"].append(transactions_frame(league_id, week, txs))

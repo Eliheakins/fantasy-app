@@ -16,6 +16,13 @@ const DAYS_IN_WEEK = 7;
 const FRIDAY_POSITION = 3; // Tue Wed Thu Fri
 const MONDAY_ZERO_TO_STRIP = DAYS_IN_WEEK - 1; // Sleeper counts Monday as 0; the strip starts on Tuesday
 
+/** A league's display name: its trimmed name, or its key when the name is blank. */
+export const leagueName = (l: { league_key: string; name?: string | null }): string => l.name?.trim() || l.league_key;
+
+/** The strip day (Tuesday first) of a Sleeper waiver day, which counts Monday as 0. */
+const stripDay = (days: readonly string[], dayOfWeek: number): string | undefined =>
+  days[(dayOfWeek + MONDAY_ZERO_TO_STRIP) % DAYS_IN_WEEK];
+
 /** "2026-11-04": the New York calendar day of an instant. */
 export const etDay = (at: Date): string => DAY_FORMAT.format(at);
 
@@ -43,7 +50,7 @@ export function weekDays(now: Date): string[] {
 /** Day the league's waivers clear (this week's, or next week's once it has passed); null when not known. */
 export function waiverDeadlineDay(dayOfWeek: number | null, now: Date): string | null {
   if (dayOfWeek === null) return null;
-  const day = weekDays(now)[(dayOfWeek + MONDAY_ZERO_TO_STRIP) % DAYS_IN_WEEK];
+  const day = stripDay(weekDays(now), dayOfWeek);
   if (day === undefined) return null;
   return day < etDay(now) ? addDays(day, DAYS_IN_WEEK) : day;
 }
@@ -81,8 +88,8 @@ export function buildStrip(now: Date, calendar: WeekCalendar): StripDay[] {
   const clearing = new Map<string, string[]>();
   for (const w of calendar.waivers) {
     if (w.day_of_week === null || w.daily) continue;
-    const day = days[(w.day_of_week + MONDAY_ZERO_TO_STRIP) % DAYS_IN_WEEK];
-    if (day !== undefined) clearing.set(day, [...(clearing.get(day) ?? []), w.name?.trim() || w.league_key]);
+    const day = stripDay(days, w.day_of_week);
+    if (day !== undefined) clearing.set(day, [...(clearing.get(day) ?? []), leagueName(w)]);
   }
   for (const [day, names] of clearing) add(day, { kind: "waivers", text: `Waivers clear: ${names.join(", ")}` });
   add(days[FRIDAY_POSITION], { kind: "injury", text: "Injury report" });
@@ -101,7 +108,7 @@ export function buildStrip(now: Date, calendar: WeekCalendar): StripDay[] {
 export function unplacedWaivers(calendar: WeekCalendar): string[] {
   return calendar.waivers
     .filter((w) => w.daily || w.day_of_week === null)
-    .map((w) => `${w.name?.trim() || w.league_key}: ${w.daily ? "daily waivers, no single clear day" : "no waiver day in the data"}`);
+    .map((w) => `${leagueName(w)}: ${w.daily ? "daily waivers, no single clear day" : "no waiver day in the data"}`);
 }
 
 /** What the strip cannot show: kickoffs on days outside it (data behind the calendar) and teams with no kickoff time. */

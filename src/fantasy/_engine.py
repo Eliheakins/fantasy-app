@@ -22,7 +22,7 @@ from fantasy.config import load_config
 from fantasy.sim import moves
 from fantasy.sim.availability import LONG_TERM, games_on, kickoffs, locked_teams
 from fantasy.sim.calibration import tier_of
-from fantasy.sim.lineup import Player, auto_lineup, constant_slot_count
+from fantasy.sim.lineup import Lineup, Player, auto_lineup, constant_slot_count, lineup_slots
 from fantasy.sim.odds import CurrentWeek, LeagueData, kd_slot_mean
 from fantasy.sim.sampler import LEVELS, Slate, correlation_matrix, sample_points
 
@@ -39,6 +39,19 @@ def _read(name: str, data_dir: Path | None, area: str = "raw") -> pl.DataFrame:
         return store.read_table(name, area, data_dir)
     except FileNotFoundError:
         return pl.DataFrame(schema=store.SCHEMAS[name])
+
+
+def _league_settings(league_id: str, data_dir: Path | None) -> str | None:
+    """A league's raw Sleeper `settings` JSON from the `leagues` table (None when missing)."""
+    table = _read("leagues", data_dir).filter(pl.col("league_id") == league_id)
+    settings = table["settings"].first() if "settings" in table.columns and table.height else None
+    return settings if isinstance(settings, str) else None
+
+
+def current_week(frame: pl.DataFrame) -> int | None:
+    """The highest `current_week` over a leagues frame, or None when it has none."""
+    week = frame["current_week"].max()
+    return None if week is None else int(week)  # type: ignore[arg-type]
 
 
 LEAGUE_CACHE_SIZE = 4
@@ -66,7 +79,8 @@ def _week_kickoffs(
     cache, so a rewrite of either file is read again on the next call)."""
     leagues = store.read_table("leagues", "raw", Path(root))
     schedules = store.read_table("nfl_schedules", "raw", Path(root))
-    return kickoffs(schedules, season, int(leagues["current_week"].max()))  # type: ignore[arg-type]
+    week = current_week(leagues)
+    return {} if week is None else kickoffs(schedules, season, week)
 
 
 def _live_bucket(root: Path, stamps: dict[str, FileStamp]) -> str:
@@ -226,6 +240,21 @@ def _pool(
     return [
         Player(i, positions[i], values[i]) for i in moves.team_ids(data, roster_id) if i in values
     ]
+
+
+def _week_lineup(
+    data: LeagueData,
+    roster_id: int,
+    week: int,
+    positions: dict[str, str] | None = None,
+    by_week: dict[int, dict[str, float]] | None = None,
+) -> tuple[list[Player], Lineup]:
+    """A team's pool for `week` and its auto-lineup (skill slots only; K and DEF are added by the
+    caller). `schedule` and the weeks-ahead grid both read it, so their totals agree."""
+    pos = positions if positions is not None else moves.position_of(data)
+    values = by_week if by_week is not None else moves.week_values(data)
+    pool = _pool(data, roster_id, pos, values.get(week, {}))
+    return pool, auto_lineup(pool, lineup_slots(data.roster_positions))
 
 
 def _week_values(data: LeagueData, week: int, positions: dict[str, str]) -> dict[str, float]:

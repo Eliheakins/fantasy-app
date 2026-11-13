@@ -1,15 +1,15 @@
 """The week calendar (kickoffs, waiver clear days) and my players' injury status changes."""
 
 import json
-import warnings
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import polars as pl
 
-from fantasy._engine import _read
+from fantasy._engine import _read, current_week
 from fantasy._leagues import leagues, my_league
+from fantasy._runs import parse_utc
 from fantasy.config import load_config
 from fantasy.sim.availability import kickoffs, missing_kickoffs
 
@@ -32,15 +32,12 @@ def week_calendar(data_dir: Path | None = None) -> dict[str, Any]:
     """The current NFL week, each team's kickoff (US Eastern) and each league's waiver clear day.
     The week is the highest current week over my leagues, as the live refresh reads it."""
     current = leagues(data_dir)
-    weeks = current["current_week"].drop_nulls()
-    week = int(weeks.max()) if len(weeks) else None  # type: ignore[arg-type]
+    week = current_week(current)
     games: dict[str, datetime] = {}
     unknown: set[str] = set()
     if week is not None:
         schedules, season = _read("nfl_schedules", data_dir), load_config().season
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")  # teams with no kickoff time are reported below
-            games = kickoffs(schedules, season, week)
+        games = kickoffs(schedules, season, week, warn=False)  # reported below instead
         unknown = missing_kickoffs(schedules, season, week) - set(games)
     raw = _read("leagues", data_dir)
     settings = dict(raw.select("league_key", "settings").iter_rows()) if "settings" in raw else {}
@@ -56,11 +53,6 @@ def week_calendar(data_dir: Path | None = None) -> dict[str, Any]:
     }
 
 
-def _as_utc(iso: str) -> datetime:
-    parsed = datetime.fromisoformat(iso)
-    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
-
-
 def status_changes(
     league_key: str, since: datetime, data_dir: Path | None = None, team: int | None = None
 ) -> pl.DataFrame:
@@ -74,7 +66,7 @@ def status_changes(
     columns = ["sleeper_id", "full_name", "position", "team", "before", "after"]
     empty = pl.DataFrame(schema=dict.fromkeys(columns, pl.String))
     snaps = _read("sleeper_player_status", data_dir, area="archive")
-    stamps = {t: _as_utc(t) for t in snaps["fetched_at"].drop_nulls().unique()}
+    stamps = {t: parse_utc(t) for t in snaps["fetched_at"].drop_nulls().unique()}
     old = [t for t, at in stamps.items() if at <= since]
     if not old:
         return empty

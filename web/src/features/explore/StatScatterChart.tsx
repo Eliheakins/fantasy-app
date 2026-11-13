@@ -14,24 +14,16 @@ function toNumber(v: unknown): number | null {
   if (v === null || v === undefined) {
     return null;
   }
-  if (typeof v === "bigint") {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  }
-  if (typeof v === "number") {
-    return Number.isFinite(v) ? v : null;
-  }
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
 function paddedDomain(values: number[]): [number, number] {
-  const finite = values.filter((v) => Number.isFinite(v));
-  if (finite.length === 0) {
+  if (values.length === 0) {
     return [0, 1];
   }
-  const min = Math.min(...finite);
-  const max = Math.max(...finite);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
   if (min === max) {
     const pad = Math.abs(min) * 0.1 || 1;
     return [min - pad, max + pad];
@@ -158,7 +150,7 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
         })}
       </svg>
       {hover !== null && points[hover] ? (
-        <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-md border border-line bg-surface px-3 py-1.5 text-center text-caption shadow-sm">
+        <div className="pointer-events-none absolute left-1/2 top-2 z-raised -translate-x-1/2 rounded-md border border-line bg-surface px-3 py-1.5 text-center text-caption shadow-sm">
           <div className="font-medium text-ink">{points[hover]!.label}</div>
           <div className="mt-0.5 tabular-nums text-muted">
             {xLabel}: {points[hover]!.x.toFixed(3)} · {yLabel}: {points[hover]!.y.toFixed(3)}

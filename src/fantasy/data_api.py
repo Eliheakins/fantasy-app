@@ -19,6 +19,10 @@ import polars as pl
 from fantasy import _digest, _league_view, _season_events, store
 from fantasy._actions import actions as actions
 from fantasy._actions import streamers as streamers
+from fantasy._bracket import bracket as bracket
+from fantasy._bracket import league_label as league_label
+from fantasy._bracket import league_phase as league_phase
+from fantasy._bracket import playoff_status as playoff_status
 from fantasy._calendar import status_changes as status_changes
 from fantasy._calendar import week_calendar as week_calendar
 from fantasy._engine import _clear_league_cache as clear_league_cache
@@ -28,8 +32,10 @@ from fantasy._engine import _tier_edges as _tier_edges
 from fantasy._engine import data_version as data_version
 from fantasy._engine import file_stamp as file_stamp
 from fantasy._engine import pinned_version as pinned_version
-from fantasy._leagues import TEAM_COLUMNS, leagues, my_league, scoring_labels
-from fantasy._lineup import lineup, win_probability
+from fantasy._holes import holes as holes
+from fantasy._leagues import TEAM_COLUMNS, leagues, scoring_labels
+from fantasy._leagues import my_league as my_league
+from fantasy._lineup import lineup, lineup_grid, win_probability
 from fantasy._live import game_day, live_win_row, record_live_tick, refresh_live
 from fantasy._market import (
     evaluate_trade,
@@ -37,6 +43,7 @@ from fantasy._market import (
     player_points,
     player_weeks,
     position_strength,
+    stash,
     trade_assets,
     trade_partners,
     trade_roster_changes,
@@ -48,6 +55,7 @@ from fantasy._schemas import ENGINE_SCHEMAS
 from fantasy._scoreboard import SCOREBOARD_SIMS, scoreboard_of
 from fantasy._scorecard import Scorecard, scorecard_of
 from fantasy._status import freshness, missing_layers, refresh_runs, simulation_behind_inputs
+from fantasy._values import market_history as market_history
 from fantasy._values import market_values as _market_values
 from fantasy._values import trade_market as _trade_market
 from fantasy._watch import watchlist as _watchlist
@@ -56,6 +64,7 @@ from fantasy.sim.depth import position_depth
 
 __all__ = [
     "actions",
+    "bracket",
     "clear_league_cache",
     "data_version",
     "evaluate_trade",
@@ -63,14 +72,19 @@ __all__ = [
     "find_trades",
     "freshness",
     "game_day",
+    "holes",
     "ideas_are_mine",
     "last_week",
+    "league_label",
+    "league_phase",
     "leagues",
     "lineup",
+    "lineup_grid",
     "live_score",
     "live_win_row",
     "luck",
     "manager_grades",
+    "market_history",
     "market_values",
     "missing_layers",
     "move_ideas",
@@ -84,6 +98,7 @@ __all__ = [
     "player_profile",
     "player_vs_projection",
     "player_weeks",
+    "playoff_status",
     "position_strength",
     "power_rankings",
     "record_live_tick",
@@ -99,6 +114,7 @@ __all__ = [
     "season_odds",
     "seed_distribution",
     "simulation_behind_inputs",
+    "stash",
     "status_changes",
     "stored_adds",
     "streamers",

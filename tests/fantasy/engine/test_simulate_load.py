@@ -114,9 +114,13 @@ def build_store(
         for pos in ("QB", "RB", "WR", "TE")
     ]
     write_rows(tmp_path, "marginals", spread)
-    for name in ("correlation_pairs", "player_points", "matchup_players"):
-        write_rows(tmp_path, name)
-    for name in ("nfl_injuries", "nfl_schedules"):
+    for name in (
+        "correlation_pairs",
+        "player_points",
+        "matchup_players",
+        "nfl_injuries",
+        "nfl_schedules",
+    ):
         write_rows(tmp_path, name)
 
 
@@ -217,3 +221,11 @@ def test_report_raises_over_the_limit_for_the_stage_but_only_warns_for_the_dashb
         league_checks.report("players with no projection", names, 2, "L")
     with pytest.warns(UserWarning, match="3 players with no projection"):
         league_checks.report("players with no projection", names, 2, "L", strict=False)
+
+
+def test_strict_load_and_simulate_after_the_final_week_do_not_raise(tmp_path: Path) -> None:
+    from fantasy.sim.odds import league_odds
+
+    build_store(tmp_path, [(100.0, 90.0)] * 17)
+    data = load_league_data({**LEAGUE, "current_week": 18}, strict=True, data_dir=tmp_path)
+    assert league_odds(data, n_sims=50).p_title.sum() == pytest.approx(1.0)

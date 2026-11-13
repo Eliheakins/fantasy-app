@@ -6,15 +6,16 @@ import polars as pl
 import pyarrow.parquet as pq
 import pytest
 
+from nfl_stat.core.config import DEFAULT_DATA_DIR
 from nfl_stat.pipeline.player_game import (
     PLAYER_GAME_COLUMNS,
+    PLAYER_GAME_FILENAME,
     merge_player_game,
     normalize_player_game,
     write_player_game,
 )
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "data"
-BUILT = DATA_DIR / "player_game.parquet"
+BUILT = DEFAULT_DATA_DIR / PLAYER_GAME_FILENAME
 
 SOURCE_ONLY = {"player_name": "x", "headshot_url": "u", "fantasy_points": 1.5}
 
@@ -161,7 +162,7 @@ def test_write_creates_a_compressed_file_with_small_row_groups(tmp_path: Path):
 
 # Known values against the built file. Official figures: a mismatch means the table is wrong.
 needs_build = pytest.mark.skipif(
-    not BUILT.exists(), reason="needs a local data build (build_data.py)"
+    not BUILT.exists(), reason="needs a local data build (make stat-data)"
 )
 
 

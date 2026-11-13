@@ -43,7 +43,8 @@ from fantasy import store
 from fantasy.stages import learn
 from fantasy.stages.backtest import size_tiers
 from fantasy.stages.learn import KEY, lag_asof, latest_asof
-from fantasy.stages.project import POSITIONS, expected_frame
+from fantasy.config import SKILL_POSITIONS as POSITIONS
+from fantasy.stages.project import expected_frame
 
 PRED_SEASONS = (2021, 2022, 2023, 2024, 2025, 2026)
 SCORED = (2024, 2025, 2026)
@@ -54,10 +55,7 @@ NOISE = {"Colgate": 0.04, "YinzBurgh": 0.10}  # refit sd of the current model's 
 MAX_PROTOCOL_LOSS = 0.05  # percent
 MIN_T = 2.0
 WEEKS_PER_SEASON = 18
-PREDS = (
-    "/private/tmp/claude-501/-Users-eliheakins-personal-fantasy-app/"
-    "230639a7-242c-4003-bae2-a92998c4f96c/scratchpad/preds/hurdle.parquet"
-)
+PREDS = store.ROOT / "research" / "scratch" / "hurdle_preds.parquet"
 LAGGED = ["snap", "st", "tshare", "tgt", "car", "statline"]
 FEATURES = [f"h_{c}" for c in LAGGED] + ["snap_last", "n_prior", "weeks_since", "depth_rank"]
 pl.Config(tbl_rows=80, tbl_cols=16, tbl_width_chars=200, float_precision=4)
@@ -308,6 +306,7 @@ def main() -> None:
         pl.col("league_id").replace_strict(names).alias("league"),
     )
     reg = preds.filter(pl.col("season_type") == "REG")
+    PREDS.parent.mkdir(parents=True, exist_ok=True)
     reg.select(*KEYS, pl.col("hurdle").alias("projection")).write_parquet(PREDS)
     print(f"wrote {reg.height} rows to {PREDS}")
     protocol = bias_check.protocol_rows().filter(pl.col("protocol")).select(KEYS)

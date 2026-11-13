@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import polars as pl
@@ -23,20 +24,32 @@ from fantasy._engine import (
     _opponent_of,
     _play_probs,
     _pool,
+    _read,
     _set_starters,
     _slots_of,
     _status_and_locks,
     _tier,
     _tier_edges,
+    _week_lineup,
     _week_points,
     _week_values,
 )
 from fantasy._schemas import ENGINE_SCHEMAS
 from fantasy.config import load_config
 from fantasy.sim import moves
-from fantasy.sim.availability import LONG_TERM, kickoffs
-from fantasy.sim.lineup import Player, lineup_slots, lineup_with_locks, swap_plan
-from fantasy.sim.odds import LeagueData
+from fantasy.sim.availability import LONG_TERM, kickoffs, missing_kickoffs
+from fantasy.sim.lineup import (
+    BENCH_SLOTS,
+    CONSTANT_SLOTS,
+    ELIGIBLE,
+    Player,
+    lineup_slots,
+    lineup_with_locks,
+    swap_plan,
+)
+from fantasy.sim.odds import DEFAULT_SIMS, LeagueData, kd_slot_mean
+from fantasy.sim.roster import free_agents
+from fantasy.sim.value import replacement_pool, stand_ins
 from fantasy.sim.winprob import (
     Verdict,
     choose,
@@ -46,9 +59,10 @@ from fantasy.sim.winprob import (
     swap_candidates,
 )
 
-LINEUP_SIMS = 20000
+LINEUP_SIMS = DEFAULT_SIMS
 UNDERDOG = 0.45  # below this chance to win with the best lineup, variance is an asset
 FAVORITE = 0.55  # above it, protect the floor
+LIKELY_OUT = 0.5  # a grid starter below this chance of playing that week is flagged out
 SWAP_STATUSES = frozenset({"Questionable", "Doubtful"})  # game-day calls settled at inactives
 
 
@@ -102,6 +116,18 @@ def _kickoffs_by_player(week: int, data_dir: Path | None) -> dict[str, datetime]
     }
 
 
+def _ratio_table(
+    league_id: str, data_dir: Path | None
+) -> tuple[dict[tuple[str, int, float], float], dict[str, list[float]]]:
+    """The quantile ratios by (position, tier, level) and the tier edges that `_spread` reads."""
+    marginals = _marginals(league_id, data_dir)
+    ratio = {
+        (r["position"], r["tier"], round(r["tau"], 2)): r["ratio"]
+        for r in marginals.iter_rows(named=True)
+    }
+    return ratio, _tier_edges(marginals)
+
+
 def _spread(
     p: Player,
     level: float,
@@ -139,12 +165,7 @@ def lineup(
     names, positions = _names(data_dir), moves.position_of(data)
     values = _week_values(data, week, positions)
     pool = _pool(data, mine, positions, values)
-    marginals = _marginals(data.league_id, data_dir)
-    ratio = {
-        (r["position"], r["tier"], round(r["tau"], 2)): r["ratio"]
-        for r in marginals.iter_rows(named=True)
-    }
-    edges = _tier_edges(marginals)
+    ratio, edges = _ratio_table(data.league_id, data_dir)
     chance = _play_probs(data, week)
     current = week == data.current_week
     starting = set(_set_starters(data.league_id, week, mine, data_dir)) if current else set()
@@ -363,3 +384,94 @@ def win_probability(
     kd_mean, _ = _constant_moments(data, state, mine, week)
     rows = _option_rows(options, verdict, draws, mine_rows, kd_mean, positions, values, slots)
     return pl.DataFrame(rows, schema=ENGINE_SCHEMAS["win_probability"])
+
+
+def _week_games(week: int, data_dir: Path | None) -> tuple[dict[str, datetime], set[str]]:
+    """Kickoff by NFL team, and every team that has a game in `week` (kickoff known or not;
+    empty when the schedule has no rows for it)."""
+    schedules, season = _read("nfl_schedules", data_dir), load_config().season
+    kicks = kickoffs(schedules, season, week, warn=False)  # missing kickoffs are handled here
+    return kicks, set(kicks) | missing_kickoffs(schedules, season, week)
+
+
+def lineup_grid(
+    league_key: str, data_dir: Path | None = None, team: int | None = None
+) -> dict[str, Any]:
+    """My auto-lineup for every week from the current one through the last playoff week.
+
+    One row per week and slot: the starter, his points, and a flag. "bye": the slot's best player
+    has no game that week and is worth more than whoever fills it; "out": the starter's chance of
+    playing that week (the one his projection carries) is below `LIKELY_OUT`; "weak": a free
+    stand-in (`stand_ins`) would score more. K and DEF rows carry the team's projection and no
+    player. Totals per week equal `schedule`'s, because both use `_week_lineup`.
+    """
+    data, mine = _league(league_key, data_dir, team)
+    positions, by_week = moves.position_of(data), moves.week_values(data)
+    names = _names(data_dir)
+    last = data.playoff_start + data.playoff_weeks - 1
+    weeks = list(range(data.current_week, last + 1))
+    replacements = replacement_pool(free_agents(data), positions, by_week)
+    mine_ids = set(moves.team_ids(data, mine))
+    typical = dict(
+        data.projections.filter((pl.col("projection") > 0) & pl.col("gsis_id").is_in(mine_ids))
+        .group_by("gsis_id")
+        .agg(pl.col("projection").mean())
+        .iter_rows()
+    )
+    team_of = dict(
+        _id_map(data_dir, "nfl_team")
+        .drop_nulls("gsis_id")
+        .select("gsis_id", "nfl_team")
+        .iter_rows()
+    )
+    rows: list[dict[str, Any]] = []
+    for week in weeks:
+        _, playing = _week_games(week, data_dir)
+        byes = [g for g in mine_ids if playing and team_of.get(g) not in playing and g in positions]
+        floor = stand_ins(replacements.get(week, []), mine_ids)
+        chance = _play_probs(data, week)
+        _, best = _week_lineup(data, mine, week, positions, by_week)
+        unfilled: dict[str, list[str]] = {}
+        for slot, starter in best.slots:
+            unfilled.setdefault(slot, []).append(starter)
+        for slot in (s for s in data.roster_positions if s not in BENCH_SLOTS):
+            if slot in CONSTANT_SLOTS:
+                rows.append(
+                    _grid_row(week, slot, None, kd_slot_mean(data, slot, mine, week), None, names)
+                )
+                continue
+            gsis_id = unfilled[slot].pop(0) if unfilled.get(slot) else None
+            points = by_week.get(week, {}).get(gsis_id, 0.0) if gsis_id else 0.0
+            eligible = ELIGIBLE[slot]
+            flag: str | None = None
+            if gsis_id is not None and chance.get(gsis_id, 1.0) < LIKELY_OUT:
+                flag = "out"
+            elif any(positions[g] in eligible and typical.get(g, 0.0) > points for g in byes):
+                flag = "bye"
+            elif any(p.position in eligible and p.value > points for p in floor):
+                flag = "weak"
+            rows.append(_grid_row(week, slot, gsis_id, points, flag, names))
+    return {
+        "weeks": weeks,
+        "playoff_weeks": [w for w in weeks if w >= data.playoff_start],
+        "rows": rows,
+    }
+
+
+def _grid_row(
+    week: int,
+    slot: str,
+    gsis_id: str | None,
+    points: float,
+    flag: str | None,
+    names: dict[str, str],
+) -> dict[str, Any]:
+    name = names.get(gsis_id, gsis_id) if gsis_id else None
+    return {
+        "week": week,
+        "slot": slot,
+        "gsis_id": gsis_id,
+        "full_name": name,
+        "points": points,
+        "flag": flag,
+    }

@@ -5,15 +5,15 @@ from typing import Any
 
 import polars as pl
 import pytest
-from test_data_api_characterization import _engine_store
+from store_fixture import engine_store, write_rows
 
-from fantasy import _engine, _lineup, _outlook, _profile, data_api, store
+from fantasy import _engine, _lineup, _outlook, _profile, data_api
 from fantasy.sim.odds import LeagueData
 
 
 @pytest.fixture
 def store_ready(tmp_path: Path) -> Path:
-    _engine_store(tmp_path)
+    engine_store(tmp_path)
     return tmp_path
 
 
@@ -50,15 +50,9 @@ def test_unknown_player_is_an_empty_profile_not_an_error(store_ready: Path) -> N
     assert out["position"] is None and out["median"] is None and out["ros_points"] is None
 
 
-def _raw(tmp_path: Path, name: str, rows: list[dict]) -> None:
-    schema = store.SCHEMAS[name]
-    frame = pl.DataFrame([{**dict.fromkeys(schema), **r} for r in rows], schema=schema)
-    store.write_table(name, frame, "raw", tmp_path)
-
-
 def test_role_weeks_join_snap_share_and_target_share_by_week(tmp_path: Path) -> None:
-    _engine_store(tmp_path)
-    _raw(
+    engine_store(tmp_path)
+    write_rows(
         tmp_path,
         "nfl_snaps",
         [
@@ -84,8 +78,9 @@ def test_role_weeks_join_snap_share_and_target_share_by_week(tmp_path: Path) -> 
                 "offense_pct": 1.0,
             },
         ],
+        area="raw",
     )
-    _raw(
+    write_rows(
         tmp_path,
         "nfl_player_stats",
         [
@@ -97,6 +92,7 @@ def test_role_weeks_join_snap_share_and_target_share_by_week(tmp_path: Path) -> 
                 "target_share": 0.3,
             },
         ],
+        area="raw",
     )
     out = data_api.player_profile("t", "G_WR", data_dir=tmp_path)["role_weeks"]
     assert out == [

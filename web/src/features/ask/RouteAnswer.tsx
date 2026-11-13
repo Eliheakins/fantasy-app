@@ -1,14 +1,13 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router";
 
-import { navSearch } from "@/components/layout/navLinks";
+import { navSearch, type PageUrl } from "@/components/layout/navLinks";
 
 import type { FantasyRoute } from "./fantasyRoute";
 
-type Props = { route: FantasyRoute };
+type Props = { route: FantasyRoute; here: PageUrl };
 
 /** A fantasy question answered by the page that has it; the link keeps the league and team. */
-export function RouteAnswer({ route }: Props) {
-  const { pathname, search } = useLocation();
+export function RouteAnswer({ route, here: { pathname, search } }: Props) {
   const [path, query = ""] = (route.to ?? "").split("?");
   const params = new URLSearchParams(navSearch(path ?? "", search, pathname));
   new URLSearchParams(query).forEach((value, key) => params.set(key, value));

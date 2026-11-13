@@ -15,6 +15,52 @@ One story is one working session. Engine and dashboard stories are merged per ep
 - **DEF scoring fixed (2026-11-06).** Net yards allowed, fumble-return TDs, return TDs kept in points allowed, and special-teams takeaways at Sleeper's special-teams rates, all from play-by-play. DEF now matches Sleeper in 92 of 94 (Colgate) and 88 of 89 (YinzBurgh) rostered team-weeks. DEF projection tests on the corrected scoring: five mean arms and three distribution arms, none shipped; `components` and `drift` are worth a retest on 2026 weeks 9 to 17.
 - **Ask expansion, steps 1 to 5 (2026-11-06).** Role-aware efficiency and undefined terms refused in code; relative time read in code and the current season by default; rankings from the model with top N and minimums; counts, shares, WOPR, RACR, passer rating and PPR points; position, rookie and opponent filters, contrasts, stat lines, and fantasy questions linked to the app's pages without the model. On the 156-question set, right answers went from 53 to 129 and wrong ones from 22 to 2.
 
+## Feature candidates (2026-11-12 research)
+
+A research pass listed 40 feature gaps, each checked against the code and this repo's decisions; effort is the research agent's estimate. Chunks 1 to 4 shipped in #82: C01 and C18 (real playoff bracket, 4- and 8-team playoffs, two-week rounds, reseeding, divisions), C04, C07, C29 and C38 (deadline, lineup-hole and IR to-dos, Sleeper links, copy summary), C14 (FantasyCalc archive), C03, C15, C05 and C02 (playoff-weeks ranking, K/DEF playoff points, stash list, weeks-ahead grid). The rest, one issue per chunk with full evidence:
+
+- **Chunk 5, #83: Member fixes: Refresh button, next-refresh banner, account page, admin view.** Any time; C30 is a bug (members get forbidden on Refresh scores).
+  - C30 (medium, M): 'Recheck Sleeper' for members after acting (fixes the broken Refresh scores button).
+  - C31 (medium, S): Member-safe status banner with the next scheduled refresh.
+  - C35 (low, S): Account page: change password, linked Sleeper user, sign out everywhere.
+  - C36 (low, S): Admin: each member's leagues, league health and last seen.
+- **Chunk 6, #84: Friends' leagues get the same features: stored digest and moves, per-account history, calendar feed.** Any time; build the per-account auth.db storage once for all three.
+  - C17 (medium, M): Stored digest, to-dos and move ideas for friends' added leagues.
+  - C32 (low, M): Keep last visit, Ask history and saved searches per account across devices.
+  - C34 (medium, M): Calendar feed of deadlines (subscribe in the phone's calendar).
+- **Chunk 7, #85: Waivers: waiver priority and claim plan, usage risers, trending drops.** Weeks 11 to 14 matter most.
+  - C16 (medium, M): Waiver priority, claim-order plan and drop cost on each add.
+  - C22 (low, S): Usage risers among free agents.
+  - C23 (low, S): Sleeper trending drops as a watchlist and roster signal.
+- **Chunk 8, #86: Player news: practice timeline, projection movers, handcuff map, TD dependence.** Any time.
+  - C08 (medium, S): Practice and status timeline (Wed to Fri practice, depth chart, team changes).
+  - C20 (medium, M): Projection movers since Tuesday for my starters and my opponent's.
+  - C06 (medium, L): Handcuff and injury-insurance map.
+  - C26 (low, M): Points composition (TD dependence) on player page, compare and close calls.
+- **Chunk 9, #87: Lineup decision aids: force start, source spread, market view, shared-game exposure.** Any time; check the odds license (docs/decisions.md:453) before C09.
+  - C19 (medium, M): Force start: price the lineup you want to play anyway.
+  - C21 (low, S): Projection source spread: ours vs Sleeper vs FFToday vs props.
+  - C09 (medium, M): Market view per player: implied team totals, prop lines and anytime-TD chance.
+  - C25 (low, M): Shared-game exposure in 'Your matchup'.
+- **Chunk 10, #88: Game day: games that matter, weather badges, win-chance swing chart.** Any time; C27 needs a new free source (NWS).
+  - C24 (low, M): Which NFL games matter most to you this week.
+  - C27 (medium, M): Game-day weather badges for outdoor games.
+  - C28 (low, S): Win-probability swing chart for past weeks.
+- **Chunk 11, #89: League history: activity feed and move ledger.** Any time; C13 benefits from the FantasyCalc archive (shipped in #82).
+  - C12 (medium, M): League activity feed (adds, drops, trades), with my next opponent's moves pinned.
+  - C13 (medium, M): Move ledger: what my adds, drops and trades actually returned.
+- **Chunk 12, #90: Model page: coverage and calibration, score FFToday/props/blend, plus due research tests.** Any time; C39 is research, not UI, and decides what C10 and C11 report.
+  - C10 (medium, L): Model scorecard: range coverage, win-chance calibration, K/DEF accuracy and lineup regret.
+  - C11 (low, M): Score FFToday, props and the shipped blend on the Model scorecard.
+  - C39 (high, M): Research tests now due (watch flags, Sleeper-zero rule, anytime TD, DEF arms, practice trajectory).
+- **Chunk 13, #91: App shell: install on phone home screen, jump to any player.** Any time; independent of everything else.
+  - C33 (low, S): Install the app on a phone home screen (web app manifest).
+  - C37 (low, S): Jump to any player from anywhere (search and keyboard shortcuts).
+- **Chunk 14, #92: Offseason: draft assistant for the 2027 redraft.** Offseason; uses the FantasyCalc history archived since 2026-11-12.
+  - C40 (medium, L): Draft assistant for the 2027 redraft (offseason build).
+
+Left out on purpose (rejected or parked earlier in this file or in `decisions.md`, unchanged by the research): phone push alerts, an opponent-lineup model, drag-and-drop lineups, weather as a model input (C27 is display only).
+
 ## Status (2026-10-23, end of the second working session)
 
 **Dates:** trade deadline is week 11; issue #40 (retest the Sleeper blend weight on clean snapshots) is due around then. Open issues are listed in the 2026-11-09 update above. #41 (cleanup follow-ups) is closed.

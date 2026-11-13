@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { barShare, rankedStrength } from "./logic";
+import { playoffWeeksOf } from "./logic";
 
-describe("strength", () => {
-  const rows = [
-    { position: "WR", vor_per_week: 2, rank: 3, teams: 12 },
-    { position: "QB", vor_per_week: 8, rank: 1, teams: 12 },
-  ];
-  it("sorts by rank", () => expect(rankedStrength(rows).map((r) => r.position)).toEqual(["QB", "WR"]));
-  it("scales bars to the largest", () => {
-    expect(barShare(2, rows)).toBe(0.25);
-    expect(barShare(1, [])).toBe(0);
+describe("playoffWeeksOf", () => {
+  it("spans the league's playoff weeks", () => {
+    expect(playoffWeeksOf({ playoff_week_start: 15, playoff_weeks: 3 })).toEqual({ first: 15, last: 17 });
+  });
+  it("is null until the league's playoff weeks are known", () => {
+    expect(playoffWeeksOf(undefined)).toBeNull();
+    expect(playoffWeeksOf({ playoff_week_start: null, playoff_weeks: 3 })).toBeNull();
+    expect(playoffWeeksOf({ playoff_week_start: 15, playoff_weeks: null })).toBeNull();
+    expect(playoffWeeksOf({ playoff_week_start: 15, playoff_weeks: 0 })).toBeNull();
   });
 });

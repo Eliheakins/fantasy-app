@@ -1,12 +1,11 @@
+import { sideName } from "@/lib/scoreboard";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { Delta, NOISE_WINS, formatNumber, formatPercent } from "@/viz";
 import { formatRecord } from "./logic";
 import type { LuckRow, ManagerGradeRow } from "./types";
 
-const name = (r: { team_name: string; is_me: boolean }) => (r.is_me ? `${r.team_name} (you)` : r.team_name);
-
 const LUCK_COLUMNS: Column<LuckRow>[] = [
-  { label: "Team", role: "primary", render: name },
+  { label: "Team", role: "primary", render: sideName },
   { label: "Record", numeric: true, render: (r) => formatRecord(r.wins, r.losses, r.ties) },
   { label: "All-play", numeric: true, render: (r) => formatRecord(r.ap_wins, r.ap_losses, r.ap_ties) },
   { label: "Expected wins", numeric: true, render: (r) => formatNumber(r.exp_wins) },
@@ -26,7 +25,7 @@ export function LuckTable({ rows }: { rows: readonly LuckRow[] }) {
 }
 
 const GRADE_COLUMNS: Column<ManagerGradeRow>[] = [
-  { label: "Team", role: "primary", render: name },
+  { label: "Team", role: "primary", render: sideName },
   { label: "Efficiency", numeric: true, render: (r) => formatPercent(r.efficiency) },
   { label: "Started", numeric: true, render: (r) => formatNumber(r.actual_points) },
   { label: "Best possible", numeric: true, render: (r) => formatNumber(r.optimal_points) },

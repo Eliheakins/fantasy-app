@@ -1,19 +1,28 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
+import { Link, MemoryRouter, Route, Routes } from "react-router";
 import { PageHeader } from "@/components/PageHeader";
-import { documentTitle, pageTitle, useRouteAnnounce } from "./useRouteAnnounce";
+import { documentTitle, PageNameContext, pageTitle, usePageName, useRouteAnnounce } from "./useRouteAnnounce";
 
-function Shell() {
-  useRouteAnnounce(null);
+/** A page that knows its name only once its data loads, as the player page does. */
+function NamedPage({ name }: { name: string | null }) {
+  usePageName(name);
+  return <PageHeader title={name ?? "Player"} />;
+}
+
+function Shell({ viewedTeam = null, name = null }: { viewedTeam?: string | null; name?: string | null }) {
+  const setPageName = useRouteAnnounce(viewedTeam);
   return (
-    <main id="main" tabIndex={-1}>
-      <Link to="/lineup">go</Link>
-      <Routes>
-        <Route path="/lineup" element={<PageHeader title="Lineup" />} />
-        <Route path="*" element={<PageHeader title="This week" />} />
-      </Routes>
-    </main>
+    <PageNameContext value={setPageName}>
+      <main id="main" tabIndex={-1}>
+        <Link to="/lineup">go</Link>
+        <Routes>
+          <Route path="/lineup" element={<PageHeader title="Lineup" />} />
+          <Route path="/players/:gsisId" element={<NamedPage name={name} />} />
+          <Route path="*" element={<PageHeader title="This week" />} />
+        </Routes>
+      </main>
+    </PageNameContext>
   );
 }
 
@@ -29,9 +38,17 @@ describe("route titles", () => {
     expect(pageTitle("/nope")).toBe("Page not found");
   });
 
+  it("names the pattern routes and the pages outside the shell from nav.ts too", () => {
+    expect(pageTitle("/players/00-0036900")).toBe("Player");
+    expect(pageTitle("/login")).toBe("Sign in");
+    expect(pageTitle("/invite/abc123")).toBe("Choose a password");
+    expect(pageTitle("/lineup/")).toBe("Lineup");
+    expect(pageTitle("/players/00-1/extra")).toBe("Page not found");
+  });
+
   it("inserts the viewed team", () => {
-    expect(documentTitle("/lineup", "Rival")).toBe("Lineup · Rival · Fantasy");
-    expect(documentTitle("/lineup", null)).toBe("Lineup · Fantasy");
+    expect(documentTitle("Lineup", "Rival")).toBe("Lineup · Rival · Fantasy");
+    expect(documentTitle("Lineup", null)).toBe("Lineup · Fantasy");
   });
 });
 
@@ -47,5 +64,26 @@ describe("useRouteAnnounce", () => {
     await userEvent.click(screen.getByText("go"));
     expect(document.title).toBe("Lineup · Fantasy");
     expect(screen.getByRole("heading", { name: "Lineup" })).toHaveFocus();
+  });
+
+  it("takes the name a page gives it, and the nav title again once that page is left", async () => {
+    render(
+      <MemoryRouter initialEntries={["/players/00-1"]}>
+        <Shell name="Ja'Marr Chase" viewedTeam="Rival" />
+      </MemoryRouter>,
+    );
+    expect(document.title).toBe("Ja'Marr Chase · Rival · Fantasy");
+    await userEvent.click(screen.getByText("go"));
+    expect(document.title).toBe("Lineup · Rival · Fantasy");
+    expect(screen.getByRole("heading", { name: "Lineup" })).toHaveFocus();
+  });
+
+  it("keeps the nav title while the page has no name yet", () => {
+    render(
+      <MemoryRouter initialEntries={["/players/00-1"]}>
+        <Shell />
+      </MemoryRouter>,
+    );
+    expect(document.title).toBe("Player · Fantasy");
   });
 });

@@ -19,6 +19,7 @@ import polars as pl
 
 import outside_history as oh
 from fantasy import store
+from fantasy.config import SKILL_POSITIONS
 from fantasy.stages import outside_projections as op
 from fantasy.stages import prop_points as pp
 
@@ -63,7 +64,7 @@ def main() -> None:
         biases[league["name"]] = bias
         tests[league["name"]] = d.filter(pl.col("season") == TEST)
         print(f"{league['name']}: 2025 rows {fit.height}, bias {({k: round(v, 3) for k, v in sorted(bias.items())})}")
-    shipped = {p: sum(b[p] for b in biases.values()) / len(biases) for p in op.POSITIONS}
+    shipped = {p: sum(b[p] for b in biases.values()) / len(biases) for p in SKILL_POSITIONS}
     print(f"shipped (mean of leagues): {({k: round(v, 2) for k, v in shipped.items()})}")
     for name, d in tests.items():
         d = d.with_columns(
@@ -71,7 +72,7 @@ def main() -> None:
             corrected=(pl.col("ours") + pl.col("fftoday") - pl.col("position").replace_strict(shipped)) / 2,
         )
         out = []
-        for pos in [None, *op.POSITIONS]:
+        for pos in [None, *SKILL_POSITIONS]:
             g = d if pos is None else d.filter(pl.col("position") == pos)
             out.append(
                 {

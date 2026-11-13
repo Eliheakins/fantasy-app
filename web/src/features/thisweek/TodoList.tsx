@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { EffectText } from "@/features/effects/EffectText";
-import type { Todo } from "./todos";
+import { ExternalLink } from "@/components/ExternalLink";
+import { FILL_IN_LABEL, NO_FILL_IN, type Todo } from "./todos";
 import { dayLabel } from "./weekLogic";
 
 export const deadlineText = (todo: Todo): string | null => (todo.deadlineDay === null ? null : `by ${dayLabel(todo.deadlineDay)}`);
@@ -24,6 +25,23 @@ export function TodoList({ todos }: { todos: readonly Todo[] }) {
               <span>{t.detail}</span>
               {deadlineText(t) && <span>{deadlineText(t)}</span>}
             </div>
+            {t.fillIns && (
+              <div className="text-caption">
+                {t.fillIns.length === 0 ? (
+                  <p>{NO_FILL_IN}</p>
+                ) : (
+                  <>
+                    <p className="text-muted">{FILL_IN_LABEL}</p>
+                    <ul className="list-disc pl-5">
+                      {t.fillIns.map((f) => (
+                        <li key={f}>{f}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
+            {t.sleeperUrl && <ExternalLink href={t.sleeperUrl}>Open {t.leagueName} in Sleeper</ExternalLink>}
           </div>
           <EffectText todo={t} />
         </li>

@@ -5,6 +5,35 @@ from typing import Literal
 from fantasy.api_models.base import Row
 
 
+class BracketSide(Row):
+    roster_id: int | None  # null until an earlier match decides it
+    team_name: str | None
+    seed: int | None
+    from_kind: str | None  # "w" or "l": the side is the winner or loser of match from_m
+    from_m: int | None
+
+
+class BracketMatch(Row):
+    m: int
+    place: int | None  # placement the winner takes (1 title, 3, 5); null on the way to the final
+    winner: int | None  # roster id once played
+    t1: BracketSide
+    t2: BracketSide
+    t1_p_win: float | None  # chance to win this round; null when played or a placement game
+    t2_p_win: float | None
+    is_mine: bool
+
+
+class BracketRound(Row):
+    round: int
+    weeks: list[int]
+    matches: list[BracketMatch]
+
+
+class BracketData(Row):
+    rounds: list[BracketRound]
+
+
 class SeasonOddsRow(Row):
     roster_id: int
     team_name: str

@@ -2,19 +2,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import cast
 
-import httpx
 import httpx2
 import openai
 import pytest
 from fakes import FILTERS, STATS
-from openai import AsyncOpenAI
 
 from nfl_stat.api.deps import get_llm_client
 from nfl_stat.pipeline.manifest import write_manifest
 from nfl_stat.schemas.manifest import JsonFileEntry, Manifest, SeasonEntry
-from nfl_stat.services.llm_client import ModelFailed, chat_text
 
 
 def _intent_body(question: str = "Mahomes passing yards in 2023") -> dict:
@@ -25,7 +21,7 @@ def _intent_body(question: str = "Mahomes passing yards in 2023") -> dict:
     }
 
 
-async def test_health_is_degraded_until_the_data_is_built(client: httpx.AsyncClient):
+async def test_health_is_degraded_until_the_data_is_built(client: httpx2.AsyncClient):
     res = await client.get("/api/stat/health")
 
     assert res.status_code == 200
@@ -58,7 +54,7 @@ def _manifest(
     )
 
 
-async def test_health_reports_how_current_the_data_is(client: httpx.AsyncClient, data_dir: Path):
+async def test_health_reports_how_current_the_data_is(client: httpx2.AsyncClient, data_dir: Path):
     write_manifest(_manifest(week=9), data_dir)
 
     body = (await client.get("/api/stat/health")).json()
@@ -71,7 +67,7 @@ async def test_health_reports_how_current_the_data_is(client: httpx.AsyncClient,
 
 
 async def test_health_follows_a_rebuild_without_restarting_the_api(
-    client: httpx.AsyncClient, data_dir: Path
+    client: httpx2.AsyncClient, data_dir: Path
 ):
     write_manifest(_manifest(week=9), data_dir)
     assert (await client.get("/api/stat/health")).json()["data_through"] == "2026 week 9"
@@ -84,7 +80,7 @@ async def test_health_follows_a_rebuild_without_restarting_the_api(
 
 
 async def test_health_goes_degraded_when_the_manifest_disappears(
-    client: httpx.AsyncClient, data_dir: Path
+    client: httpx2.AsyncClient, data_dir: Path
 ):
     write_manifest(_manifest(week=9), data_dir)
     assert (await client.get("/api/stat/health")).json()["status"] == "ok"
@@ -95,7 +91,7 @@ async def test_health_goes_degraded_when_the_manifest_disappears(
 
 
 async def test_health_reports_a_broken_manifest_instead_of_failing(
-    client: httpx.AsyncClient, data_dir: Path
+    client: httpx2.AsyncClient, data_dir: Path
 ):
     (data_dir / "manifest.json").write_text("{not json")
 
@@ -106,7 +102,7 @@ async def test_health_reports_a_broken_manifest_instead_of_failing(
 
 
 async def test_health_is_degraded_when_seasons_exist_but_the_players_file_does_not(
-    client: httpx.AsyncClient, data_dir: Path
+    client: httpx2.AsyncClient, data_dir: Path
 ):
     write_manifest(_manifest(week=9, seasons=(2026,), players=False), data_dir)
 
@@ -118,13 +114,13 @@ async def test_health_is_degraded_when_seasons_exist_but_the_players_file_does_n
 
 
 async def test_the_player_and_shard_endpoints_are_gone_because_the_data_is_static(
-    client: httpx.AsyncClient,
+    client: httpx2.AsyncClient,
 ):
     for path in ("/search?q=a", "/players/dictionary", "/player/00-0033873", "/pbp/shards"):
         assert (await client.get(path)).status_code == 404, path
 
 
-async def test_nlq_intent_returns_validated_intent(client: httpx.AsyncClient, use_llm):
+async def test_nlq_intent_returns_validated_intent(client: httpx2.AsyncClient, use_llm):
     use_llm(['{"stat_ids": ["pass_yards"], "filter_ids": ["season-2023"], "granularity": "total"}'])
 
     res = await client.post("/api/stat/nlq/intent", json=_intent_body())
@@ -142,7 +138,7 @@ async def test_nlq_intent_returns_validated_intent(client: httpx.AsyncClient, us
 
 
 async def test_nlq_intent_accepts_the_catalog_the_app_really_sends(
-    client: httpx.AsyncClient, use_llm
+    client: httpx2.AsyncClient, use_llm
 ):
     catalog = json.loads((Path(__file__).parent / "eval" / "catalog.json").read_text())
     use_llm(['{"stat_ids": ["pass_yards"], "filter_ids": [], "granularity": "total"}'])
@@ -166,7 +162,7 @@ def _padded(stats: int, aliases: int) -> dict:
     ],
 )
 async def test_nlq_intent_rejects_an_oversized_catalog_without_calling_the_model(
-    client: httpx.AsyncClient, use_llm, payload: dict, status: int
+    client: httpx2.AsyncClient, use_llm, payload: dict, status: int
 ):
     fake = use_llm(['{"stat_ids": ["pass_yards"], "filter_ids": []}'])
 
@@ -177,7 +173,7 @@ async def test_nlq_intent_rejects_an_oversized_catalog_without_calling_the_model
 
 
 async def test_nlq_intent_returns_the_reason_when_the_question_is_unsupported(
-    client: httpx.AsyncClient, use_llm
+    client: httpx2.AsyncClient, use_llm
 ):
     use_llm(['{"unsupported": "Salaries are not in the play-by-play data."}'])
 
@@ -191,7 +187,7 @@ async def test_nlq_intent_returns_the_reason_when_the_question_is_unsupported(
 
 
 async def test_nlq_intent_returns_422_when_model_never_produces_valid_json(
-    client: httpx.AsyncClient, use_llm
+    client: httpx2.AsyncClient, use_llm
 ):
     use_llm(["nope", "still nope"])
 
@@ -201,7 +197,7 @@ async def test_nlq_intent_returns_422_when_model_never_produces_valid_json(
     assert "couldn't turn that into a query" in res.json()["detail"]
 
 
-async def test_nlq_intent_rejects_empty_question(client: httpx.AsyncClient, use_llm):
+async def test_nlq_intent_rejects_empty_question(client: httpx2.AsyncClient, use_llm):
     use_llm([])
 
     res = await client.post("/api/stat/nlq/intent", json=_intent_body(question=""))
@@ -209,7 +205,7 @@ async def test_nlq_intent_rejects_empty_question(client: httpx.AsyncClient, use_
     assert res.status_code == 422
 
 
-async def test_nlq_intent_returns_503_when_llm_server_is_down(client: httpx.AsyncClient, app):
+async def test_nlq_intent_returns_503_when_llm_server_is_down(client: httpx2.AsyncClient, app):
     class DownLlm:
         base_url = "http://127.0.0.1:8080/v1"
 
@@ -227,17 +223,3 @@ async def test_nlq_intent_returns_503_when_llm_server_is_down(client: httpx.Asyn
 
     assert res.status_code == 503
     assert "mlx_lm.server" in res.json()["detail"]
-
-
-async def test_chat_text_raises_model_failed_when_model_returns_no_choices():
-    class EmptyLlm:
-        base_url = "http://fake/v1"
-
-        class chat:
-            class completions:
-                @staticmethod
-                async def create(**_):
-                    return type("R", (), {"choices": []})()
-
-    with pytest.raises(ModelFailed):
-        await chat_text(client=cast(AsyncOpenAI, EmptyLlm()), model="m", messages=[])

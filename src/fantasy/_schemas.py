@@ -48,6 +48,7 @@ ENGINE_SCHEMAS: dict[str, dict[str, pl.DataType | type[pl.DataType]]] = {
         "is_mine": _B,
         "this_week": _F,
         "next_three": _F,
+        "playoff_points": _F,
     },
     "last_week": {
         "week": _I,
@@ -184,6 +185,7 @@ ENGINE_SCHEMAS["scoreboard"] = {
     "week": pl.Int64,
     "matchup_id": pl.Int64,
     "status": _S,
+    "playoff_label": _S,
     **{f"{side}_{name}": kind for side in ("a", "b") for name, kind in _SIDE_COLUMNS.items()},
 }
 

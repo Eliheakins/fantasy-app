@@ -1,9 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach } from "vitest";
 import { Answer } from "./Answer";
 import { ThisWeekBoard } from "./ThisWeekBoard";
+import { stubApi } from "@/test/fakeApi";
+import { renderWithProviders } from "@/test/render";
 
 const ok = (data: unknown) => ({ status: "ok", data, error: null, started_at: null });
 const leagues = [
@@ -23,7 +23,7 @@ const calendar = {
     { league_key: "b", name: "Beta", day_of_week: 2, daily: false },
   ],
 };
-const routes: [string, unknown][] = [
+const routes: [string, object][] = [
   ["/api/leagues/a/actions", ok([])],
   ["/api/leagues/b/actions", ok([{ kind: "Lineup", text: "Start A over B (+4.1 points)", delta_points: 4.1 }])],
   ["/api/leagues/a/digest", digest([idea])],
@@ -40,6 +40,12 @@ const routes: [string, unknown][] = [
   ["/api/leagues/b/status-changes", ok([])],
   ["/api/week-calendar", ok(calendar)],
   ["/api/leagues", ok(leagues)],
+  // read by the board's other blocks; empty here
+  ["/api/leagues/a/holes", ok([])],
+  ["/api/leagues/b/holes", ok([])],
+  ["/api/leagues/a/scoreboard", ok([])],
+  ["/api/leagues/b/scoreboard", ok([])],
+  ["/api/status", ok({})],
 ];
 
 let urls: string[] = [];
@@ -48,32 +54,25 @@ beforeEach(() => {
   window.localStorage.clear();
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-11-04T15:00:00Z")); // Wednesday morning in New York
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string) => {
-      urls.push(url);
-      const hit = routes.find(([prefix]) => url.split("?")[0] === prefix);
-      return Response.json(hit ? hit[1] : ok([]));
-    }),
-  );
+  stubApi(({ url }) => {
+    urls.push(url);
+    const hit = routes.find(([prefix]) => url.split("?")[0] === prefix);
+    return hit ? { body: hit[1] } : undefined;
+  });
 });
 afterEach(() => {
   vi.useRealTimers();
-  vi.unstubAllGlobals();
-  vi.restoreAllMocks();
 });
 
 function renderBoard() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter>
-        <p data-testid="answer">
-          <Answer />
-        </p>
-        <ThisWeekBoard />
-      </MemoryRouter>
-    </QueryClientProvider>,
+  renderWithProviders(
+    <>
+      <p data-testid="answer">
+        <Answer />
+      </p>
+      <ThisWeekBoard />
+    </>,
+    { route: "/" },
   );
 }
 

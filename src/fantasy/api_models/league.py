@@ -1,5 +1,6 @@
 """League list, teams, roster, and the week calendar."""
 
+from fantasy._bracket import TeamPhase
 from fantasy.api_models.base import Row
 
 
@@ -8,6 +9,9 @@ class LeagueRow(Row):
     league_id: str
     name: str | None
     current_week: int | None
+    playoff_week_start: int | None  # the first week whose seeds are fixed (playoff mode from here)
+    playoff_teams: int | None
+    playoff_weeks: int | None  # how many weeks the bracket lasts, from its size and round type
     num_teams: int | None
     roster_id: int | None
     team_name: str | None
@@ -18,6 +22,12 @@ class LeagueRow(Row):
     scoring_labels: str
     record: str
     trade_deadline: int | None
+    # my team's playoff status this week ("Bye this round", "Champion", ...); null outside the
+    # playoffs. Shown when my scoreboard row is absent.
+    playoff_label: str | None
+    # my team's playoff state this week (`_bracket.team_phase`): regular, playing, bye,
+    # consolation, eliminated, champion or over; null when it cannot be decided yet
+    team_phase: TeamPhase | None
 
 
 class TeamRow(Row):

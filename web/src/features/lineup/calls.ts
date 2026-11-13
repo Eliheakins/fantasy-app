@@ -56,9 +56,7 @@ export function scratchFallbacks(rows: readonly LineupRow[]) {
 
 /** Always win probability: it already takes variance as the underdog and protects the floor as the
  * favourite, and no ceiling or floor lineup beat it on win probability (decisions, 2026-10-23). */
-export function recommendedObjective(): ObjectiveKey {
-  return "win_probability";
-}
+export const RECOMMENDED_OBJECTIVE: ObjectiveKey = "win_probability";
 
 const MAX_NAMED_STARTS = 2;
 

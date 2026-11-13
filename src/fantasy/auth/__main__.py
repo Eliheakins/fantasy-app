@@ -38,13 +38,10 @@ def main(argv: Sequence[str]) -> int:
                 print("The two passwords differ.", file=sys.stderr)
                 return 1
             try:
-                accounts.create_admin(conn, args.email, password)
+                admin_id = accounts.create_admin(conn, args.email, password)
             except ValueError as err:
                 print(err, file=sys.stderr)
                 return 1
-            admin_id = conn.execute(
-                "SELECT id FROM accounts WHERE email = ?", (accounts.normalize_email(args.email),)
-            ).fetchone()[0]
             accounts.set_sleeper_user(conn, admin_id, load_config().user_id)  # the owner's team
             print(f"Admin {accounts.normalize_email(args.email)} is ready.")
         elif args.command == "invite":
@@ -52,7 +49,7 @@ def main(argv: Sequence[str]) -> int:
             print(f"Send this link (valid {accounts.INVITE_DAYS} days, one use):")
             print(f"{_site_url()}/invite/{token}")
         else:
-            for account in accounts.list_accounts(conn):
+            for account in accounts.list_accounts(conn, datetime.now(UTC)):
                 role = "admin" if account["is_admin"] else "user"
                 state = "active" if account["has_password"] else "invited"
                 print(f"{account['email']}\t{role}\t{state}")

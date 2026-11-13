@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { useLeague } from "@/lib/league";
 import { parseTeam } from "@/lib/team";
@@ -13,7 +13,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const { league } = useLeague();
   const [params, setParams] = useSearchParams();
   const asked = parseTeam(params.get("team"));
-  const list = useEnvelopeQuery<TeamRow[]>(league === null ? null : `/api/leagues/${encodeURIComponent(league)}/teams`);
+  const list = useEnvelopeQuery("/api/leagues/{league}/teams", league === null ? null : { path: { league } });
   const teams = list.kind === "ready" ? list.data : NO_TEAMS;
   const row = teams.find((t) => t.roster_id === asked) ?? null;
   // Until the list loads, trust the URL; once it has, an unknown or own team means the default.

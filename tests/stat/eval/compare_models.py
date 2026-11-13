@@ -1,7 +1,7 @@
 """
 Runs the intent eval against several MLX models, one model server at a time, and prints accuracy,
 speed, cold start and memory for each, for choosing the model size (issue #9):
-    uv run --group llm python backend/tests/eval/compare_models.py \\
+    uv run --group llm python tests/stat/eval/compare_models.py \\
         mlx-community/Qwen3-4B-Instruct-2507-4bit mlx-community/Qwen2.5-7B-Instruct-4bit
 
 Each model is downloaded first, so download time is not counted as cold start. Thinking is turned

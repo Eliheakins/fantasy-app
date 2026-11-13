@@ -456,6 +456,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/bracket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bracket
+         * @description The winners bracket with each side's chance to win its round; no_data before it is set.
+         */
+        get: operations["bracket_api_leagues__league__bracket_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/odds-history": {
         parameters: {
             query?: never;
@@ -689,6 +709,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/leagues/{league}/holes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Holes */
+        get: operations["holes_api_leagues__league__holes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/leagues/{league}/stash": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stash */
+        get: operations["stash_api_leagues__league__stash_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/leagues/{league}/lineup-grid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lineup Grid */
+        get: operations["lineup_grid_api_leagues__league__lineup_grid_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/leagues/{league}/live-score": {
         parameters: {
             query?: never;
@@ -789,6 +860,23 @@ export interface paths {
         };
         /** Market Values */
         get: operations["market_values_api_leagues__league__market_values_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/leagues/{league}/market-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Market History */
+        get: operations["market_history_api_leagues__league__market_history_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1089,6 +1177,50 @@ export interface components {
             /** Label */
             label: string;
         };
+        /** BracketData */
+        BracketData: {
+            /** Rounds */
+            rounds: components["schemas"]["BracketRound"][];
+        };
+        /** BracketMatch */
+        BracketMatch: {
+            /** M */
+            m: number;
+            /** Place */
+            place: number | null;
+            /** Winner */
+            winner: number | null;
+            t1: components["schemas"]["BracketSide"];
+            t2: components["schemas"]["BracketSide"];
+            /** T1 P Win */
+            t1_p_win: number | null;
+            /** T2 P Win */
+            t2_p_win: number | null;
+            /** Is Mine */
+            is_mine: boolean;
+        };
+        /** BracketRound */
+        BracketRound: {
+            /** Round */
+            round: number;
+            /** Weeks */
+            weeks: number[];
+            /** Matches */
+            matches: components["schemas"]["BracketMatch"][];
+        };
+        /** BracketSide */
+        BracketSide: {
+            /** Roster Id */
+            roster_id: number | null;
+            /** Team Name */
+            team_name: string | null;
+            /** Seed */
+            seed: number | null;
+            /** From Kind */
+            from_kind: string | null;
+            /** From M */
+            from_m: number | null;
+        };
         /** CatalogFilter */
         CatalogFilter: {
             /** Id */
@@ -1149,6 +1281,18 @@ export interface components {
             trades: components["schemas"]["MoveIdeaRow"][];
             ideas: components["schemas"]["IdeasInfo"];
         };
+        /** Envelope[BracketData] */
+        Envelope_BracketData_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["BracketData"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[DigestData] */
         Envelope_DigestData_: {
             /**
@@ -1181,6 +1325,18 @@ export interface components {
              */
             status: "ok" | "running" | "error";
             data: components["schemas"]["InviteCreated"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[LineupGrid] */
+        Envelope_LineupGrid_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["LineupGrid"] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -1301,6 +1457,18 @@ export interface components {
              */
             status: "ok" | "running" | "error";
             data: components["schemas"]["SignedOut"] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[StashData] */
+        Envelope_StashData_: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            data: components["schemas"]["StashData"] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -1429,6 +1597,19 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** Envelope[list[HoleRow]] */
+        Envelope_list_HoleRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["HoleRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
         /** Envelope[list[LeagueRow]] */
         Envelope_list_LeagueRow__: {
             /**
@@ -1490,6 +1671,19 @@ export interface components {
             status: "ok" | "running" | "error";
             /** Data */
             data: components["schemas"]["ManagerGradeRow"][] | null;
+            error: components["schemas"]["ApiError"] | null;
+            /** Started At */
+            started_at: string | null;
+        };
+        /** Envelope[list[MarketHistoryRow]] */
+        Envelope_list_MarketHistoryRow__: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ok" | "running" | "error";
+            /** Data */
+            data: components["schemas"]["MarketHistoryRow"][] | null;
             error: components["schemas"]["ApiError"] | null;
             /** Started At */
             started_at: string | null;
@@ -1793,6 +1987,19 @@ export interface components {
             /** Started At */
             started_at: string | null;
         };
+        /** FillInRow */
+        FillInRow: {
+            /** Gsis Id */
+            gsis_id: string;
+            /** Full Name */
+            full_name: string;
+            /** Position */
+            position: string;
+            /** Projection */
+            projection: number;
+            /** Drop Name */
+            drop_name: string | null;
+        };
         /** FoundTradeRow */
         FoundTradeRow: {
             /** Partner */
@@ -1906,6 +2113,21 @@ export interface components {
             /** Opp Left */
             opp_left: number;
         };
+        /** GridRow */
+        GridRow: {
+            /** Week */
+            week: number;
+            /** Slot */
+            slot: string;
+            /** Gsis Id */
+            gsis_id: string | null;
+            /** Full Name */
+            full_name: string | null;
+            /** Points */
+            points: number;
+            /** Flag */
+            flag: ("bye" | "out" | "weak") | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1935,6 +2157,20 @@ export interface components {
              * @description Seasons with a shard
              */
             seasons?: number[];
+        };
+        /** HoleRow */
+        HoleRow: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "bye" | "out" | "empty" | "ir_move";
+            /** Slot */
+            slot: string;
+            /** Player Name */
+            player_name: string | null;
+            /** Fill Ins */
+            fill_ins: components["schemas"]["FillInRow"][];
         };
         /** IdeasInfo */
         IdeasInfo: {
@@ -2018,6 +2254,12 @@ export interface components {
             name: string | null;
             /** Current Week */
             current_week: number | null;
+            /** Playoff Week Start */
+            playoff_week_start: number | null;
+            /** Playoff Teams */
+            playoff_teams: number | null;
+            /** Playoff Weeks */
+            playoff_weeks: number | null;
             /** Num Teams */
             num_teams: number | null;
             /** Roster Id */
@@ -2038,6 +2280,19 @@ export interface components {
             record: string;
             /** Trade Deadline */
             trade_deadline: number | null;
+            /** Playoff Label */
+            playoff_label: string | null;
+            /** Team Phase */
+            team_phase: ("regular" | "playing" | "bye" | "consolation" | "eliminated" | "champion" | "over") | null;
+        };
+        /** LineupGrid */
+        LineupGrid: {
+            /** Weeks */
+            weeks: number[];
+            /** Playoff Weeks */
+            playoff_weeks: number[];
+            /** Rows */
+            rows: components["schemas"]["GridRow"][];
         };
         /** LineupRow */
         LineupRow: {
@@ -2159,6 +2414,13 @@ export interface components {
             efficiency: number;
             /** Bench Points Left */
             bench_points_left: number;
+        };
+        /** MarketHistoryRow */
+        MarketHistoryRow: {
+            /** Day */
+            day: string;
+            /** Value */
+            value: number;
         };
         /**
          * MarketSummary
@@ -2633,6 +2895,8 @@ export interface components {
              * @enum {string}
              */
             status: "Not started" | "Live" | "Final";
+            /** Playoff Label */
+            playoff_label: string | null;
             a: components["schemas"]["ScoreboardSide"];
             b: components["schemas"]["ScoreboardSide"];
         };
@@ -2668,8 +2932,6 @@ export interface components {
             weeks_archived: number[];
             /** Weeks Scored */
             weeks_scored: number[];
-            /** Has Quantiles */
-            has_quantiles: boolean;
             /** Sleeper First Fetch */
             sleeper_first_fetch: string | null;
         };
@@ -2791,6 +3053,34 @@ export interface components {
             /** Share */
             share: number | null;
         };
+        /** StashData */
+        StashData: {
+            /** Open Ir Slots */
+            open_ir_slots: number;
+            /** Rows */
+            rows: components["schemas"]["StashRow"][];
+        };
+        /** StashRow */
+        StashRow: {
+            /** Gsis Id */
+            gsis_id: string;
+            /** Full Name */
+            full_name: string;
+            /** Position */
+            position: string;
+            /** Status */
+            status: string;
+            /** Owner */
+            owner: string | null;
+            /** Is Mine */
+            is_mine: boolean;
+            /** Ir Eligible */
+            ir_eligible: boolean;
+            /** First Week */
+            first_week: number | null;
+            /** Playoff Points */
+            playoff_points: number;
+        };
         /** StatusChangeRow */
         StatusChangeRow: {
             /** Sleeper Id */
@@ -2834,6 +3124,8 @@ export interface components {
             this_week: number | null;
             /** Next Three */
             next_three: number | null;
+            /** Playoff Points */
+            playoff_points: number | null;
         };
         /** StrengthRow */
         StrengthRow: {
@@ -3087,6 +3379,8 @@ export interface components {
         };
         /** WinProbabilityData */
         WinProbabilityData: {
+            /** Playoff Label */
+            playoff_label: string | null;
             /** Script */
             script: string | null;
             swap: components["schemas"]["SwapNoteModel"] | null;
@@ -3882,6 +4176,40 @@ export interface operations {
             };
         };
     };
+    bracket_api_leagues__league__bracket_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_BracketData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     odds_history_api_leagues__league__odds_history_get: {
         parameters: {
             query?: {
@@ -4329,6 +4657,108 @@ export interface operations {
             };
         };
     };
+    holes_api_leagues__league__holes_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_HoleRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stash_api_leagues__league__stash_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_StashData_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    lineup_grid_api_leagues__league__lineup_grid_get: {
+        parameters: {
+            query?: {
+                /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
+                team?: number | null;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_LineupGrid_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     live_score_api_leagues__league__live_score_get: {
         parameters: {
             query?: {
@@ -4520,6 +4950,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Envelope_list_MarketValueRow__"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    market_history_api_leagues__league__market_history_get: {
+        parameters: {
+            query: {
+                id: string;
+            };
+            header?: never;
+            path: {
+                league: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Envelope_list_MarketHistoryRow__"];
                 };
             };
             /** @description Validation Error */
@@ -4796,6 +5259,7 @@ export interface operations {
     waivers_api_leagues__league__waivers_get: {
         parameters: {
             query?: {
+                horizon?: "ros" | "playoffs";
                 /** @description Roster id to view as; omitted means my team (Sleeper is_me) */
                 team?: number | null;
             };

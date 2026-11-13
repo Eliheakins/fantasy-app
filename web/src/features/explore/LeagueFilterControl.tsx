@@ -3,6 +3,7 @@ import { useLeagueOwners } from "@/features/explore/useLeagueOwners";
 import { useQueryState } from "@/stat/react/useQueryState";
 import { useTeam } from "@/lib/teamContext";
 import type { RosterFilter } from "@/stat/lib/queryUrl";
+import { eyebrowClass } from "@/components/ui/styles";
 
 const ALL = "all";
 const FILTERS: readonly RosterFilter[] = ["mine", "rostered", "fa"];
@@ -23,7 +24,7 @@ export function LeagueFilterControl() {
 
   return (
     <div className="space-y-1">
-      <h3 className="text-caption font-semibold uppercase tracking-wide text-focus">League</h3>
+      <h3 className={eyebrowClass}>League</h3>
       <p className="text-caption text-muted">
         Today&apos;s rosters, whatever season you are looking at. It narrows pinned players and rankings.
       </p>

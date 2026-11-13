@@ -29,6 +29,7 @@ class ScoreboardRow(Row):
     week: int
     matchup_id: int | None
     status: Literal["Not started", "Live", "Final"]
+    playoff_label: str | None  # my side's playoff line (e.g. "Round 2 vs X"), my row only
     a: ScoreboardSide
     b: ScoreboardSide
 
@@ -58,7 +59,6 @@ class ScorecardData(Row):
     excluded: ScorecardExcluded
     weeks_archived: list[int]
     weeks_scored: list[int]
-    has_quantiles: bool  # false: snapshots hold means only, so no interval coverage
     sleeper_first_fetch: str | None
 
 

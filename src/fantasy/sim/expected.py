@@ -1,14 +1,12 @@
 """Expected points per player-game under a league's scoring, from nflverse opportunity rows."""
 
 import json
+import warnings
 
 import polars as pl
 
 from fantasy.scoring import expected_points_expr
 from fantasy.store import SKILL
-
-POSITIONS = SKILL
-
 
 MAX_UNSCORED_SHARE = 0.05  # expected-points rows with no scored row (a position label differs)
 
@@ -24,7 +22,7 @@ def expected_frame(
         )
         scoring = json.loads(lg["scoring_settings"])
         expected = (
-            opp.filter(pl.col("position").is_in(POSITIONS))
+            opp.filter(pl.col("position").is_in(SKILL))
             .select(
                 pl.col("player_id").alias("gsis_id"),
                 "season",
@@ -40,7 +38,10 @@ def expected_frame(
         matched = expected.join(actual, on=["gsis_id", "season", "week"], how="inner")
         dropped = expected.height - matched.height
         if dropped:
-            print(f"expected_frame: league {lg['league_id']}: {dropped} unscored rows dropped")
+            warnings.warn(
+                f"expected_frame: league {lg['league_id']}: {dropped} unscored rows dropped",
+                stacklevel=2,
+            )
         if dropped > MAX_UNSCORED_SHARE * expected.height:
             raise ValueError(f"{dropped} of {expected.height} expected-points rows have no points")
         frames.append(matched.with_columns(pl.lit(lg["league_id"]).alias("league_id")))

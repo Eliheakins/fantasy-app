@@ -2,11 +2,11 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from auth_fixture import GOOD
 
 from fantasy.auth import accounts, passwords
 
 NOW = datetime(2026, 11, 9, 12, 0, tzinfo=UTC)
-GOOD = "a long enough password"
 
 
 @pytest.fixture(autouse=True)
@@ -134,12 +134,22 @@ def test_tokens_are_stored_hashed_never_in_the_clear(db) -> None:
 def test_listing_accounts_never_includes_hashes(db) -> None:
     accounts.create_admin(db, "boss@example.com", GOOD)
     accounts.create_invite(db, "friend@example.com", NOW)
-    listed = accounts.list_accounts(db)
+    listed = accounts.list_accounts(db, NOW)
     assert [a["email"] for a in listed] == ["boss@example.com", "friend@example.com"]
     assert all("password_hash" not in a for a in listed)
     assert {a["email"]: a["has_password"] for a in listed} == {
         "boss@example.com": True,
         "friend@example.com": False,
+    }
+
+
+def test_an_expired_unused_invite_is_not_listed_as_pending(db) -> None:
+    accounts.create_invite(db, "old@example.com", NOW - timedelta(days=accounts.INVITE_DAYS + 1))
+    accounts.create_invite(db, "new@example.com", NOW)
+    listed = accounts.list_accounts(db, NOW)
+    assert {a["email"]: a["invite_pending"] for a in listed} == {
+        "old@example.com": False,
+        "new@example.com": True,
     }
 
 

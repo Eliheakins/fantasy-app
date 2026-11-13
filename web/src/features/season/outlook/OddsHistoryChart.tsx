@@ -70,7 +70,7 @@ function WeekTooltip({
   if (!active || !point) return null;
   const ranked = [...teams].sort((a, b) => (valueAt(point, b.id) ?? -1) - (valueAt(point, a.id) ?? -1));
   return (
-    <div className="rounded-lg border border-line bg-white p-3 text-caption shadow-md">
+    <div className="rounded-lg border border-line bg-surface p-3 text-caption shadow-md">
       <p className="font-semibold text-ink">Week {point.week}</p>
       {marks?.get(point.week)?.map((m) => (
         <p key={m.full} className="text-label">
@@ -98,13 +98,17 @@ export function OddsHistoryChart({
   history,
   marks,
   describedBy,
+  titleFromWeek = null,
 }: {
   odds: readonly SeasonOddsRow[];
   history: readonly OddsHistoryRow[];
   marks?: WeekMarks;
   describedBy?: string;
+  /** First playoff week: from here the lines are title odds, not playoff odds. */
+  titleFromWeek?: number | null;
 }) {
-  const data = weeklyHistory(history);
+  const data = weeklyHistory(history, titleFromWeek);
+  const what = titleFromWeek === null ? "Playoff odds" : "Playoff odds, then title odds from week " + titleFromWeek;
   const teams = historyTeams(odds, history);
   const ordered = [...teams.filter((t) => !t.isMe), ...teams.filter((t) => t.isMe)]; // mine drawn last, on top
   const last = data.length - 1;
@@ -121,7 +125,7 @@ export function OddsHistoryChart({
         className="h-72 w-full"
         role="img"
         aria-describedby={describedBy}
-        aria-label="Playoff odds by week for every team, line chart; the Forest line is the team being viewed"
+        aria-label={`${what} by week for every team, line chart; the Forest line is the team being viewed`}
       >
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 16, right: wide ? 150 : 96, bottom: 0, left: 8 }}>
@@ -134,7 +138,7 @@ export function OddsHistoryChart({
               {...AXIS}
               axisLine={false}
               width={56}
-              label={axisCaption("Chance to make playoffs")}
+              label={axisCaption(titleFromWeek === null ? "Chance to make playoffs" : "Chance: playoffs, then title")}
             />
             <ReferenceLine y={0.5} stroke={TICK_COLOR} strokeDasharray="4 4" />
             <Tooltip
@@ -188,8 +192,8 @@ export function OddsHistoryChart({
         </ResponsiveContainer>
       </div>
       <DataTableFallback
-        summary="Show playoff odds by week as a table"
-        caption="Playoff odds by week, every team"
+        summary="Show odds by week as a table"
+        caption={`${what} by week, every team`}
         columns={["Week", ...teams.map((t) => (t.isMe ? `${t.name} (you)` : t.name))]}
         rows={data.map((p) => [weekLabel(p.week), ...teams.map((t) => formatPercent(valueAt(p, t.id)))])}
       />

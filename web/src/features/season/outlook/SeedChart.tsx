@@ -1,24 +1,25 @@
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, XAxis, YAxis, usePlotArea, useXAxisScale } from "recharts";
 import { DataTableFallback, formatPercent } from "@/viz";
 import { AXIS, TICK_COLOR } from "@/viz/chartTheme";
-import { BYE_SEEDS, PLAYOFF_SEEDS, seedFill } from "./logic";
+import { byeSeeds, seedFill } from "./logic";
 import type { SeedRow } from "@/lib/outlookTypes";
 
 const BAR_MAX_PX = 32;
 const BAR_RADIUS: [number, number, number, number] = [4, 4, 0, 0];
 
-/** The playoff line between seeds 6 and 7, and a "Bye" bracket over seeds 1 and 2, drawn from the axis scale. */
-function Marks({ count }: { count: number }) {
+/** The playoff line after the last playoff seed, and a "Bye" bracket over the bye seeds (none in a 4 or 8-team bracket), drawn from the axis scale. */
+function Marks({ count, playoffTeams }: { count: number; playoffTeams: number }) {
   const scale = useXAxisScale();
   const area = usePlotArea();
   if (!area || !scale) return null;
-  const cut = scale(String(PLAYOFF_SEEDS), { position: "end" });
+  const cut = scale(String(playoffTeams), { position: "end" });
   const byeStart = scale("1", { position: "start" });
-  const byeEnd = scale(String(BYE_SEEDS), { position: "end" });
+  const byes = byeSeeds(playoffTeams);
+  const byeEnd = byes > 0 ? scale(String(byes), { position: "end" }) : undefined;
   const row = area.y - 40; // a label row above the tallest bar's value label; needs the chart's top margin of 60
   return (
     <g fontSize={12}>
-      {count > PLAYOFF_SEEDS && typeof cut === "number" && (
+      {count > playoffTeams && typeof cut === "number" && (
         <>
           <line x1={cut} x2={cut} y1={row - 12} y2={area.y + area.height} stroke="var(--lf-ink)" strokeWidth={1.5} />
           <text x={cut - 6} y={row} textAnchor="end" fill="var(--lf-ink)" fontWeight={600}>
@@ -42,14 +43,14 @@ function Marks({ count }: { count: number }) {
 }
 
 /** Chance of each regular-season seed: playoff seeds Forest, misses light grey, every bar labelled, no value axis. */
-export function SeedChart({ rows }: { rows: readonly SeedRow[] }) {
-  const data = rows.map((r) => ({ seed: String(r.seed), p: r.p, fill: seedFill(r.seed) }));
+export function SeedChart({ rows, playoffTeams }: { rows: readonly SeedRow[]; playoffTeams: number }) {
+  const data = rows.map((r) => ({ seed: String(r.seed), p: r.p, fill: seedFill(r.seed, playoffTeams) }));
   return (
     <div className="max-w-3xl">
       <div
         className="h-72 w-full"
         role="img"
-        aria-label="Chance of each regular-season seed, bar chart; seeds 1 to 6 make the playoffs and 1 and 2 get a bye"
+        aria-label={`Chance of each regular-season seed, bar chart; seeds 1 to ${playoffTeams} make the playoffs`}
       >
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 60, right: 8, bottom: 0, left: 8 }} barCategoryGap="20%">
@@ -73,7 +74,7 @@ export function SeedChart({ rows }: { rows: readonly SeedRow[] }) {
                 fontSize={12}
               />
             </Bar>
-            <Marks count={data.length} />
+            <Marks count={data.length} playoffTeams={playoffTeams} />
           </BarChart>
         </ResponsiveContainer>
       </div>

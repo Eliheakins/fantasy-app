@@ -1,27 +1,25 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router";
 import { UNAUTHORIZED_EVENT } from "@/api/envelope";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { ME_KEY, useSession } from "@/lib/session";
+import { checkSession, useSession } from "@/lib/session";
 
 /** Shows the app only to a signed-in person. A request that comes back "unauthorized" (the session
  * ended while the page was open) makes the session check run again, which sends them to sign in. */
 export function RequireSession() {
   const session = useSession();
-  const queryClient = useQueryClient();
   const location = useLocation();
   const ended = useRef(false);
 
   useEffect(() => {
     const onUnauthorized = () => {
       ended.current = true;
-      void queryClient.invalidateQueries({ queryKey: ME_KEY });
+      void checkSession();
     };
     window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
-  }, [queryClient]);
+  }, []);
 
   if (session.kind === "loading") {
     return (
@@ -36,7 +34,7 @@ export function RequireSession() {
   }
   if (session.kind === "error") {
     return (
-      <section className="mx-auto max-w-[1200px] p-6">
+      <section className="mx-auto max-w-page p-6">
         <PageHeader title="Could not check your sign-in" />
         <p role="alert" className="measure text-muted">
           {session.message}

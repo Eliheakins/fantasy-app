@@ -1,13 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
-import { LeagueProvider } from "@/lib/league";
-import { TeamProvider } from "@/lib/TeamProvider";
 import { errorReply, okReply, stubScoped } from "@/test/fakeApi";
 import { RefreshPanel } from "./RefreshPanel";
-
-afterEach(() => vi.unstubAllGlobals());
+import { renderWithProviders } from "@/test/render";
 
 const RUN = { run_id: "20261109T120000Z", finished_at: "2026-11-09T12:02:00+00:00", stages: 21, failed: 0, seconds: 118 };
 
@@ -16,22 +11,12 @@ function overview(over: object = {}) {
 }
 
 function open() {
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter>
-        <LeagueProvider>
-          <TeamProvider>
-            <RefreshPanel />
-          </TeamProvider>
-        </LeagueProvider>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<RefreshPanel />, { route: "/", league: true, team: true });
 }
 
 describe("RefreshPanel", () => {
   it("says nothing is waiting, how the last run went, and lists recent runs", async () => {
-    stubScoped("/api/admin/", () => okReply(overview()));
+    stubScoped("/api/admin/refresh", () => okReply(overview()));
     open();
     expect(await screen.findByText("No refresh is waiting.")).toBeInTheDocument();
     expect(screen.getByText(/every stage succeeded/i)).toBeInTheDocument();
@@ -40,7 +25,7 @@ describe("RefreshPanel", () => {
   });
 
   it("warns when the last run had a failed or skipped stage", async () => {
-    stubScoped("/api/admin/", () => okReply(overview({ last_run_failed: true })));
+    stubScoped("/api/admin/refresh", () => okReply(overview({ last_run_failed: true })));
     open();
     expect(await screen.findByText(/at least one stage failed or was skipped/i)).toBeInTheDocument();
   });
@@ -50,7 +35,7 @@ describe("RefreshPanel", () => {
     ["queued", "A refresh is waiting to start (1 request).", { queued: 1 }],
     ["running", "A refresh is running.", {}],
   ])("shows the %s state and disables the button", async (state, sentence, extra) => {
-    stubScoped("/api/admin/", () => okReply(overview({ state, ...extra })));
+    stubScoped("/api/admin/refresh", () => okReply(overview({ state, ...extra })));
     open();
     expect(await screen.findByText(sentence)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Refresh now" })).toBeDisabled();
@@ -58,7 +43,7 @@ describe("RefreshPanel", () => {
 
   it("queues a refresh when the button is pressed", async () => {
     let state = "idle";
-    const calls = stubScoped("/api/admin/", (call) => {
+    const calls = stubScoped("/api/admin/refresh", (call) => {
       if (call.method === "POST") {
         state = "queued";
         return okReply({ state: "queued", queued: 1, last_finished_at: null, last_run_failed: null });
@@ -72,7 +57,7 @@ describe("RefreshPanel", () => {
   });
 
   it("shows why a refresh request failed", async () => {
-    stubScoped("/api/admin/", (call) =>
+    stubScoped("/api/admin/refresh", (call) =>
       call.method === "POST" ? errorReply("server", "Could not write the request", 500) : okReply(overview()),
     );
     open();

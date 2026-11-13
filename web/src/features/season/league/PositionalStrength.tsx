@@ -1,3 +1,4 @@
+import { sideName } from "@/lib/scoreboard";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { formatNumber } from "@/viz";
 import { HBar } from "./PowerRankings";
@@ -34,7 +35,7 @@ export function PositionalStrength({ rows }: { rows: readonly TeamGradeRow[] }) 
       role: "primary",
       render: (t) => (
         <>
-          {t.is_me ? `${t.team_name} (you)` : t.team_name}
+          {sideName(t)}
           {t.cells.overall && (
             <span className="block text-caption font-normal text-muted">
               {`Overall ${t.cells.overall.grade}, ${ordinal(t.cells.overall.rank)}`}

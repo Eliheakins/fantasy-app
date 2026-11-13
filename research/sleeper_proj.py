@@ -1,10 +1,10 @@
 import json, time
-import httpx, polars as pl, numpy as np
+import httpx2, polars as pl, numpy as np
 from fantasy import store
 
 rows=[]
 for wk in range(1,8):
-    r=httpx.get(f"https://api.sleeper.com/projections/nfl/2026/{wk}",params={"season_type":"regular","position[]":["QB","RB","WR","TE","K"]},timeout=60)
+    r=httpx2.get(f"https://api.sleeper.com/projections/nfl/2026/{wk}",params={"season_type":"regular","position[]":["QB","RB","WR","TE","K"]},timeout=60)
     for d in r.json():
         rows.append({"week":wk,"sleeper_id":str(d["player_id"]),"stats":json.dumps(d["stats"]),"company":d.get("company"),"modified":d.get("last_modified")})
     time.sleep(0.3)

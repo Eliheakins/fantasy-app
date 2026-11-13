@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-import httpx
+import httpx2
 import polars as pl
 
 from fantasy import store
@@ -79,9 +79,9 @@ def api_key(env_file: Path = ROOT / ".env") -> str:
     return key
 
 
-def _get(url: str, params: dict[str, str]) -> httpx.Response:
+def _get(url: str, params: dict[str, str]) -> httpx2.Response:
     """GET that raises without the request URL, which carries the API key."""
-    resp = httpx.get(url, params=params, timeout=30)
+    resp = httpx2.get(url, params=params, timeout=30)
     if resp.is_error:
         raise RuntimeError(f"Odds API returned {resp.status_code} for {url.removeprefix(BASE)}")
     return resp
@@ -205,7 +205,8 @@ def run(
     stamp = now.strftime("%Y%m%dT%H%M%SZ")
     partial = odds_dir / f"{stamp}.partial"  # only a finished snapshot gets the plain name
     partial.mkdir(parents=True, exist_ok=True)
-    used = left = None
+    used: str | None = None
+    credits_left: str | None = None
     try:
         for e in events:
             resp = _get(
@@ -219,14 +220,14 @@ def run(
             )
             (partial / f"{e['id']}.json").write_text(json.dumps(resp.json()))
             used = resp.headers.get("x-requests-used")
-            left = resp.headers.get("x-requests-remaining")
+            credits_left = resp.headers.get("x-requests-remaining")
             time.sleep(PAUSE_SECONDS)
     finally:
         if used is not None:  # credits were spent even if a later call failed
-            log_credits(stamp, used, left, odds_dir)
+            log_credits(stamp, used, credits_left, odds_dir)
     out = odds_dir / stamp
     partial.rename(out)
-    print(f"saved {len(events)} files to {out}; credits remaining: {left}")
+    print(f"saved {len(events)} files to {out}; credits remaining: {credits_left}")
 
 
 if __name__ == "__main__":

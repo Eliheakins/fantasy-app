@@ -36,8 +36,8 @@ describe("layers", () => {
   test("a feature does not import a page", () => {
     expect(offenders("features", /^pages\//, /\.test\.tsx?$/)).toEqual([]);
   });
-  test("lib and layout components do not import features or pages", () => {
-    expect([...offenders("lib", /^(features|pages)\//), ...offenders("components", /^(features|pages)\//)]).toEqual([]);
+  test.each(["lib", "components", "viz", "hooks", "api"])("shared %s/ does not import features or pages", (folder) => {
+    expect(offenders(folder, /^(features|pages)\//)).toEqual([]);
   });
   test("stat engine, lib and config stay free of the UI and the fantasy API", () => {
     // api/schema is allowed: generated types only, used by nlqIntent.ts to pin zod to the backend at compile time.
@@ -48,5 +48,19 @@ describe("layers", () => {
   });
   test("moves/trade does not import the rest of moves, so the two do not form a cycle", () => {
     expect(offenders("features/moves/trade", /^features\/moves\/(?!trade\/)[^/]+$/)).toEqual([]);
+  });
+});
+
+describe("route boundary", () => {
+  // Pages read the URL and hand features typed props. Explore and the Ask flow are the documented exception: their URL is
+  // the stat query itself, kept by the stat kernel's useQueryState (web/CLAUDE.md, "Route boundary").
+  const READS_URL = /\b(useLocation|useSearchParams|useSearchParam|useParams)\(/;
+  const URL_IS_THE_QUERY = /^features\/(explore\/|ask\/useAsk\.ts$)/;
+  test("a feature reads no URL state; its page passes it in", () => {
+    const readers = sourceFiles(join(SRC, "features"))
+      .map((file) => relative(SRC, file))
+      .filter((file) => !/\.test\.tsx?$/.test(file) && !URL_IS_THE_QUERY.test(file))
+      .filter((file) => READS_URL.test(readFileSync(join(SRC, file), "utf8")));
+    expect(readers).toEqual([]);
   });
 });

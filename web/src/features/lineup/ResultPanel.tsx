@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
+import { PlayoffLabel } from "@/components/PlayoffLabel";
 import { Explain, ExplainDelta, formatNumber, formatPercent } from "@/viz";
 import { type WeekResult, resultText } from "./calls";
 import { SLEEPER_POINTS_WHY, winChanceWhy } from "./explain";
 import { type WinProbability, gapIsNoise } from "./logic";
 import { TeamRanges } from "./TeamRanges";
+import { eyebrowClass } from "@/components/ui/styles";
 
 type Option = WinProbability["options"][number];
 
@@ -24,10 +26,11 @@ type Props = {
   shown: number;
   now: number | null;
   gap: number | null;
+  playoffLabel?: string | null;
 };
 
 /** The page's one tinted panel: both team totals, the chance to win (or the final result), the lineup against Sleeper. */
-export function ResultPanel({ result, option, win, shown, now, gap }: Props) {
+export function ResultPanel({ result, option, win, shown, now, gap, playoffLabel }: Props) {
   const sleeperNote =
     gap === null ? null : gapIsNoise(gap) ? (
       "Sleeper's lineup is the same"
@@ -38,9 +41,10 @@ export function ResultPanel({ result, option, win, shown, now, gap }: Props) {
     );
   return (
     <section aria-labelledby="matchup-heading" className="key-panel">
-      <h2 id="matchup-heading" className="text-caption font-semibold uppercase tracking-wide text-focus">
+      <h2 id="matchup-heading" className={eyebrowClass}>
         Your matchup
       </h2>
+      <PlayoffLabel label={playoffLabel} />
       <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
         {result ? (
           <>

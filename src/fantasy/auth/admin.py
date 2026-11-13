@@ -55,7 +55,7 @@ def list_accounts(request: Request) -> Any:
         with accounts.open_db(request.app.state.data_dir) as conn:
             return [
                 {k: v for k, v in row.items() if k != "sleeper_user_id"}
-                for row in accounts.list_accounts(conn)
+                for row in accounts.list_accounts(conn, datetime.now(UTC))
             ]
 
     return guarded(build)

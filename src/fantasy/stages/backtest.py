@@ -105,16 +105,20 @@ def metrics(rows: pl.DataFrame, horizon: int) -> pl.DataFrame:
     )
 
 
+def weighted(col: str) -> pl.Expr:
+    """The n-weighted mean of a metric column."""
+    return (pl.col(col) * pl.col("n")).sum() / pl.col("n").sum()
+
+
 def verdict(m: pl.DataFrame) -> pl.DataFrame:
     """Per horizon and forecaster: sample-weighted pinball, RMSE and 80% coverage (whole sample)."""
-    weighted = [(pl.col(c) * pl.col("n")).sum() / pl.col("n").sum() for c in ("pinball", "rmse")]
     return (
         m.filter(pl.col("tier") == ALL_TIERS)
         .group_by("horizon", "forecaster")
         .agg(
-            weighted[0].alias("pinball"),
-            weighted[1].alias("rmse"),
-            (pl.col("coverage80") * pl.col("n")).sum().truediv(pl.col("n").sum()).alias("cov80"),
+            weighted("pinball").alias("pinball"),
+            weighted("rmse").alias("rmse"),
+            weighted("coverage80").alias("cov80"),
             pl.col("n").sum(),
         )
         .sort("horizon", "forecaster")
@@ -179,7 +183,7 @@ def main() -> None:
     tiers = (
         result.filter(pl.col("forecaster").is_in(["baseline", "learned"]))
         .group_by("horizon", "tier", "forecaster")
-        .agg((pl.col("coverage80") * pl.col("n")).sum().truediv(pl.col("n").sum()).alias("cov80"))
+        .agg(weighted("coverage80").alias("cov80"))
         .pivot(on="forecaster", index=["horizon", "tier"], values="cov80")
         .sort("horizon", "tier")
     )

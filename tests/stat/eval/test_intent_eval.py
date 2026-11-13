@@ -7,7 +7,8 @@ failure counts as a miss instead of silently scoring the local model:
     set -a; source .env; set +a; uv run pytest -m eval -s          # Jev
     make ask-model; INTENT_PROVIDER=local uv run pytest -m eval -s  # local Qwen
 
-`catalog.json` comes from `npm run export:catalog` (frontend/), so the ids are the real ones.
+`catalog.json` comes from the web catalog (refresh it with
+`cd web && UPDATE_CATALOG=1 npx vitest run nlqCatalog.test.ts`), so the ids are the real ones.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from typing import Any
 
 import pytest
 from openai import AsyncOpenAI
+from promote import SETS
 
 from nfl_stat.core.config import get_settings
 from nfl_stat.schemas.nlq import IntentOutcome, IntentRequest, QueryOutcome
@@ -31,9 +33,6 @@ EVAL_DIR = Path(__file__).parent
 RESULTS_FILE = EVAL_DIR / "results.jsonl"
 MIN_PASS_RATE = 0.8
 MIN_REFUSAL_RATE = 0.75  # a model that never refuses must fail even though refusals are few
-# `corrections` holds questions a user had to fix in the app (added with promote.py). `heldout2`
-# was committed before any model saw it (#71).
-SETS = ("cases", "heldout", "heldout2", "corrections")
 
 pytestmark = pytest.mark.eval
 
@@ -88,7 +87,8 @@ async def test_intent_pass_rate_meets_threshold():
     settings = get_settings()
     catalog = json.loads((EVAL_DIR / "catalog.json").read_text())
     # The held-out set was written before the rules parser. The model is scored on it too, so both
-    # paths can be compared on the same questions (`npm run eval:rules` in frontend/ scores rules).
+    # paths can be compared on the same questions (web/src/features/ask/ruleParser.eval.test.ts
+    # scores rules).
     cases = [
         {**c, "set": name}
         for name in SETS

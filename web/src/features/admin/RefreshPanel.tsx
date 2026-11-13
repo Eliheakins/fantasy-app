@@ -1,8 +1,5 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { sendJson } from "@/api/envelope";
 import type { AdminRun, RefreshAdmin } from "@/api/types";
-import { useEnvelopeQuery } from "@/api/useEnvelope";
+import { apiKey, useEnvelopeMutation, useEnvelopeQuery } from "@/api/useEnvelope";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { Button } from "@/components/ui/button";
@@ -28,22 +25,9 @@ function describe(data: RefreshAdmin): string {
 
 /** The data refresh: what it is doing, how the last runs went, and a button to start one now. */
 export function RefreshPanel() {
-  const queryClient = useQueryClient();
-  const overview = useEnvelopeQuery<RefreshAdmin>(REFRESH_URL, POLL_MS);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function refreshNow() {
-    setBusy(true);
-    setError(null);
-    const sent = await sendJson(REFRESH_URL, "POST");
-    setBusy(false);
-    if (!sent.ok) {
-      setError(sent.error.message);
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: ["api", REFRESH_URL] });
-  }
+  const overview = useEnvelopeQuery(REFRESH_URL, {}, POLL_MS);
+  const refresh = useEnvelopeMutation("post", REFRESH_URL, [apiKey(REFRESH_URL)]);
+  const error = refresh.error?.message ?? null;
 
   return (
     <ApiBoundary state={overview}>
@@ -58,7 +42,7 @@ export function RefreshPanel() {
               {data.last_run_failed ? "At least one stage failed or was skipped." : "Every stage succeeded."}
             </p>
           )}
-          <Button className="mt-3" onClick={() => void refreshNow()} disabled={busy || data.state !== "idle"}>
+          <Button className="mt-3" onClick={() => refresh.mutate({})} disabled={refresh.isPending || data.state !== "idle"}>
             Refresh now
           </Button>
           {error && (

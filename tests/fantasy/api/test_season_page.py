@@ -4,13 +4,12 @@ from collections.abc import Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 
-import polars as pl
 import pytest
 from fastapi.testclient import TestClient
 from store_fixture import write_rows
 from test_league_view import LID
 
-from fantasy import api, data_api, store
+from fantasy import api, data_api
 
 RUNS = [  # run_at, as_of_week
     ("2026-10-20T06:00:00+00:00", 5),
@@ -23,12 +22,6 @@ MY_SCORES = [100.0, 102.0, 98.0, 101.0, 99.0, 150.0, 100.0]  # weeks 1 to 7; wee
 
 def ms(text: str) -> int:
     return int(datetime.fromisoformat(text).replace(tzinfo=UTC).timestamp() * 1000)
-
-
-def write_archive(path: Path, name: str, rows: list[dict], area: str = "archive") -> None:
-    schema = store.SCHEMAS[name]
-    frame = pl.DataFrame([{**dict.fromkeys(schema), **r} for r in rows], schema=schema)
-    store.write_table(name, frame, area, path)
 
 
 @pytest.fixture
@@ -50,14 +43,15 @@ def season(league: Path) -> Path:
         [{"sleeper_id": s, "full_name": n, "position": "QB", "fantasy_positions": ["QB"]}
          for s, n in names.items()],
     )  # fmt: skip
-    write_archive(
+    write_rows(
         league, "sim_season_history",
         [{"league_id": LID, "roster_id": 1, "team_name": "T1", "run_at": r, "as_of_week": w,
           "p_playoffs": 0.5} for r, w in RUNS],
+        area="archive",
     )  # fmt: skip
     trade = {"league_id": LID, "week": 6, "type": "trade", "status": "complete", "roster_id": 1}
     other = {**trade, "transaction_id": "t2", "roster_id": 2}
-    write_archive(
+    write_rows(
         league, "transactions",
         [
             {**trade, "transaction_id": "t1", "created": ms("2026-10-25T12:00:00"),
@@ -73,7 +67,7 @@ def season(league: Path) -> Path:
         area="raw",
     )  # fmt: skip
     snap = {"team": "X", "position": "QB"}
-    write_archive(
+    write_rows(
         league, "sleeper_player_status",
         [
             {**snap, "sleeper_id": "qb1", "fetched_at": "2026-10-26T12:00:00+00:00"},
@@ -83,6 +77,7 @@ def season(league: Path) -> Path:
             {**snap, "sleeper_id": "rb2", "fetched_at": "2026-10-29T12:00:00+00:00",
              "injury_status": "Out"},
         ],
+        area="archive",
     )  # fmt: skip
     return league
 
@@ -116,26 +111,28 @@ def test_an_event_before_the_first_saved_run_has_no_run_to_sit_on(season: Path) 
 
 def test_no_history_or_no_data_gives_no_events(season: Path) -> None:
     assert data_api.season_events("nope", season).is_empty()
-    write_archive(season, "sim_season_history", [])
+    write_rows(season, "sim_season_history", [], area="archive")
     assert all(e["run_at"] is None for e in events(season))
 
 
 def test_a_big_week_before_the_first_saved_run_is_not_marked(season: Path) -> None:
-    write_archive(
+    write_rows(
         season,
         "sim_season_history",
         [{"league_id": LID, "roster_id": 1, "run_at": RUNS[3][0], "as_of_week": 8}],
+        area="archive",
     )
     assert "big_week" not in {e["kind"] for e in events(season)}
 
 
 def test_a_malformed_timestamp_is_skipped_not_fatal(season: Path) -> None:
     snap = {"team": "X", "position": "QB", "sleeper_id": "qb1"}
-    write_archive(
+    write_rows(
         season,
         "sleeper_player_status",
         [{**snap, "fetched_at": "garbage"}, {**snap, "fetched_at": "2026-10-26T12:00:00+00:00"},
          {**snap, "fetched_at": "2026-10-29T12:00:00+00:00", "injury_status": "Out"}],
+        area="archive",
     )  # fmt: skip
     assert [e["kind"] for e in events(season)].count("injury") == 1
 

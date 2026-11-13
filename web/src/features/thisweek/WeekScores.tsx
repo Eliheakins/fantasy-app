@@ -11,10 +11,11 @@ import {
   sideScore,
   sortMineFirst,
 } from "@/lib/scoreboard";
+import { ApiBoundary } from "@/components/ApiBoundary";
+import { PlayoffLabel } from "@/components/PlayoffLabel";
 import { cn } from "@/lib/utils";
 import { useAllLeagues, useEachLeague } from "@/lib/league";
-
-const leagueName = (l: League) => l.name?.trim() || l.league_key;
+import { leagueName } from "./weekLogic";
 
 /** The side that won a final, or null while the matchup is open or tied. */
 function winnerId(row: ScoreboardRow): number | null {
@@ -56,12 +57,13 @@ function Matchup({ row, kickoff }: { row: ScoreboardRow; kickoff: Date | null })
   const winner = winnerId(row);
   return (
     <li
-      aria-label={`${spoken(first, row.status)}, ${spoken(second, row.status)}, ${status}`}
+      aria-label={`${row.playoff_label ? `${row.playoff_label}: ` : ""}${spoken(first, row.status)}, ${spoken(second, row.status)}, ${status}`}
       className={cn("grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 px-3 py-2", isMine(row) && "mine-row rounded-r-lg")}
     >
       <div className="space-y-1">
         <TeamLine side={first} row={row} winner={winner} />
         <TeamLine side={second} row={row} winner={winner} />
+        <PlayoffLabel label={row.playoff_label} />
       </div>
       <span className={cn("w-14 text-right text-caption sm:w-20", row.status === "Live" ? "font-semibold text-ink" : "text-muted")}>
         {status}
@@ -72,29 +74,40 @@ function Matchup({ row, kickoff }: { row: ScoreboardRow; kickoff: Date | null })
 
 function LeagueScores({ league, state, kickoff }: { league: League; state: ApiState<ScoreboardRow[]> | undefined; kickoff: Date | null }) {
   const id = `scores-${league.league_key}`;
+  // a bye, a title or an elimination leaves my matchup out or unlabelled: show the league's label once, here
+  const showLeagueLabel = state?.kind === "ready" && league.playoff_label && !state.data.some((r) => isMine(r) && r.playoff_label);
   return (
     <section aria-labelledby={id} className="min-w-0">
       <h3 id={id} className="mb-1 px-3 text-body font-semibold text-label">
         {leagueName(league)}
       </h3>
-      {state?.kind === "ready" ? (
-        state.data.length ? (
-          <ul className="divide-y divide-line">
-            {sortMineFirst(state.data).map((row) => (
-              <Matchup key={`${row.week}-${row.a.roster_id}`} row={row} kickoff={kickoff} />
-            ))}
-          </ul>
-        ) : (
-          <p className="px-3 text-body text-muted">No matchups are set for this week yet.</p>
-        )
-      ) : state?.kind === "error" ? (
+      {showLeagueLabel && (
+        <div className="mb-1 px-3">
+          <PlayoffLabel label={league.playoff_label} />
+        </div>
+      )}
+      {state?.kind === "error" ? (
         <p role="alert" className="px-3 text-body text-warning">
           The scores did not load: {state.error.message}
         </p>
-      ) : (
+      ) : !state || state.kind === "loading" ? (
         <p role="status" className="px-3 text-body text-muted">
           Loading scores…
         </p>
+      ) : (
+        <ApiBoundary state={state}>
+          {(rows) =>
+            rows.length ? (
+              <ul className="divide-y divide-line">
+                {sortMineFirst(rows).map((row) => (
+                  <Matchup key={`${row.week}-${row.a.roster_id}`} row={row} kickoff={kickoff} />
+                ))}
+              </ul>
+            ) : (
+              <p className="px-3 text-body text-muted">No matchups are set for this week yet.</p>
+            )
+          }
+        </ApiBoundary>
       )}
     </section>
   );
@@ -104,9 +117,9 @@ function LeagueScores({ league, state, kickoff }: { league: League; state: ApiSt
 export function WeekScores({ kickoff }: { kickoff: Date | null }) {
   const leagues = useAllLeagues();
   const list = leagues.kind === "ready" ? leagues.data : [];
-  const boards = useEachLeague<ScoreboardRow[]>(
+  const boards = useEachLeague(
     list.map((l) => l.league_key),
-    "scoreboard",
+    "/api/leagues/{league}/scoreboard",
   );
   const rows = boards.flatMap((b) => (b.kind === "ready" ? b.data : []));
   const week = rows[0]?.week;

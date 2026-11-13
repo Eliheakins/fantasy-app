@@ -1,7 +1,7 @@
 import { act, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
-import { createMemoryRouter, MemoryRouter, RouterProvider, useLocation } from "react-router-dom";
+import { createMemoryRouter, MemoryRouter, RouterProvider, useLocation } from "react-router";
 import { clampWeek, usePageEyebrow, useWeek } from "./week";
 
 vi.mock("@/lib/league", () => ({

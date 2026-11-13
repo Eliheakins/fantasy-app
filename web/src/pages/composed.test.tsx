@@ -1,11 +1,14 @@
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
+import { leaguePath, onlyRoutes } from "@/test/fakeApi";
 import Players from "./Players";
 import Season from "./Season";
 import ThisWeek from "./ThisWeek";
 
 vi.mock("@/lib/league", () => ({
-  useLeagueApi: () => ({ kind: "loading" }),
+  // the routes the page shells read themselves, all loading; their sections are stubbed
+  useLeagueApi: (route: string, query?: object) =>
+    onlyRoutes({ "season-odds": { kind: "loading" }, digest: { kind: "loading" } })(leaguePath(route, query)),
   useLeague: () => ({ league: "a", leagues: { kind: "ready", data: [{ league_key: "a", name: "L", current_week: 9 }] } }),
 }));
 vi.mock("@/features/thisweek/digest/DigestView", async () => ({ DigestView: (await import("@/test/stubPage")).stubSection("digest") }));

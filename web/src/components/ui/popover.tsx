@@ -13,7 +13,7 @@ export function PopoverContent({ className, sideOffset = 8, align = "start", ...
         align={align}
         collisionPadding={12}
         className={cn(
-          "z-50 w-[min(26rem,calc(100vw-1.5rem))] max-h-[min(70vh,32rem)] overflow-y-auto rounded-xl border border-panel-line bg-surface p-3 text-body text-ink shadow-md",
+          "z-popover w-[min(26rem,calc(100vw-1.5rem))] max-h-[min(70vh,32rem)] overflow-y-auto rounded-xl border border-panel-line bg-surface p-3 text-body text-ink shadow-md",
           className,
         )}
         {...props}

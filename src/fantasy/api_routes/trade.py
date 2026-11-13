@@ -12,6 +12,7 @@ from fantasy.api_envelope import guarded, rows
 from fantasy.api_models import (
     AssetRow,
     Envelope,
+    MarketHistoryRow,
     MarketValueRow,
     PartnerRow,
 )
@@ -44,3 +45,8 @@ def market_values(
 ) -> Any:
     wanted = [i for i in ids.split(",") if i]
     return guarded(lambda: rows(data_api.market_values(league, wanted, data_dir)))
+
+
+@router.get("/leagues/{league}/market-history", response_model=Envelope[list[MarketHistoryRow]])
+def market_history(league: str, data_dir: DataDir, id: Annotated[str, Query(max_length=40)]) -> Any:
+    return guarded(lambda: data_api.market_history(league, id, data_dir))

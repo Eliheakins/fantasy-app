@@ -7,12 +7,20 @@ from typing import Any
 import polars as pl
 
 from fantasy import store
-from fantasy._engine import _injury_note, _league, _league_id, _names, _opponent_of, _pool
+from fantasy._engine import (
+    _constant_moments,
+    _id_map,
+    _injury_note,
+    _league,
+    _league_id,
+    _names,
+    _opponent_of,
+    _week_lineup,
+)
 from fantasy._next_game import next_games
 from fantasy._schemas import OUTLOOK_SCHEMA
 from fantasy.config import load_config
 from fantasy.sim import moves
-from fantasy.sim.lineup import auto_lineup, constant_slot_count, lineup_slots
 from fantasy.sim.odds import kd_slot_mean
 
 OUTLOOK_RECENT_GAMES = 4
@@ -44,20 +52,14 @@ def schedule(
 
     data, mine = _league(league_key, data_dir, team)
     positions, by_week = moves.position_of(data), moves.week_values(data)
-    slots = lineup_slots(data.roster_positions)
-    counts = constant_slot_count(data.roster_positions)
-    kd_var = counts.get("K", 0) * data.k_var + counts.get("DEF", 0) * data.def_var
 
     def moments(roster_id: int, week: int) -> tuple[float, float]:
-        pool = _pool(data, roster_id, positions, by_week.get(week, {}))
-        best = auto_lineup(pool, slots)
+        pool, best = _week_lineup(data, roster_id, week, positions, by_week)
         chosen = [p for p in pool if p.id in best.players]
         mean, var, _ = lineup_moments(
             chosen, data.cv, data.pair_rho, data.cv_tiers
         )  # var is already total
-        kd_mean = counts.get("K", 0) * kd_slot_mean(data, "K", roster_id, week) + counts.get(
-            "DEF", 0
-        ) * kd_slot_mean(data, "DEF", roster_id, week)
+        kd_mean, kd_var = _constant_moments(data, None, roster_id, week)
         return mean + kd_mean, var + kd_var + DRIFT_SD**2
 
     rows = []
@@ -269,7 +271,7 @@ def rostered_unmatched(league_key: str, data_dir: Path | None = None) -> int:
     """Rostered skill players with no nflverse id: missing from `player_owners`, so a free-agent
     filter would count them as free agents."""
     league_id = _league_id(league_key, data_dir)
-    id_map = store.read_table("id_map", "derived", data_dir).select("sleeper_id", "gsis_id")
+    id_map = _id_map(data_dir)
     players = store.read_table("sleeper_players", "raw", data_dir).select("sleeper_id", "position")
     rostered = store.read_table("rosters", "raw", data_dir).filter(pl.col("league_id") == league_id)
     return (

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import polars as pl
 import pytest
-from store_fixture import _engine_store, write_rows
+from store_fixture import engine_store, write_rows
 
 from fantasy import data_api
 
@@ -19,7 +19,7 @@ def _round(row: dict) -> dict:
 
 
 def test_win_probability_options_are_pinned(tmp_path: Path) -> None:
-    _engine_store(tmp_path)
+    engine_store(tmp_path)
     out = data_api.win_probability("t", n_sims=2000, now=NOW, data_dir=tmp_path)
     calls = out["slot_calls"].to_list()  # display only; every other column is pinned below
     rows = [_round(r) for r in out.drop("slot_calls").iter_rows(named=True)]
@@ -67,7 +67,7 @@ OUTLOOK_PINS = {
 
 @pytest.mark.parametrize("scope", OUTLOOK_PINS)
 def test_player_outlook_labels_and_reasons_are_pinned(scope: str, tmp_path: Path) -> None:
-    _engine_store(tmp_path)
+    engine_store(tmp_path)
     out = data_api.player_outlook("t", scope, data_dir=tmp_path)
     got = {r["gsis_id"]: (r["label"], r["why"]) for r in out.iter_rows(named=True)}
     assert got == OUTLOOK_PINS[scope]
@@ -76,7 +76,7 @@ def test_player_outlook_labels_and_reasons_are_pinned(scope: str, tmp_path: Path
 
 
 def test_lineup_projection_and_spread_are_pinned(tmp_path: Path) -> None:
-    _engine_store(tmp_path)
+    engine_store(tmp_path)
     out = data_api.lineup("t", now=NOW, data_dir=tmp_path)
     qb = _round(out.filter(pl.col("gsis_id") == "G_QB").row(0, named=True))
     assert (qb["slot"], qb["projection"], qb["p10"], qb["p90"]) == ("QB", 10.0, 6.0, 14.0)
@@ -84,7 +84,7 @@ def test_lineup_projection_and_spread_are_pinned(tmp_path: Path) -> None:
 
 
 def test_functions_about_my_league_read_the_given_data_dir(tmp_path: Path) -> None:
-    _engine_store(tmp_path)
+    engine_store(tmp_path)
     write_rows(
         tmp_path,
         "sim_season",

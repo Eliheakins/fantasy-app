@@ -27,10 +27,8 @@ jobs:
       - run: npm ci --ignore-scripts
         working-directory: web
       # Same commands as the Makefile's `check` target (CI has no data/ or .env; tests use tmp stores)
-      - run: uv run ruff check .
-      - run: uvx --from actionlint-py==1.7.12.25 actionlint
+      - run: make lint
       - run: uv run ruff format --check .
-      - run: uv run mypy src tests
       - run: uv run pytest -q
       - run: npm run typecheck
         working-directory: web

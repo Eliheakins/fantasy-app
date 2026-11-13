@@ -19,12 +19,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2
 import polars as pl
 
 from fantasy import store
 from fantasy._runs import note_soft_failure
-from fantasy.config import load_config
+from fantasy.config import SKILL_POSITIONS, load_config
 from fantasy.stages.crosswalk import norm_team, normalize_name
 
 USER_AGENT = (
@@ -32,7 +32,6 @@ USER_AGENT = (
     "Chrome/128.0 Safari/537.36"
 )
 PAUSE_SECONDS = 3.0
-POSITIONS = ("QB", "RB", "WR", "TE")
 FFTODAY_URL = "https://www.fftoday.com/rankings/playerwkproj.php"
 FFTODAY_POS_ID = {"QB": 10, "RB": 20, "WR": 30, "TE": 40}
 _SKILL = ("Att Yard TD Rec Yard TD", "rush_att rush_yd rush_td rec rec_yd rec_td")
@@ -110,7 +109,7 @@ def fetch_fftoday(season: int, week: int, position: str) -> str:
         "PosID": FFTODAY_POS_ID[position],
         "LeagueID": 1,
     }
-    resp = httpx.get(FFTODAY_URL, params=params, headers={"User-Agent": USER_AGENT}, timeout=30)
+    resp = httpx2.get(FFTODAY_URL, params=params, headers={"User-Agent": USER_AGENT}, timeout=30)
     resp.raise_for_status()
     return resp.text
 
@@ -126,7 +125,7 @@ def snapshot(
     """One source's rows for every position; a position that fails is logged and skipped."""
     parse = SOURCES[source][1]
     rows = []
-    for i, position in enumerate(POSITIONS):
+    for i, position in enumerate(SKILL_POSITIONS):
         if i:
             time.sleep(pause)
         try:

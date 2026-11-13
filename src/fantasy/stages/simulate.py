@@ -1,6 +1,7 @@
 """Simulate the rest of each league's season and write playoff and title odds.
 
-Writes sim_season (latest) and appends to sim_season_history (one row per team per run, so the
+Writes sim_season and sim_bracket (latest) and appends to sim_season_history (one row per team
+per run, so the
 Outlook chart can show odds over time). Odds assume current rosters: no waiver moves, trades or
 injuries beyond the spread already in each player's outcome distribution.
 
@@ -21,13 +22,13 @@ from fantasy._runs import note_soft_failure
 from fantasy.auth import leagues
 from fantasy.config import load_config
 from fantasy.scoring import UnmappedScoring, check_keys
+from fantasy.sim.bracket import row_problem
 from fantasy.sim.league_data import load_league_data
 from fantasy.sim.lineup import UnknownSlot
 from fantasy.sim.odds import LeagueData, build_inputs
 from fantasy.sim.season import (
     SeasonInputs,
     conditional_odds,
-    format_problem,
     simulate_season,
     team_scores,
     win_need_odds,
@@ -76,17 +77,23 @@ def _inputs(
         return None
 
 
+def _tag(frame: pl.DataFrame, league_id: str, data: LeagueData) -> pl.DataFrame:
+    """Add the league id and the week the odds were computed as of."""
+    return frame.with_columns(
+        pl.lit(league_id).alias("league_id"),
+        pl.lit(data.current_week).cast(pl.Int64).alias("as_of_week"),
+    )
+
+
 def run(
     n_sims: int | None = None, archive: bool = True, data_dir: Path | None = None
 ) -> pl.DataFrame:
     """Simulate every league. `archive=False` skips the append-only history (live ticks)."""
     cfg = load_config()
     n_sims = n_sims or cfg.n_sims
-    rows, seed_rows, week_rows, conditional, win_need = [], [], [], [], []
+    rows, seed_rows, bracket_rows, week_rows, conditional, win_need = [], [], [], [], [], []
     for league in store.read_table("leagues", "raw", data_dir).iter_rows(named=True):
-        problem = format_problem(
-            league["num_teams"], league["playoff_teams"], league["playoff_week_start"]
-        )
+        problem = row_problem(league)
         if problem:  # a league the bracket model does not fit is left out, not a crash for everyone
             note_soft_failure(f"simulate left out {league['league_key']}: {problem}")
             continue
@@ -94,19 +101,33 @@ def run(
         if built is None:
             continue
         data, inp = built
+        # past the first playoff week only: in it, Sleeper's week (leg) can still trail the rolled
+        # current_week, so the synced rows are still provisional and not loaded
+        started = data.current_week > data.playoff_start
+        if started and not any(m.bracket == "winners" for m in data.bracket):
+            note_soft_failure(
+                f"simulate {league['league_key']}: playoffs started but no bracket rows are fixed; "
+                "title odds use a guessed bracket"
+            )
         result = simulate_season(inp)
         week_rows += team_week_rows(data, inp)
         scores = team_scores(inp)  # one draw for both display tables below
-        cond = conditional_odds(inp, result, scores).with_columns(
-            pl.lit(league["league_id"]).alias("league_id"),
-            pl.lit(data.current_week).cast(pl.Int64).alias("as_of_week"),
-        )
+        cond = _tag(conditional_odds(inp, result, scores), league["league_id"], data)
         conditional.append(cond.select(*store.SCHEMAS["sim_conditional"]))
-        need = win_need_odds(inp, result, scores=scores).with_columns(
-            pl.lit(league["league_id"]).alias("league_id"),
-            pl.lit(data.current_week).cast(pl.Int64).alias("as_of_week"),
-        )
+        need = _tag(win_need_odds(inp, result, scores=scores), league["league_id"], data)
         win_need.append(need.select(*store.SCHEMAS["sim_win_need"]))
+        bracket_rows += [
+            (
+                league["league_id"],
+                roster_id,
+                rnd,
+                float(result.p_reach[j, i]),
+                float(result.p_win[j, i]),
+            )
+            for i, roster_id in enumerate(data.roster_ids)
+            for j, rnd in enumerate(result.rounds)
+            if result.p_reach[j, i] > 0
+        ]
         for i, roster_id in enumerate(data.roster_ids):
             seed_rows += [
                 (league["league_id"], roster_id, k + 1, float(result.p_seed[i, k]))
@@ -130,6 +151,9 @@ def run(
     # a failure earlier leaves it behind the tables, never ahead
     store.write_tables(
         {
+            "sim_bracket": pl.DataFrame(
+                bracket_rows, schema=store.SCHEMAS["sim_bracket"], orient="row"
+            ),
             "sim_seeds": pl.DataFrame(seed_rows, schema=store.SCHEMAS["sim_seeds"], orient="row"),
             "sim_team_weeks": pl.DataFrame(
                 week_rows, schema=store.SCHEMAS["sim_team_weeks"], orient="row"
@@ -151,9 +175,9 @@ def run(
 
 def main() -> None:
     latest = run(archive="--no-archive" not in sys.argv[1:])
-    leagues = store.read_table("leagues", "raw").select("league_id", "league_key")
+    league_keys = store.read_table("leagues", "raw").select("league_id", "league_key")
     pl.Config.set_tbl_rows(30)
-    shown = latest.join(leagues, on="league_id").sort(
+    shown = latest.join(league_keys, on="league_id").sort(
         ["league_key", "p_title"], descending=[False, True]
     )
     print(shown.select("league_key", "team_name", "p_playoffs", "p_bye", "p_title", "exp_wins"))

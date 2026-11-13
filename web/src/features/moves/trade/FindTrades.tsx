@@ -1,4 +1,5 @@
 import { ApiBoundary } from "@/components/ApiBoundary";
+import { Button } from "@/components/ui/button";
 import { Section } from "@/components/Section";
 import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { Delta, NOISE_PERCENT, toPoints } from "@/viz";
@@ -102,10 +103,10 @@ function HowToRead() {
 
 export function FindTradesSection({ league, scope = league }: { league: string; scope?: string }) {
   const [requested, setRequested] = useKeptState<boolean>(["finder-requested", scope], false);
-  const { state, refetch } = usePostEnvelope<FoundTrade[]>(
+  const { state, refetch } = usePostEnvelope(
     ["find-trades", scope],
-    `/api/leagues/${encodeURIComponent(league)}/trades/find`,
-    requested ? {} : null,
+    "/api/leagues/{league}/trades/find",
+    requested ? { params: { path: { league } } } : null,
   );
   const running = state?.kind === "running" || (requested && state?.kind === "loading");
   return (
@@ -114,15 +115,9 @@ export function FindTradesSection({ league, scope = league }: { league: string; 
       caption="Looks for trades of one or two players each way that fill a position where each team is thin. A run takes up to a minute and the result is kept if you leave this page."
     >
       <div className="space-y-3">
-        <button
-          type="button"
-          disabled={running}
-          aria-busy={running}
-          onClick={() => (requested ? refetch() : setRequested(true))}
-          className="min-h-[44px] rounded bg-focus px-4 text-white"
-        >
+        <Button disabled={running} aria-busy={running} onClick={() => (requested ? refetch() : setRequested(true))}>
           {running ? "Searching…" : state?.kind === "ready" ? "Find trades again" : "Find trades"}
-        </button>
+        </Button>
         {state?.kind === "error" ? (
           <FailureNotice error={state.error} onRetry={refetch} />
         ) : state ? (

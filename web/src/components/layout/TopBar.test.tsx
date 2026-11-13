@@ -1,9 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 import { TopBar } from "./TopBar";
-import { LeagueProvider } from "@/lib/league";
+import { okReply, stubApi } from "@/test/fakeApi";
+import { renderWithProviders } from "@/test/render";
 
 function Where() {
   const { pathname, search } = useLocation();
@@ -18,26 +18,17 @@ beforeEach(() => {
     refresh_runs: [],
     live_refresh: { enabled: false, active: false, last_ok_at: null },
   };
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string) =>
-      Response.json({ status: "ok", data: url.startsWith("/api/status") ? status : [], error: null, started_at: null }),
-    ),
-  );
+  stubApi(({ url }) => (url === "/api/status" ? okReply(status) : url === "/api/leagues" ? okReply([]) : undefined));
   window.localStorage.clear();
 });
-afterEach(() => vi.unstubAllGlobals());
 
 function renderBar(entry: string) {
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter initialEntries={[entry]}>
-        <LeagueProvider>
-          <TopBar />
-          <Where />
-        </LeagueProvider>
-      </MemoryRouter>
-    </QueryClientProvider>,
+  renderWithProviders(
+    <>
+      <TopBar />
+      <Where />
+    </>,
+    { route: entry, league: true },
   );
 }
 

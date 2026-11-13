@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { createMemoryRouter, RouterProvider, useLocation } from "react-router-dom";
+import { createMemoryRouter, RouterProvider, useLocation } from "react-router";
 import { redirectRoutes } from "./redirects";
 
 function Where() {

@@ -26,10 +26,10 @@ stage take q back out there.
 import numpy as np
 import polars as pl
 
-from fantasy.sim.expected import POSITIONS
 from fantasy.stages.gbm import make_classifier
 from fantasy.stages.lags import lag_asof, latest_asof, train_seasons
 from fantasy.stages.project import FIRST_PROJECTED_SEASON
+from fantasy.store import SKILL
 
 KEY = ["gsis_id", "season", "week"]
 LAGGED = ["snap", "st", "tshare", "tgt", "car", "statline"]
@@ -50,7 +50,7 @@ def played_rows(
     league, so the first league's are used."""
     lid = min(points["league_id"].unique().to_list())
     scored = (
-        points.filter((pl.col("league_id") == lid) & pl.col("position").is_in(POSITIONS))
+        points.filter((pl.col("league_id") == lid) & pl.col("position").is_in(SKILL))
         .select(*KEY, "position", "team")
         .unique(KEY, keep="first", maintain_order=True)
     )
@@ -60,7 +60,7 @@ def played_rows(
         snaps.filter(
             pl.col("gsis_id").is_not_null()
             & (pl.col("offense_snaps") > 0)
-            & pl.col("position").is_in(POSITIONS)
+            & pl.col("position").is_in(SKILL)
         )
         .select(*KEY, "position", "team")
         .unique(KEY, keep="first", maintain_order=True)
@@ -115,6 +115,15 @@ def usage_frame(opp: pl.DataFrame, snaps: pl.DataFrame, stats: pl.DataFrame) -> 
     )
 
 
+def week_index() -> pl.Expr:
+    return pl.col("season") * WEEKS_PER_SEASON + pl.col("week")
+
+
+def depth_chart(depth: pl.DataFrame) -> pl.DataFrame:
+    """One depth_rank per KEY: the first chart row for each game."""
+    return depth.select(*KEY, "depth_rank").unique(KEY, keep="first", maintain_order=True)
+
+
 def history_table(played: pl.DataFrame, usage: pl.DataFrame) -> pl.DataFrame:
     """One row per played game with its usage (no opportunity row: 0 targets and carries), the
     running game count, a week counter and the snap share again as `snap_last`."""
@@ -125,7 +134,7 @@ def history_table(played: pl.DataFrame, usage: pl.DataFrame) -> pl.DataFrame:
         .sort("gsis_id", "season", "week")
         .with_columns(
             pl.int_range(1, pl.len() + 1).over("gsis_id").cast(pl.Float64).alias("n_prior"),
-            (pl.col("season") * WEEKS_PER_SEASON + pl.col("week")).cast(pl.Float64).alias("when"),
+            week_index().cast(pl.Float64).alias("when"),
             pl.col("snap").alias("snap_last"),
         )
     )
@@ -136,13 +145,11 @@ def features(targets: pl.DataFrame, history: pl.DataFrame, depth: pl.DataFrame) 
     the game's own depth chart."""
     out = lag_asof(targets, history, "gsis_id", LAGGED, "h")
     out = latest_asof(out, history, "gsis_id", ["snap_last", "n_prior", "when"], shift=1)
-    chart = depth.select(*KEY, "depth_rank").unique(KEY, keep="first", maintain_order=True)
+    chart = depth_chart(depth)
     return (
         out.join(chart, on=KEY, how="left")
         .with_columns(
-            (pl.col("season") * WEEKS_PER_SEASON + pl.col("week") - pl.col("when") - 1).alias(
-                "weeks_since"
-            ),
+            (week_index() - pl.col("when") - 1).alias("weeks_since"),
             pl.col("n_prior").fill_null(0.0),
         )
         .drop("when")
@@ -151,7 +158,7 @@ def features(targets: pl.DataFrame, history: pl.DataFrame, depth: pl.DataFrame) 
 
 def design(frame: pl.DataFrame) -> np.ndarray:
     numeric = [frame[c].cast(pl.Float64).to_numpy() for c in FEATURES]
-    onehot = [(frame["position"] == p).cast(pl.Float64).to_numpy() for p in POSITIONS]
+    onehot = [(frame["position"] == p).cast(pl.Float64).to_numpy() for p in SKILL]
     return np.column_stack(numeric + onehot)
 
 
@@ -191,7 +198,7 @@ def next_game_features(
     """FEATURES at each player's first future game. A player whose next game is after this week
     (a bye) gets the latest depth chart, since his game's chart is not out yet."""
     first = future.sort("week").unique("gsis_id", keep="first").select(*KEY, "position")
-    chart = depth.select(*KEY, "depth_rank").unique(KEY, keep="first", maintain_order=True)
+    chart = depth_chart(depth)
     latest = latest_asof(first.select(KEY), chart, "gsis_id", ["depth_rank"]).rename(
         {"depth_rank": "_latest"}
     )
@@ -261,7 +268,7 @@ def future_chance(
 ) -> pl.DataFrame:
     """KEY, q for every future game: the next game's q (nxt: gsis_id, q) for a player's first
     game, the higher of it and his position-depth rate (latest chart) for later ones."""
-    chart = depth.select(*KEY, "depth_rank").unique(KEY, keep="first", maintain_order=True)
+    chart = depth_chart(depth)
     rows = latest_asof(
         future.select(*KEY, "position").unique(KEY, keep="first"), chart, "gsis_id", ["depth_rank"]
     )

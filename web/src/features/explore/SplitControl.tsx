@@ -1,5 +1,6 @@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useQueryState } from "@/stat/react/useQueryState";
+import { eyebrowClass } from "@/components/ui/styles";
 
 const NO_SPLIT = "none";
 
@@ -9,7 +10,7 @@ export function SplitControl() {
 
   return (
     <div className="space-y-1">
-      <h3 className="text-caption font-semibold uppercase tracking-wide text-focus">Split by</h3>
+      <h3 className={eyebrowClass}>Split by</h3>
       <p className="mt-0.5 text-caption text-muted">
         One row per player, or one per season, week, or home and away. With a ranking, it ranks single seasons or games.
       </p>

@@ -1,17 +1,23 @@
 import type { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import type { components } from "@/api/schema";
+import { useEnvelopeQuery } from "@/api/useEnvelope";
+import { Link } from "react-router";
 import { ApiBoundary } from "@/components/ApiBoundary";
-import { navSearch } from "@/components/layout/navLinks";
+import { navSearch, type PageUrl } from "@/components/layout/navLinks";
 import { Section } from "@/components/Section";
 import { useLeagueOwners } from "@/features/explore/useLeagueOwners";
+import { useTeam } from "@/lib/teamContext";
 import type { Domain } from "@/viz/rangeAxis";
 import { Delta, Explain, ExplainDelta, formatNumber, formatPercent, RangeBar, sharedDomain, Sparkline } from "@/viz";
 import { marketChange, type PlayerProfile, resultSentence, roleKeysFor, roleSeries } from "./profile";
-import { useLeaguePath, useProfile } from "./useProfile";
+import { useProfile } from "./useProfile";
+import { linkButtonClass } from "@/components/ui/styles";
 
-type MarketRow = { gsis_id: string; value: number; overall_rank: number | null; position_rank: number | null; trend_30_day: number | null };
+type MarketRow = components["schemas"]["MarketValueRow"];
+type HistoryRow = components["schemas"]["MarketHistoryRow"];
 
 const RANGE_WIDTH = 240;
+const MIN_HISTORY_POINTS = 4;
 const NOT_AVAILABLE = (what: string) => <p className="text-body text-muted">Not available: {what}.</p>;
 
 const nextGameWhy = (p: PlayerProfile) =>
@@ -82,7 +88,14 @@ function RoleLine({ label, values }: { label: string; values: number[] }) {
   );
 }
 
-function Market({ rows }: { rows: MarketRow[] }) {
+function MarketHistory({ history }: { history: HistoryRow[] }) {
+  if (history.length < MIN_HISTORY_POINTS) return null;
+  const values = history.map((h) => h.value);
+  const label = `Market value, last ${values.length} refreshes, ${Math.round(values[0]!)} to ${Math.round(values[values.length - 1]!)}`;
+  return <Sparkline values={values} width={120} height={24} label={label} />;
+}
+
+function Market({ rows, history }: { rows: MarketRow[]; history: HistoryRow[] }) {
   const row = rows[0];
   if (!row) return NOT_AVAILABLE("no market value for this player");
   const move = marketChange(row.value, row.trend_30_day);
@@ -102,17 +115,17 @@ function Market({ rows }: { rows: MarketRow[] }) {
           No 30-day change: the source gives a change as large as the value, so he had no value 30 days ago.
         </p>
       )}
-      <p className="text-caption text-muted">FantasyCalc value as of today. Only the 30-day change is kept, not a longer history.</p>
+      <MarketHistory history={history} />
+      <p className="text-caption text-muted">FantasyCalc value as of today.</p>
     </div>
   );
 }
 
-const LINK = "inline-flex min-h-[44px] items-center underline";
+const LINK = linkButtonClass;
 
 /** Where to act on the player: my players go to the Lineup (start or sit) and Trades, others to Trades, free agents to Moves. */
-function Owner({ gsisId }: { gsisId: string }) {
+function Owner({ gsisId, here: { search, pathname } }: { gsisId: string; here: PageUrl }) {
   const { league, state, byPlayer } = useLeagueOwners();
-  const { search, pathname } = useLocation();
   if (league === null || state.kind !== "ready") return null;
   const owner = byPlayer?.get(gsisId);
   const to = (path: string, view?: string) => {
@@ -165,8 +178,11 @@ export function PlayerSections({
   name,
   showResult = true,
   domain = null,
+  here,
 }: {
   gsisId: string;
+  /** The page's URL: the owner links keep its league, team and week. */
+  here: PageUrl;
   level?: 2 | 3;
   name?: string;
   /** False where the page header already says the final result. */
@@ -175,7 +191,15 @@ export function PlayerSections({
   domain?: Domain | null;
 }) {
   const profile = useProfile(gsisId);
-  const market = useLeaguePath<MarketRow[]>(`market-values?ids=${encodeURIComponent(gsisId)}`);
+  const { league } = useTeam();
+  const history = useEnvelopeQuery(
+    "/api/leagues/{league}/market-history",
+    league === null ? null : { path: { league }, query: { id: gsisId } },
+  );
+  const market = useEnvelopeQuery(
+    "/api/leagues/{league}/market-values",
+    league === null ? null : { path: { league }, query: { ids: gsisId } },
+  );
   return (
     <ApiBoundary state={profile}>
       {(p) => {
@@ -213,10 +237,12 @@ export function PlayerSections({
                 </p>
               </Maybe>
               <Section title="Market value" level={level}>
-                <ApiBoundary state={market}>{(rows) => <Market rows={rows} />}</ApiBoundary>
+                <ApiBoundary state={market}>
+                  {(rows) => <Market rows={rows} history={history.kind === "ready" ? history.data : []} />}
+                </ApiBoundary>
               </Section>
               <Section title="Owner" level={level}>
-                <Owner gsisId={gsisId} />
+                <Owner gsisId={gsisId} here={here} />
               </Section>
             </div>
           </div>

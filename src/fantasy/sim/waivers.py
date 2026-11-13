@@ -4,11 +4,13 @@ Each add is paired with the drop that costs the least. Depth and free-agent stan
 `Valuer`), so a backup at a position with plenty of free agents adds little.
 """
 
+from collections.abc import Collection
 from typing import NamedTuple
 
 import polars as pl
 
-from fantasy.sim.odds import LeagueData, league_odds
+from fantasy.config import SKILL_POSITIONS
+from fantasy.sim.odds import DEFAULT_SIMS, LeagueData, league_odds
 from fantasy.sim.roster import (
     Valuer,
     free_agents,
@@ -17,7 +19,6 @@ from fantasy.sim.roster import (
     team_ids,
     with_roster,
 )
-from fantasy.sim.value import POSITIONS
 
 CANDIDATES_PER_POSITION = 8
 DROP_CANDIDATES = 8  # lowest rest-of-season players considered for a drop
@@ -33,7 +34,11 @@ class Waiver(NamedTuple):
 
 
 def waiver_candidates(
-    data: LeagueData, roster_id: int, top_n: int = 25, valuer: Valuer | None = None
+    data: LeagueData,
+    roster_id: int,
+    top_n: int = 25,
+    valuer: Valuer | None = None,
+    weeks: Collection[int] | None = None,
 ) -> list[Waiver]:
     """Free agents ranked by the expected points they add over the rest of the season, each
     with the drop that costs least. Depth and free-agent stand-ins count, so a backup at a
@@ -41,26 +46,31 @@ def waiver_candidates(
     ids = team_ids(data, roster_id)
     if not ids:
         return []
-    valuer = valuer or Valuer(data)
+    valuer = valuer or Valuer(data, weeks)
     positions = position_of(data)
     base = valuer(ids)
     pool = free_agents(data)
-    pool_value = ros_value(data, pool)
+    pool_value = ros_value(data, pool, weeks)
     shortlist: list[str] = []
-    for position in POSITIONS:
+    for position in SKILL_POSITIONS:
         of_position = [p for p in pool if positions.get(p) == position]
         shortlist += sorted(of_position, key=lambda p: -pool_value[p])[:CANDIDATES_PER_POSITION]
-    ranked = [best_swap(data, ids, c, base, valuer) for c in shortlist]
+    ranked = [best_swap(data, ids, c, base, valuer, weeks) for c in shortlist]
     return sorted(ranked, key=lambda w: -w.delta_mu)[:top_n]
 
 
 def best_swap(
-    data: LeagueData, ids: list[str], add: str, base: float, valuer: Valuer | None = None
+    data: LeagueData,
+    ids: list[str],
+    add: str,
+    base: float,
+    valuer: Valuer | None = None,
+    weeks: Collection[int] | None = None,
 ) -> Waiver:
     """Add `add` and drop whoever costs the least expected points. Only the lowest-value
     players are considered for the drop, which keeps this fast."""
-    valuer = valuer or Valuer(data)
-    ros = ros_value(data, ids)
+    valuer = valuer or Valuer(data, weeks)
+    ros = ros_value(data, ids, weeks)
     drops = sorted(ids, key=lambda i: (ros[i], i))[:DROP_CANDIDATES]
     tries = [(valuer([i for i in ids if i != drop] + [add]) - base, drop) for drop in drops]
     gain, drop = max(tries, key=lambda t: (t[0], t[1]))
@@ -68,7 +78,7 @@ def best_swap(
 
 
 def waiver_odds(
-    data: LeagueData, my_id: int, adds: list[Waiver], n_sims: int = 20000, seed: int = 0
+    data: LeagueData, my_id: int, adds: list[Waiver], n_sims: int = DEFAULT_SIMS, seed: int = 0
 ) -> pl.DataFrame:
     """Playoff and title odds for me before and after each add-drop, on the same random draws.
 

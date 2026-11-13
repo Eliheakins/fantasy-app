@@ -1,6 +1,7 @@
 import { type RenderResult, render as rtlRender, screen } from "@testing-library/react";
+import { leaguePath } from "@/test/fakeApi";
 import type { ReactElement } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import type { ApiState } from "@/api/envelope";
 import { DigestView as Digest } from "./DigestView";
 import type { DigestData } from "@/lib/digestTypes";
@@ -10,7 +11,7 @@ const render = (ui: ReactElement): RenderResult => rtlRender(<MemoryRouter>{ui}<
 
 let responder: (path: string) => ApiState<unknown>;
 vi.mock("@/lib/league", () => ({
-  useLeagueApi: (path: string) => responder(path),
+  useLeagueApi: (route: string, query?: object) => responder(leaguePath(route, query)),
   useLeague: () => ({ league: "t", leagues: { kind: "ready", data: [] } }),
 }));
 
@@ -81,8 +82,14 @@ const base: DigestData = {
   ideas,
 } as DigestData;
 
+/** The page asks for its digest and its actions; any other route fails the test. */
 function respond(digest: ApiState<unknown>, actions: ApiState<unknown> = ready([])) {
-  responder = (p) => (p === "digest" ? digest : actions);
+  const routes: Record<string, ApiState<unknown>> = { digest, "actions?stored_adds=true": actions };
+  responder = (p) => {
+    const state = routes[p];
+    if (!state) throw new Error(`unlisted route: ${p}`);
+    return state;
+  };
 }
 
 describe("Digest page", () => {

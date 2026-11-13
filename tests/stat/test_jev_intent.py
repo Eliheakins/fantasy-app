@@ -7,7 +7,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2
 import pytest
 from fakes import FILTERS, STATS
 
@@ -230,18 +230,18 @@ def test_a_malformed_answer_is_a_jev_error(broken: dict[str, Any]):
 # --- the HTTP call ---------------------------------------------------------------------------
 
 
-def _transport(*responses: httpx.Response | Exception) -> tuple[httpx.MockTransport, list]:
-    seen: list[httpx.Request] = []
+def _transport(*responses: httpx2.Response | Exception) -> tuple[httpx2.MockTransport, list]:
+    seen: list[httpx2.Request] = []
     queue = list(responses)
 
-    def handle(request: httpx.Request) -> httpx.Response:
+    def handle(request: httpx2.Request) -> httpx2.Response:
         seen.append(request)
         item = queue.pop(0)
         if isinstance(item, Exception):
             raise item
         return item
 
-    return httpx.MockTransport(handle), seen
+    return httpx2.MockTransport(handle), seen
 
 
 @pytest.fixture
@@ -255,12 +255,12 @@ def sleeps(monkeypatch: pytest.MonkeyPatch) -> list[float]:
     return waited
 
 
-async def _call(transport: httpx.MockTransport) -> dict[str, Any]:
+async def _call(transport: httpx2.MockTransport) -> dict[str, Any]:
     return await call_jev({"questions": {}}, api_key=KEY, timeout=1.0, transport=transport)
 
 
 async def test_a_good_reply_returns_the_answers_and_sends_the_bearer_key(sleeps):
-    transport, seen = _transport(httpx.Response(200, json={"answers": {"a": {"noul": 0.5}}}))
+    transport, seen = _transport(httpx2.Response(200, json={"answers": {"a": {"noul": 0.5}}}))
 
     assert await _call(transport) == {"a": {"noul": 0.5}}
     assert seen[0].headers["authorization"] == f"Bearer {KEY}"
@@ -269,11 +269,11 @@ async def test_a_good_reply_returns_the_answers_and_sends_the_bearer_key(sleeps)
 
 @pytest.mark.parametrize(
     "error",
-    [httpx.ConnectError("refused"), ssl.SSLError("bad record mac"), httpx.ReadTimeout("slow")],
+    [httpx2.ConnectError("refused"), ssl.SSLError("bad record mac"), httpx2.ReadTimeout("slow")],
     ids=["network", "tls", "timeout"],
 )
 async def test_a_transport_error_is_retried_once(sleeps, error: Exception):
-    transport, seen = _transport(error, httpx.Response(200, json={"answers": {}}))
+    transport, seen = _transport(error, httpx2.Response(200, json={"answers": {}}))
 
     assert await _call(transport) == {}
     assert len(seen) == 2
@@ -288,8 +288,8 @@ async def test_two_transport_errors_are_a_jev_error(sleeps):
 
 async def test_a_429_waits_for_retry_after_then_retries(sleeps):
     transport, seen = _transport(
-        httpx.Response(429, headers={"retry-after": "1"}),
-        httpx.Response(200, json={"answers": {}}),
+        httpx2.Response(429, headers={"retry-after": "1"}),
+        httpx2.Response(200, json={"answers": {}}),
     )
 
     assert await _call(transport) == {}
@@ -297,7 +297,7 @@ async def test_a_429_waits_for_retry_after_then_retries(sleeps):
 
 
 async def test_a_429_asking_for_a_long_wait_gives_up_at_once(sleeps):
-    transport, seen = _transport(httpx.Response(429, headers={"retry-after": "60"}))
+    transport, seen = _transport(httpx2.Response(429, headers={"retry-after": "60"}))
 
     with pytest.raises(JevError):
         await _call(transport)
@@ -307,9 +307,9 @@ async def test_a_429_asking_for_a_long_wait_gives_up_at_once(sleeps):
 @pytest.mark.parametrize(
     "response",
     [
-        httpx.Response(401, json={"error": f"bad key {KEY}"}),
-        httpx.Response(200, text="not json"),
-        httpx.Response(200, json={"no": "answers"}),
+        httpx2.Response(401, json={"error": f"bad key {KEY}"}),
+        httpx2.Response(200, text="not json"),
+        httpx2.Response(200, json={"no": "answers"}),
     ],
     ids=["4xx", "not json", "no answers"],
 )
@@ -323,7 +323,7 @@ async def test_a_bad_reply_is_a_jev_error_without_a_retry_and_without_the_key(sl
 
 
 async def test_a_5xx_is_retried_once_then_a_jev_error(sleeps):
-    transport, seen = _transport(httpx.Response(503), httpx.Response(502))
+    transport, seen = _transport(httpx2.Response(503), httpx2.Response(502))
 
     with pytest.raises(JevError, match="502"):
         await _call(transport)
@@ -333,9 +333,9 @@ async def test_a_5xx_is_retried_once_then_a_jev_error(sleeps):
 async def test_translate_with_jev_sends_the_request_and_maps_the_answers(sleeps):
     replies: list[dict[str, Any]] = []
 
-    def handle(request: httpx.Request) -> httpx.Response:
+    def handle(request: httpx2.Request) -> httpx2.Response:
         replies.append(json.loads(request.content))
-        return httpx.Response(200, json={"answers": _answers({"pass_yards": 0.9})})
+        return httpx2.Response(200, json={"answers": _answers({"pass_yards": 0.9})})
 
     outcome = await translate_with_jev(
         _req(),
@@ -343,7 +343,7 @@ async def test_translate_with_jev_sends_the_request_and_maps_the_answers(sleeps)
         model="jev-x",
         timeout=1.0,
         current_season=2023,
-        transport=httpx.MockTransport(handle),
+        transport=httpx2.MockTransport(handle),
     )
 
     assert isinstance(outcome, QueryOutcome)
@@ -352,7 +352,7 @@ async def test_translate_with_jev_sends_the_request_and_maps_the_answers(sleeps)
 
 
 async def test_a_decoding_error_is_a_jev_error_without_a_retry(sleeps):
-    transport, seen = _transport(httpx.DecodingError("bad gzip"))
+    transport, seen = _transport(httpx2.DecodingError("bad gzip"))
 
     with pytest.raises(JevError, match="DecodingError"):
         await _call(transport)
@@ -360,15 +360,15 @@ async def test_a_decoding_error_is_a_jev_error_without_a_retry(sleeps):
 
 
 async def test_each_attempt_opens_a_fresh_client(sleeps, monkeypatch: pytest.MonkeyPatch):
-    opened: list[httpx.AsyncClient] = []
-    real = httpx.AsyncClient
+    opened: list[httpx2.AsyncClient] = []
+    real = httpx2.AsyncClient
 
-    def tracking(*args: Any, **kwargs: Any) -> httpx.AsyncClient:
+    def tracking(*args: Any, **kwargs: Any) -> httpx2.AsyncClient:
         opened.append(real(*args, **kwargs))
         return opened[-1]
 
-    monkeypatch.setattr(httpx, "AsyncClient", tracking)
-    transport, _ = _transport(httpx.ConnectError("x"), httpx.Response(200, json={"answers": {}}))
+    monkeypatch.setattr(httpx2, "AsyncClient", tracking)
+    transport, _ = _transport(httpx2.ConnectError("x"), httpx2.Response(200, json={"answers": {}}))
 
     await _call(transport)
 
@@ -376,9 +376,9 @@ async def test_each_attempt_opens_a_fresh_client(sleeps, monkeypatch: pytest.Mon
 
 
 async def test_the_timeout_bounds_the_whole_call_including_retries():
-    async def slow(request: httpx.Request) -> httpx.Response:
+    async def slow(request: httpx2.Request) -> httpx2.Response:
         await asyncio.sleep(1)
-        return httpx.Response(200, json={"answers": {}})
+        return httpx2.Response(200, json={"answers": {}})
 
     with pytest.raises(JevError, match="longer than"):
-        await call_jev({}, api_key=KEY, timeout=0.05, transport=httpx.MockTransport(slow))
+        await call_jev({}, api_key=KEY, timeout=0.05, transport=httpx2.MockTransport(slow))

@@ -1,4 +1,4 @@
-"""Monte Carlo season simulation: wins, 6-team seeding, bracket, title odds.
+"""Monte Carlo season simulation: wins, seeding, bracket, title odds.
 
 Team score in a week = mean + persistent shift + noise_sd * z. The shift is a player-level error
 that stays the same across the remaining weeks of one simulated season (a projection that is wrong
@@ -6,9 +6,11 @@ is wrong all year), so weeks are not independent. z is keyed by (seed, roster, w
 with the same seed share random numbers wherever the inputs are unchanged. That makes the difference
 between two scenarios (a trade, a waiver add) much less noisy than the odds themselves.
 
-Seeding: wins, then points for, ties broken at random. Bracket (assumed, see decisions.md): seeds 1
-and 2 skip the first playoff week; round 1 is 3 v 6 and 4 v 5; then 1 v winner(4/5), 2 v
-winner(3/6); the final is the next week.
+Seeding: wins, then points for, ties broken at random, unless `seeds` holds the real seeds (the
+bracket is seeded). The bracket is `sim/bracket.py`: the assumed 4, 6 or 8-team template (6 teams:
+seeds 1 and 2 skip round 1; 3 v 6 and 4 v 5; then 1 v winner(4/5), 2 v winner(3/6); the final)
+or, once seeded, Sleeper's real rows with played games fixed. Playoff weeks already played arrive
+as zero-noise means (realized points); standings count weeks before `playoff_start` only.
 """
 
 from dataclasses import dataclass
@@ -16,39 +18,15 @@ from dataclasses import dataclass
 import numpy as np
 import polars as pl
 
-N_PLAYOFF_TEAMS = 6
-BYE_SEEDS = 2
-LAST_NFL_WEEK = 18
-BRACKET_ROUNDS = 3  # round one, the semifinals, the final
+from fantasy.sim.bracket import Match, resolve, template, with_division_winners
 
-
-def format_problem(
-    num_teams: int | None, playoff_teams: int | None, playoff_week_start: int | None
-) -> str | None:
-    """Why the simulation cannot model a league, in words fit to show, or None when it can.
-    It assumes the bracket above: six playoff teams over three weeks inside the NFL season."""
-    if not playoff_teams:
-        return "This league has no playoff bracket (it may use weekly eliminations)."
-    if playoff_teams != N_PLAYOFF_TEAMS:
-        return (
-            f"Only leagues with a {N_PLAYOFF_TEAMS}-team playoff are supported "
-            f"(this one has {playoff_teams})."
-        )
-    if num_teams is None or num_teams < N_PLAYOFF_TEAMS:
-        return f"The league needs at least {N_PLAYOFF_TEAMS} teams."
-    last_start = LAST_NFL_WEEK - BRACKET_ROUNDS + 1
-    if playoff_week_start is None or not 1 <= playoff_week_start <= last_start:
-        return (
-            f"The playoff start week must be between 1 and {last_start} "
-            f"for a {BRACKET_ROUNDS}-week bracket."
-        )
-    return None
+N_PLAYOFF_TEAMS = 6  # the default size (research scripts)
 
 
 @dataclass(frozen=True)
 class SeasonInputs:
     roster_ids: list[int]  # length T
-    weeks: list[int]  # simulated weeks in order, regular season then the three playoff weeks
+    weeks: list[int]  # simulated weeks in order: regular season, then the bracket's playoff weeks
     mean: np.ndarray  # (T, W) expected team score, realized points included
     noise_sd: np.ndarray  # (T, W) weekly noise
     shift: np.ndarray  # (T, W, S) persistent player-error shift, zeros if none
@@ -57,6 +35,14 @@ class SeasonInputs:
     points0: np.ndarray  # (T,) points for from completed weeks
     playoff_start: int
     seed: int = 0
+    # real winners rows once trusted; None: the template for playoff_teams and round_type (the
+    # one case where seed_type reseeding applies)
+    bracket: tuple[Match, ...] | None = None
+    seeds: tuple[int, ...] | None = None  # roster ids of seeds 1..N when the bracket is seeded
+    playoff_teams: int = 6
+    round_type: int = 0  # Sleeper's playoff_round_type
+    seed_type: int = 0  # Sleeper's playoff_seed_type: 1 reseeds each round
+    divisions: tuple[int, ...] = ()  # division per team (index as roster_ids), empty: none
 
 
 @dataclass(frozen=True)
@@ -68,6 +54,9 @@ class SeasonResult:
     p_seed: np.ndarray  # (T, T): share of runs in which team t takes seed k+1
     made_playoffs: np.ndarray  # (T, S) bool, per run, for paired error estimates
     champion: np.ndarray  # (S,) index of the title winner in each run
+    rounds: tuple[int, ...]  # bracket rounds that count toward the title
+    p_reach: np.ndarray  # (rounds, T)
+    p_win: np.ndarray  # (rounds, T) won a game
 
 
 def noise_matrix(roster_ids: list[int], weeks: list[int], n_sims: int, seed: int) -> np.ndarray:
@@ -104,40 +93,41 @@ def simulate_season(inp: SeasonInputs) -> SeasonResult:
         if week < inp.playoff_start:
             points += scores[:, column[week]]
 
-    # seeds: wins, then points for, then a random tie-break
+    # seeds: wins, then points for, then a random tie-break; real seeds, once known, come first
     rng = np.random.default_rng([inp.seed, 99_999])
     key = wins * 1e6 + points + rng.uniform(0, 1e-3, size=wins.shape)
+    index = {rid: i for i, rid in enumerate(inp.roster_ids)}
+    if any(inp.divisions) and not inp.seeds:  # division winners are guaranteed a spot
+        key = with_division_winners(key, inp.divisions, inp.playoff_teams)
+    for k, rid in enumerate(inp.seeds or ()):
+        key[index[rid]] = 1e10 - k
     order = np.argsort(-key, axis=0).T  # (S, T): order[s, k] = team index with seed k+1
 
-    def winner(team_a: np.ndarray, team_b: np.ndarray, week: int) -> np.ndarray:
-        s = scores[:, column[week]].T  # (S, T)
-        idx = np.arange(n_sims)
-        return np.where(s[idx, team_a] >= s[idx, team_b], team_a, team_b)
-
-    w1, w2, w3 = inp.playoff_start, inp.playoff_start + 1, inp.playoff_start + 2
-    seed1, seed2, seed3, seed4, seed5, seed6 = (order[:, k] for k in range(N_PLAYOFF_TEAMS))
-    win_36 = winner(seed3, seed6, w1)
-    win_45 = winner(seed4, seed5, w1)
-    finalist_1 = winner(seed1, win_45, w2)
-    finalist_2 = winner(seed2, win_36, w2)
-    champion = winner(finalist_1, finalist_2, w3)
+    matches = inp.bracket or template(inp.playoff_teams, inp.round_type)
+    reseed = inp.seed_type == 1 and inp.bracket is None  # real rows, once trusted, are the truth
+    out = resolve(
+        matches, order, scores, column, inp.roster_ids, inp.playoff_start, inp.round_type, reseed
+    )
 
     def share(chosen: np.ndarray) -> np.ndarray:
         shares: np.ndarray = np.bincount(chosen.ravel(), minlength=n_teams) / n_sims
         return shares
 
     made = np.zeros((n_teams, n_sims), dtype=bool)
-    for k in range(N_PLAYOFF_TEAMS):
+    for k in range(inp.playoff_teams):
         made[order[:, k], np.arange(n_sims)] = True
 
     return SeasonResult(
-        p_playoffs=share(order[:, :N_PLAYOFF_TEAMS]),
-        p_bye=share(order[:, :BYE_SEEDS]),
-        p_title=share(champion),
+        p_playoffs=share(order[:, : inp.playoff_teams]),
+        p_bye=out.p_bye,
+        p_title=share(out.champion),
         exp_wins=wins.mean(axis=1),
         p_seed=np.stack([share(order[:, k]) for k in range(n_teams)], axis=1),
         made_playoffs=made,
-        champion=champion,
+        champion=out.champion,
+        rounds=out.rounds,
+        p_reach=out.p_reach,
+        p_win=out.p_win,
     )
 
 

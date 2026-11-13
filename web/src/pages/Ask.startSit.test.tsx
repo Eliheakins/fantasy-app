@@ -1,12 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
 import Ask from "./Ask";
-import { LeagueProvider } from "@/lib/league";
 import { fetchManifest } from "@/stat/lib/api";
 import { getPlayerDictionary } from "@/stat/lib/players";
 import { FIXTURE_SEASONS } from "@/stat/testing/seasons";
+import { type Call, okReply, stubApi } from "@/test/fakeApi";
+import { renderWithProviders } from "@/test/render";
 
 vi.mock("@/stat/lib/api", () => ({ fetchManifest: vi.fn() }));
 vi.mock("@/stat/lib/players", () => ({ getPlayerDictionary: vi.fn(), getPlayersByIds: vi.fn(async () => []) }));
@@ -39,18 +38,10 @@ const lineupRow = (id: string, projection: number, recommended = true) => ({
   game: "Sun",
   change: "",
 });
-let fetchMock: ReturnType<typeof vi.fn>;
+let calls: Call[] = [];
 
 function renderAsk(entry: string) {
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter initialEntries={[entry]}>
-        <LeagueProvider>
-          <Ask />
-        </LeagueProvider>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<Ask />, { route: entry, league: true });
 }
 
 beforeEach(() => {
@@ -70,17 +61,16 @@ beforeEach(() => {
     player("allen-qb", "Josh Allen", "QB"),
     player("allen-lb", "Josh Allen", "LB"),
   ]);
-  fetchMock = vi.fn(async (url: string) => {
-    const data = url.includes("/lineup")
-      ? [lineupRow("kelce", 9, false), lineupRow("kittle", 12.5, true)]
-      : [{ league_key: "a", name: "A", current_week: 9 }];
-    return Response.json({ status: "ok", data, error: null, started_at: null });
-  });
-  vi.stubGlobal("fetch", fetchMock);
+  calls = stubApi(({ url }) =>
+    url.startsWith("/api/leagues/a/lineup")
+      ? okReply([lineupRow("kelce", 9, false), lineupRow("kittle", 12.5, true)])
+      : url === "/api/leagues"
+        ? okReply([{ league_key: "a", name: "A", current_week: 9 }])
+        : undefined,
+  );
 });
-afterEach(() => vi.unstubAllGlobals());
 
-const modelCalls = () => fetchMock.mock.calls.filter(([url]) => String(url).includes("/nlq/intent"));
+const modelCalls = () => calls.filter(({ url }) => url.includes("/nlq/intent"));
 
 describe("Ask start/sit", () => {
   it("answers on arrival from /ask?q= with the lineup comparison and never calls the model", async () => {

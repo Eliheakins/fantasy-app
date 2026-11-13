@@ -1,7 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HomeLeagues as Home } from "./HomeLeagues";
+import { okReply, stubApi } from "@/test/fakeApi";
+import { renderWithProviders } from "@/test/render";
 
 const ok = (data: unknown) => ({ status: "ok", data, error: null, started_at: null });
 const league = {
@@ -24,7 +25,7 @@ const option = (o: string, w: number) => ({
   median: 110,
   ceiling: 130,
 });
-const routes: Record<string, unknown> = {
+const routes: Record<string, object> = {
   "/api/leagues": ok([league]),
   "/api/unmatched": ok({ count: 3, names: [] }),
   "/season-odds": ok([{ is_me: true, p_playoffs: 0.71, p_bye: 0.2, p_title: 0.123, exp_wins: 9.44 }]),
@@ -34,31 +35,18 @@ const routes: Record<string, unknown> = {
   "/actions": ok([{ kind: "Win probability", text: "Clear: start A over B (62.0% vs 60.0% to win), +4.1 points" }]),
 };
 
-function mockFetch(overrides: Record<string, unknown> = {}) {
+function mockFetch(overrides: Record<string, object> = {}) {
   const all = { ...routes, ...overrides };
-  const calls: { url: string; method: string }[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string, init?: RequestInit) => {
-      calls.push({ url, method: init?.method ?? "GET" });
-      if (url === "/api/live/refresh") return Response.json(ok({ player_rows: 1 }));
-      const key = Object.keys(all).find((k) => url === k || url.endsWith(k));
-      return Response.json(key ? all[key] : ok([]));
-    }),
-  );
-  return calls;
+  return stubApi(({ url }) => {
+    if (url === "/api/live/refresh") return okReply({ player_rows: 1 });
+    const key = Object.keys(all).find((k) => url === k || url.endsWith(k));
+    return key === undefined ? undefined : { body: all[key] ?? {} };
+  });
 }
 
 function renderHome() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
-    <QueryClientProvider client={client}>
-      <Home />
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<Home />);
 }
-
-afterEach(() => vi.unstubAllGlobals());
 
 describe("Home", () => {
   it("shows loading first", () => {

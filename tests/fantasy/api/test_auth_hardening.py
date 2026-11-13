@@ -7,31 +7,22 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from auth_fixture import GOOD, isolate_auth, make_client
 from fastapi.testclient import TestClient
 
 from fantasy import api
-from fantasy.auth import accounts, passwords, routes
+from fantasy.auth import accounts, routes
 from fantasy.auth.ratelimit import FailureLimiter
-
-CSRF = {"X-Requested-With": "fantasy-app"}
-GOOD = "a long enough password"
 
 
 @pytest.fixture(autouse=True)
 def quick_and_isolated(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    monkeypatch.setattr(passwords, "COST_N", 2**10)
-    monkeypatch.setenv("AUTH_COOKIE_SECURE", "0")
-    monkeypatch.setenv("LIVE_REFRESH", "off")
-    monkeypatch.delenv("FANTASY_AUTH", raising=False)
+    isolate_auth(monkeypatch)
     monkeypatch.delenv(routes.HOSTS_ENV, raising=False)
     monkeypatch.setattr(routes, "limiter", FailureLimiter(limit=5, window_s=60.0))
     routes._warn_open_public_gate.cache_clear()
     yield
     routes._warn_open_public_gate.cache_clear()
-
-
-def _app_client(store_dir: Path) -> TestClient:
-    return TestClient(api.create_app(data_dir=store_dir), base_url="http://localhost", headers=CSRF)
 
 
 def _secured(store_dir: Path) -> None:
@@ -70,7 +61,7 @@ def test_a_public_server_with_no_accounts_warns_once_that_login_is_open(
     store_dir: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     monkeypatch.setenv(routes.HOSTS_ENV, "fantasy.example.com")
-    with caplog.at_level(logging.WARNING, logger=routes.log.name), _app_client(store_dir) as c:
+    with caplog.at_level(logging.WARNING, logger=routes.log.name), make_client(store_dir) as c:
         assert c.get("/api/leagues").status_code == 200  # no auth.db: open, as designed
         assert c.get("/api/leagues").status_code == 200
     assert [r.levelno for r in caplog.records].count(logging.WARNING) == 1
@@ -82,13 +73,13 @@ def test_an_empty_accounts_table_warns_too(
 ) -> None:
     accounts.connect(store_dir).close()  # auth.db exists, no account in it
     monkeypatch.setenv(routes.HOSTS_ENV, "fantasy.example.com")
-    with caplog.at_level(logging.WARNING, logger=routes.log.name), _app_client(store_dir) as c:
+    with caplog.at_level(logging.WARNING, logger=routes.log.name), make_client(store_dir) as c:
         assert c.get("/api/leagues").status_code == 200
     assert "NOT enforced" in caplog.text
 
 
 def test_a_local_run_does_not_warn(store_dir: Path, caplog: pytest.LogCaptureFixture) -> None:
-    with caplog.at_level(logging.WARNING, logger=routes.log.name), _app_client(store_dir) as c:
+    with caplog.at_level(logging.WARNING, logger=routes.log.name), make_client(store_dir) as c:
         assert c.get("/api/leagues").status_code == 200
     assert "NOT enforced" not in caplog.text
 
@@ -98,11 +89,11 @@ def test_required_mode_and_a_real_account_do_not_warn(
 ) -> None:
     monkeypatch.setenv(routes.HOSTS_ENV, "fantasy.example.com")
     monkeypatch.setenv("FANTASY_AUTH", "required")
-    with caplog.at_level(logging.WARNING, logger=routes.log.name), _app_client(store_dir) as c:
+    with caplog.at_level(logging.WARNING, logger=routes.log.name), make_client(store_dir) as c:
         assert c.get("/api/leagues").status_code == 401
     _secured(store_dir)
     monkeypatch.delenv("FANTASY_AUTH")
-    with caplog.at_level(logging.WARNING, logger=routes.log.name), _app_client(store_dir) as c:
+    with caplog.at_level(logging.WARNING, logger=routes.log.name), make_client(store_dir) as c:
         assert c.get("/api/leagues").status_code == 401
     assert "NOT enforced" not in caplog.text
 
@@ -125,7 +116,7 @@ def no_database(monkeypatch: pytest.MonkeyPatch) -> list[str]:
 def test_static_paths_never_touch_the_auth_database(
     store_dir: Path, no_database: list[str]
 ) -> None:
-    with _app_client(store_dir) as c:
+    with make_client(store_dir) as c:
         for path in ("/", "/assets/app.js", "/lineup", "/api"):
             c.get(path)
     assert no_database == []
@@ -135,7 +126,7 @@ def test_a_request_for_an_api_path_still_resolves_the_account(
     store_dir: Path, no_database: list[str]
 ) -> None:
     _secured(store_dir)
-    with _app_client(store_dir) as c, pytest.raises(AssertionError, match="auth database"):
+    with make_client(store_dir) as c, pytest.raises(AssertionError, match="auth database"):
         c.get("/api/leagues")
     assert no_database == ["open_db"]
 
@@ -144,7 +135,7 @@ def test_an_unknown_host_is_refused_before_the_login_gate(
     store_dir: Path, no_database: list[str]
 ) -> None:
     _secured(store_dir)
-    with _app_client(store_dir) as c:
+    with make_client(store_dir) as c:
         response = c.get("/api/leagues", headers={"Host": "evil.example.com"})
     assert response.status_code == 400
     assert no_database == []
@@ -211,7 +202,7 @@ def test_the_sixth_login_in_a_minute_is_refused_and_a_success_does_not_use_up_th
     store_dir: Path,
 ) -> None:
     _secured(store_dir)
-    with _app_client(store_dir) as c:
+    with make_client(store_dir) as c:
         for _ in range(4):
             ok = c.post("/api/auth/login", json={"email": "boss@example.com", "password": GOOD})
             assert ok.status_code == 200

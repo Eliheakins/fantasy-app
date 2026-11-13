@@ -22,9 +22,29 @@ const LEAD = /^(?:(?:who\s+)?should\s+i\s+|who\s+(?:do\s+i|to)\s+)?(?:start|sit|
 const THIS_WEEK = /\s+this\s+week$/i;
 const SEPARATOR = /\s+(?:or|over|vs\.?|versus)\s+/i;
 
+/** The question without surrounding space or trailing punctuation, as the start/sit and trade readers parse it. */
+export const trimQuestion = (question: string): string => question.trim().replace(/[?!.\s]+$/, "");
+
+export const notFoundMessage = (phrase: string): string => `I couldn't find a player called “${phrase}”. Use a last or full name.`;
+
+/** Matches split into players settled without asking and namesakes the user must choose between. */
+export function partitionPicks(matches: readonly PlayerMatch[]): { sure: PlayerDictionaryRow[]; unsure: PlayerMatch[] } {
+  const sure: PlayerDictionaryRow[] = [];
+  const unsure: PlayerMatch[] = [];
+  for (const match of matches) {
+    const pick = pickCandidate(match, []);
+    if (pick) {
+      sure.push(pick);
+    } else {
+      unsure.push(match);
+    }
+  }
+  return { sure, unsure };
+}
+
 /** The two name phrases of a start/sit question, or null for any other question. */
 export function parseStartSit(question: string): { a: string; b: string; hasVerb: boolean } | null {
-  const text = question.trim().replace(/[?!.\s]+$/, "");
+  const text = trimQuestion(question);
   const hasVerb = LEAD.test(text);
   const hasWeek = THIS_WEEK.test(text);
   if (!hasVerb && !hasWeek) {
@@ -64,20 +84,11 @@ export function readStartSit(question: string, dict: readonly PlayerDictionaryRo
       return { status: "none" };
     }
     if (match === "none") {
-      return { status: "message", text: `I couldn't find a player called “${side}”. Use a last or full name.` };
+      return { status: "message", text: notFoundMessage(side) };
     }
     matches.push(match);
   }
-  const sure: PlayerDictionaryRow[] = [];
-  const unsure: PlayerMatch[] = [];
-  for (const match of matches) {
-    const pick = pickCandidate(match, []);
-    if (pick) {
-      sure.push(pick);
-    } else {
-      unsure.push(match);
-    }
-  }
+  const { sure, unsure } = partitionPicks(matches);
   return unsure.length > 0 ? { status: "choose", sure, unsure } : finishStartSit(sure);
 }
 

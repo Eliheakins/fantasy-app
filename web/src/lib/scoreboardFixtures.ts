@@ -15,6 +15,7 @@ export const side = (o: Partial<ScoreboardSide> = {}): ScoreboardSide => ({
 });
 export const row = (a: Partial<ScoreboardSide> = {}, b: Partial<ScoreboardSide> = {}, o: Partial<ScoreboardRow> = {}): ScoreboardRow => ({
   week: 7,
+  playoff_label: null,
   matchup_id: 1,
   status: "Live",
   a: side(a),

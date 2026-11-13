@@ -91,6 +91,11 @@ def _quantile_rows(
     ]
 
 
+def _cv(resid: np.ndarray, projection: np.ndarray) -> float:
+    """Root mean squared residual over root mean squared projection."""
+    return float(np.sqrt((resid**2).sum() / (projection**2).sum()))
+
+
 def estimate_marginals(res: pl.DataFrame) -> pl.DataFrame:
     """Quantiles of actual / projection per league, position and tier (the shape around the
     mean). `res` should carry the calibrated projection.
@@ -107,7 +112,7 @@ def estimate_marginals(res: pl.DataFrame) -> pl.DataFrame:
         points, projection = g["points"].to_numpy(), g["projection"].to_numpy()
         ratio = points / projection
         resid = g["resid"].to_numpy()
-        cv = float(np.sqrt((resid**2).sum() / (projection**2).sum()))
+        cv = _cv(resid, projection)
         rows += _quantile_rows(league_id, position, ratio, cv, -1, TOP)
         # with the stat-line model, cut the thirds on stat-line games only, so the stat-less ones
         # (low q * E) do not move the tiers the starters sit in
@@ -120,11 +125,7 @@ def estimate_marginals(res: pl.DataFrame) -> pl.DataFrame:
             enough = len(chosen) >= MIN_TIER_ROWS
             shape = chosen if enough else ratio
             # starters sit in the top tier, where the spread is much smaller than the pooled one
-            tier_cv = (
-                float(np.sqrt((resid[in_tier] ** 2).sum() / (projection[in_tier] ** 2).sum()))
-                if enough
-                else cv
-            )
+            tier_cv = _cv(resid[in_tier], projection[in_tier]) if enough else cv
             upper = float(edges[t]) if t < 2 else TOP
             rows += _quantile_rows(league_id, position, shape, tier_cv, t, upper)
     return pl.DataFrame(rows, schema=store.SCHEMAS["marginals"]).sort(

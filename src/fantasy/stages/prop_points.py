@@ -37,7 +37,7 @@ from scipy.special import gammaincc
 
 from fantasy import store
 from fantasy._runs import note_soft_failure
-from fantasy.config import load_config
+from fantasy.config import SKILL_POSITIONS, load_config
 from fantasy.scoring import score_stats
 from fantasy.sim.availability import EASTERN
 from fantasy.stages import outside_projections as op
@@ -390,7 +390,7 @@ def _outside_snapshots(
         for position, fetched in ages.iter_rows():
             hours = (now - fetched).total_seconds() / 3600
             print(f"{source} {position} fetched {hours:.0f} hours ago")
-        missing = sorted(set(op.POSITIONS) - set(ages["position"]))
+        missing = sorted(set(SKILL_POSITIONS) - set(ages["position"]))
         if missing:
             print(f"warning: {source} has no rows for {missing} in week {week}")
     mapped = op.map_to_gsis(snaps, op.people(data_dir)).drop_nulls("gsis_id")

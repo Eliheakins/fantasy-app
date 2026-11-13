@@ -1,12 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 import { TeamBanner } from "@/components/layout/TeamBanner";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
-import { LeagueProvider } from "@/lib/league";
-import { TeamProvider } from "@/lib/TeamProvider";
 import { useTeam } from "@/lib/teamContext";
+import { stubApi } from "@/test/fakeApi";
+import { renderWithProviders } from "@/test/render";
 
 const ok = (data: unknown) => ({ status: "ok", data, error: null, started_at: null });
 const team = (roster_id: number, team_name: string, is_me: boolean) => ({
@@ -19,7 +18,7 @@ const team = (roster_id: number, team_name: string, is_me: boolean) => ({
   points_for: 10,
   record: "1-0",
 });
-const routes: Record<string, unknown> = {
+const routes: Record<string, object> = {
   "/api/leagues": ok([{ league_key: "a", name: "A" }]),
   "/api/leagues/a/teams": ok([team(1, "Mine", true), team(2, "Rival", false)]),
   "/api/leagues/a/roster": ok([]),
@@ -27,18 +26,16 @@ const routes: Record<string, unknown> = {
 
 function mockFetch(): string[] {
   const urls: string[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string) => {
-      urls.push(url);
-      return Response.json(routes[url.split("?")[0] ?? url] ?? ok([]));
-    }),
-  );
+  stubApi((call) => {
+    urls.push(call.url);
+    const body = routes[call.url.split("?")[0] ?? call.url];
+    return body === undefined ? undefined : { body };
+  });
   return urls;
 }
 
 function Probe() {
-  useEnvelopeQuery("/api/leagues/a/roster");
+  useEnvelopeQuery("/api/leagues/{league}/roster", { path: { league: "a" } });
   const { setTeam } = useTeam();
   const { search } = useLocation();
   return (
@@ -55,22 +52,14 @@ function Probe() {
 }
 
 function renderAt(entry: string) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[entry]}>
-        <LeagueProvider>
-          <TeamProvider>
-            <TeamBanner />
-            <Probe />
-          </TeamProvider>
-        </LeagueProvider>
-      </MemoryRouter>
-    </QueryClientProvider>,
+  renderWithProviders(
+    <>
+      <TeamBanner />
+      <Probe />
+    </>,
+    { route: entry, league: true, team: true },
   );
 }
-
-afterEach(() => vi.unstubAllGlobals());
 
 describe("TeamProvider", () => {
   it("sends no team and shows no banner by default", async () => {

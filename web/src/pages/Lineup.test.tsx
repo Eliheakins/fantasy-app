@@ -1,6 +1,6 @@
 import { type RenderResult, render as rtlRender, screen, within } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
 import { LineupView } from "./Lineup";
@@ -43,6 +43,7 @@ const option = (name: string, o: Partial<WinProbability["options"][number]> = {}
     ...o,
   }) as WinProbability["options"][number];
 const odds: WinProbability = {
+  playoff_label: null,
   script: "You are a slight favourite",
   swap: { differs: false, players_in: [], players_out: [], text: null },
   comparison: [cmp("Expected points"), cmp("Win probability")],
@@ -118,6 +119,13 @@ describe("LineupView answer and evidence", () => {
     expect(within(panel).getByText("Skill slots, shown vs Sleeper")).toBeInTheDocument();
     expect(within(panel).getByRole("img", { name: /^Your team:/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Close calls" }).closest("section")!.className).not.toContain("key-panel");
+  });
+  test("the matchup panel shows the playoff label only when there is one", () => {
+    const { unmount } = render(<LineupView base={cookRows} odds={{ ...withCalls, playoff_label: "Round 2 of the playoffs" }} week={3} />);
+    expect(within(screen.getByRole("region", { name: "Your matchup" })).getByText("Round 2 of the playoffs")).toBeInTheDocument();
+    unmount();
+    render(<LineupView base={cookRows} odds={withCalls} week={3} />);
+    expect(screen.queryByText(/of the playoffs/)).toBeNull();
   });
   test("locked starters are not counted as clear slots", () => {
     const locked = cookRows.map((r) => (r.gsis_id === "rb1" ? { ...r, locked: true } : r));

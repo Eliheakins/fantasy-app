@@ -21,7 +21,7 @@ const teamLabel = (t: SleeperTeam) => (t.owner_name && t.owner_name !== t.team_n
 
 /** Pick which team in a league is yours. The app views that team as "me" in the league. */
 export function TeamPicker({ leagueId, leagueName, initial, ownerId, confirmLabel, isBusy, onConfirm, onCancel }: Props) {
-  const state = useEnvelopeQuery<SleeperTeam[]>(`/api/me/sleeper/leagues/${encodeURIComponent(leagueId)}/teams`);
+  const state = useEnvelopeQuery("/api/me/sleeper/leagues/{league_id}/teams", { path: { league_id: leagueId } });
   const [picked, setPicked] = useState<number | null>(null);
   const labelId = `team-label-${leagueId}`;
   return (

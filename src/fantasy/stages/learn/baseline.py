@@ -54,12 +54,11 @@ def compare_to_baseline() -> pl.DataFrame:
             )
         data = pl.concat(parts)
         by_week = data.group_by("season", "week").agg(
-            pl.col("se_base").mean(), pl.col("se_learned").mean()
+            pl.col("se_base").mean().alias("a"), pl.col("se_learned").mean().alias("b")
         )
-        diff = (by_week["se_base"] - by_week["se_learned"]).to_numpy()
+        t_stat, won = paired(by_week)
         rmse_base = float(np.sqrt(data["se_base"].to_numpy().mean()))
         rmse_learned = float(np.sqrt(data["se_learned"].to_numpy().mean()))
-        t_stat = float(diff.mean() / (diff.std(ddof=1) / np.sqrt(len(diff))))
         gain = (rmse_base - rmse_learned) / rmse_base
         rows.append(
             {
@@ -69,7 +68,7 @@ def compare_to_baseline() -> pl.DataFrame:
                 "rmse_learned": round(rmse_learned, 4),
                 "gain_pct": round(100 * gain, 2),
                 "paired_t": round(t_stat, 2),
-                "weeks_better": f"{int((diff > 0).sum())}/{len(diff)}",
+                "weeks_better": f"{won}/{by_week.height}",
                 "passes": gain >= MIN_GAIN and t_stat >= MIN_T,
             }
         )

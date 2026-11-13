@@ -28,6 +28,12 @@ SOFT_FAILURE_EXIT = 65
 _soft_failures: list[str] = []
 
 
+def parse_utc(stamp: str) -> datetime:
+    """An ISO timestamp, read as UTC when it carries no zone."""
+    parsed = datetime.fromisoformat(stamp)
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
 def note_soft_failure(error: str) -> None:
     """Called where a stage swallows an error: the current run is recorded as failed."""
     _soft_failures.append(error)

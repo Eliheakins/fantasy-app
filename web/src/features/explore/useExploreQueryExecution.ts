@@ -76,29 +76,22 @@ export function useExploreQueryExecution() {
   }, [inert, setRoster]);
   const hasSubject = league || (forTeams ? teams.length > 0 : players.length > 0);
 
+  // Stop any run still in flight, so it cannot land results for a query no longer shown, and clear the table.
+  const clearRun = useCallback(() => {
+    runLatest.cancel();
+    setRunning(false);
+    setResult(null);
+    setDetails(null);
+  }, [runLatest]);
+
+  // Only the effect below calls this, after it has checked for a subject, seasons and stats.
   const executeQuery = useCallback(async () => {
     setError(null);
 
     const invalid = (message: string) => {
-      runLatest.cancel();
-      setRunning(false);
-      setResult(null);
-      setDetails(null);
+      clearRun();
       setError(message);
     };
-
-    if (!hasSubject) {
-      invalid(forTeams ? "Pick at least one team in The Who, then run again." : "Pin at least one player in The Who, then run again.");
-      return;
-    }
-    if (sources.length === 0) {
-      invalid("The data has no seasons yet. Build it with: make stat-data");
-      return;
-    }
-    if (stats.length === 0) {
-      invalid("Select at least one metric.");
-      return;
-    }
 
     if ((state.roster || wantsPoints) && !forTeams && leagues.kind === "loading") {
       return; // the league list decides whether the filter or league points apply at all
@@ -178,7 +171,6 @@ export function useExploreQueryExecution() {
   }, [
     players,
     league,
-    hasSubject,
     forTeams,
     teams,
     side,
@@ -208,6 +200,7 @@ export function useExploreQueryExecution() {
     leagues.kind,
     ownersState.kind,
     runLatest,
+    clearRun,
     currentKey,
   ]);
 
@@ -215,23 +208,16 @@ export function useExploreQueryExecution() {
 
   useEffect(() => {
     if (!hasSubject || sources.length === 0) {
-      // Nothing to show: stop any run still in flight so it cannot land results for players no longer pinned.
-      runLatest.cancel();
-      setRunning(false);
-      setResult(null);
-      setDetails(null);
+      clearRun();
       return;
     }
     if (stats.length === 0) {
-      runLatest.cancel();
-      setRunning(false);
-      setResult(null);
-      setDetails(null);
+      clearRun();
       setError(null);
       return;
     }
     void executeQuery();
-  }, [hasSubject, stats, sources, executeQuery, runLatest]);
+  }, [hasSubject, stats, sources, executeQuery, clearRun]);
 
   // Names for every row shown: the pinned players, or the players a leaderboard ranked.
   const shown = resultKey === currentKey ? result : null;
@@ -242,7 +228,6 @@ export function useExploreQueryExecution() {
     error,
     details,
     running,
-    executeQuery,
     pinnedPlayers,
     /** Everyone the table names: pinned players, and for a leaderboard the players it ranked. */
     namedPlayers: [...pinnedPlayers, ...rowPlayers],

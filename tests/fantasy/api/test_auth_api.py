@@ -4,28 +4,19 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from auth_fixture import GOOD, isolate_auth, make_client
 from fastapi.testclient import TestClient
 
-from fantasy import api
-from fantasy.auth import accounts, passwords, routes
+from fantasy.auth import accounts, routes
 from fantasy.auth.ratelimit import FailureLimiter
 
-CSRF = {"X-Requested-With": "fantasy-app"}
-GOOD = "a long enough password"
 ADMIN = "boss@example.com"
 
 
 @pytest.fixture(autouse=True)
 def quick_and_isolated(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(passwords, "COST_N", 2**10)
-    monkeypatch.setenv("AUTH_COOKIE_SECURE", "0")  # the test client speaks plain http
-    monkeypatch.setenv("LIVE_REFRESH", "off")
-    monkeypatch.delenv("FANTASY_AUTH", raising=False)
+    isolate_auth(monkeypatch)
     monkeypatch.setattr(routes, "limiter", FailureLimiter(limit=5, window_s=60.0))
-
-
-def make_client(store_dir: Path) -> TestClient:
-    return TestClient(api.create_app(data_dir=store_dir), base_url="http://localhost", headers=CSRF)
 
 
 @pytest.fixture

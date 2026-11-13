@@ -1,11 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
-import { errorReply, okReply, stubApi } from "@/test/fakeApi";
+import { errorReply, okReply, stubApi, stubScoped } from "@/test/fakeApi";
 import { AddLeague } from "./AddLeague";
-
-afterEach(() => vi.unstubAllGlobals());
+import { renderWithProviders } from "@/test/render";
 
 const GOOD = { league_id: "111", name: "Friends League", num_teams: 10, added: false, problem: null };
 const CHOPPED = { league_id: "444", name: "Chopped", num_teams: 16, added: false, problem: "This league has no playoff bracket." };
@@ -17,17 +14,8 @@ const TEAMS = [
 ];
 const TEAMS_URL = "/api/me/sleeper/leagues/111/teams";
 
-function Harness() {
-  const [username, setUsername] = useState("");
-  return <AddLeague username={username} onUsername={setUsername} />;
-}
-
 function open() {
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <Harness />
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<AddLeague />);
 }
 
 async function find(name = "FriendUser") {
@@ -39,14 +27,14 @@ async function find(name = "FriendUser") {
 
 describe("AddLeague", () => {
   it("says what the username is and is not", () => {
-    stubApi(() => okReply(LOOKUP));
+    stubScoped("/api/me/sleeper/lookup", () => okReply(LOOKUP));
     open();
     expect(screen.getByText(/cannot confirm who you are/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Your Sleeper username")).toHaveAttribute("autocomplete", "off");
   });
 
   it("lists the leagues found, marking the ones already added and the ones that cannot be", async () => {
-    const calls = stubApi(() => okReply(LOOKUP));
+    const calls = stubScoped("/api/me/sleeper/lookup", () => okReply(LOOKUP));
     open();
     await find();
     expect(await screen.findByText("Leagues for Friend this season")).toBeInTheDocument();
@@ -59,7 +47,7 @@ describe("AddLeague", () => {
   });
 
   it("explains an unknown username", async () => {
-    stubApi(() => errorReply("no_data", "No Sleeper user has that name.", 404));
+    stubScoped("/api/me/sleeper/lookup", () => errorReply("no_data", "No Sleeper user has that name.", 404));
     open();
     await find("Nobody");
     expect(await screen.findByRole("alert")).toHaveTextContent("No Sleeper user has that name.");
@@ -67,14 +55,14 @@ describe("AddLeague", () => {
   });
 
   it("explains a Sleeper outage", async () => {
-    stubApi(() => errorReply("server", "Sleeper did not answer. Try again in a minute.", 502));
+    stubScoped("/api/me/sleeper/lookup", () => errorReply("server", "Sleeper did not answer. Try again in a minute.", 502));
     open();
     await find();
     expect(await screen.findByRole("alert")).toHaveTextContent(/sleeper did not answer/i);
   });
 
   it("says when the user has no leagues this season", async () => {
-    stubApi(() => okReply({ ...LOOKUP, leagues: [] }));
+    stubScoped("/api/me/sleeper/lookup", () => okReply({ ...LOOKUP, leagues: [] }));
     open();
     await find();
     expect(await screen.findByText("No leagues found for this season.")).toBeInTheDocument();
@@ -83,7 +71,13 @@ describe("AddLeague", () => {
   it("asks which team is yours, starting on the one the user owns, then adds the league with it", async () => {
     const added = { league_id: "111", league_key: "sl-111", name: "Friends League", status: "queued", error: null, roster_id: 2 };
     const calls = stubApi((call) =>
-      call.url === "/api/me/leagues" ? okReply(added) : call.url === TEAMS_URL ? okReply(TEAMS) : okReply(LOOKUP),
+      call.url === "/api/me/leagues"
+        ? okReply(added)
+        : call.url === TEAMS_URL
+          ? okReply(TEAMS)
+          : call.url === "/api/me/sleeper/lookup"
+            ? okReply(LOOKUP)
+            : undefined,
     );
     open();
     const user = await find();
@@ -99,7 +93,13 @@ describe("AddLeague", () => {
   it("adds the league with another team when the person picks it", async () => {
     const added = { league_id: "111", league_key: "sl-111", name: "Friends League", status: "queued", error: null, roster_id: 1 };
     const calls = stubApi((call) =>
-      call.url === "/api/me/leagues" ? okReply(added) : call.url === TEAMS_URL ? okReply(TEAMS) : okReply(LOOKUP),
+      call.url === "/api/me/leagues"
+        ? okReply(added)
+        : call.url === TEAMS_URL
+          ? okReply(TEAMS)
+          : call.url === "/api/me/sleeper/lookup"
+            ? okReply(LOOKUP)
+            : undefined,
     );
     open();
     const user = await find();
@@ -117,7 +117,9 @@ describe("AddLeague", () => {
         ? errorReply("invalid", "You can add up to 2 leagues. Remove one to add another.", 409)
         : call.url === TEAMS_URL
           ? okReply(TEAMS)
-          : okReply(LOOKUP),
+          : call.url === "/api/me/sleeper/lookup"
+            ? okReply(LOOKUP)
+            : undefined,
     );
     open();
     const user = await find();

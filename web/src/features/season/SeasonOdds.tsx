@@ -1,16 +1,16 @@
 import { useMemo } from "react";
+import type { ApiState } from "@/api/envelope";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
 import { OddsHistoryChart } from "@/features/season/outlook/OddsHistoryChart";
 import { HISTORY_WAIT_MESSAGE, canShowHistory, runWeeks } from "@/features/season/outlook/logic";
 import type { OddsHistoryRow, SeasonOddsRow } from "@/lib/outlookTypes";
-import { useLeagueApi } from "@/lib/league";
+import { useLeagueApi, useLeagueRow } from "@/lib/league";
 import { formatPercent } from "@/viz";
-import { myOddsByWeek, weekMarks } from "./logic";
+import { KIND_LABEL, myOddsByWeek, weekMarks } from "./logic";
 import type { SeasonEventRow } from "./types";
 
 const EVENTS_ID = "season-marked-events";
-const KIND_LABEL = { trade: "Trade", injury: "Injury", big_week: "Big week" } as const;
 const MISSING =
   "Marked: your trades, injuries to your starters (Sleeper's Out, IR or Doubtful, from the daily snapshots) and weeks far above your average. Not marked: waiver moves, and anything before the first saved run.";
 
@@ -54,10 +54,12 @@ function Chart({
   odds,
   history,
   events,
+  titleFromWeek,
 }: {
   odds: SeasonOddsRow[];
   history: OddsHistoryRow[];
-  events: ReturnType<typeof useLeagueApi<SeasonEventRow[]>>;
+  events: ApiState<SeasonEventRow[]>;
+  titleFromWeek: number | null;
 }) {
   const list = useMemo(() => (events.kind === "ready" ? events.data : []), [events]);
   const weeks = useMemo(() => runWeeks(history), [history]);
@@ -66,7 +68,7 @@ function Chart({
   if (!canShowHistory(odds, history)) return <p className="measure text-caption text-muted">{HISTORY_WAIT_MESSAGE}</p>;
   return (
     <>
-      <OddsHistoryChart odds={odds} history={history} marks={marks} describedBy={EVENTS_ID} />
+      <OddsHistoryChart odds={odds} history={history} marks={marks} describedBy={EVENTS_ID} titleFromWeek={titleFromWeek} />
       {events.kind === "error" ? (
         <p role="alert" id={EVENTS_ID} className="mt-2 text-caption text-warning">
           Marks unavailable: {events.error.message}
@@ -84,17 +86,25 @@ function Chart({
 
 /** The odds chart with my trades, starter injuries and big weeks marked on my line. */
 export function SeasonOdds() {
-  const odds = useLeagueApi<SeasonOddsRow[]>("season-odds");
-  const history = useLeagueApi<OddsHistoryRow[]>("odds-history");
-  const events = useLeagueApi<SeasonEventRow[]>("season-events");
+  const odds = useLeagueApi("/api/leagues/{league}/season-odds");
+  const history = useLeagueApi("/api/leagues/{league}/odds-history");
+  const events = useLeagueApi("/api/leagues/{league}/season-events");
+  const row = useLeagueRow();
+  // title odds once the playoffs have begun
+  const titleFromWeek =
+    row?.current_week != null && row.playoff_week_start != null && row.current_week >= row.playoff_week_start
+      ? row.playoff_week_start
+      : null;
   return (
     <Section
       title="Playoff odds over the season"
-      caption="Chance to make the playoffs at the end of each week. Your team is the Forest line; dots mark your trades, starter injuries and big weeks."
+      caption="Chance to make the playoffs at the end of each week; once the bracket is set, the chance to win the title. Your team is the Forest line; dots mark your trades, starter injuries and big weeks."
       howCalculated={MISSING}
     >
       <ApiBoundary state={odds}>
-        {(o) => <ApiBoundary state={history}>{(h) => <Chart odds={o} history={h} events={events} />}</ApiBoundary>}
+        {(o) => (
+          <ApiBoundary state={history}>{(h) => <Chart odds={o} history={h} events={events} titleFromWeek={titleFromWeek} />}</ApiBoundary>
+        )}
       </ApiBoundary>
     </Section>
   );

@@ -1,7 +1,6 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 
 import { LeagueProvider } from "@/lib/league";
 import { TeamProvider } from "@/lib/TeamProvider";
@@ -12,6 +11,8 @@ import { ExploreResultsCanvas } from "./ExploreResultsCanvas";
 import { LeagueFilterControl } from "./LeagueFilterControl";
 import { ManifestContext } from "@/stat/react/manifest";
 import { useExploreQueryExecution } from "./useExploreQueryExecution";
+import { type Reply, stubApi } from "@/test/fakeApi";
+import { renderWithProviders } from "@/test/render";
 
 vi.mock("@/stat/engine/statQuery", () => ({
   runStatQuery: vi.fn(async () => ({ columns: ["player_id"], rows: [] })),
@@ -48,35 +49,28 @@ const RIVAL_VIEW = [owner("00-A", "Mine", false), owner("00-B", "Rival", true)];
 
 function mockFetch(leagues: unknown[] = [{ league_key: "a", name: "A" }], unmatched = 0) {
   const urls: string[] = [];
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string) => {
-      urls.push(url);
-      const [path = "", query = ""] = url.split("?");
-      const routes: Record<string, unknown> = {
-        "/api/leagues": leagues,
-        "/api/leagues/a/teams": [team(1, "Mine", true), team(2, "Rival", false)],
-        "/api/leagues/a/player-points": [{ gsis_id: "00-A", week: 1, points: 12.5 }],
-        "/api/leagues/a/owners": { rows: query.includes("team=2") ? RIVAL_VIEW : MINE, unmatched },
-      };
-      return Response.json(ok(routes[path] ?? []));
-    }),
-  );
+  stubApi(({ url }) => {
+    urls.push(url);
+    const [path = "", query = ""] = url.split("?");
+    const routes: Record<string, unknown> = {
+      "/api/leagues": leagues,
+      "/api/leagues/a/teams": [team(1, "Mine", true), team(2, "Rival", false)],
+      "/api/leagues/a/player-points": [{ gsis_id: "00-A", week: 1, points: 12.5 }],
+      "/api/leagues/a/owners": { rows: query.includes("team=2") ? RIVAL_VIEW : MINE, unmatched },
+    };
+    return path in routes ? { body: ok(routes[path]) } : undefined;
+  });
   return urls;
 }
 
 function renderAt(entry: string, children: React.ReactNode) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[entry]}>
-        <ManifestContext.Provider value={{ manifest: null, seasons: [2025] }}>
-          <LeagueProvider>
-            <TeamProvider>{children}</TeamProvider>
-          </LeagueProvider>
-        </ManifestContext.Provider>
-      </MemoryRouter>
-    </QueryClientProvider>,
+  renderWithProviders(
+    <ManifestContext.Provider value={{ manifest: null, seasons: [2025] }}>
+      <LeagueProvider>
+        <TeamProvider>{children}</TeamProvider>
+      </LeagueProvider>
+    </ManifestContext.Provider>,
+    { route: entry },
   );
 }
 
@@ -90,7 +84,6 @@ beforeEach(() => {
   localStorage.clear();
   vi.mocked(runStatQuery).mockClear();
 });
-afterEach(() => vi.unstubAllGlobals());
 
 describe("League filter control", () => {
   it("is hidden when no league is loaded", async () => {
@@ -218,13 +211,11 @@ describe("League filter in the query", () => {
   });
 
   it("does not run an unrestricted query while the rosters are loading", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => {
-        if (url.includes("/owners")) return new Promise<Response>(() => {});
-        return Response.json(ok(url.startsWith("/api/leagues/a") ? [team(1, "Mine", true)] : [{ league_key: "a", name: "A" }]));
-      }),
-    );
+    stubApi(({ url }) => {
+      if (url.includes("/owners")) return new Promise<Reply>(() => {});
+      if (url === "/api/leagues/a/teams") return { body: ok([team(1, "Mine", true)]) };
+      return url === "/api/leagues" ? { body: ok([{ league_key: "a", name: "A" }]) } : undefined;
+    });
     renderAt(`${RANKED}&lg=mine`, <Run />);
     await new Promise((r) => setTimeout(r, 30));
     expect(runStatQuery).not.toHaveBeenCalled();
@@ -240,8 +231,8 @@ describe("owner on result rows", () => {
     ],
   };
   const names = [
-    { gsis_id: "00-A", full_name: "Ann", position: "WR", team: null, headshot_url: null },
-    { gsis_id: "00-FA", full_name: "Fay", position: "WR", team: null, headshot_url: null },
+    { gsis_id: "00-A", full_name: "Ann", position: "WR", team: null, headshot_url: null, birth_date: null, years_exp: null },
+    { gsis_id: "00-FA", full_name: "Fay", position: "WR", team: null, headshot_url: null, birth_date: null, years_exp: null },
   ];
 
   it("shows the owning team for a rostered player and a Free agent marker for a free agent", async () => {

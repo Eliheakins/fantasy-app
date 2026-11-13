@@ -1,16 +1,22 @@
 """Waivers, trades and roster strength: moves that change my team (see data_api)."""
 
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 
 from fantasy import store
 from fantasy._engine import _id_map, _league, _league_id, _names, _read
+from fantasy._holes import league_reserve
 from fantasy._schemas import ENGINE_SCHEMAS
+from fantasy.config import SKILL_POSITIONS
 from fantasy.sim import moves
+from fantasy.sim.horizon import Horizon, horizon_weeks
 from fantasy.sim.odds import LeagueData
 
 MIN_GAIN = 0.05  # expected points below this are not worth a roster move
+STASH_STATUSES = frozenset({"IR", "PUP", "Out"})
+STASH_FREE_AGENTS = 15  # free agents listed; all of mine are
 
 
 def waivers(
@@ -18,11 +24,15 @@ def waivers(
     loaded: tuple[LeagueData, int] | None = None,
     data_dir: Path | None = None,
     team: int | None = None,
+    horizon: Horizon = "ros",
 ) -> pl.DataFrame:
-    """Best adds for my team by extra points over the rest of the season (a shortcut)."""
+    """Best adds for my team by extra points over the rest of the season, or over the playoff
+    weeks when `horizon` is "playoffs" (a shortcut). Odds deltas come from the season sim."""
     data, mine = loaded or _league(league_key, data_dir, team)
     names = _names(data_dir)
-    adds = [w for w in moves.waiver_candidates(data, mine, top_n=15) if w.delta_mu > MIN_GAIN]
+    weeks = None if horizon == "ros" else horizon_weeks(data, horizon)
+    candidates = moves.waiver_candidates(data, mine, top_n=15, weeks=weeks)
+    adds = [w for w in candidates if w.delta_mu > MIN_GAIN]
     odds = {r["gsis_id"]: r for r in moves.waiver_odds(data, mine, adds).iter_rows(named=True)}
     trending = _trending_adds(data_dir)
     rows = [
@@ -220,3 +230,62 @@ def position_strength(
         .select("position", "vor_per_week", "rank", "teams")
         .sort("position")
     )
+
+
+def stash(league_key: str, data_dir: Path | None = None, team: int | None = None) -> dict[str, Any]:
+    """Injured (IR, PUP, Out) free agents and my players ranked by points over the playoff weeks,
+    with my open IR slots. Free agents are any unrostered QB, RB, WR or TE Sleeper lists, whatever
+    his Sleeper status (IR players are "Inactive"). `first_week` is the first projected week with
+    points, not a medical return estimate; points are as injury-scaled as the projections are."""
+    data, mine = _league(league_key, data_dir, team)
+    names = _names(data_dir)
+    reserve, allowed = league_reserve(data.league_id, data_dir)
+    my_rows = _read("rosters", data_dir).filter(
+        (pl.col("league_id") == data.league_id) & (pl.col("roster_id") == mine)
+    )
+    open_slots = max(reserve - my_rows.filter(pl.col("is_ir").fill_null(False)).height, 0)
+    owner = dict(zip(data.rosters["gsis_id"], data.rosters["roster_id"], strict=True))
+    listed = (
+        _id_map(data_dir)
+        .filter(pl.col("gsis_id").is_not_null())
+        .join(_read("sleeper_players", data_dir).select("sleeper_id", "position"), on="sleeper_id")
+    )
+    # Sleeper lists IR players as Inactive, so data.positions (active players only) misses them
+    positions = {
+        **dict(zip(listed["gsis_id"], listed["position"], strict=True)),
+        **moves.position_of(data),
+    }
+    playoff = set(horizon_weeks(data, "playoffs"))
+    ahead = data.projections.filter(pl.col("week") >= data.current_week)
+    points = {
+        g: list(zip(f["week"], f["projection"], strict=True))
+        for (g,), f in ahead.group_by("gsis_id")
+    }
+
+    def row(g: str) -> dict[str, Any]:
+        status = data.injuries[g][0]
+        weeks = sorted(points.get(g, []))
+        return {
+            "gsis_id": g,
+            "full_name": names.get(g, g),
+            "position": positions[g],
+            "status": status,
+            "owner": data.team_names.get(owner[g]) if g in owner else None,
+            "is_mine": owner.get(g) == mine,
+            "ir_eligible": status in allowed,
+            "first_week": next((w for w, p in weeks if p > 0), None),
+            "playoff_points": sum(p for w, p in weeks if w in playoff),
+        }
+
+    injured = [
+        row(g)
+        for g, position in positions.items()
+        if (g not in owner or owner[g] == mine)
+        and position in SKILL_POSITIONS
+        and g in data.injuries
+        and data.injuries[g][0] in STASH_STATUSES
+    ]
+    injured.sort(key=lambda r: (-r["playoff_points"], r["gsis_id"]))
+    free = [r for r in injured if not r["is_mine"]][:STASH_FREE_AGENTS]
+    kept = [r for r in injured if r["is_mine"] or r in free]
+    return {"open_ir_slots": open_slots, "rows": kept}

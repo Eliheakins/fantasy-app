@@ -1,8 +1,9 @@
 import type { OutlookRow } from "@/lib/outlookTypes";
+import { ALL_POSITIONS, POSITION_ORDER } from "@/lib/positions";
+
+export { ALL_POSITIONS };
 
 export const PAGE_SIZE = 25;
-export const ALL_POSITIONS = "ALL";
-const POSITION_ORDER = ["QB", "RB", "WR", "TE", "K", "DEF"];
 
 /** Biggest projected gain first; players with no change figure last. Returns a new array. */
 export function sortByChange(rows: readonly OutlookRow[]): OutlookRow[] {

@@ -1,7 +1,7 @@
 """
 Adds the corrections exported from the History page (ask-corrections.json) to `corrections.json`,
 the eval set made of questions a user had to fix:
-    uv run python backend/tests/eval/promote.py ~/Downloads/ask-corrections.json
+    uv run python tests/stat/eval/promote.py ~/Downloads/ask-corrections.json
 
 Both evals score the set: the model eval reports it, the rules eval fails on any wrong answer.
 """
@@ -19,6 +19,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from nfl_stat.schemas.nlq import Granularity
 
 EVAL_DIR = Path(__file__).parent
+# `corrections` holds questions a user had to fix in the app. `heldout2` was committed before any
+# model saw it (#71).
 SETS = ("cases", "heldout", "heldout2", "corrections")
 
 

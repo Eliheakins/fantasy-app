@@ -6,6 +6,7 @@ stated in decisions.md). `find_trades` is built from named steps (screen, rank, 
 re-check); the labels, ranking and de-duplication live in `trade_labels`.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import combinations
 from typing import Any, NamedTuple
@@ -14,7 +15,7 @@ import numpy as np
 import polars as pl
 
 from fantasy.sim.needs import NEED_MIN, TeamNeeds, benchmarks
-from fantasy.sim.odds import LeagueData, league_odds
+from fantasy.sim.odds import DEFAULT_SIMS, LeagueData, league_odds
 from fantasy.sim.roster import (
     Valuer,
     free_agents,
@@ -54,13 +55,10 @@ def apply_trade(
     if not set(get) <= set(theirs):
         raise ValueError(f"not on the partner's roster: {sorted(set(get) - set(theirs))}")
 
-    new_mine = [i for i in mine if i not in give] + list(get)
-    new_theirs = [i for i in theirs if i not in get] + list(give)
-    taken = rostered(data) | set(new_mine) | set(new_theirs)
     ros = _ros_all(data)
-    free = sorted(free_agents(data), key=lambda i: (-ros.get(i, 0.0), i))
-    new_mine = _fit(new_mine, len(mine), taken, ros, free)
-    new_theirs = _fit(new_theirs, len(theirs), taken | set(new_mine), ros, free)
+    new_mine, new_theirs = _traded_rosters(
+        mine, theirs, give, get, rostered(data), ros, _free_by_value(data, ros)
+    )
 
     positions = position_of(data)
     changed = [
@@ -78,7 +76,7 @@ def evaluate_trade(
     partner_id: int,
     give: list[str],
     get: list[str],
-    n_sims: int = 20000,
+    n_sims: int = DEFAULT_SIMS,
     seed: int = 0,
 ) -> pl.DataFrame:
     """Odds before and after for both teams, using the same random draws for both runs."""
@@ -136,6 +134,27 @@ def _fit(
     return ids
 
 
+def _traded_rosters(
+    mine: list[str],
+    theirs: list[str],
+    give: Sequence[str],
+    get: Sequence[str],
+    taken: set[str],
+    ros: dict[str, float],
+    free: list[str],
+) -> tuple[list[str], list[str]]:
+    """Both rosters after a swap, each refit to its original size (`_fit`)."""
+    new_mine = _fit([i for i in mine if i not in give] + list(get), len(mine), taken, ros, free)
+    new_theirs = _fit(
+        [i for i in theirs if i not in get] + list(give),
+        len(theirs),
+        taken | set(new_mine),
+        ros,
+        free,
+    )
+    return new_mine, new_theirs
+
+
 def _pickup(ids: list[str], taken: set[str], ros: dict[str, float], free: list[str]) -> list[str]:
     """A roster after its own best waiver move: drop the lowest player, add the best free agent."""
     worst = min(ids, key=lambda i: (ros.get(i, 0.0), i))
@@ -145,6 +164,11 @@ def _pickup(ids: list[str], taken: set[str], ros: dict[str, float], free: list[s
 def _ros_all(data: LeagueData) -> dict[str, float]:
     sums = data.projections.group_by("gsis_id").agg(pl.col("projection").sum()).iter_rows()
     return {g: float(v) for g, v in sums}
+
+
+def _free_by_value(data: LeagueData, ros: dict[str, float]) -> list[str]:
+    """Free agents, best rest-of-season points first."""
+    return sorted(free_agents(data), key=lambda i: (-ros.get(i, 0.0), i))
 
 
 Swap = tuple[int, tuple[str, ...], tuple[str, ...]]  # partner roster id, I give, I get
@@ -157,8 +181,8 @@ def _rerun(
 
     A team that ends up with an open roster spot is compared with itself after its own best
     waiver move, so a free pickup it could make anyway is not credited to the trade."""
-    ros, free, taken = _ros_all(data), sorted(free_agents(data)), rostered(data)
-    free.sort(key=lambda i: (-ros.get(i, 0.0), i))
+    ros, taken = _ros_all(data), rostered(data)
+    free = _free_by_value(data, ros)
     base = league_odds(data, None, n_sims, seed, reoptimize=True)
     pickup_worlds: dict[int, SeasonResult] = {}
 
@@ -265,7 +289,7 @@ def _start_search(data: LeagueData, my_id: int) -> _Search:
         values=week_values(data),
         ros=ros,
         taken=rostered(data),
-        free=sorted(free_agents(data), key=lambda i: (-ros.get(i, 0.0), i)),
+        free=_free_by_value(data, ros),
         needs={
             r: TeamNeeds(valuer, team_ids(data, r), benchmarks(data, valuer))
             for r in data.roster_ids
@@ -295,16 +319,7 @@ def _screened(
 ) -> Screened | None:
     """Stage 1 for one swap: both rosters after it, kept only if neither side loses more than
     SCREEN_TOL rest-of-season points."""
-    new_me = _fit(
-        [i for i in s.mine if i not in give] + list(get), len(s.mine), s.taken, s.ros, s.free
-    )
-    new_them = _fit(
-        [i for i in theirs if i not in get] + list(give),
-        len(theirs),
-        s.taken | set(new_me),
-        s.ros,
-        s.free,
-    )
+    new_me, new_them = _traded_rosters(s.mine, theirs, give, get, s.taken, s.ros, s.free)
     (ref_me, vref_me), (ref_them, vref_them) = refs[(len(give) > len(get), len(get) > len(give))]
     d_me = _total(s, new_me) - ref_me
     d_them = _total(s, new_them) - ref_them
@@ -361,7 +376,9 @@ def _simulated_rows(s: _Search, swaps: list[Swap], n_sims: int, seed: int) -> li
     return sorted(rows, key=rank_key)
 
 
-def find_trades(data: LeagueData, my_id: int, n_sims: int = 20000, seed: int = 0) -> pl.DataFrame:
+def find_trades(
+    data: LeagueData, my_id: int, n_sims: int = DEFAULT_SIMS, seed: int = 0
+) -> pl.DataFrame:
     """Trades (1 for 1, 1 for 2, 2 for 1, 2 for 2) that fill both teams' positions of need, best
     need fit first. Every row is labelled "win-win" (both teams' playoff plus title odds rise) or
     "need swap" (neither loses more than ODDS_TOL, both fill a need), with its need fit.

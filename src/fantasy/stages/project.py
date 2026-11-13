@@ -16,8 +16,8 @@ Run: uv run python -m fantasy.stages.project
 import polars as pl
 
 from fantasy import store
-from fantasy.sim.expected import POSITIONS, expected_frame
-from fantasy.store import week_index
+from fantasy.sim.expected import expected_frame
+from fantasy.store import SKILL, week_index
 
 HALF_LIFE = 4.0  # games
 SHRINK_K = 3.0  # games of prior weight
@@ -25,7 +25,7 @@ EXPECTED_WEIGHT = 0.5  # blend of expected and actual points; 0.5 won a 2019-202
 N_CAP = 10
 CONTEXT_EXPONENT = 0.25  # 0.5 over-reacts to the implied total; see docs/decisions.md
 FIRST_PROJECTED_SEASON = 2019  # the first season with a prior season to lean on
-LAST_WEEK = 17
+LAST_FANTASY_WEEK = 17  # projected up to the last fantasy week, not the NFL's 18th
 GROUP = ["league_id", "gsis_id"]
 
 
@@ -138,7 +138,7 @@ def future_targets(
     extra = (
         rostered.join(last.select(GROUP), on=GROUP, how="anti")
         .join(current_teams.select("gsis_id", "position"), on="gsis_id")
-        .filter(pl.col("position").is_in(POSITIONS))  # K and DEF are projected in streaming.py
+        .filter(pl.col("position").is_in(SKILL))  # K and DEF are projected in streaming.py
         .with_columns(team=pl.lit(None, dtype=pl.String))
         .select(*GROUP, "position", "team")
     )
@@ -151,7 +151,9 @@ def future_targets(
         .rename({"now": "team"})
     )
     start = week + 1 if first_week is None else first_week
-    weeks = pl.DataFrame({"week": list(range(start, LAST_WEEK + 1))}, schema={"week": pl.Int64})
+    weeks = pl.DataFrame(
+        {"week": list(range(start, LAST_FANTASY_WEEK + 1))}, schema={"week": pl.Int64}
+    )
     # a game has a score only once it is final, so Sunday's finished games drop out while Monday
     # night's stays, and an inactive player (no form row) does not get a game that is over
     unplayed = games.filter((pl.col("game_type") == "REG") & pl.col("points_for").is_null())
@@ -196,7 +198,7 @@ def unprojected_rostered(
     rostered: pl.DataFrame, current: pl.DataFrame, future: pl.DataFrame
 ) -> pl.DataFrame:
     """Per league, rostered skill players with a current team but no future projection row."""
-    skill = current.filter(pl.col("position").is_in(POSITIONS) & pl.col("team").is_not_null())
+    skill = current.filter(pl.col("position").is_in(SKILL) & pl.col("team").is_not_null())
     have = future.select(GROUP).unique()
     return (
         rostered.join(skill.select("gsis_id"), on="gsis_id")

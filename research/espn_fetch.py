@@ -13,7 +13,7 @@ import os
 import time
 from pathlib import Path
 
-import httpx
+import httpx2
 
 from fantasy import store
 from fantasy.stages.snapshot_odds import parse_env_line
@@ -40,7 +40,7 @@ def cookies(env_file: Path = store.ROOT / ".env") -> dict[str, str]:
     return {"espn_s2": found["ESPN_S2"], "SWID": found["ESPN_SWID"]}
 
 
-def fetch(client: httpx.Client, season: int, name: str, params: list[tuple[str, str | int]]) -> None:
+def fetch(client: httpx2.Client, season: int, name: str, params: list[tuple[str, str | int]]) -> None:
     path = OUT / f"{season}_{name}.json"
     if path.exists():
         return
@@ -55,7 +55,7 @@ def fetch(client: httpx.Client, season: int, name: str, params: list[tuple[str, 
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     headers = {"User-Agent": "fantasy-app personal tool"}
-    with httpx.Client(cookies=cookies(), headers=headers, timeout=30) as client:
+    with httpx2.Client(cookies=cookies(), headers=headers, timeout=30) as client:
         for season in SEASONS:
             for view in SEASON_VIEWS:
                 fetch(client, season, view, [("view", view)])

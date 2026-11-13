@@ -1,4 +1,4 @@
-import type { FilterChipGroup } from "@/stat/config/queryBuilderOptions";
+import { type FilterChipGroup, seasonOfChipId } from "@/stat/config/queryBuilderOptions";
 import { getStatById, playerColumnForRole, type StatDefinition } from "@/stat/config/statDictionary";
 import {
   buildFilterWhereSql,
@@ -17,7 +17,7 @@ import type { QueryResult } from "@/stat/types/workbench";
 import type { ColumnSource, ColumnStore, Table } from "./columns";
 import { isLeagueStat, leaguePointsProblem, runLeaguePointsQuery, type LeaguePointsRow } from "./leaguePointsQuery";
 import { isDerivedStat, runDerivedStats } from "./derivedQuery";
-import { latestGames } from "./lastGames";
+import { latestPlayGames } from "./lastGames";
 import { narrowPlayerSet, playersFitting } from "./playerFilters";
 import { canServeFromPlayerGame, runPlayerGameQuery, wantedPlayers } from "./playerGameQuery";
 import {
@@ -25,6 +25,7 @@ import {
   compileAggregateExpression,
   compileRowExpression,
   parseExpression,
+  parseOptional,
   type Columns,
   type Node,
   type Value,
@@ -122,16 +123,12 @@ export function seasonsSelectedByChips(params: StatQueryParams): Set<number> {
   const years = new Set<number>();
   const group = params.chipGroups.find((g) => g.id === "season");
   for (const option of group?.options ?? []) {
-    const match = /^season-(\d+)$/.exec(option.id);
-    if (match && params.filterChipState[option.id]) {
-      years.add(Number(match[1]));
+    const season = seasonOfChipId(option.id);
+    if (season !== null && params.filterChipState[option.id]) {
+      years.add(season);
     }
   }
   return years;
-}
-
-function parseOptional(sql: string): Node | null {
-  return sql === "" ? null : parseExpression(sql);
 }
 
 /** Sorts rows by a stat (rows without a number last) and keeps the first `limit`. */
@@ -366,18 +363,7 @@ async function scanPlays(
   const scope = plan.scopeNode ? compileRowExpression(plan.scopeNode, table.cols) : null;
   const idColumns = teamColumn ? [teamColumn] : ROLE_COLUMNS;
   // A player's games are those he had a play in (any role); a team's, those it played.
-  const last = plan.lastN
-    ? latestGames(plan.lastN, (addGame) => {
-        const { game_id: gameIds, season, week } = table.cols;
-        for (let i = 0; i < table.rowCount; i++) {
-          if (scope && scope(i) !== true) continue;
-          for (const column of idColumns) {
-            const pid = table.cols[column]![i];
-            if (typeof pid === "string" && wanted(pid)) addGame(pid, gameIds![i], Number(season![i]), Number(week![i]));
-          }
-        }
-      })
-    : null;
+  const last = plan.lastN ? latestPlayGames(plan.lastN, table.cols, table.rowCount, wanted, scope, idColumns) : null;
   const games = plan.needGames ? gamesPlayed(table.cols, table.rowCount, wanted, scope, keyOf, idColumns, last) : new Map<string, number>();
   return { table, wanted, keyOf, chip, last, games };
 }

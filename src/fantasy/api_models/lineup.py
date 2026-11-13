@@ -1,5 +1,7 @@
 """Lineup, win-probability, action and streamer models."""
 
+from typing import Literal
+
 from fantasy.api_models.base import Row
 
 
@@ -74,6 +76,7 @@ class SummaryModel(Row):
 
 
 class WinProbabilityData(Row):
+    playoff_label: str | None  # e.g. "Round 2 vs X"; null outside the playoffs
     script: str | None
     swap: SwapNoteModel | None
     comparison: list[ComparisonRow]
@@ -89,6 +92,53 @@ class ActionRow(Row):
     share_better: float | None = None
 
 
+class FillInRow(Row):
+    gsis_id: str
+    full_name: str
+    position: str
+    projection: float
+    drop_name: str | None
+
+
+class HoleRow(Row):
+    kind: Literal["bye", "out", "empty", "ir_move"]
+    slot: str
+    player_name: str | None
+    fill_ins: list[FillInRow]
+
+
+class StashRow(Row):
+    gsis_id: str
+    full_name: str
+    position: str
+    status: str
+    owner: str | None
+    is_mine: bool
+    ir_eligible: bool
+    first_week: int | None
+    playoff_points: float
+
+
+class StashData(Row):
+    open_ir_slots: int
+    rows: list[StashRow]
+
+
+class GridRow(Row):
+    week: int
+    slot: str
+    gsis_id: str | None
+    full_name: str | None
+    points: float
+    flag: Literal["bye", "out", "weak"] | None
+
+
+class LineupGrid(Row):
+    weeks: list[int]
+    playoff_weeks: list[int]
+    rows: list[GridRow]
+
+
 class StreamerRow(Row):
     unit: str
     name: str | None
@@ -96,6 +146,7 @@ class StreamerRow(Row):
     is_mine: bool
     this_week: float | None
     next_three: float | None
+    playoff_points: float | None
 
 
 class ScheduleRow(Row):

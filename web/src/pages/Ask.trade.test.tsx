@@ -1,12 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
 import Ask from "./Ask";
-import { LeagueProvider } from "@/lib/league";
 import { fetchManifest } from "@/stat/lib/api";
 import { getPlayerDictionary } from "@/stat/lib/players";
 import { FIXTURE_SEASONS } from "@/stat/testing/seasons";
+import { type Call, okReply, stubApi } from "@/test/fakeApi";
+import { renderWithProviders } from "@/test/render";
 
 vi.mock("@/stat/lib/api", () => ({ fetchManifest: vi.fn() }));
 vi.mock("@/stat/lib/players", () => ({ getPlayerDictionary: vi.fn(), getPlayersByIds: vi.fn(async () => []) }));
@@ -49,18 +48,10 @@ const OWNERS = {
   unmatched: 0,
 };
 let evaluateReply: { status: string; data?: unknown; started_at?: string | null };
-let fetchMock: ReturnType<typeof vi.fn>;
+let calls: Call[] = [];
 
 function renderAsk(entry: string) {
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter initialEntries={[entry]}>
-        <LeagueProvider>
-          <Ask />
-        </LeagueProvider>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<Ask />, { route: entry, league: true });
 }
 
 beforeEach(() => {
@@ -84,21 +75,17 @@ beforeEach(() => {
     player("allen-qb", "Josh Allen", "QB"),
     player("allen-lb", "Josh Allen", "LB"),
   ]);
-  fetchMock = vi.fn(async (url: string) => {
-    const path = String(url);
-    const data = path.includes("/owners")
-      ? OWNERS
-      : path.includes("/trades/evaluate")
-        ? evaluateReply.data
-        : [{ league_key: "a", name: "A", current_week: 9 }];
-    const status = path.includes("/trades/evaluate") ? evaluateReply.status : "ok";
-    return Response.json({ status, data: data ?? null, error: null, started_at: evaluateReply.started_at ?? null });
+  calls = stubApi(({ url }) => {
+    if (url === "/api/leagues/a/owners") return okReply(OWNERS);
+    if (url === "/api/leagues") return okReply([{ league_key: "a", name: "A", current_week: 9 }]);
+    if (url === "/api/leagues/a/lineup") return okReply([]); // a start/sit question reads it
+    if (url !== "/api/leagues/a/trades/evaluate") return undefined;
+    const { status, data = null, started_at = null } = evaluateReply;
+    return { body: { status, data, error: null, started_at } };
   });
-  vi.stubGlobal("fetch", fetchMock);
 });
-afterEach(() => vi.unstubAllGlobals());
 
-const callsTo = (part: string) => fetchMock.mock.calls.filter(([url]) => String(url).includes(part));
+const callsTo = (part: string) => calls.filter(({ url }) => url.includes(part));
 
 describe("Ask trade", () => {
   it("evaluates the trade with the owner as partner, posts the Trades page's body and header, and renders TradeResult", async () => {
@@ -107,11 +94,14 @@ describe("Ask trade", () => {
     expect(await screen.findByRole("region", { name: "My Team" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Rivals" })).toBeInTheDocument();
     expect(screen.getAllByText("Make playoffs").length).toBeGreaterThan(0);
-    const [url, init] = callsTo("/trades/evaluate")[0]!;
-    expect(String(url)).toBe("/api/leagues/a/trades/evaluate");
-    expect(init.method).toBe("POST");
-    expect(init.headers["X-Requested-With"]).toBe("fantasy-app");
-    expect(JSON.parse(init.body)).toEqual({ partner_roster_id: 7, give_ids: ["kelce"], get_ids: ["kittle"] });
+    expect(callsTo("/trades/evaluate")).toEqual([
+      { url: "/api/leagues/a/trades/evaluate", method: "POST", body: { partner_roster_id: 7, give_ids: ["kelce"], get_ids: ["kittle"] } },
+    ]);
+    const request = vi
+      .mocked(fetch)
+      .mock.calls.map(([input]) => input)
+      .find((input) => input instanceof Request && input.method === "POST");
+    expect(request instanceof Request && request.headers.get("X-Requested-With")).toBe("fantasy-app");
     expect(screen.getByRole("link", { name: /Trades page/ })).toHaveAttribute("href", "/moves?league=a&team=2&view=trades");
     expect(callsTo("/nlq/intent")).toHaveLength(0);
   });

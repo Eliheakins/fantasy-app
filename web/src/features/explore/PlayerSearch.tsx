@@ -40,7 +40,7 @@ export function PlayerSearch({
       {searchError && <p className="text-warning">{searchError}</p>}
       {pinMessage && <p className="text-warning">{pinMessage}</p>}
       {suggestions.length > 0 && debounced.trim().length >= 2 && (
-        <ul className="max-h-56 overflow-auto rounded-md border border-line" role="listbox" aria-label="Matching players">
+        <ul className="max-h-56 overflow-auto rounded-md border border-line" aria-label="Matching players">
           {suggestions.map((p) => {
             const blocked = isPinned(p.gsis_id) || full;
             return (

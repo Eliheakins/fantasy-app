@@ -1,8 +1,8 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router";
 
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Callout } from "@/components/Callout";
-import { navSearch } from "@/components/layout/navLinks";
+import { navSearch, type PageUrl } from "@/components/layout/navLinks";
 import { FailureNotice } from "@/features/moves/trade/FailureNotice";
 import { tradeKey } from "@/features/moves/trade/logic";
 import { TradeResult } from "@/features/moves/trade/TradeResult";
@@ -21,9 +21,8 @@ interface Props extends Pick<TradeOutcome, "give" | "get"> {
 }
 
 /** A trade question answered by the Trades page's own evaluation, for the partner who owns the get side. */
-export function TradeAnswer(props: Props) {
-  const owners = useLeagueApi<Owners>("owners");
-  const { pathname, search } = useLocation();
+export function TradeAnswer({ here: { pathname, search }, ...props }: Props & { here: PageUrl }) {
+  const owners = useLeagueApi("/api/leagues/{league}/owners");
   const params = new URLSearchParams(navSearch("/moves", search, pathname));
   params.set("view", "trades");
   const tradesLink = `/moves?${params.toString()}`;
@@ -58,10 +57,10 @@ function Plan({ owners, tradesLink, ...trade }: Props & { owners: Owners["rows"]
 
 function Evaluation({ request }: { request: TradeRequest }) {
   const { league } = useLeague();
-  const { state, refetch } = usePostEnvelope<TradeEvaluation>(
+  const { state, refetch } = usePostEnvelope(
     ["ask-trade", tradeKey({ partner: request.partner_roster_id, give: request.give_ids, get: request.get_ids })],
-    `/api/leagues/${encodeURIComponent(league ?? "")}/trades/evaluate`,
-    request,
+    "/api/leagues/{league}/trades/evaluate",
+    { params: { path: { league: league ?? "" } }, body: request },
   );
   if (state?.kind === "loading" || state === null)
     return (

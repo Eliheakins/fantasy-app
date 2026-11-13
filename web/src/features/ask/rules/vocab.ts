@@ -1,7 +1,7 @@
 import type { PlayerRole } from "@/stat/config/statDictionary";
 
 import { LEADERBOARD_CUES } from "../ranking";
-import { tokenize } from "../resolvePlayers";
+import { wordsOf } from "../resolvePlayers";
 
 /** Words that carry no meaning for the query. Anything else left over makes the parser unsure. */
 export const FILLER = new Set([
@@ -141,7 +141,10 @@ export const CONTRAST_GROUPS = new Set(["location", "season_type", "game_clock",
 /** Chips that name a part of a game; "of the season" after them means something else. */
 export const GAME_PART_PREFIXES = ["gclk-", "qtr-"];
 
-/** Words as the parser reads them. A "%" is a word ("sack %"), not punctuation, so "sack" alone is not "sack %". */
-export const wordsOf = (text: string): string[] => tokenize(text.replace(/%/g, " percent "));
+export { wordsOf };
+
+/** The question asks about a defense: a defense word that is not part of an opponent phrase. */
+export const asksDefense = (tokens: readonly string[], opponentWords: ReadonlySet<number>): boolean =>
+  tokens.some((t, at) => DEFENSE_WORDS.has(t) && !opponentWords.has(at));
 
 export const unique = <T>(values: readonly T[]): T[] => [...new Set(values)];

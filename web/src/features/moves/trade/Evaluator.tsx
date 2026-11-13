@@ -1,16 +1,15 @@
 import { useId, useMemo } from "react";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
-import { useEnvelopeQuery } from "@/api/useEnvelope";
+import { useEnvelopeQuery, usePostEnvelope } from "@/api/useEnvelope";
 import { BUILDER_DEBOUNCE_MS } from "./builder";
 import { TradeOutcome } from "./TradeOutcome";
 import { useDebounced } from "./useDebounced";
 import { FailureNotice } from "./FailureNotice";
 import { canEvaluate, EMPTY_DRAFT, toRequest, tradeKey } from "./logic";
 import { MultiSelect } from "./MultiSelect";
-import type { Asset, Draft, Partner, TradeEvaluation } from "./types";
+import type { Asset, Draft, Partner } from "./types";
 import { useKeptState } from "./useKeptState";
-import { usePostEnvelope } from "@/api/useEnvelope";
 
 const toOptions = (assets: readonly Asset[]) => assets.map((a) => ({ id: a.gsis_id, label: a.label }));
 
@@ -31,17 +30,18 @@ export function Evaluator({ league, scope = league, partners, mine, debounceMs =
     stored.partner !== null && partners.some((p) => p.roster_id === stored.partner) ? stored.partner : (partners[0]?.roster_id ?? null);
   const draft = useMemo<Draft>(() => ({ ...stored, partner }), [stored, partner]); // stable, so the debounce timer restarts only on a real change
   const partnerName = partners.find((p) => p.roster_id === partner)?.team_name ?? "";
-  const theirs = useEnvelopeQuery<Asset[]>(
-    partner === null ? null : `/api/leagues/${encodeURIComponent(league)}/trade-assets?roster_id=${partner}`,
+  const theirs = useEnvelopeQuery(
+    "/api/leagues/{league}/trade-assets",
+    partner === null ? null : { path: { league }, query: { roster_id: partner } },
   );
   const settled = useDebounced(draft, debounceMs);
   const settledKey = tradeKey(settled);
   const busy = tradeKey(draft) !== settledKey; // the result below is for the previous picks
   const active = toRequest(settled);
-  const { state, refetch } = usePostEnvelope<TradeEvaluation>(
+  const { state, refetch } = usePostEnvelope(
     ["evaluate", scope, settledKey],
-    `/api/leagues/${encodeURIComponent(league)}/trades/evaluate`,
-    active,
+    "/api/leagues/{league}/trades/evaluate",
+    active && { params: { path: { league } }, body: active },
   );
 
   return (

@@ -83,16 +83,19 @@ def missing_kickoffs(schedules: pl.DataFrame, season: int, week: int) -> set[str
     }
 
 
-def kickoffs(schedules: pl.DataFrame, season: int, week: int) -> dict[str, datetime]:
-    """Kickoff time of each team's game this week. Schedule times are US Eastern. Warns about
-    teams with a game but no kickoff time (they are left out; see `missing_kickoffs`)."""
+def kickoffs(
+    schedules: pl.DataFrame, season: int, week: int, *, warn: bool = True
+) -> dict[str, datetime]:
+    """Kickoff time of each team's game this week. Schedule times are US Eastern. Warns (unless
+    `warn` is False, for a caller that handles them) about teams with a game but no kickoff time
+    (they are left out; see `missing_kickoffs`)."""
     out: dict[str, datetime] = {}
     for day, time, away, home in _games(schedules, season, week):
         if day is None or time is None:
             continue
         kickoff = datetime.fromisoformat(f"{day}T{time}").replace(tzinfo=EASTERN)
         out[away] = out[home] = kickoff
-    missing = missing_kickoffs(schedules, season, week) - set(out)
+    missing = missing_kickoffs(schedules, season, week) - set(out) if warn else set()
     if missing:
         warnings.warn(
             f"no kickoff time for {sorted(missing)} in week {week}: their games read as not "

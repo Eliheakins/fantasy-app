@@ -1,10 +1,12 @@
 import { lazy, type ReactNode, Suspense } from "react";
-import { createBrowserRouter, type RouteObject } from "react-router-dom";
+import { createBrowserRouter, Outlet, type RouteObject } from "react-router";
 import { AppShell } from "@/components/layout/AppShell";
 import { RequireAdmin } from "@/components/layout/RequireAdmin";
 import { RequireSession } from "@/components/layout/RequireSession";
+import { RouteError } from "@/components/layout/RouteError";
+import { useRouteAnnounce } from "@/hooks/useRouteAnnounce";
 import { redirectRoutes } from "@/lib/redirects";
-import { NAV_ITEMS, type NavPath } from "@/nav";
+import { type ExtraPath, NAV_ITEMS, type NavPath, type PublicPath } from "@/nav";
 import DevViz from "@/pages/DevViz";
 import Login from "@/pages/Login";
 import MyLeagues from "@/pages/MyLeagues";
@@ -26,6 +28,7 @@ const Season = lazy(() => import("@/pages/Season"));
 const ThisWeek = lazy(() => import("@/pages/ThisWeek"));
 const WelcomeDialog = lazy(() => import("@/features/leagues/WelcomeDialog").then((m) => ({ default: m.WelcomeDialog })));
 
+// Each map is keyed by nav.ts paths, so tsc fails when a page is missing here or a path is not in nav.ts.
 /** The five tabs. Add a page here and in nav.ts. */
 const TABS: Record<NavPath, ReactNode> = {
   "/": <ThisWeek />,
@@ -35,10 +38,30 @@ const TABS: Record<NavPath, ReactNode> = {
   "/players": <Players />,
 };
 
+/** The other pages in the shell (`EXTRA_TITLES`); /admin also sits behind `RequireAdmin`, below. */
+const EXTRAS: Record<Exclude<ExtraPath, "/admin">, ReactNode> = {
+  "/ask": <Ask />,
+  "/my-leagues": <MyLeagues />,
+  "/model": <Scorecard />,
+  "/players/find": <Explore />,
+  "/players/compare": <PlayersCompare />,
+  "/players/:gsisId": <Player />,
+};
+
+/** The pages a signed-out visitor can reach (`PUBLIC_TITLES`). */
+const PUBLIC: Record<PublicPath, ReactNode> = {
+  "/login": <Login />,
+  "/invite/:token": <RedeemInvite />,
+};
+
+/** The public pages' frame: the same title owner as the shell's, with no team to name. */
+function PublicFrame() {
+  useRouteAnnounce(null);
+  return <Outlet />;
+}
+
 export const routes: RouteObject[] = [
-  // the two pages a signed-out visitor can reach: sign in, and the page an invite link opens
-  { path: "/login", element: <Login /> },
-  { path: "/invite/:token", element: <RedeemInvite /> },
+  { element: <PublicFrame />, children: Object.entries(PUBLIC).map(([path, element]) => ({ path, element })) },
   {
     element: <RequireSession />,
     children: [
@@ -51,15 +74,12 @@ export const routes: RouteObject[] = [
             </Suspense>
           </>
         ),
+        // a page chunk that 404s after a redeploy lands here instead of React Router's default screen
+        errorElement: <RouteError />,
         children: [
           ...NAV_ITEMS.map(({ path }) => ({ path, element: TABS[path] })),
-          { path: "/players/find", element: <Explore /> },
-          { path: "/players/compare", element: <PlayersCompare /> },
-          { path: "/players/:gsisId", element: <Player /> },
-          { path: "/ask", element: <Ask /> },
-          { path: "/model", element: <Scorecard /> },
-          { path: "/my-leagues", element: <MyLeagues /> },
-          { element: <RequireAdmin />, children: [{ path: "/admin", element: <Admin /> }] },
+          ...Object.entries(EXTRAS).map(([path, element]) => ({ path, element })),
+          { element: <RequireAdmin />, children: [{ path: "/admin" satisfies ExtraPath, element: <Admin /> }] },
           ...redirectRoutes,
           ...(import.meta.env.DEV ? [{ path: "/dev/viz", element: <DevViz /> }] : []),
           { path: "*", element: <NotFound /> },

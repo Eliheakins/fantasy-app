@@ -5,9 +5,11 @@ projections; each team's K and DEF are its own projections (`LeagueData.kd_slot`
 leaves unchanged. `waivers`, `trades` and `needs` build on these; `moves` re-exports all of them.
 """
 
+from collections.abc import Collection
+
 import polars as pl
 
-from fantasy.sim.lineup import Player, auto_lineup, lineup_slots
+from fantasy.sim.lineup import auto_lineup, lineup_slots, week_pool
 from fantasy.sim.odds import HAZARD, STAY_OUT, LeagueData
 from fantasy.sim.value import (
     absence_probs,
@@ -28,9 +30,13 @@ def week_values(data: LeagueData) -> dict[int, dict[str, float]]:
     return values_by_week(data.projections)
 
 
-def ros_value(data: LeagueData, ids: list[str]) -> dict[str, float]:
-    """Projected points over the rest of the season, per player."""
+def ros_value(
+    data: LeagueData, ids: list[str], weeks: Collection[int] | None = None
+) -> dict[str, float]:
+    """Projected points over the rest of the season (or only `weeks`), per player."""
     wanted = data.projections.filter(pl.col("gsis_id").is_in(ids))
+    if weeks is not None:
+        wanted = wanted.filter(pl.col("week").is_in(list(weeks)))
     sums = dict(wanted.group_by("gsis_id").agg(pl.col("projection").sum()).iter_rows())
     return {i: float(sums.get(i, 0.0)) for i in ids}
 
@@ -68,8 +74,7 @@ def team_total(
     positions = position_of(data) if positions is None else positions
     total = 0.0
     for values in (week_values(data) if values_by_week is None else values_by_week).values():
-        pool = [Player(i, positions[i], values[i]) for i in ids if i in values and i in positions]
-        total += auto_lineup(pool, slots).total
+        total += auto_lineup(week_pool(ids, positions, values), slots).total
     return total
 
 
@@ -82,20 +87,29 @@ class Valuer:
     """Expected points over the rest of the season for a set of players, counting absences and
     free-agent stand-ins (see sim/value.py). Build once per league and reuse."""
 
-    def __init__(self, data: LeagueData) -> None:
+    def __init__(self, data: LeagueData, weeks: Collection[int] | None = None) -> None:
+        """`weeks` limits the sum to those weeks; absence chances are still built from every
+        projected week, so a kept week keeps its true offset from the current week."""
         self.data = data
+        self.weeks = weeks
         self.slots = lineup_slots(data.roster_positions)
         self.positions = position_of(data)
         # points when playing, by week; absences are weighed separately
         self.values = conditional_values(data.projections)
-        weeks = len(self.values)
+        n = len(self.values)
         curves = play_curves(data.projections, sorted(self.values))
         self.absence = {
-            g: absence_probs(curves.get(g, (1.0,)), weeks, HAZARD, STAY_OUT) for g in self.positions
+            g: absence_probs(curves.get(g, (1.0,)), n, HAZARD, STAY_OUT) for g in self.positions
         }
         self.replacements = replacement_pool(free_agents(data), self.positions, self.values)
 
     def __call__(self, ids: list[str]) -> float:
         return season_value(
-            self.slots, self.positions, self.values, ids, self.absence, self.replacements
+            self.slots,
+            self.positions,
+            self.values,
+            ids,
+            self.absence,
+            self.replacements,
+            self.weeks,
         )

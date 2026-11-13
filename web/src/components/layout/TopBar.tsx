@@ -1,6 +1,4 @@
-import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
-import type { Status } from "@/api/types";
+import { useLocation } from "react-router";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { useLeague } from "@/lib/league";
@@ -8,19 +6,10 @@ import { WEEK_PATHS } from "@/nav";
 import { FIRST_WEEK, LAST_WEEK, useWeek } from "@/lib/week";
 import { useTeam } from "@/lib/teamContext";
 import { formatAsOf, latestUpdate, liveLabel } from "@/lib/status";
+import { useNow } from "@/lib/useNow";
 import { AskBox } from "./AskBox";
 
 const LIVE_TICK_MS = 30_000;
-
-/** Current time, refreshed so the "updated N min ago" label keeps moving. */
-function useNow(): Date {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), LIVE_TICK_MS);
-    return () => window.clearInterval(id);
-  }, []);
-  return now;
-}
 
 const WEEKS = Array.from({ length: LAST_WEEK - FIRST_WEEK + 1 }, (_, i) => i + FIRST_WEEK);
 /** Selects on the Forest band: a darker-green pill with white text, 44 px high. */
@@ -29,7 +18,7 @@ const PILL =
 
 /** The Forest brand row: team name over "Updated …", league, team and week selects, and the Ask field. */
 export function TopBar() {
-  const now = useNow();
+  const now = useNow(LIVE_TICK_MS);
   const { leagues, league, setLeague } = useLeague();
   const { team, teams, setTeam } = useTeam();
   const { week, setWeek } = useWeek();
@@ -38,13 +27,13 @@ export function TopBar() {
   const weekReady = leagues.kind === "ready";
   const mine = teams.find((t) => t.is_me)?.roster_id ?? null;
   const shown = teams.find((t) => t.roster_id === (team ?? mine));
-  const status = useEnvelopeQuery<Status>("/api/status");
+  const status = useEnvelopeQuery("/api/status");
   const updated = status.kind === "ready" ? latestUpdate(status.data) : null;
   const live = status.kind === "ready" ? liveLabel(status.data, now) : null;
   const list = leagues.kind === "ready" ? leagues.data : [];
   return (
     <header>
-      <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center gap-x-4 gap-y-2 px-[var(--page-pad)] py-3 md:min-h-[64px] md:py-2">
+      <div className="mx-auto flex w-full max-w-page flex-wrap items-center gap-x-4 gap-y-2 px-[var(--page-pad)] py-3 md:min-h-[64px] md:py-2">
         <div className="min-w-0 flex-1 md:flex-none">
           <p className="truncate font-display text-[24px] font-semibold leading-8 text-white">{shown?.team_name ?? "Fantasy"}</p>
           <p className="min-h-4 text-caption text-chrome-text">
