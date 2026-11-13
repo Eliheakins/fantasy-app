@@ -101,10 +101,12 @@ def run(
         if built is None:
             continue
         data, inp = built
-        started = data.current_week >= data.playoff_start
+        # past the first playoff week only: in it, Sleeper's week (leg) can still trail the rolled
+        # current_week, so the synced rows are still provisional and not loaded
+        started = data.current_week > data.playoff_start
         if started and not any(m.bracket == "winners" for m in data.bracket):
             note_soft_failure(
-                f"simulate {league['league_key']}: playoffs started but no bracket rows; "
+                f"simulate {league['league_key']}: playoffs started but no bracket rows are fixed; "
                 "title odds use a guessed bracket"
             )
         result = simulate_season(inp)

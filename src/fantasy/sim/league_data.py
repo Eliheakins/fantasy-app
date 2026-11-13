@@ -14,7 +14,14 @@ import polars as pl
 from fantasy import store
 from fantasy.config import load_config
 from fantasy.sim.availability import kickoffs, remaining_share
-from fantasy.sim.bracket import Match, from_rows, playoff_weeks, round_type_of, settings_dict
+from fantasy.sim.bracket import (
+    Match,
+    fixed_only,
+    from_rows,
+    playoff_weeks,
+    round_type_of,
+    settings_dict,
+)
 from fantasy.sim.league_checks import (
     check_league_shape,
     check_projected,
@@ -193,12 +200,13 @@ def _standings_inputs(
     )
 
 
-def _load_bracket(lid: str, data_dir: Path | None) -> tuple[Match, ...]:
-    """The league's synced bracket rows; empty when the table is missing or has none."""
+def _load_bracket(lid: str, playoff_start: int, data_dir: Path | None) -> tuple[Match, ...]:
+    """The league's fixed bracket rows (`bracket_trust`); empty when the table is missing or has
+    none fixed yet."""
     if not store.table_path("playoff_brackets", "raw", data_dir).exists():
         return ()
     rows = store.read_table("playoff_brackets", "raw", data_dir).filter(pl.col("league_id") == lid)
-    return from_rows(rows.iter_rows(named=True))
+    return fixed_only(from_rows(rows.iter_rows(named=True)), playoff_start)
 
 
 def _load_divisions(lid: str, settings_json: str | None, data_dir: Path | None) -> dict[int, int]:
@@ -333,7 +341,7 @@ def load_league_data(
         trade_deadline=int(league["trade_deadline"] or 99),
         league_id=lid,
         kd_slot=kd_slot_projections(lid, id_map, current, data_dir),
-        bracket=_load_bracket(lid, data_dir),
+        bracket=_load_bracket(lid, playoff_start, data_dir),
         realized=_realized(matchups, current, playoff_start),
         playoff_teams=playoff_teams,
         round_type=round_type,

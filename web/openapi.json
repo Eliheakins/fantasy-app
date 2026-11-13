@@ -7772,6 +7772,26 @@
               }
             ],
             "title": "Playoff Label"
+          },
+          "team_phase": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "regular",
+                  "playing",
+                  "bye",
+                  "consolation",
+                  "eliminated",
+                  "champion",
+                  "over"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Team Phase"
           }
         },
         "additionalProperties": false,
@@ -7794,7 +7814,8 @@
           "scoring_labels",
           "record",
           "trade_deadline",
-          "playoff_label"
+          "playoff_label",
+          "team_phase"
         ],
         "title": "LeagueRow"
       },

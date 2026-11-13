@@ -88,7 +88,7 @@ class LeagueData:
     # position -> ((upper projection edge, cv), ...) by size tier; the starters' spread is smaller
     kd_slot: dict[tuple[str, int, int], float] = field(default_factory=dict)
     # (kind "K" or "DEF", roster id, week) -> projected points of the team's best rostered unit
-    bracket: tuple[Match, ...] = ()  # synced playoff_brackets rows (winners and losers)
+    bracket: tuple[Match, ...] = ()  # fixed playoff_brackets rows only (bracket.fixed_only)
     realized: dict[tuple[int, int], float] = field(default_factory=dict)
     # (roster id, week) -> points, for playoff weeks already played
     playoff_teams: int = 6
@@ -231,10 +231,10 @@ def _subtract_absences(
 def _trusted_bracket(
     data: LeagueData,
 ) -> tuple[tuple[Match, ...] | None, tuple[int, ...] | None]:
-    """The real winners rows and seeds (roster ids of seeds 1..N), or None for each before the
-    playoffs start (earlier rows are provisional) or when there are none to read."""
+    """The real winners rows and seeds (roster ids of seeds 1..N), or None for each when there
+    are none. `data.bracket` holds fixed rows only (the loader drops provisional ones)."""
     real = tuple(m for m in data.bracket if m.bracket == "winners")
-    if not real or data.current_week < data.playoff_start:
+    if not real:
         return None, None
     seeds = seeds_from(real, template(data.playoff_teams, data.round_type))
     return real, tuple(seeds) if seeds else None

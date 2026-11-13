@@ -26,14 +26,24 @@ def _run(tmp_path: Path, start: int, bracket: list[dict]) -> list[str]:
     return notes
 
 
-@pytest.mark.parametrize(("start", "noted"), [(3, True), (4, False)])
+# week 3 is current; in the first playoff week Sleeper may not have fixed the bracket yet
+@pytest.mark.parametrize(("start", "noted"), [(2, True), (3, False), (4, False)])
 def test_playoffs_without_bracket_rows_are_a_soft_failure(
     tmp_path: Path, start: int, noted: bool
 ) -> None:
     notes = _run(tmp_path, start, [])
-    assert any("no bracket rows" in n for n in notes) is noted  # week 3 is current
+    assert any("no bracket rows" in n for n in notes) is noted
+
+
+def test_only_provisional_rows_a_week_into_the_playoffs_are_a_soft_failure(
+    tmp_path: Path,
+) -> None:
+    final = {"league_id": "L1", "bracket": "winners", "r": 1, "m": 1, "t1": 1, "t2": 2, "p": 1}
+    notes = _run(tmp_path, 2, [final | {"fetched_week": 1}])
+    assert any("no bracket rows" in n for n in notes)
 
 
 def test_synced_bracket_rows_are_no_soft_failure(tmp_path: Path) -> None:
     final = {"league_id": "L1", "bracket": "winners", "r": 1, "m": 1, "t1": 1, "t2": 2, "p": 1}
-    assert not any("no bracket rows" in n for n in _run(tmp_path, 3, [final]))
+    synced = final | {"fetched_week": 2}
+    assert not any("no bracket rows" in n for n in _run(tmp_path, 2, [synced]))

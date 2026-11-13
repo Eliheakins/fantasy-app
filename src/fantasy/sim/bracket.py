@@ -20,6 +20,8 @@ import numpy as np
 # a roster id, ("s", seed), ("w" | "l", match id) for the winner or loser of that match, or None
 SlotKind = Literal["s", "w", "l"]
 Slot = int | tuple[SlotKind, int] | None
+# "fixed": synced once Sleeper's week reached the playoff start, so the rows are real seeds
+BracketTrust = Literal["provisional", "fixed"]
 
 
 @dataclass(frozen=True)
@@ -34,6 +36,7 @@ class Match:
     w: int | None = None  # roster id of the winner once played
     l: int | None = None  # noqa: E741  (Sleeper's field name)
     p: int | None = None  # placement the winner takes: 1 title, 3 third place, 5 fifth place
+    fetched_week: int | None = None  # Sleeper's week (leg) at sync; None for template rows
 
 
 @dataclass(frozen=True)
@@ -214,9 +217,22 @@ def from_rows(rows: Iterable[Mapping[str, Any]]) -> tuple[Match, ...]:
             w=opt(x.get("w")),
             l=opt(x.get("l")),
             p=opt(x.get("p")),
+            fetched_week=opt(x.get("fetched_week")),
         )
         for x in rows
     )
+
+
+def bracket_trust(fetched_week: int | None, playoff_start: int) -> BracketTrust:
+    """Rows synced before Sleeper's week (`leg`) reached the playoff start are provisional (built
+    from standings, seeds can still move). Not `leagues.current_week`: week_rollover moves that a
+    day or more before Sleeper moves `leg`."""
+    return "fixed" if fetched_week is not None and fetched_week >= playoff_start else "provisional"
+
+
+def fixed_only(matches: Iterable[Match], playoff_start: int) -> tuple[Match, ...]:
+    """The rows readers may treat as the real bracket (seeds, labels, phases)."""
+    return tuple(m for m in matches if bracket_trust(m.fetched_week, playoff_start) == "fixed")
 
 
 def is_title_path(match: Match) -> bool:

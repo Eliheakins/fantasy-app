@@ -1,6 +1,7 @@
 """Bracket engine, realized playoff weeks, standings cap and the week 16+ crash fix."""
 
 from dataclasses import replace
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -9,9 +10,11 @@ import pytest
 from test_odds import N_TEAMS, toy_league
 from test_season import inputs
 
+from fantasy import store
 from fantasy.sim import bracket, odds
-from fantasy.sim.league_data import _standings_inputs
+from fantasy.sim.league_data import _load_bracket, _standings_inputs
 from fantasy.sim.season import simulate_season
+from fantasy.stages.sync_sleeper import bracket_frame
 
 START = 8  # toy league: playoffs are weeks 8 to 10
 
@@ -128,12 +131,45 @@ def test_real_seeds_replace_the_simulated_order_once_trusted() -> None:
     assert res.p_seed[4, 0] == 1.0  # roster 5 is the top seed (t1 of match 4)
 
 
-def test_provisional_rows_before_the_playoffs_are_ignored() -> None:
-    rows = seeded_rows(w1=3, w2=5)
-    base = odds.league_odds(at_week(START - 1), n_sims=300)
-    ignored = odds.league_odds(at_week(START - 1, bracket=real(rows)), n_sims=300)
+def synced(tmp_path: Path, leg: int) -> tuple[bracket.Match, ...]:
+    """Round one of `seeded_rows` as sync_sleeper stores it when Sleeper's week is `leg`, read
+    back the way the simulation loads it."""
+    raw = [{k: v for k, v in r.items() if k in ("r", "m", "t1", "t2")} for r in seeded_rows()[:2]]
+    frame = bracket_frame("L", "winners", raw, week=leg, playoff_start=START)
+    store.write_table("playoff_brackets", frame, "raw", tmp_path)
+    return _load_bracket("L", START, tmp_path)
+
+
+def test_rows_synced_before_sleepers_week_reaches_the_start_are_not_trusted(
+    tmp_path: Path,
+) -> None:
+    # Tuesday after the last regular week: week_rollover moved current_week to the start, but
+    # Sleeper's leg (the week sync stamps) is still the week before, so the seeds can still move
+    data = at_week(START, bracket=synced(tmp_path, leg=START - 1))
+    assert odds._trusted_bracket(data) == (None, None)
+    base = odds.league_odds(at_week(START), n_sims=300)
+    ignored = odds.league_odds(data, n_sims=300)
     assert np.array_equal(base.p_title, ignored.p_title)
     assert np.array_equal(base.p_seed, ignored.p_seed)
+
+
+def test_rows_synced_once_sleepers_week_is_the_start_are_trusted(tmp_path: Path) -> None:
+    real_rows, _ = odds._trusted_bracket(at_week(START, bracket=synced(tmp_path, leg=START)))
+    assert real_rows is not None
+    assert [(m.m, m.t1, m.t2, m.fetched_week) for m in real_rows] == [
+        (1, 3, 6, START),
+        (2, 4, 5, START),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("fetched_week", "trust"),
+    [(None, "provisional"), (START - 1, "provisional"), (START, "fixed"), (START + 2, "fixed")],
+)
+def test_bracket_trust_is_fixed_only_from_the_playoff_start(
+    fetched_week: int | None, trust: str
+) -> None:
+    assert bracket.bracket_trust(fetched_week, START) == trust
 
 
 def test_a_known_champion_is_fixed_after_the_final() -> None:

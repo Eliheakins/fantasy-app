@@ -35,7 +35,9 @@ def _store(tmp_path: Path, rows: list[dict], current: int, start: int = 2) -> No
         current_week=pl.lit(current, pl.Int64), playoff_week_start=pl.lit(start, pl.Int64)
     )
     store.write_table("leagues", leagues, "raw", tmp_path)
-    write_rows(tmp_path, "playoff_brackets", rows, area="raw")
+    # sync stamps Sleeper's week; here it is the current week unless a row says otherwise
+    synced = [{"fetched_week": current} | r for r in rows]
+    write_rows(tmp_path, "playoff_brackets", synced, area="raw")
     odds = [
         {"league_id": "L1", "roster_id": t, "round": 1, "p_reach": 1.0, "p_win": 0.1 * t}
         for t in (3, 4, 5, 6)
@@ -203,3 +205,25 @@ def test_a_league_with_an_unsupported_round_type_still_lists_with_no_playoff_wee
     )
     store.write_table("leagues", leagues, "raw", tmp_path)
     assert data_api.leagues(tmp_path)["playoff_weeks"].to_list() == [None]
+
+
+def test_rows_synced_before_sleepers_week_reaches_the_start_are_not_read(tmp_path: Path) -> None:
+    # week_rollover moved current_week to the start; Sleeper's leg (fetched_week) has not moved
+    _store(tmp_path, [r | {"fetched_week": 1} for r in ROUND_ONE], current=2)
+    assert _status(tmp_path, 3, 2) is None
+    [row] = data_api.leagues(tmp_path).to_dicts()
+    assert data_api.league_phase(row, tmp_path) is None
+    view = data_api.bracket("t", tmp_path)
+    assert view.rounds == [] and view.message == "The bracket is set after week 1"
+
+
+def test_the_league_row_phase_reads_my_team_in_the_current_week(tmp_path: Path) -> None:
+    _store(tmp_path, ROUND_ONE, current=2)
+    [row] = data_api.leagues(tmp_path).to_dicts()
+    assert data_api.league_phase(row, tmp_path) == "bye"  # roster 1 is mine
+    assert data_api.league_phase({**row, "roster_id": 3}, tmp_path) == "playing"
+    assert data_api.league_phase({**row, "current_week": 1}, tmp_path) == "regular"
+    _store(tmp_path, FINISHED, current=5)
+    assert data_api.league_phase({**row, "current_week": 5}, tmp_path) == "champion"
+    assert data_api.league_phase({**row, "current_week": 5, "roster_id": 2}, tmp_path) == "over"
+    assert data_api.league_phase({**row, "roster_id": None}, tmp_path) is None

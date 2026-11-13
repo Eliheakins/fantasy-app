@@ -350,6 +350,17 @@ def test_holes_stay_in_a_playoff_game_and_the_regular_season(
     assert _holes_with(tmp_path, monkeypatch, playoff_start=3, bracket=playing) == regular
 
 
+def test_holes_stay_in_a_consolation_game(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    regular = _holes_with(tmp_path, monkeypatch)
+    consolation = from_rows(
+        [
+            {"bracket": "winners", "r": 1, "m": 1, "t1": 2, "t2": 3, "p": 1},
+            {"bracket": "losers", "r": 1, "m": 1, "t1": 1, "t2": 4},
+        ]
+    )
+    assert _holes_with(tmp_path, monkeypatch, playoff_start=3, bracket=consolation) == regular
+
+
 def test_holes_stay_when_my_next_round_slot_is_still_a_reference(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

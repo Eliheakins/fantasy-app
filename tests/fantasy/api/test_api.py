@@ -77,6 +77,7 @@ def test_leagues_has_record_fallback_and_trade_deadline(client: TestClient) -> N
     assert [r["league_key"] for r in rows] == ["t"]
     assert rows[0]["record"] == "no record yet" and rows[0]["trade_deadline"] is None
     assert rows[0]["playoff_label"] is None  # a regular-season week
+    assert rows[0]["team_phase"] == "regular"
     assert rows[0]["team_name"] == "Mine"
 
 
@@ -90,7 +91,9 @@ def test_leagues_answers_with_no_label_for_a_league_with_a_corrupt_bracket(
     bad = {"league_id": "L1", "bracket": "winners", "r": 1, "m": 1, "t1": 1, "t2_from_kind": "x"}
     write_rows(store_dir, "playoff_brackets", [bad | {"t2_from_m": 1}], area="raw")
     rows = body(client.get("/api/leagues"))["data"]
-    assert [(r["league_key"], r["playoff_label"]) for r in rows] == [("t", None)]
+    assert [(r["league_key"], r["playoff_label"], r["team_phase"]) for r in rows] == [
+        ("t", None, None)
+    ]
 
 
 def test_data_version_follows_the_files_of_the_given_data_dir(tmp_path: Path) -> None:

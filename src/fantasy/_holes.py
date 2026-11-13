@@ -7,12 +7,12 @@ from typing import Any, Literal
 
 import polars as pl
 
-from fantasy._bracket import BYE, CHAMPION, ELIMINATED, label_for
+from fantasy._bracket import NO_GAME_PHASES, team_phase
 from fantasy._engine import _id_map, _league, _league_settings, _names, _read, _week_values
 from fantasy._lineup import _flag_status, _is_out, _week_games
 from fantasy.config import SKILL_POSITIONS
 from fantasy.sim import moves
-from fantasy.sim.bracket import Match, settings_dict
+from fantasy.sim.bracket import settings_dict
 from fantasy.sim.lineup import CONSTANT_SLOTS, Player, auto_lineup, lineup_slots
 from fantasy.sim.lineup import ELIGIBLE as SLOT_ELIGIBLE
 from fantasy.sim.odds import LeagueData
@@ -25,7 +25,6 @@ BASE_IR_STATUSES = frozenset({"IR", "PUP"})
 RESERVE_STATUSES = {  # Sleeper's reserve_allow_<key> settings -> injury status
     "out": "Out", "doubtful": "Doubtful", "sus": "Sus", "na": "NA", "dnr": "DNR", "cov": "COV",
 }  # fmt: skip
-NO_GAME_LABELS = frozenset({BYE, ELIMINATED, CHAMPION})
 
 HoleKind = Literal["bye", "out", "empty"]
 
@@ -217,33 +216,14 @@ def _kd_side(
     )
 
 
-def _never_in_bracket(bracket: tuple[Match, ...], mine: int) -> bool:
-    """True only when the winners bracket's first round is fully seeded (every side a team) and
-    my team is on no winners row: rows still missing or unseeded prove nothing."""
-    winners = [m for m in bracket if m.bracket == "winners"]
-    if not winners:
-        return False
-    first = min(m.r for m in winners)
-    seeded = all(isinstance(s, int) for m in winners if m.r == first for s in (m.t1, m.t2))
-    return seeded and all(mine not in (m.t1, m.t2) for m in winners)
-
-
 def _no_game(data: LeagueData, mine: int) -> bool:
-    """True from the playoff start when my team surely has no game this week: the season is over,
-    the label says bye, eliminated or champion, or a fully seeded bracket leaves my team out. An
-    unknown label (no rows, or my next-round slot not filled in yet) keeps the holes."""
-    week = data.current_week
-    if week < data.playoff_start:
-        return False
-    if week >= data.playoff_start + data.playoff_weeks:
-        return True
-    label = label_for(
-        data.bracket, data.team_names, roster_id=mine, week=week, current_week=week,
-        playoff_start=data.playoff_start, round_type=data.round_type,
+    """True when my team surely has no game this week (`team_phase` bye, eliminated, champion or
+    season over). Unknown, playing and consolation keep the holes: a consolation game counts."""
+    phase = team_phase(
+        data.bracket, roster_id=mine, week=data.current_week, playoff_start=data.playoff_start,
+        playoff_weeks=data.playoff_weeks, round_type=data.round_type,
     )  # fmt: skip
-    if label is not None:
-        return label in NO_GAME_LABELS
-    return _never_in_bracket(data.bracket, mine)
+    return phase in NO_GAME_PHASES
 
 
 def holes(

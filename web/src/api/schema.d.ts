@@ -2282,6 +2282,8 @@ export interface components {
             trade_deadline: number | null;
             /** Playoff Label */
             playoff_label: string | null;
+            /** Team Phase */
+            team_phase: ("regular" | "playing" | "bye" | "consolation" | "eliminated" | "champion" | "over") | null;
         };
         /** LineupGrid */
         LineupGrid: {
