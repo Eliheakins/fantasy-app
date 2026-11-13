@@ -1,10 +1,14 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { Field } from "@/components/Field";
 import { PageHeader } from "@/components/PageHeader";
+import type { ApiError } from "@/api/envelope";
 import { Button } from "@/components/ui/button";
 import { signIn, useSession } from "@/lib/session";
+
+/** The server's code for a wrong email or password (fantasy/auth/routes.py); that failure sits on the password field. */
+const WRONG_CREDENTIALS = "invalid";
 
 type LoginState = { from?: string; ended?: boolean } | null;
 
@@ -21,16 +25,13 @@ export default function Login() {
   const session = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ApiError | null>(null);
   const [busy, setBusy] = useState(false);
   const passwordField = useRef<HTMLInputElement>(null);
   const destination = safePath(state?.from);
 
-  useEffect(() => {
-    document.title = "Sign in · Fantasy";
-  }, []);
-
   if (session.kind === "signedIn") return <Navigate to={destination} replace />;
+  const onPassword = error?.code === WRONG_CREDENTIALS;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -39,7 +40,7 @@ export default function Login() {
     const failure = await signIn(queryClient, email.trim(), password);
     setBusy(false);
     if (failure) {
-      setError(failure.message);
+      setError(failure);
       setPassword("");
       passwordField.current?.focus();
       return;
@@ -69,15 +70,16 @@ export default function Login() {
           id="login-password"
           label="Password"
           ref={passwordField}
+          error={onPassword ? error.message : null}
           type="password"
           autoComplete="current-password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        {error && (
+        {error && !onPassword && (
           <p role="alert" className="text-body text-ink">
-            {error}
+            {error.message}
           </p>
         )}
         <Button type="submit" disabled={busy}>

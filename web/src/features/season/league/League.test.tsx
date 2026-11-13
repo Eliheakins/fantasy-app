@@ -50,18 +50,21 @@ const outcome = (winner: string, loser: string, o: object = {}) => ({
 });
 const whatIf = [outcome("Lisan", "Rival"), outcome("Rival", "Lisan", { n_runs: 400 })];
 
+/** Every route the page asks for, ready, with `over` replacing some; any other route fails the test. */
 function respond(over: Partial<Record<string, ApiState<unknown>>> = {}) {
-  responder = (p) =>
-    over[p] ??
-    (p === "power-rankings"
-      ? ready(power)
-      : p === "luck"
-        ? ready(luck)
-        : p === "manager-grades"
-          ? ready(grades)
-          : p === "team-grades"
-            ? ready(teamGrades)
-            : ready(whatIf));
+  const routes: Partial<Record<string, ApiState<unknown>>> = {
+    "power-rankings": ready(power),
+    luck: ready(luck),
+    "manager-grades": ready(grades),
+    "team-grades": ready(teamGrades),
+    "what-if?week=7": ready(whatIf),
+    ...over,
+  };
+  responder = (p) => {
+    const state = routes[p];
+    if (!state) throw new Error(`unlisted route: ${p}`);
+    return state;
+  };
 }
 
 describe("League page", () => {
@@ -127,7 +130,7 @@ describe("League page", () => {
       [{ kind: "error", error: { message: "boom", code: null } }, /boom/],
     ];
     for (const [state, text] of cases) {
-      responder = () => state;
+      respond({ "power-rankings": state, luck: state, "manager-grades": state, "team-grades": state, "what-if?week=7": state });
       const { unmount } = render(<League />);
       expect(screen.getAllByText(text).length).toBeGreaterThan(0);
       unmount();

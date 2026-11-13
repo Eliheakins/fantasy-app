@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { possessive } from "@/lib/text";
 import { TradeResult } from "./TradeResult";
 import type { TradeEvaluation } from "./types";
@@ -50,9 +51,7 @@ function Pitch({ text }: { text: string }) {
         This trade helps both teams. A message you can send, built from the numbers above; nothing is sent from here.
       </p>
       <textarea readOnly aria-label="Message to copy" value={text} rows={4} className="w-full rounded border border-line bg-page p-2" />
-      <button type="button" onClick={() => void copyText(text).then(setCopied)} className="min-h-[44px] rounded bg-focus px-4 text-white">
-        Copy message
-      </button>
+      <Button onClick={() => void copyText(text).then(setCopied)}>Copy message</Button>
       <span role="status" className="ml-3 text-caption text-muted">
         {copied === null ? "" : copied ? "Copied." : "Could not copy; select the text and copy it."}
       </span>

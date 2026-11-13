@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import type { components } from "@/api/schema";
 import { formatNumber } from "@/viz";
+import { linkButtonClass } from "@/components/ui/styles";
+import { cn } from "@/lib/utils";
 
 export type LineupGrid = components["schemas"]["LineupGrid"];
 type GridRow = components["schemas"]["GridRow"];
@@ -28,7 +30,7 @@ function Cell({ row, league }: { row: GridRow; league: string }) {
         <div className="mt-1 text-caption">
           <span className="font-semibold">{flag.label}</span>
           <span className="sr-only">{`: ${flag.reason}.`}</span>{" "}
-          <Link to={movesHref(league, row.slot)} className="inline-flex min-h-[44px] items-center underline underline-offset-2 lg:min-h-0">
+          <Link to={movesHref(league, row.slot)} className={cn(linkButtonClass, "underline-offset-2 lg:min-h-0")}>
             Find a {row.slot} <span className="sr-only">for week {row.week}</span>
           </Link>
         </div>

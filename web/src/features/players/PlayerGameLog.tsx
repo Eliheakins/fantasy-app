@@ -1,4 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
+import type { PageUrl } from "@/components/layout/navLinks";
 import { Callout } from "@/components/Callout";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { useTeam } from "@/lib/teamContext";
@@ -9,8 +10,10 @@ import { formatQueryValue } from "@/stat/lib/formatQueryValue";
 import { formatNumber } from "@/viz";
 import { useGameLog } from "./useGameLog";
 import { useProfile } from "./useProfile";
+import { linkButtonClass } from "@/components/ui/styles";
+import { cn } from "@/lib/utils";
 
-type Props = { gsisId: string; position: string; season: number };
+type Props = { gsisId: string; position: string; season: number; here: PageUrl };
 
 /** League points to one decimal, whatever their size (formatQueryValue shows three below 1). */
 const formatPoints = (v: number | undefined): string => (v === undefined ? "—" : formatNumber(v));
@@ -18,8 +21,7 @@ const formatPoints = (v: number | undefined): string => (v === undefined ? "—"
 const CELL = "px-2 py-2 text-right tabular-nums";
 
 /** The player page's body: owner line, the season's game log joined with league points by week, and the Explore link. */
-export function PlayerGameLog({ gsisId, position, season }: Props) {
-  const { search } = useLocation();
+export function PlayerGameLog({ gsisId, position, season, here: { search } }: Props) {
   const statIds = statIdsFor(position) ?? [];
   const log = useGameLog(gsisId, statIds, season);
   const { league } = useTeam();
@@ -108,7 +110,7 @@ export function PlayerGameLog({ gsisId, position, season }: Props) {
         </div>
       )}
       {href && (
-        <Link to={href} className="inline-flex min-h-[44px] items-center underline decoration-line underline-offset-4 hover:decoration-ink">
+        <Link to={href} className={cn(linkButtonClass, "decoration-line underline-offset-4 hover:decoration-ink")}>
           Open in Find players
         </Link>
       )}

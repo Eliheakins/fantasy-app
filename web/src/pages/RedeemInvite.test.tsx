@@ -44,14 +44,21 @@ describe("RedeemInvite", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Use at least 12 characters.");
     expect(calls).toEqual([]);
     expect(screen.getByLabelText("New password")).toHaveFocus();
+    expect(screen.getByLabelText("New password")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("New password")).toHaveAccessibleDescription("Use at least 12 characters.");
+    expect(screen.getByLabelText("Type it again")).not.toHaveAttribute("aria-invalid");
   });
 
-  it("refuses two different passwords without calling the server", async () => {
+  it("refuses two different passwords without calling the server, on the second field", async () => {
     const calls = stubScoped("/api/auth/", () => okReply(ME));
     open();
     await fill(GOOD, `${GOOD}!`);
     expect(await screen.findByRole("alert")).toHaveTextContent("not the same");
     expect(calls).toEqual([]);
+    expect(screen.getByLabelText("Type it again")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Type it again")).toHaveAccessibleDescription("The two passwords are not the same.");
+    expect(screen.getByLabelText("Type it again")).toHaveFocus();
+    expect(screen.getByLabelText("New password")).not.toHaveAttribute("aria-invalid");
   });
 
   it("sends the token from the link with the password, then opens the app", async () => {
@@ -77,5 +84,6 @@ describe("RedeemInvite", () => {
     await fill(GOOD, GOOD);
     expect(await screen.findByRole("alert")).toHaveTextContent("This invite link was already used.");
     expect(screen.queryByText("the app")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("New password")).not.toHaveAttribute("aria-invalid");
   });
 });

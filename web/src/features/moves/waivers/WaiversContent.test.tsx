@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
-import { leaguePath } from "@/test/fakeApi";
+import { leaguePath, onlyRoutes } from "@/test/fakeApi";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { MemoryRouter } from "react-router-dom";
 import type { ApiState } from "@/api/envelope";
 import { WaiversContent } from "./WaiversView";
 
@@ -10,60 +10,63 @@ const leagueRow = { league_key: "a", league_id: "9", name: "L", current_week: 9,
 vi.mock("@/lib/league", () => ({
   useLeague: () => ({ league: "a", leagues: { kind: "ready", data: [leagueRow] } }),
   useLeagueRow: () => leagueRow,
-  useLeagueApi: (route: string, query?: object): ApiState<never[]> => {
+  useLeagueApi: (route: string, query?: object) => {
     const path = leaguePath(route, query);
     paths.push(path);
-    return { kind: "ready", data: path === "stash" ? { open_ir_slots: 0, rows: [] } : [] } as ApiState<never[]>;
+    const none: ApiState<unknown> = { kind: "ready", data: [] };
+    return onlyRoutes({
+      waivers: none,
+      "waivers?horizon=playoffs": none,
+      "streamers?kind=DEF": none,
+      "streamers?kind=K": none,
+      stash: { kind: "ready", data: { open_ir_slots: 0, rows: [] } },
+    })(path);
   },
 }));
 vi.mock("@/lib/who", () => ({ useWho: () => ({ name: null }), whoFor: () => ({ name: null }) }));
 vi.mock("@/api/useEnvelope", () => ({ useEnvelopeQuery: () => ({ kind: "loading" }) }));
 
-function Where() {
-  return <p data-testid="search">{useLocation().search}</p>;
-}
-const renderAt = (entry: string) =>
+type Params = Parameters<typeof WaiversContent>[0];
+const renderWith = (params: Partial<Params> = {}) => {
+  const props: Params = { rank: "ros", onRank: vi.fn(), pos: null, onShowAll: vi.fn(), ...params };
   render(
-    <MemoryRouter initialEntries={[entry]}>
-      <WaiversContent />
-      <Where />
+    <MemoryRouter>
+      <WaiversContent {...props} />
     </MemoryRouter>,
   );
+  return props;
+};
 const toggle = () => screen.getByRole("radiogroup", { name: "Rank adds by" });
 
 beforeEach(() => {
   paths.length = 0;
 });
 
-describe("WaiversContent rank param", () => {
+describe("WaiversContent rank", () => {
   it("fetches rest of season by default", () => {
-    renderAt("/moves");
+    renderWith();
     expect(paths).toContain("waivers");
     expect(paths.some((p) => p.includes("horizon"))).toBe(false);
     expect(within(toggle()).getByRole("radio", { name: "Rest of season" })).toBeChecked();
   });
-  it("reads ?rank=playoffs, refetches with the horizon and names the weeks", () => {
-    renderAt("/moves?rank=playoffs");
+  it("ranks by playoff weeks: refetches with the horizon and names the weeks", () => {
+    renderWith({ rank: "playoffs" });
     expect(paths).toContain("waivers?horizon=playoffs");
     expect(within(toggle()).getByRole("radio", { name: "Playoff weeks" })).toBeChecked();
     expect(screen.getByText("Ranked by playoff weeks 15 to 17, 0 adds")).toBeInTheDocument();
     expect(paths).toContain("streamers?kind=K");
   });
-  it("writes the choice to the URL and removes it for rest of season", async () => {
-    renderAt("/moves?league=a");
+  it("hands the choice to its page", async () => {
+    const { onRank } = renderWith();
     await userEvent.click(within(toggle()).getByRole("radio", { name: "Playoff weeks" }));
-    expect(screen.getByTestId("search")).toHaveTextContent("rank=playoffs");
-    expect(screen.getByTestId("search")).toHaveTextContent("league=a");
-    await userEvent.click(within(toggle()).getByRole("radio", { name: "Rest of season" }));
-    expect(screen.getByTestId("search")).not.toHaveTextContent("rank");
+    expect(onRank).toHaveBeenCalledWith("playoffs");
   });
 });
 
-describe("WaiversContent position param", () => {
-  it("Show all removes ?pos= and keeps the other params", async () => {
-    renderAt("/moves?league=a&pos=RB");
+describe("WaiversContent position", () => {
+  it("Show all asks the page to drop the position", async () => {
+    const { onShowAll } = renderWith({ pos: "RB" });
     await userEvent.click(screen.getByRole("button", { name: "Show all" }));
-    expect(screen.getByTestId("search")).not.toHaveTextContent("pos");
-    expect(screen.getByTestId("search")).toHaveTextContent("league=a");
+    expect(onShowAll).toHaveBeenCalled();
   });
 });

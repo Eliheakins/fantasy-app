@@ -1,8 +1,9 @@
 import { useState } from "react";
 
 import type { FilterChipGroup } from "@/stat/config/queryBuilderOptions";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 
+import type { PageUrl } from "@/components/layout/navLinks";
 import { Button } from "@/components/ui/button";
 import { copyShared } from "@/lib/sharedParams";
 import { getStatById } from "@/stat/config/statDictionary";
@@ -52,8 +53,8 @@ function downloadJson(name: string, value: unknown): void {
 }
 
 /** Every Ask kept in this browser, with the fixes made to its answer. Nothing leaves the machine. */
-export function HistoryPanel({ onReopen }: { onReopen: () => void }) {
-  const [current] = useSearchParams();
+export function HistoryPanel({ here, onReopen }: { here: PageUrl; onReopen: () => void }) {
+  const current = new URLSearchParams(here.search);
   const chipGroups = useFilterChipGroups();
   const [entries, setEntries] = useState(readLog);
   const corrections = toEvalCases(entries);

@@ -11,6 +11,7 @@ import {
   sideScore,
   sortMineFirst,
 } from "@/lib/scoreboard";
+import { ApiBoundary } from "@/components/ApiBoundary";
 import { PlayoffLabel } from "@/components/PlayoffLabel";
 import { cn } from "@/lib/utils";
 import { useAllLeagues, useEachLeague } from "@/lib/league";
@@ -85,24 +86,28 @@ function LeagueScores({ league, state, kickoff }: { league: League; state: ApiSt
           <PlayoffLabel label={league.playoff_label} />
         </div>
       )}
-      {state?.kind === "ready" ? (
-        state.data.length ? (
-          <ul className="divide-y divide-line">
-            {sortMineFirst(state.data).map((row) => (
-              <Matchup key={`${row.week}-${row.a.roster_id}`} row={row} kickoff={kickoff} />
-            ))}
-          </ul>
-        ) : (
-          <p className="px-3 text-body text-muted">No matchups are set for this week yet.</p>
-        )
-      ) : state?.kind === "error" ? (
+      {state?.kind === "error" ? (
         <p role="alert" className="px-3 text-body text-warning">
           The scores did not load: {state.error.message}
         </p>
-      ) : (
+      ) : !state || state.kind === "loading" ? (
         <p role="status" className="px-3 text-body text-muted">
           Loading scores…
         </p>
+      ) : (
+        <ApiBoundary state={state}>
+          {(rows) =>
+            rows.length ? (
+              <ul className="divide-y divide-line">
+                {sortMineFirst(rows).map((row) => (
+                  <Matchup key={`${row.week}-${row.a.roster_id}`} row={row} kickoff={kickoff} />
+                ))}
+              </ul>
+            ) : (
+              <p className="px-3 text-body text-muted">No matchups are set for this week yet.</p>
+            )
+          }
+        </ApiBoundary>
       )}
     </section>
   );

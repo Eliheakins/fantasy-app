@@ -32,6 +32,15 @@ describe("useEnvelopeQuery", () => {
     expect(calls.map((c) => c.url)).toEqual(["/api/leagues/a/lineup?week=2&team=3"]);
     expect(client.getQueryData(["api", "/api/leagues/a/lineup?week=2&team=3"])).toBeDefined();
   });
+
+  it("is the error state, not a crash, when the reply is not a whole envelope", async () => {
+    stubApi((call) => (call.url === "/api/leagues" ? { body: { status: "ok" } } : undefined));
+    const client = testQueryClient();
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const { result } = renderHook(() => useEnvelopeQuery("/api/leagues"), { wrapper });
+    await waitFor(() => expect(result.current.kind).toBe("error"));
+    expect(result.current).toMatchObject({ error: { message: "Unexpected response from /api/leagues", code: null } });
+  });
 });
 
 describe("useEnvelopeMutation", () => {

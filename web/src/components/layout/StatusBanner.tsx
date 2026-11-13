@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "@/api/client";
 import type { StatHealth } from "@/api/types";
-import { useEnvelopeQuery } from "@/api/useEnvelope";
+import { apiKey, useEnvelopeQuery } from "@/api/useEnvelope";
 import { bannerMessages } from "@/lib/status";
 
 function WithCode({ text }: { text: string }) {
@@ -21,17 +21,17 @@ function WithCode({ text }: { text: string }) {
 
 const STAT_HEALTH_REFETCH_MS = 5 * 60_000;
 
-/** The stat app's health (plain JSON, not the envelope); null until it loads or if it fails. */
+/** The stat app's health (plain JSON, not the envelope); null until it loads or if it fails.
+ * Keyed like every /api GET, so it retries once and `["api"]` invalidation refetches it. */
 function useStatHealth(): StatHealth | null {
   const { data } = useQuery<StatHealth, Error>({
-    queryKey: ["stat-health"],
+    queryKey: apiKey("/api/stat/health"),
     queryFn: async () => {
       const { data, response } = await api.GET("/api/stat/health");
       if (data === undefined) throw new Error(`stat health ${response.status}`);
       return data;
     },
     refetchInterval: STAT_HEALTH_REFETCH_MS,
-    retry: false,
   });
   return typeof data?.data_ready === "boolean" ? data : null;
 }

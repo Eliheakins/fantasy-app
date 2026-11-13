@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,6 +9,7 @@ import { ManifestProvider } from "@/stat/react/manifest";
 
 /** Ask in plain language: rules read the question first, the hosted model (Jev, local model as fallback) the rest, and the Find players engine answers. */
 export default function Ask() {
+  const here = useLocation();
   const [params] = useSearchParams();
   const [tab, setTab] = useState(params.get("tab") === "history" ? "history" : "ask");
   return (
@@ -26,10 +27,10 @@ export default function Ask() {
               <TabsTrigger value="history">History</TabsTrigger>
             </TabsList>
             <TabsContent value="ask">
-              <NLQPanel />
+              <NLQPanel here={here} />
             </TabsContent>
             <TabsContent value="history">
-              <HistoryPanel onReopen={() => setTab("ask")} />
+              <HistoryPanel here={here} onReopen={() => setTab("ask")} />
             </TabsContent>
           </Tabs>
         </ManifestProvider>

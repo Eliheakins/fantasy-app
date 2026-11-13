@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { ApiState } from "@/api/envelope";
 import { ApiBoundary } from "@/components/ApiBoundary";
@@ -7,7 +7,6 @@ import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { ExternalLink } from "@/components/ExternalLink";
 import { sleeperLeagueUrl } from "@/lib/sleeper";
 import { useLeague, useLeagueApi, useLeagueRow } from "@/lib/league";
-import { useSearchParam } from "@/lib/useSearchParam";
 import { type Who, useWho, whoFor } from "@/lib/who";
 import { AddsTable } from "./AddsTable";
 import {
@@ -21,7 +20,6 @@ import {
   type Pos,
   playoffLabel,
   playoffWeeksOf,
-  posOf,
   type Rank,
   STREAM_CAPTION,
   STREAMING_ANCHOR,
@@ -33,6 +31,8 @@ import {
 import { PlayerWeeksChart } from "./PlayerWeeksChart";
 import { OpenIrCallout, StashSection } from "./StashSection";
 import { StreamerTable } from "./StreamerTable";
+import { linkButtonClass } from "@/components/ui/styles";
+import { cn } from "@/lib/utils";
 
 type ViewProps = {
   adds: ApiState<WaiverRow[]>;
@@ -104,7 +104,7 @@ function AddsSection({ adds, weeks, selected, onSelect, who, sleeperLeagueId, ra
             <p className="py-6 text-muted">
               {noAddsText(pos, who.name)}
               {streamPos && (
-                <a href={`#${STREAMING_ANCHOR}`} className="inline-flex min-h-[44px] items-center underline underline-offset-2 lg:min-h-0">
+                <a href={`#${STREAMING_ANCHOR}`} className={cn(linkButtonClass, "underline-offset-2 lg:min-h-0")}>
                   See streaming picks
                 </a>
               )}
@@ -174,16 +174,10 @@ export function WaiversView({
   );
 }
 
-/** The adds ranking (`?rank=playoffs`, else rest of season) and position filter (`?pos=`) from the URL. */
-function useWaiverParams(): { rank: Rank; setRank: (next: Rank) => void; pos: Pos | null; showAll: () => void } {
-  const [rawRank, setRawRank] = useSearchParam("rank");
-  const [rawPos, setPos] = useSearchParam("pos");
-  const setRank = useCallback((next: Rank) => setRawRank(next === "ros" ? null : next), [setRawRank]);
-  const showAll = useCallback(() => setPos(null), [setPos]);
-  return { rank: rawRank === "playoffs" ? "playoffs" : "ros", setRank, pos: posOf(rawPos), showAll };
-}
+/** The adds ranking and position filter, which the Moves page keeps in its URL (`?rank=`, `?pos=`). */
+export type WaiverParams = { rank: Rank; onRank: (next: Rank) => void; pos: Pos | null; onShowAll: () => void };
 
-export function WaiversContent() {
+export function WaiversContent({ rank, onRank, pos, onShowAll }: WaiverParams) {
   const { league } = useLeague();
   const row = useLeagueRow();
   const sleeperLeagueId = row?.league_id || null;
@@ -191,7 +185,6 @@ export function WaiversContent() {
   const [selection, setSelection] = useState<{ league: string | null; id: string } | null>(null);
   // A pick belongs to the league it was made in.
   const selected = selection && selection.league === league ? selection.id : null;
-  const { rank, setRank, pos, showAll } = useWaiverParams();
   const playoffWeeks = playoffWeeksOf(row);
   const adds = useLeagueApi("/api/leagues/{league}/waivers", rank === "playoffs" ? { horizon: "playoffs" } : undefined);
   const def = useLeagueApi("/api/leagues/{league}/streamers", { kind: "DEF" });
@@ -213,10 +206,10 @@ export function WaiversContent() {
       who={who}
       sleeperLeagueId={sleeperLeagueId}
       rank={rank}
-      onRank={setRank}
+      onRank={onRank}
       playoffWeeks={playoffWeeks}
       pos={pos}
-      onShowAll={showAll}
+      onShowAll={onShowAll}
     />
   );
 }

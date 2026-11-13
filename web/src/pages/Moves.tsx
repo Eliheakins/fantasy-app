@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Callout } from "@/components/Callout";
 import { PageHeader } from "@/components/PageHeader";
@@ -7,11 +8,13 @@ import { MOVE_NOISE_PERCENT, type MoveView, filterMoves, moveHeadline, worthMove
 import { OUT_MESSAGE, SEASON_OVER, isDone } from "@/features/effects/phase";
 import { useMoves } from "@/features/moves/useMoves";
 import { EffectText } from "@/features/effects/EffectText";
-import { WaiversContent } from "@/features/moves/waivers/WaiversView";
+import { posOf } from "@/features/moves/waivers/logic";
+import { type WaiverParams, WaiversContent } from "@/features/moves/waivers/WaiversView";
 import { deadlineWeekState } from "@/lib/deadline";
 import { useLeague, useLeagueRow } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
 import { useHeld } from "@/lib/useHeld";
+import { useSearchParam } from "@/lib/useSearchParam";
 import { usePageEyebrow } from "@/lib/week";
 import { TradeBuilder } from "@/features/moves/trade/TradeBuilder";
 import { TradeDetails } from "@/features/moves/trade/TradeDetails";
@@ -30,6 +33,15 @@ const EMPTY: Record<MoveView, string> = {
 
 const viewOf = (raw: string | null): MoveView => (raw === "fa" || raw === "trades" ? raw : "all");
 
+/** The waiver tables' ranking (`?rank=playoffs`, else rest of season) and position filter (`?pos=`), from the URL. */
+function useWaiverParams(): WaiverParams {
+  const [rawRank, setRawRank] = useSearchParam("rank");
+  const [rawPos, setPos] = useSearchParam("pos");
+  const onRank = useCallback<WaiverParams["onRank"]>((next) => setRawRank(next === "ros" ? null : next), [setRawRank]);
+  const onShowAll = useCallback(() => setPos(null), [setPos]);
+  return { rank: rawRank === "playoffs" ? "playoffs" : "ros", onRank, pos: posOf(rawPos), onShowAll };
+}
+
 /**
  * Moves: one ranked list of free agent adds and trade ideas (?view=fa|trades filters it), the live trade
  * builder under it, and the full tables in a closed disclosure.
@@ -37,6 +49,7 @@ const viewOf = (raw: string | null): MoveView => (raw === "fa" || raw === "trade
 export default function Moves() {
   const [params, setParams] = useSearchParams();
   const view = viewOf(params.get("view"));
+  const waiverParams = useWaiverParams();
   const eyebrow = usePageEyebrow("Moves");
   const { addsPending, tradesPending, moves, addsError, tradesFailed, phase } = useMoves();
   const done = isDone(phase);
@@ -125,7 +138,7 @@ export default function Moves() {
       <details className="mt-8 border-t border-line pt-2">
         <summary className="flex min-h-[44px] cursor-pointer items-center text-section font-semibold">Details</summary>
         <div className="flex flex-col gap-8 pt-4">
-          <WaiversContent />
+          <WaiversContent {...waiverParams} />
           <TradeDetails />
         </div>
       </details>

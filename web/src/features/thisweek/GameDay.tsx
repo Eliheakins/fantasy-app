@@ -1,4 +1,5 @@
 import { isPending } from "@/api/envelope";
+import { ApiBoundary } from "@/components/ApiBoundary";
 import type { components } from "@/api/schema";
 import type { League } from "@/api/types";
 import { useAllLeagues } from "@/lib/league";
@@ -37,13 +38,17 @@ function LeagueGameDay({ league, intervalMs }: { league: League; intervalMs: num
         {name}: game-day numbers did not load.
       </p>
     );
-  if (state.kind !== "ready")
+  if (state.kind === "loading")
     return (
       <p role="status" className="text-muted">
         {name}: loading…
       </p>
     );
-  const { current: c, history, as_of } = state.data;
+  return <ApiBoundary state={state}>{(data) => <LeagueNumbers name={name} data={data} stale={stale} />}</ApiBoundary>;
+}
+
+function LeagueNumbers({ name, data, stale }: { name: string; data: GameDayData; stale: boolean }) {
+  const { current: c, history, as_of } = data;
   if (!c) return <p className="text-body text-muted">{name}: no matchup in play this week.</p>;
   return (
     <div className="border-t border-panel-line pt-3">

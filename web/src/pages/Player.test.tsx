@@ -3,6 +3,7 @@ import { screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { ApiState } from "@/api/envelope";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
+import { PageNameContext, useRouteAnnounce } from "@/hooks/useRouteAnnounce";
 import { TeamContext } from "@/lib/teamContext";
 import { runStatQuery } from "@/stat/engine/statQuery";
 import { fetchManifest } from "@/stat/lib/api";
@@ -194,8 +195,17 @@ describe("Player page", () => {
     expect(href.searchParams.get("week")).toBe("5");
   });
 
-  it("sets the document title to the player's name once loaded", async () => {
-    renderPage();
+  it("names itself to the route title owner once the player loads", async () => {
+    function Shell() {
+      return <PageNameContext value={useRouteAnnounce(null)}>{<Player />}</PageNameContext>;
+    }
+    renderWithProviders(
+      <MemoryRouter initialEntries={["/players/00-1?league=a"]}>
+        <Routes>
+          <Route path="/players/:gsisId" element={<Shell />} />
+        </Routes>
+      </MemoryRouter>,
+    );
     expect(document.title).toBe("Player · Fantasy");
     await screen.findByRole("heading", { level: 1, name: "Ja'Marr Chase" });
     expect(document.title).toBe("Ja'Marr Chase · Fantasy");

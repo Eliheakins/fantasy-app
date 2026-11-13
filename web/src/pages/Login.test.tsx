@@ -63,6 +63,22 @@ describe("Login", () => {
     expect(screen.getByLabelText("Password")).toHaveValue("");
     expect(screen.getByLabelText("Password")).toHaveFocus();
     expect(screen.getByLabelText("Email")).toHaveValue("friend@example.com");
+    expect(screen.getByLabelText("Password")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Password")).toHaveAccessibleDescription("Wrong email or password.");
+  });
+
+  it("keeps a failure that is not about the password at the form, with the fields left valid", async () => {
+    stubScoped("/api/auth/", (call) =>
+      call.url === "/api/auth/login" ? errorReply("busy", "Too many attempts. Wait a minute and try again.", 429) : signedOut(),
+    );
+    open();
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText("Email"), "friend@example.com");
+    await user.type(screen.getByLabelText("Password"), "not my password");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Too many attempts. Wait a minute and try again.");
+    expect(screen.getByLabelText("Password")).not.toHaveAttribute("aria-invalid");
+    expect(screen.getByLabelText("Password")).not.toHaveAccessibleDescription();
   });
 
   it("disables the button while the request is out, so it cannot be sent twice", async () => {

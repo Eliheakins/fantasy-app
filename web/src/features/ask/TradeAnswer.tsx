@@ -1,8 +1,8 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Callout } from "@/components/Callout";
-import { navSearch } from "@/components/layout/navLinks";
+import { navSearch, type PageUrl } from "@/components/layout/navLinks";
 import { FailureNotice } from "@/features/moves/trade/FailureNotice";
 import { tradeKey } from "@/features/moves/trade/logic";
 import { TradeResult } from "@/features/moves/trade/TradeResult";
@@ -21,9 +21,8 @@ interface Props extends Pick<TradeOutcome, "give" | "get"> {
 }
 
 /** A trade question answered by the Trades page's own evaluation, for the partner who owns the get side. */
-export function TradeAnswer(props: Props) {
+export function TradeAnswer({ here: { pathname, search }, ...props }: Props & { here: PageUrl }) {
   const owners = useLeagueApi("/api/leagues/{league}/owners");
-  const { pathname, search } = useLocation();
   const params = new URLSearchParams(navSearch("/moves", search, pathname));
   params.set("view", "trades");
   const tradesLink = `/moves?${params.toString()}`;

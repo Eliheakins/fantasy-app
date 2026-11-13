@@ -50,3 +50,17 @@ describe("layers", () => {
     expect(offenders("features/moves/trade", /^features\/moves\/(?!trade\/)[^/]+$/)).toEqual([]);
   });
 });
+
+describe("route boundary", () => {
+  // Pages read the URL and hand features typed props. Explore and the Ask flow are the documented exception: their URL is
+  // the stat query itself, kept by the stat kernel's useQueryState (web/CLAUDE.md, "Route boundary").
+  const READS_URL = /\b(useLocation|useSearchParams|useSearchParam|useParams)\(/;
+  const URL_IS_THE_QUERY = /^features\/(explore\/|ask\/useAsk\.ts$)/;
+  test("a feature reads no URL state; its page passes it in", () => {
+    const readers = sourceFiles(join(SRC, "features"))
+      .map((file) => relative(SRC, file))
+      .filter((file) => !/\.test\.tsx?$/.test(file) && !URL_IS_THE_QUERY.test(file))
+      .filter((file) => READS_URL.test(readFileSync(join(SRC, file), "utf8")));
+    expect(readers).toEqual([]);
+  });
+});

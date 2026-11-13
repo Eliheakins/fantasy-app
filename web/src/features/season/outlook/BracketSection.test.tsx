@@ -1,10 +1,11 @@
 import { render, screen, within } from "@testing-library/react";
 import type { ApiState } from "@/api/envelope";
+import { leaguePath, onlyRoutes } from "@/test/fakeApi";
 import type { BracketData, BracketMatch } from "@/lib/outlookTypes";
 import { BracketSection } from "./BracketSection";
 
 let state: ApiState<BracketData>;
-vi.mock("@/lib/league", () => ({ useLeagueApi: () => state }));
+vi.mock("@/lib/league", () => ({ useLeagueApi: (route: string) => onlyRoutes({ bracket: state })(leaguePath(route)) }));
 
 const side = (
   roster_id: number | null,

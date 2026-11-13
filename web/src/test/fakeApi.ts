@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import type { ApiState } from "@/api/envelope";
 
 /**
  * A stand-in for the API in component tests: every call is recorded, and the test decides each answer.
@@ -100,4 +101,13 @@ export function leaguePath(route: string, query?: object): string {
     .map(([k, v]) => `${k}=${String(v)}`)
     .join("&");
   return search ? `${path}?${search}` : path;
+}
+
+/** A mocked `useLeagueApi` responder that answers only the listed `leaguePath`s; any other route fails the test. */
+export function onlyRoutes(table: Readonly<Record<string, ApiState<unknown>>>): (path: string) => ApiState<unknown> {
+  return (path) => {
+    const state = table[path];
+    if (state === undefined) throw new Error(`unlisted route: ${path}`);
+    return state;
+  };
 }

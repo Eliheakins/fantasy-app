@@ -6,6 +6,8 @@ import { type Column, ResponsiveTable } from "@/components/ResponsiveTable";
 import { Section } from "@/components/Section";
 import { formatNumber } from "@/viz";
 import { STASH_ANCHOR, STASH_CAPTION, type StashData, type StashRow } from "./logic";
+import { linkButtonClass } from "@/components/ui/styles";
+import { cn } from "@/lib/utils";
 
 const COLUMNS: Column<StashRow>[] = [
   {
@@ -33,7 +35,7 @@ export function OpenIrCallout({ data }: { data: StashData }) {
     <aside aria-label="Open IR slot" className="mb-4">
       <Callout variant="info">
         You have {slots} open IR {slots === 1 ? "slot" : "slots"}.{" "}
-        <a href={`#${STASH_ANCHOR}`} className="inline-flex min-h-[44px] items-center underline underline-offset-2 lg:min-h-0">
+        <a href={`#${STASH_ANCHOR}`} className={cn(linkButtonClass, "underline-offset-2 lg:min-h-0")}>
           See injured players to stash
         </a>
         .

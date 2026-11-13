@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
-import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { createMemoryRouter, matchRoutes, RouterProvider } from "react-router-dom";
+import { EXTRA_TITLES, NAV_ITEMS, PUBLIC_TITLES } from "./nav";
 import { routes } from "./routes";
 import { errorReply, okReply, stubApi } from "@/test/fakeApi";
 import { renderWithProviders } from "@/test/render";
@@ -121,6 +122,16 @@ describe("route config", () => {
       expect(await screen.findByTestId("page")).toHaveTextContent(`${name} ${path}`);
       view.unmount();
     }
+  });
+
+  it("mounts a route at every nav tab and every other titled path in nav.ts", () => {
+    const paths = [...NAV_ITEMS.map((n) => n.path), ...Object.keys(EXTRA_TITLES), ...Object.keys(PUBLIC_TITLES)];
+    for (const path of paths) expect(matchRoutes(routes, path)?.at(-1)?.route.path, path).toBe(path);
+  });
+
+  it("titles the sign-in page from nav.ts", async () => {
+    open("/login");
+    await waitFor(() => expect(document.title).toBe("Sign in · Fantasy"));
   });
 
   it("a page that fails to load shows the error boundary with a Reload button", async () => {

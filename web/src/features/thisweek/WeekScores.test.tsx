@@ -71,6 +71,27 @@ describe("WeekScores", () => {
     expect(screen.getAllByText("Round 1 of the playoffs")).toHaveLength(1);
   });
 
+  it("shows the server's no-data text for a league without a scoreboard, not a loading line", async () => {
+    routes["/api/leagues/a/scoreboard"] = {
+      status: "error",
+      data: null,
+      error: { code: "no_data", message: "No scoreboard yet." },
+      started_at: null,
+    };
+    renderScores();
+    const alpha = (await screen.findByRole("heading", { name: "Alpha" })).closest("section")!;
+    expect(await within(alpha).findByText("No scoreboard yet.")).toBeInTheDocument();
+    expect(within(alpha).queryByText("Loading scores…")).not.toBeInTheDocument();
+  });
+
+  it("says so while the server is still working on a league's scoreboard", async () => {
+    routes["/api/leagues/a/scoreboard"] = { status: "running", data: null, error: null, started_at: null };
+    renderScores();
+    const alpha = (await screen.findByRole("heading", { name: "Alpha" })).closest("section")!;
+    expect(await within(alpha).findByText(/^Working/)).toBeInTheDocument();
+    expect(within(alpha).queryByText("Loading scores…")).not.toBeInTheDocument();
+  });
+
   it("groups every matchup by league with my matchup first", async () => {
     renderScores();
     const alpha = (await screen.findByRole("heading", { name: "Alpha" })).closest("section")!;

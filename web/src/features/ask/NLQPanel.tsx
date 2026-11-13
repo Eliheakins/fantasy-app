@@ -1,4 +1,5 @@
 import { PlayerLink } from "@/components/PlayerLink";
+import type { PageUrl } from "@/components/layout/navLinks";
 import { type KeyboardEvent, useMemo } from "react";
 import { Link } from "react-router-dom";
 
@@ -27,7 +28,8 @@ import { useAsk } from "./useAsk";
 /** The intent endpoint rejects longer questions (max_length in nfl_stat/schemas/nlq.py); it also bounds the ask log. */
 const MAX_QUESTION_LENGTH = 2000;
 
-export function NLQPanel() {
+/** `here`: the Ask page's URL, which the start/sit, trade and route answers' links keep the league and team of. */
+export function NLQPanel({ here }: { here: PageUrl }) {
   const ask = useAsk();
   const exec = useExploreQueryExecution();
   const { state } = useQueryState();
@@ -154,13 +156,15 @@ export function NLQPanel() {
           </section>
         ) : null}
 
-        {ask.startSit && ask.phase === "idle" ? <StartSitAnswer a={ask.startSit.a} b={ask.startSit.b} names={ask.startSit.names} /> : null}
-
-        {ask.trade && ask.phase === "idle" ? (
-          <TradeAnswer give={ask.trade.give} get={ask.trade.get} names={ask.trade.names} positions={ask.trade.positions} />
+        {ask.startSit && ask.phase === "idle" ? (
+          <StartSitAnswer a={ask.startSit.a} b={ask.startSit.b} names={ask.startSit.names} here={here} />
         ) : null}
 
-        {ask.route && ask.phase === "idle" ? <RouteAnswer route={ask.route} /> : null}
+        {ask.trade && ask.phase === "idle" ? (
+          <TradeAnswer give={ask.trade.give} get={ask.trade.get} names={ask.trade.names} positions={ask.trade.positions} here={here} />
+        ) : null}
+
+        {ask.route && ask.phase === "idle" ? <RouteAnswer route={ask.route} here={here} /> : null}
 
         {showingAnswer ? <InterpretationChips /> : null}
       </section>

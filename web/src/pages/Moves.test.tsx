@@ -1,5 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
-import { leaguePath } from "@/test/fakeApi";
+import { leaguePath, onlyRoutes } from "@/test/fakeApi";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import type { ApiState } from "@/api/envelope";
@@ -46,9 +46,35 @@ vi.mock("@/lib/league", () => ({
   useLeague: () => ({ league: "a", leagues: { kind: "ready", data: [leagueRow] } }),
   useLeagueName: () => "L",
   useLeagueRow: () => leagueRow,
-  useLeagueApi: (route: string) => (leaguePath(route) === "waivers" ? waivers : digest),
+  useLeagueApi: (route: string, query?: object) => onlyRoutes({ waivers, digest })(leaguePath(route, query)),
 }));
-vi.mock("@/features/moves/waivers/WaiversView", () => ({ WaiversContent: () => <p>waivers details</p> }));
+vi.mock("@/features/moves/waivers/WaiversView", () => ({
+  WaiversContent: ({
+    rank,
+    pos,
+    onRank,
+    onShowAll,
+  }: {
+    rank: string;
+    pos: string | null;
+    onRank: (r: string) => void;
+    onShowAll: () => void;
+  }) => (
+    <div>
+      <p>waivers details</p>
+      <p data-testid="waiver-params">{`rank ${rank}, pos ${pos ?? "all"}`}</p>
+      <button type="button" onClick={() => onRank("playoffs")}>
+        rank by playoffs
+      </button>
+      <button type="button" onClick={() => onRank("ros")}>
+        rank by season
+      </button>
+      <button type="button" onClick={onShowAll}>
+        all positions
+      </button>
+    </div>
+  ),
+}));
 vi.mock("@/features/moves/trade/TradeBuilder", () => ({ TradeBuilder: () => <p>trade builder</p> }));
 vi.mock("@/features/moves/trade/TradeDetails", () => ({ TradeDetails: () => <p>trade details</p> }));
 
@@ -163,6 +189,29 @@ describe("Moves page", () => {
     expect(screen.getByText("trade builder")).toBeInTheDocument();
     expect(screen.getByText("waivers details")).toBeInTheDocument();
     expect(screen.getByText("trade details")).toBeInTheDocument();
+  });
+});
+
+describe("Moves page waiver params", () => {
+  it("hands ?rank= and ?pos= to the waiver tables, rest of season and every position by default", () => {
+    renderAt("/moves?league=a&rank=playoffs&pos=RB");
+    expect(screen.getByTestId("waiver-params")).toHaveTextContent("rank playoffs, pos RB");
+  });
+
+  it("reads anything else as rest of season and every position", () => {
+    renderAt("/moves?rank=weird&pos=XX");
+    expect(screen.getByTestId("waiver-params")).toHaveTextContent("rank ros, pos all");
+  });
+
+  it("writes the ranking to the URL, drops it for rest of season, and Show all drops ?pos=, keeping the other params", async () => {
+    renderAt("/moves?league=a&pos=RB");
+    await userEvent.click(screen.getByRole("button", { name: "rank by playoffs" }));
+    expect(screen.getByTestId("search")).toHaveTextContent("rank=playoffs");
+    await userEvent.click(screen.getByRole("button", { name: "rank by season" }));
+    expect(screen.getByTestId("search")).not.toHaveTextContent("rank");
+    await userEvent.click(screen.getByRole("button", { name: "all positions" }));
+    expect(screen.getByTestId("search")).not.toHaveTextContent("pos");
+    expect(screen.getByTestId("search")).toHaveTextContent("league=a");
   });
 });
 

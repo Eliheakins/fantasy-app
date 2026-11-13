@@ -1,6 +1,6 @@
 import { ArrowRight, Search } from "lucide-react";
-import { Link, NavLink, useLocation } from "react-router-dom";
-import { navSearch } from "@/components/layout/navLinks";
+import { Link, NavLink } from "react-router-dom";
+import { navSearch, type PageUrl } from "@/components/layout/navLinks";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
@@ -9,8 +9,7 @@ const ITEMS = [
 ] as const;
 
 /** The Players tab's two modes as a second row of tabs, styled like the main tabs. */
-export function PlayersNav() {
-  const { search, pathname } = useLocation();
+export function PlayersNav({ here: { search, pathname } }: { here: PageUrl }) {
   return (
     <nav aria-label="Players" className="mb-6">
       <ul className="flex gap-8 border-b border-line">
@@ -36,8 +35,7 @@ export function PlayersNav() {
 }
 
 /** A row on Your players pointing at the stat finder, which a text link in the header made easy to miss. */
-export function FindPlayersCta() {
-  const { search, pathname } = useLocation();
+export function FindPlayersCta({ here: { search, pathname } }: { here: PageUrl }) {
   return (
     <Link
       to={{ pathname: "/players/find", search: navSearch("/players/find", search, pathname) }}

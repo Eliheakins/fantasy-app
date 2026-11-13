@@ -119,6 +119,21 @@ describe("game-day block", () => {
     expect(await screen.findByText("Alpha: game-day numbers did not load.")).toHaveAttribute("role", "alert");
   });
 
+  it("shows the server's no-data text for a league with no numbers yet, not a loading line", async () => {
+    gameDay = () =>
+      Response.json({ status: "error", data: null, error: { code: "no_data", message: "No game-day numbers yet." }, started_at: null });
+    renderBoard();
+    expect(await screen.findByText("No game-day numbers yet.")).toBeInTheDocument();
+    expect(screen.queryByText("Alpha: loading…")).not.toBeInTheDocument();
+  });
+
+  it("says so while the server is still working on a league's numbers", async () => {
+    gameDay = () => Response.json({ status: "running", data: null, error: null, started_at: null });
+    renderBoard();
+    expect(await screen.findByText(/^Working/)).toBeInTheDocument();
+    expect(screen.queryByText("Alpha: loading…")).not.toBeInTheDocument();
+  });
+
   it("says there is no matchup in play when the league has no current numbers", async () => {
     gameDay = () => Response.json(ok({ week: null, as_of: null, current: null, history: [] }));
     renderBoard();

@@ -1,6 +1,7 @@
 import { useQueryState } from "@/stat/react/useQueryState";
 
 import { cn } from "@/lib/utils";
+import { eyebrowClass } from "@/components/ui/styles";
 
 /** The min-plays control, inside the query bar's options popover. */
 export function MinPlaysSlider() {
@@ -11,7 +12,7 @@ export function MinPlaysSlider() {
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-caption font-semibold uppercase tracking-wide text-focus">Min plays</h3>
+          <h3 className={eyebrowClass}>Min plays</h3>
           <p className="mt-0.5 text-caption text-muted">
             Leave out players with fewer plays than this (0 to 500), so one-play outliers do not top a list.
           </p>

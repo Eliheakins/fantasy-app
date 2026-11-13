@@ -1,6 +1,7 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StatusBanner } from "./StatusBanner";
+import { apiKey } from "@/api/useEnvelope";
 import { okReply, stubApi } from "@/test/fakeApi";
 import { renderWithProviders } from "@/test/render";
 
@@ -56,6 +57,16 @@ describe("StatusBanner", () => {
     renderBanner();
     await userEvent.setup().click(await screen.findByRole("button", { name: /details/i }));
     expect(screen.getByText(/Refresh step digest failed: boom/)).toBeInTheDocument();
+  });
+
+  it("keys the stat health like every /api GET, so refreshing the api queries reads it again", async () => {
+    const calls = stubApi(({ url }) =>
+      url === "/api/stat/health" ? Response.json(HEALTH) : url === "/api/status" ? okReply(STATUS) : undefined,
+    );
+    const { client } = renderWithProviders(<StatusBanner />);
+    await waitFor(() => expect(client.getQueryData(apiKey("/api/stat/health"))).toEqual(HEALTH));
+    await client.invalidateQueries({ queryKey: ["api"] });
+    expect(calls.filter((c) => c.url === "/api/stat/health")).toHaveLength(2);
   });
 
   it("shows nothing when the data is fresh", async () => {

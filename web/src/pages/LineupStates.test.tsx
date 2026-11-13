@@ -1,24 +1,33 @@
 import { render, screen } from "@testing-library/react";
-import { leaguePath } from "@/test/fakeApi";
+import { leaguePath, onlyRoutes } from "@/test/fakeApi";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { ApiState } from "@/api/envelope";
 
 let lineupState: ApiState<unknown>;
 const currentLeague = "x";
-const requested: string[] = [];
+let requested: string[] = [];
 vi.mock("@/lib/league", () => ({
   useLeague: () => ({ league: currentLeague, leagues: { kind: "loading" } }),
   useLeagueApi: (route: string, query?: object) => {
     const path = leaguePath(route, query);
     requested.push(`${currentLeague}/${path}`);
-    return path.startsWith("lineup") ? lineupState : { kind: "loading" };
+    const loading: ApiState<unknown> = { kind: "loading" };
+    // week 5 from ?week=5, else week 1 (the league list never loads here, so there is no current week)
+    const week = (w: number) => ({
+      [`lineup?week=${w}`]: lineupState,
+      [`win-probability?week=${w}`]: loading,
+      [`scoreboard?week=${w}`]: loading,
+    });
+    return onlyRoutes({ ...week(1), ...week(5), "lineup-grid": lineupState })(path);
   },
 }));
 import Lineup from "./Lineup";
 
 describe("Lineup page states", () => {
-  beforeEach(() => undefined);
+  beforeEach(() => {
+    requested = [];
+  });
   test("loading", () => {
     lineupState = { kind: "loading" };
     render(
@@ -72,7 +81,6 @@ describe("Lineup page states", () => {
   });
   test("?view=ahead asks for the lineup grid and shows the table", () => {
     lineupState = { kind: "ready", data: { weeks: [3], playoff_weeks: [], rows: [] } };
-    requested.length = 0;
     render(
       <MemoryRouter initialEntries={["/lineup?view=ahead"]}>
         <Lineup />
@@ -83,7 +91,6 @@ describe("Lineup page states", () => {
   });
   test("?view=ahead starts no lineup, win-probability or scoreboard request", () => {
     lineupState = { kind: "ready", data: { weeks: [3], playoff_weeks: [], rows: [] } };
-    requested.length = 0;
     render(
       <MemoryRouter initialEntries={["/lineup?view=ahead"]}>
         <Lineup />

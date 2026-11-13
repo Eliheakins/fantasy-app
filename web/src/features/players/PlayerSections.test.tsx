@@ -67,7 +67,7 @@ function renderSections(level: 2 | 3 = 2) {
       value={{ team: 2, league: "a", teams: [], viewed: null, setTeam: () => {}, notice: null, dismissNotice: () => {} }}
     >
       <MemoryRouter>
-        <PlayerSections gsisId="a" level={level} name="Ann" />
+        <PlayerSections gsisId="a" level={level} name="Ann" here={{ pathname: "/", search: "" }} />
       </MemoryRouter>
     </TeamContext.Provider>,
   );

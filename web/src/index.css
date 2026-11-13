@@ -124,6 +124,10 @@
   --z-index-modal: 50;
   --z-index-popover: 50;
   --z-index-skip-link: 50;
+  /* the Forest band's shadows, in ink: the header at rest and once scrolled, and the phone tab bar casting upward */
+  --shadow-chrome: 0 2px 6px color-mix(in srgb, var(--lf-ink) 18%, transparent);
+  --shadow-chrome-scrolled: 0 4px 16px color-mix(in srgb, var(--lf-ink) 28%, transparent);
+  --shadow-tab-bar: 0 -2px 6px color-mix(in srgb, var(--lf-ink) 18%, transparent);
 }
 
 html {
@@ -256,7 +260,7 @@ nav[aria-label="Main tabs"] a[aria-current="page"] {
 }
 /* On the Forest band the focus ring is white: #1F5A43 would vanish against #123D2C. */
 .on-chrome *:focus-visible {
-  outline-color: #ffffff;
+  outline-color: var(--color-white);
 }
 /* Programmatic focus on a tabindex=-1 target (the page h1, main) moves screen readers without drawing a box. */
 [tabindex="-1"]:focus-visible {
@@ -300,5 +304,5 @@ select:disabled {
 .on-chrome button:disabled {
   background: transparent;
   color: var(--lf-chrome-text);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-white) 25%, transparent);
 }

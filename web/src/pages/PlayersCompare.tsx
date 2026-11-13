@@ -11,6 +11,7 @@ import { useProfiles } from "@/features/players/useProfile";
 import { sharedDomain } from "@/viz";
 import type { Domain } from "@/viz/rangeAxis";
 import type { PlayerProfile } from "@/features/players/profile";
+import { linkButtonClass } from "@/components/ui/styles";
 
 const GRID_BY_COUNT: Record<number, string> = { 1: "md:grid-cols-1", 2: "md:grid-cols-2", 3: "md:grid-cols-3" };
 
@@ -29,7 +30,7 @@ function Column({ gsisId, onRemove, domain }: { gsisId: string; onRemove: () => 
           ) : (
             <Link
               to={{ pathname: `/players/${encodeURIComponent(gsisId)}`, search: navSearch("/players/:gsisId", search, pathname) }}
-              className="inline-flex min-h-[44px] items-center underline"
+              className={linkButtonClass}
             >
               {name}
             </Link>
@@ -41,7 +42,7 @@ function Column({ gsisId, onRemove, domain }: { gsisId: string; onRemove: () => 
       </div>
       {unknown && <p className="text-body text-muted">No player in the stat data has the id {gsisId}.</p>}
       {info && <p className="text-caption uppercase tracking-wide text-focus">{[info.position, info.team].filter(Boolean).join(" · ")}</p>}
-      {info && <PlayerSections gsisId={gsisId} level={3} name={name} domain={domain} />}
+      {info && <PlayerSections gsisId={gsisId} level={3} name={name} domain={domain} here={{ pathname, search }} />}
     </div>
   );
 }

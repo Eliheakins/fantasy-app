@@ -70,7 +70,7 @@ function WeekTooltip({
   if (!active || !point) return null;
   const ranked = [...teams].sort((a, b) => (valueAt(point, b.id) ?? -1) - (valueAt(point, a.id) ?? -1));
   return (
-    <div className="rounded-lg border border-line bg-white p-3 text-caption shadow-md">
+    <div className="rounded-lg border border-line bg-surface p-3 text-caption shadow-md">
       <p className="font-semibold text-ink">Week {point.week}</p>
       {marks?.get(point.week)?.map((m) => (
         <p key={m.full} className="text-label">

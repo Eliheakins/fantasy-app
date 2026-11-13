@@ -40,7 +40,8 @@ beforeEach(() => {
 });
 
 function renderAnswer() {
-  renderWithProviders(<StartSitAnswer a="a" b="b" names={NAMES} />, { route: "/ask?league=L1&team=2&q=x", league: true });
+  const here = { pathname: "/ask", search: "?league=L1&team=2&q=x" };
+  renderWithProviders(<StartSitAnswer a="a" b="b" names={NAMES} here={here} />, { route: `${here.pathname}${here.search}`, league: true });
 }
 
 describe("StartSitAnswer", () => {

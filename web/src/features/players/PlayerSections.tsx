@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import type { components } from "@/api/schema";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ApiBoundary } from "@/components/ApiBoundary";
-import { navSearch } from "@/components/layout/navLinks";
+import { navSearch, type PageUrl } from "@/components/layout/navLinks";
 import { Section } from "@/components/Section";
 import { useLeagueOwners } from "@/features/explore/useLeagueOwners";
 import { useTeam } from "@/lib/teamContext";
@@ -11,6 +11,7 @@ import type { Domain } from "@/viz/rangeAxis";
 import { Delta, Explain, ExplainDelta, formatNumber, formatPercent, RangeBar, sharedDomain, Sparkline } from "@/viz";
 import { marketChange, type PlayerProfile, resultSentence, roleKeysFor, roleSeries } from "./profile";
 import { useProfile } from "./useProfile";
+import { linkButtonClass } from "@/components/ui/styles";
 
 type MarketRow = components["schemas"]["MarketValueRow"];
 type HistoryRow = components["schemas"]["MarketHistoryRow"];
@@ -120,12 +121,11 @@ function Market({ rows, history }: { rows: MarketRow[]; history: HistoryRow[] })
   );
 }
 
-const LINK = "inline-flex min-h-[44px] items-center underline";
+const LINK = linkButtonClass;
 
 /** Where to act on the player: my players go to the Lineup (start or sit) and Trades, others to Trades, free agents to Moves. */
-function Owner({ gsisId }: { gsisId: string }) {
+function Owner({ gsisId, here: { search, pathname } }: { gsisId: string; here: PageUrl }) {
   const { league, state, byPlayer } = useLeagueOwners();
-  const { search, pathname } = useLocation();
   if (league === null || state.kind !== "ready") return null;
   const owner = byPlayer?.get(gsisId);
   const to = (path: string, view?: string) => {
@@ -178,8 +178,11 @@ export function PlayerSections({
   name,
   showResult = true,
   domain = null,
+  here,
 }: {
   gsisId: string;
+  /** The page's URL: the owner links keep its league, team and week. */
+  here: PageUrl;
   level?: 2 | 3;
   name?: string;
   /** False where the page header already says the final result. */
@@ -239,7 +242,7 @@ export function PlayerSections({
                 </ApiBoundary>
               </Section>
               <Section title="Owner" level={level}>
-                <Owner gsisId={gsisId} />
+                <Owner gsisId={gsisId} here={here} />
               </Section>
             </div>
           </div>

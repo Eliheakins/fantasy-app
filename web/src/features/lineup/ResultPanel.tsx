@@ -5,6 +5,7 @@ import { type WeekResult, resultText } from "./calls";
 import { SLEEPER_POINTS_WHY, winChanceWhy } from "./explain";
 import { type WinProbability, gapIsNoise } from "./logic";
 import { TeamRanges } from "./TeamRanges";
+import { eyebrowClass } from "@/components/ui/styles";
 
 type Option = WinProbability["options"][number];
 
@@ -40,7 +41,7 @@ export function ResultPanel({ result, option, win, shown, now, gap, playoffLabel
     );
   return (
     <section aria-labelledby="matchup-heading" className="key-panel">
-      <h2 id="matchup-heading" className="text-caption font-semibold uppercase tracking-wide text-focus">
+      <h2 id="matchup-heading" className={eyebrowClass}>
         Your matchup
       </h2>
       <PlayoffLabel label={playoffLabel} />

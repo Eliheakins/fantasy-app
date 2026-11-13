@@ -1,17 +1,22 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { testQueryClient } from "@/test/render";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { errorReply, okReply, stubScoped } from "@/test/fakeApi";
-import { ME_KEY, redeemInvite, signIn, signOut, useSession } from "./session";
+import { checkSession, redeemInvite, signIn, signOut, useSession } from "./session";
 
 const ME = { email: "friend@example.com", is_admin: false, sleeper_user_id: null };
+
+const SIX_MINUTES_MS = 6 * 60 * 1000;
 
 function setup() {
   const client = testQueryClient();
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   return { client, wrapper };
 }
+
+/** The session as a component in a fresh query cache sees it on its first render. */
+const sessionNow = () => renderHook(() => useSession(), { wrapper: setup().wrapper }).result.current;
 
 describe("useSession", () => {
   it("is signed in when the server knows the caller", async () => {
@@ -36,6 +41,36 @@ describe("useSession", () => {
     await waitFor(() => expect(result.current.kind).toBe("error"));
     expect(result.current).toMatchObject({ message: "Database is down" });
   });
+
+  it("is one session for the whole app, not a cache entry: a reader in a fresh cache needs no second check", async () => {
+    const calls = stubScoped("/api/auth/", () => okReply(ME));
+    const first = renderHook(() => useSession(), { wrapper: setup().wrapper });
+    await waitFor(() => expect(first.result.current.kind).toBe("signedIn"));
+    expect(sessionNow()).toEqual({ kind: "signedIn", me: ME });
+    expect(calls).toHaveLength(1);
+  });
+
+  it("checks again when asked, as when a request finds the session gone", async () => {
+    let signedIn = true;
+    stubScoped("/api/auth/", () => (signedIn ? okReply(ME) : errorReply("unauthorized", "Sign in to continue.", 401)));
+    const { result } = renderHook(() => useSession(), { wrapper: setup().wrapper });
+    await waitFor(() => expect(result.current.kind).toBe("signedIn"));
+    signedIn = false;
+    await act(() => checkSession());
+    expect(result.current.kind).toBe("signedOut");
+  });
+
+  it("checks again when the tab comes back more than five minutes after the last check, and not sooner", async () => {
+    const calls = stubScoped("/api/auth/", () => okReply(ME));
+    const { result } = renderHook(() => useSession(), { wrapper: setup().wrapper });
+    await waitFor(() => expect(result.current.kind).toBe("signedIn"));
+    act(() => void document.dispatchEvent(new Event("visibilitychange")));
+    expect(calls).toHaveLength(1);
+    const later = Date.now() + SIX_MINUTES_MS;
+    vi.spyOn(Date, "now").mockReturnValue(later);
+    act(() => void document.dispatchEvent(new Event("visibilitychange")));
+    await waitFor(() => expect(calls).toHaveLength(2));
+  });
 });
 
 describe("signIn", () => {
@@ -55,7 +90,8 @@ describe("signIn", () => {
       },
     ]);
     expect(client.getQueryData(["api", "/api/leagues"])).toBeUndefined();
-    expect(client.getQueryData(ME_KEY)).toMatchObject({ status: "ok", data: ME });
+    expect(sessionNow()).toEqual({ kind: "signedIn", me: ME });
+    expect(calls).toHaveLength(1);
   });
 
   it("returns the server's message and leaves the cache alone on a wrong password", async () => {
@@ -65,6 +101,7 @@ describe("signIn", () => {
     const failure = await signIn(client, "friend@example.com", "nope nope nope");
     expect(failure).toEqual({ code: "invalid", message: "Wrong email or password." });
     expect(client.getQueryData(["api", "/api/leagues"])).toBe("kept");
+    expect(sessionNow().kind).toBe("loading");
   });
 
   it("explains a network failure instead of throwing", async () => {
@@ -85,7 +122,7 @@ describe("redeemInvite", () => {
       url: "/api/auth/redeem",
       body: { token: "t".repeat(30), password: "a long enough password" },
     });
-    expect(client.getQueryData(ME_KEY)).toMatchObject({ data: ME });
+    expect(sessionNow()).toEqual({ kind: "signedIn", me: ME });
   });
 
   it("passes on why the link failed", async () => {
@@ -100,13 +137,19 @@ describe("signOut", () => {
     const calls = stubScoped("/api/auth/", () => okReply({ signed_out: true }));
     const { client } = setup();
     client.setQueryData(["api", "/api/leagues"], "private");
-    client.setQueryData(ME_KEY, { status: "ok", data: ME });
 
     await signOut(client);
 
     expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual(["POST /api/auth/logout"]);
     expect(client.getQueryData(["api", "/api/leagues"])).toBeUndefined();
-    expect(client.getQueryData(ME_KEY)).toMatchObject({ error: { code: "unauthorized" } });
+    expect(sessionNow()).toEqual({ kind: "signedOut" });
+  });
+
+  it("signs out everywhere through its own route", async () => {
+    const calls = stubScoped("/api/auth/", () => okReply({ signed_out: true }));
+    await signOut(setup().client, true);
+    expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual(["POST /api/auth/logout-everywhere"]);
+    expect(sessionNow()).toEqual({ kind: "signedOut" });
   });
 });
 

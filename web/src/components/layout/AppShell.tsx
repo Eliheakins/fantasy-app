@@ -7,7 +7,7 @@ import { NoLeaguesNotice } from "./NoLeaguesNotice";
 import { StatusBanner } from "./StatusBanner";
 import { TeamBanner } from "./TeamBanner";
 import { TopBar } from "./TopBar";
-import { useRouteAnnounce } from "@/hooks/useRouteAnnounce";
+import { PageNameContext, useRouteAnnounce } from "@/hooks/useRouteAnnounce";
 import { TeamProvider } from "@/lib/TeamProvider";
 import { useTeam } from "@/lib/teamContext";
 import { NAV_ITEMS } from "@/nav";
@@ -28,7 +28,7 @@ function useScrolled(): boolean {
 function Frame() {
   const { search, pathname } = useLocation(); // nav links keep only ?league=, ?team= and ?week=
   const { viewed } = useTeam();
-  useRouteAnnounce(viewed ? (viewed.team_name ?? `Team ${viewed.roster_id}`) : null);
+  const setPageName = useRouteAnnounce(viewed ? (viewed.team_name ?? `Team ${viewed.roster_id}`) : null);
   const scrolled = useScrolled();
   return (
     <div className="flex min-h-screen flex-col">
@@ -40,7 +40,7 @@ function Frame() {
       </a>
       <div
         data-scrolled={scrolled || undefined}
-        className="on-chrome bg-forest text-white shadow-[0_2px_6px_rgba(19,32,26,0.18)] transition-shadow md:sticky md:top-0 md:z-header data-[scrolled]:md:shadow-[0_4px_16px_rgba(19,32,26,0.28)]"
+        className="on-chrome bg-forest text-white shadow-chrome transition-shadow md:sticky md:top-0 md:z-header data-[scrolled]:md:shadow-chrome-scrolled"
       >
         <TopBar />
         <nav aria-label="Main" className="hidden bg-chrome-tabs md:block">
@@ -70,15 +70,14 @@ function Frame() {
         <TeamBanner />
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-page flex-1 outline-none">
           <Suspense fallback={<Loading />}>
-            <Outlet />
+            <PageNameContext value={setPageName}>
+              <Outlet />
+            </PageNameContext>
           </Suspense>
         </main>
         <Footer />
       </div>
-      <nav
-        aria-label="Main tabs"
-        className="tab-bar on-chrome fixed inset-x-0 bottom-0 z-tab-bar flex bg-forest shadow-[0_-2px_6px_rgba(19,32,26,0.18)] md:hidden"
-      >
+      <nav aria-label="Main tabs" className="tab-bar on-chrome fixed inset-x-0 bottom-0 z-tab-bar flex bg-forest shadow-tab-bar md:hidden">
         {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
           <NavLink
             key={path}

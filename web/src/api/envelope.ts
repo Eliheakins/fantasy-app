@@ -1,5 +1,6 @@
+import { z } from "zod";
 import { type ApiData, api, apiUrl, type InitArg, type LooseParams, type Method, type Route } from "./client";
-import { ENVELOPE_STATUSES, type Envelope, type EnvelopeStatus } from "./types";
+import { ENVELOPE_STATUSES, type Envelope } from "./types";
 
 const POLL_INTERVAL_MS = 2000;
 /** Fired when any request is refused because nobody is signed in (the session ended); the app then checks the session again. */
@@ -84,16 +85,24 @@ async function readBody(method: Method, route: string, { params, body }: LooseIn
   }
 }
 
+/** The wrapper every envelope route sends (`fantasy/api_envelope.py`): all four keys, always. `data` stays unchecked:
+ * per-route schemas would need zod generated from openapi.json (docs/decisions.md, 2026-11-13). */
+const envelopeWire = z.object({
+  status: z.enum(ENVELOPE_STATUSES),
+  data: z.unknown(),
+  error: z.object({ code: z.string(), message: z.string() }).nullable(),
+  started_at: z.string().nullable(),
+});
+
 async function requestEnvelope<T>(method: Method, route: string, init: LooseInit = {}): Promise<Envelope<T>> {
   const body = await readBody(method, route, init);
-  if (typeof body !== "object" || body === null || !("status" in body) || !ENVELOPE_STATUSES.includes(body.status as EnvelopeStatus)) {
-    throw new ApiFailure(errorField(body, "message") ?? `Unexpected response from ${apiUrl(route, init.params)}`);
-  }
+  const parsed = envelopeWire.safeParse(body);
+  if (!parsed.success) throw new ApiFailure(errorField(body, "message") ?? `Unexpected response from ${apiUrl(route, init.params)}`);
   // the sign-in routes answer "unauthorized" for their own reasons; anything else means the session is gone
-  if (errorField(body, "code") === "unauthorized" && !route.startsWith("/api/auth/") && typeof window !== "undefined") {
+  if (parsed.data.error?.code === "unauthorized" && !route.startsWith("/api/auth/") && typeof window !== "undefined") {
     window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
   }
-  return body as Envelope<T>;
+  return parsed.data as Envelope<T>;
 }
 
 /** One call to an envelope route: the route template plus its params and body, typed from the schema. */

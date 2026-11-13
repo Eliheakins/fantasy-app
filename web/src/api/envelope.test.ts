@@ -80,6 +80,14 @@ describe("fetchEnvelope", () => {
     stub({ status: "weird", data: 1, error: null, started_at: null });
     await expect(fetchEnvelope("get", "/api/status")).rejects.toThrow("Unexpected response from /api/status");
   });
+  it("rejects an ok envelope with no data key rather than handing on undefined", async () => {
+    stub({ status: "ok", error: null, started_at: null });
+    await expect(fetchEnvelope("get", "/api/status")).rejects.toThrow(new ApiFailure("Unexpected response from /api/status"));
+  });
+  it("rejects an envelope whose error is not {code, message}", async () => {
+    stub({ status: "error", data: null, error: "boom", started_at: null });
+    await expect(fetchEnvelope("get", "/api/status")).rejects.toThrow("Unexpected response from /api/status");
+  });
   it("returns an error envelope sent with a non-2xx status", async () => {
     stub({ status: "error", data: null, error: { code: "invalid", message: "week: too big" }, started_at: null }, 422);
     const env = await fetchEnvelope("get", "/api/status");

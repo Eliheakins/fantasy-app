@@ -82,8 +82,14 @@ const base: DigestData = {
   ideas,
 } as DigestData;
 
+/** The page asks for its digest and its actions; any other route fails the test. */
 function respond(digest: ApiState<unknown>, actions: ApiState<unknown> = ready([])) {
-  responder = (p) => (p === "digest" ? digest : actions);
+  const routes: Record<string, ApiState<unknown>> = { digest, "actions?stored_adds=true": actions };
+  responder = (p) => {
+    const state = routes[p];
+    if (!state) throw new Error(`unlisted route: ${p}`);
+    return state;
+  };
 }
 
 describe("Digest page", () => {

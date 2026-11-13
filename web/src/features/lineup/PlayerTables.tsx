@@ -4,6 +4,7 @@ import { PlayerLink } from "@/components/PlayerLink";
 import { Section } from "@/components/Section";
 import { RangeBar, formatNumber } from "@/viz";
 import { type LineupRow, hasRange, injuryLabel, pointsSoFar, rangeText, slotHidesPosition, slotLabel, tableDomain } from "./logic";
+import { tableHeadRowClass } from "@/components/ui/styles";
 
 const NO_VALUE = "–";
 
@@ -95,7 +96,7 @@ function Wide({ rows, ctx, columns }: { rows: readonly LineupRow[]; ctx: Ctx; co
         ))}
       </colgroup>
       <thead>
-        <tr className="border-b-[1.5px] border-forest text-left text-caption text-muted">
+        <tr className={tableHeadRowClass}>
           {columns.map((c) => (
             <th key={c.head} scope="col" className={`py-2 pr-3 font-normal last:pr-0 ${c.right ? "text-right" : ""}`}>
               {c.head}

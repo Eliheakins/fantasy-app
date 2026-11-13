@@ -47,7 +47,14 @@ const events = [
 ];
 
 const noBracket: ApiState<unknown> = { kind: "no_data", message: "x" };
-const by = (table: Record<string, unknown>) => (p: string) => (p === "bracket" ? noBracket : ready(table[p] ?? []));
+/** Answers only the listed routes: `data` as ready, `states` as given; any other route fails the test. */
+const by =
+  (data: Record<string, unknown>, states: Record<string, ApiState<unknown>> = {}) =>
+  (p: string): ApiState<unknown> => {
+    if (p in states) return states[p]!;
+    if (p in data) return ready(data[p]);
+    throw new Error(`unlisted route: ${p}`);
+  };
 const view = (ui: React.ReactElement) => render(<MemoryRouter>{ui}</MemoryRouter>);
 
 describe("Season header", () => {
@@ -62,7 +69,7 @@ describe("Season header", () => {
     expect(screen.getByRole("button", { name: /\+5\.0.*what drives this/ })).toBeInTheDocument();
   });
   it("keeps a stable h1 until the odds load", () => {
-    responder = () => ({ kind: "loading" });
+    responder = by({}, { "season-odds": { kind: "loading" }, digest: { kind: "loading" } });
     view(<SeasonHeader eyebrow="Season" />);
     expect(screen.getByRole("heading", { level: 1, name: "Season" })).toBeInTheDocument();
   });
@@ -83,7 +90,7 @@ describe("What you need", () => {
     expect(screen.getByText(/Too few simulated seasons/)).toBeInTheDocument();
   });
   it("shows an error from the API", () => {
-    responder = () => ({ kind: "error", error: { message: "boom", code: null } });
+    responder = by({}, { "win-needs": { kind: "error", error: { message: "boom", code: null } } });
     view(<WhatYouNeed />);
     expect(screen.getByText(/boom/)).toBeInTheDocument();
   });
@@ -112,7 +119,7 @@ describe("Who to root for, other states", () => {
     expect(screen.getByText(/No other game this week moves your odds/)).toBeInTheDocument();
   });
   it("shows an error from the API", () => {
-    responder = () => ({ kind: "error", error: { message: "boom", code: null } });
+    responder = by({}, { "what-if?week=0": { kind: "error", error: { message: "boom", code: null } } });
     view(<RootForSection />);
     expect(screen.getByText(/boom/)).toBeInTheDocument();
   });
@@ -156,6 +163,7 @@ describe("Season odds chart", () => {
       return by({
         "season-odds": odds,
         "odds-history": [...run("2026-10-20T06:00:00+00:00", 0.6), ...run("2026-10-27T06:00:00+00:00", 0.97)],
+        "season-events": [],
       })(p);
     };
     view(<SeasonOdds />);
@@ -166,30 +174,32 @@ describe("Season odds chart", () => {
     expect(cells("8")[1]).toHaveTextContent("10%");
   });
   it("says the marks are unavailable on an events error, not that there is nothing to mark", () => {
-    responder = (p) =>
-      p === "season-events"
-        ? { kind: "error", error: { message: "boom", code: null } }
-        : by({
-            "season-odds": odds,
-            "odds-history": [...run("2026-10-20T06:00:00+00:00", 0.6), ...run("2026-10-27T06:00:00+00:00", 0.7)],
-          })(p);
+    responder = by(
+      {
+        "season-odds": odds,
+        "odds-history": [...run("2026-10-20T06:00:00+00:00", 0.6), ...run("2026-10-27T06:00:00+00:00", 0.7)],
+      },
+      { "season-events": { kind: "error", error: { message: "boom", code: null } } },
+    );
     view(<SeasonOdds />);
     expect(screen.getByText(/Marks unavailable: boom/)).toBeInTheDocument();
     expect(screen.queryByText(/Nothing to mark yet/)).toBeNull();
   });
   it("keeps the section and shows loading or errors for odds and history", () => {
-    responder = (p) => (p === "season-odds" ? { kind: "loading" } : p === "bracket" ? noBracket : ready([]));
+    responder = by({ "odds-history": [], "season-events": [] }, { "season-odds": { kind: "loading" }, bracket: noBracket });
     const { unmount } = view(<SeasonOdds />);
     expect(screen.getByRole("heading", { name: "Playoff odds over the season" })).toBeInTheDocument();
     expect(screen.getByText(/Loading/)).toBeInTheDocument();
     unmount();
-    responder = (p) =>
-      p === "odds-history" ? { kind: "error", error: { message: "boom", code: null } } : p === "bracket" ? noBracket : ready(odds);
+    responder = by(
+      { "season-odds": odds, "season-events": [] },
+      { "odds-history": { kind: "error", error: { message: "boom", code: null } }, bracket: noBracket },
+    );
     view(<SeasonOdds />);
     expect(screen.getByText(/boom/)).toBeInTheDocument();
   });
   it("waits for a second run before drawing", () => {
-    responder = by({ "season-odds": odds, "odds-history": run("2026-10-20T06:00:00+00:00", 0.6) });
+    responder = by({ "season-odds": odds, "odds-history": run("2026-10-20T06:00:00+00:00", 0.6), "season-events": [] });
     view(<SeasonOdds />);
     expect(screen.queryByRole("heading", { name: "Marked events" })).toBeNull();
     expect(screen.getByText(HISTORY_WAIT_MESSAGE)).toBeInTheDocument();
