@@ -1,12 +1,11 @@
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
 import { useLeagueApi } from "@/lib/league";
-import type { BracketData } from "@/lib/outlookTypes";
 import { matchText, myBracketStatus, roundHeading } from "./logic";
 
 /** The playoff bracket as text: a heading per round, a list of matches. Hidden until Sleeper has set the bracket. */
 export function BracketSection({ myRosterId }: { myRosterId: number | null }) {
-  const state = useLeagueApi<BracketData>("bracket");
+  const state = useLeagueApi("/api/leagues/{league}/bracket");
   if (state.kind === "no_data") return null;
   return (
     <Section title="Playoff bracket" caption="Each match's chance to advance comes from the simulation, assuming current rosters.">

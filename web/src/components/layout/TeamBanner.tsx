@@ -9,7 +9,7 @@ const ACTION = "min-h-[44px] underline";
 export function TeamBanner() {
   const { viewed, setTeam, notice, dismissNotice } = useTeam();
   return (
-    <div aria-live="polite" role="status" className="sticky top-0 z-20 md:static">
+    <div aria-live="polite" role="status" className="sticky top-0 z-banner md:static">
       {viewed && (
         <p className={STRIP}>
           <span>Viewing as {viewed.team_name ?? `Team ${viewed.roster_id}`}</span>

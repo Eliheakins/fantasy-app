@@ -1,26 +1,24 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
+import type { ReactElement } from "react";
 import { Evaluator } from "./Evaluator";
 import { FindTradesSection } from "./FindTrades";
 import type { Asset, Partner } from "./types";
+import { type Call, stubApi } from "@/test/fakeApi";
+import { renderWithProviders } from "@/test/render";
 
 type Reply = { status: string; data?: unknown; error?: { code: string; message: string }; started_at?: string };
 const envelope = (r: Reply) => ({ data: null, error: null, started_at: null, ...r });
+/** The routes these sections call; anything else is unexpected. */
+const TRADE_ROUTE = /^\/api\/leagues\/[^/]+\/(trades\/find|trades\/evaluate|trade-assets)(\?|$)/;
 
-function mockFetch(handler: (url: string, init?: RequestInit) => Reply) {
-  const fn = vi.fn(async (url: string, init?: RequestInit) => new Response(JSON.stringify(envelope(handler(url, init)))));
-  vi.stubGlobal("fetch", fn);
-  return fn;
+function mockFetch(handler: (url: string) => Reply): Call[] {
+  return stubApi(({ url }) => (TRADE_ROUTE.test(url) ? { body: envelope(handler(url)) } : undefined));
 }
 
-function wrap(ui: ReactNode) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+function wrap(ui: ReactElement) {
+  return renderWithProviders(ui);
 }
-
-afterEach(() => vi.unstubAllGlobals());
 
 const FOUND = {
   partner: "Rivals",
@@ -133,7 +131,7 @@ async function evaluate(reply: Reply, debounceMs = 0) {
   return fn;
 }
 
-const evaluateCalls = (fn: ReturnType<typeof mockFetch>) => fn.mock.calls.filter(([u]) => String(u).includes("trades/evaluate"));
+const evaluateCalls = (calls: Call[]) => calls.filter(({ url }) => url.includes("trades/evaluate"));
 
 describe("trade builder", () => {
   it("has no Evaluate button and asks for a player on each side until both have one", () => {
@@ -152,10 +150,9 @@ describe("trade builder", () => {
     expect(screen.getByText(/Market value \(2026-10-25\): gives 5,000, gets 5,000, even/)).toBeInTheDocument();
   });
   it("sends one request for a burst of changes, not one per click", async () => {
-    mockFetch((url) =>
+    const fn = mockFetch((url) =>
       url.includes("trade-assets") ? { status: "ok", data: [asset("t1", "Theirs"), asset("t2", "Other")] } : { status: "ok", data: RESULT },
     );
-    const fn = vi.mocked(fetch);
     wrap(<Evaluator league="L" partners={PARTNERS} mine={[asset("m1", "Mine")]} debounceMs={300} />);
     await userEvent.click(screen.getByRole("checkbox", { name: /Mine/ }));
     await userEvent.click(await screen.findByRole("checkbox", { name: /Theirs/ }));
@@ -183,16 +180,13 @@ describe("trade builder", () => {
     const gate = new Promise<void>((r) => (releaseFirst = r));
     const stale = { ...RESULT, trade_deadline: 3 };
     const fresh = { ...RESULT, trade_deadline: 12 };
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string, init?: RequestInit) => {
-        if (url.includes("trade-assets"))
-          return new Response(JSON.stringify(envelope({ status: "ok", data: [asset("t1", "Theirs"), asset("t2", "Other")] })));
-        const second = String(init?.body).includes("t2");
-        if (!second) await gate;
-        return new Response(JSON.stringify(envelope({ status: "ok", data: second ? fresh : stale })));
-      }),
-    );
+    stubApi(async ({ url, body }) => {
+      if (url.includes("trade-assets")) return { body: envelope({ status: "ok", data: [asset("t1", "Theirs"), asset("t2", "Other")] }) };
+      if (!url.includes("trades/evaluate")) return undefined;
+      const second = JSON.stringify(body).includes("t2");
+      if (!second) await gate;
+      return { body: envelope({ status: "ok", data: second ? fresh : stale }) };
+    });
     wrap(<Evaluator league="L" partners={PARTNERS} mine={[asset("m1", "Mine")]} debounceMs={0} />);
     await userEvent.click(screen.getByRole("checkbox", { name: /Mine/ }));
     await userEvent.click(await screen.findByRole("checkbox", { name: /Theirs/ }));

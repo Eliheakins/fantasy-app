@@ -8,10 +8,10 @@ import { AsOf, Ideas } from "./Ideas";
 import { nextLineupAction } from "./logic";
 import { LastWeek, OddsChange, Performance } from "./Results";
 import { Watch } from "./Watch";
-import type { ActionRow, DigestData } from "@/lib/digestTypes";
+import type { DigestData } from "@/lib/digestTypes";
 
 function NextAction() {
-  const actions = useLeagueApi<ActionRow[]>("actions?stored_adds=true");
+  const actions = useLeagueApi("/api/leagues/{league}/actions", { stored_adds: true });
   return (
     <ApiBoundary state={actions}>
       {(rows) => {
@@ -89,6 +89,6 @@ function Body({ data }: { data: DigestData }) {
 
 /** The weekly digest for the selected league: every number comes from the digest route. */
 export function DigestView() {
-  const digest = useLeagueApi<DigestData>("digest");
+  const digest = useLeagueApi("/api/leagues/{league}/digest");
   return <ApiBoundary state={digest}>{(data) => <Body data={data} />}</ApiBoundary>;
 }

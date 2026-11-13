@@ -1,8 +1,7 @@
-import { afterEach, beforeEach } from "vitest";
+import { beforeEach } from "vitest";
 import { type OddsRun, newAdds, oddsSince, readVisit, writeVisit } from "./visit";
 
 beforeEach(() => window.localStorage.clear());
-afterEach(() => vi.restoreAllMocks());
 
 describe("last visit storage", () => {
   it("is null on a first visit and returns what was written, per league", () => {

@@ -1,3 +1,4 @@
+import { type ApiData, api, apiUrl, type InitArg, type LooseParams, type Method, type Route } from "./client";
 import { ENVELOPE_STATUSES, type Envelope, type EnvelopeStatus } from "./types";
 
 const POLL_INTERVAL_MS = 2000;
@@ -64,43 +65,80 @@ function errorField(body: unknown, key: "code" | "message"): string | null {
   return typeof value === "string" ? value : null;
 }
 
-export async function fetchEnvelope<T>(url: string, init?: RequestInit): Promise<Envelope<T>> {
-  // the server rejects non-GET requests without this header (blocks cross-site POSTs)
-  const headers = { ...init?.headers, "X-Requested-With": "fantasy-app" };
-  const response = await fetch(url, { ...init, headers });
-  let body: unknown;
-  try {
-    body = await response.json();
-  } catch {
-    throw new ApiFailure(`Server returned HTTP ${response.status} without JSON`);
+type LooseInit = { params?: LooseParams; body?: unknown };
+
+/** The body as sent: parsed JSON, or a failure that says the server sent something else. */
+async function readBody(method: Method, route: string, { params, body }: LooseInit): Promise<unknown> {
+  // "stream" leaves an ok body unread, so it is parsed below as before; openapi-fetch reads a non-2xx body
+  // itself and hands back the parsed JSON, or the raw text when it was not JSON.
+  const { response, error } = await api.request(method, route as never, { params, body, parseAs: "stream" } as never);
+  const status: number = response.status;
+  if (!response.ok) {
+    if (typeof error === "string" || error === undefined) throw new ApiFailure(`Server returned HTTP ${status} without JSON`);
+    return error;
   }
+  try {
+    return await response.json();
+  } catch {
+    throw new ApiFailure(`Server returned HTTP ${status} without JSON`);
+  }
+}
+
+async function requestEnvelope<T>(method: Method, route: string, init: LooseInit = {}): Promise<Envelope<T>> {
+  const body = await readBody(method, route, init);
   if (typeof body !== "object" || body === null || !("status" in body) || !ENVELOPE_STATUSES.includes(body.status as EnvelopeStatus)) {
-    throw new ApiFailure(errorField(body, "message") ?? `Unexpected response from ${url}`);
+    throw new ApiFailure(errorField(body, "message") ?? `Unexpected response from ${apiUrl(route, init.params)}`);
   }
   // the sign-in routes answer "unauthorized" for their own reasons; anything else means the session is gone
-  if (errorField(body, "code") === "unauthorized" && !url.startsWith("/api/auth/") && typeof window !== "undefined") {
+  if (errorField(body, "code") === "unauthorized" && !route.startsWith("/api/auth/") && typeof window !== "undefined") {
     window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
   }
   return body as Envelope<T>;
 }
 
+/** One call to an envelope route: the route template plus its params and body, typed from the schema. */
+export function fetchEnvelope<M extends Method, P extends Route<M>>(
+  method: M,
+  route: P,
+  ...[init]: InitArg<P, M>
+): Promise<Envelope<ApiData<P, M>>> {
+  return requestEnvelope<ApiData<P, M>>(method, route, init as LooseInit | undefined);
+}
+
+/** The loose form of `fetchEnvelope`, for the react-query wrappers that pass a route through (`useEnvelope.ts`). */
+export const fetchEnvelopeAt = requestEnvelope;
+
 export type Sent<T> = { ok: true; data: T } | { ok: false; error: ApiError };
 
 const UNREACHABLE: ApiError = { message: "Could not reach the server. Try again.", code: null };
 
-/** POST or DELETE with a JSON body and fold every way it can fail into one result: a refusal from
- * the server keeps its message, and a network failure becomes a plain sentence. Never throws. */
-export async function sendJson<T>(url: string, method: "POST" | "PUT" | "DELETE", body?: unknown): Promise<Sent<T>> {
+/** An ok envelope's data; otherwise an ApiFailure with the server's message, or the plain sentence for a network failure. */
+export async function sendEnvelope<T>(method: Method, route: string, init: LooseInit = {}): Promise<T> {
+  let envelope: Envelope<T>;
   try {
-    const envelope = await fetchEnvelope<T>(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-    if (envelope.status === "ok") return { ok: true, data: envelope.data as T };
-    return { ok: false, error: envelope.error ?? { message: "Unknown error", code: null } };
+    envelope = await requestEnvelope<T>(method, route, init);
   } catch (err) {
     // A non-JSON 5xx or an unexpected shape is not a network failure, so keep its message.
-    return { ok: false, error: err instanceof ApiFailure ? { message: err.message, code: err.code } : UNREACHABLE };
+    throw err instanceof ApiFailure ? err : new ApiFailure(UNREACHABLE.message);
+  }
+  if (envelope.status !== "ok") {
+    const error = envelope.error ?? { message: "Unknown error", code: null };
+    throw new ApiFailure(error.message, error.code);
+  }
+  return envelope.data as T;
+}
+
+/** Send a write and fold every way it can fail into one result: a refusal from the server keeps its message,
+ * and a network failure becomes a plain sentence. Never throws. For session.tsx; components use `useEnvelopeMutation`. */
+export async function sendJson<M extends Method, P extends Route<M>>(
+  method: M,
+  route: P,
+  ...[init]: InitArg<P, M>
+): Promise<Sent<ApiData<P, M>>> {
+  try {
+    return { ok: true, data: await sendEnvelope<ApiData<P, M>>(method, route, init as LooseInit | undefined) };
+  } catch (err) {
+    const failure = err instanceof ApiFailure ? err : new ApiFailure(UNREACHABLE.message);
+    return { ok: false, error: { message: failure.message, code: failure.code } };
   }
 }

@@ -90,7 +90,11 @@ function tokenize(sql: string): Token[] {
 class Parser {
   private pos = 0;
 
-  constructor(private readonly tokens: Token[]) {}
+  private readonly tokens: Token[];
+
+  constructor(tokens: Token[]) {
+    this.tokens = tokens;
+  }
 
   parse(): Node {
     const node = this.or();

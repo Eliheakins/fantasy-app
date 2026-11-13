@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Manifest } from "./schemas/manifest";
 
@@ -41,10 +41,6 @@ let MANIFEST = freshManifest();
 beforeEach(() => {
   buildCount += 1;
   MANIFEST = { ...freshManifest(), built_at: `2026-11-04T12:00:${String(buildCount).padStart(2, "0")}+00:00` };
-});
-
-afterEach(() => {
-  vi.unstubAllGlobals();
 });
 
 describe("searchPlayers", () => {

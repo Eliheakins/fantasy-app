@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import { leaguePath } from "@/test/fakeApi";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import type { ApiState } from "@/api/envelope";
@@ -32,12 +33,20 @@ const trade = {
 
 let waivers: ApiState<unknown>;
 let digest: ApiState<unknown>;
-let leagueRow = { league_key: "a", name: "L", current_week: 9, playoff_week_start: 15 };
+type Row = {
+  league_key: string;
+  name: string;
+  current_week: number;
+  playoff_week_start: number;
+  team_phase?: string | null;
+  playoff_label?: string | null;
+};
+let leagueRow: Row = { league_key: "a", name: "L", current_week: 9, playoff_week_start: 15 };
 vi.mock("@/lib/league", () => ({
   useLeague: () => ({ league: "a", leagues: { kind: "ready", data: [leagueRow] } }),
   useLeagueName: () => "L",
   useLeagueRow: () => leagueRow,
-  useLeagueApi: (path: string) => (path === "waivers" ? waivers : digest),
+  useLeagueApi: (route: string) => (leaguePath(route) === "waivers" ? waivers : digest),
 }));
 vi.mock("@/features/moves/waivers/WaiversView", () => ({ WaiversContent: () => <p>waivers details</p> }));
 vi.mock("@/features/moves/trade/TradeBuilder", () => ({ TradeBuilder: () => <p>trade builder</p> }));
@@ -175,10 +184,26 @@ describe("Moves page in the playoffs", () => {
   });
 
   it("tells an eliminated team it is out instead of listing zero-value adds", () => {
+    leagueRow = { ...leagueRow, team_phase: "eliminated" };
     waivers = ready([waiver("Coleman", { playoff_delta: 0, title_delta: 0 })]);
-    digest = digestWith([], [myOdds(0)]);
     renderAt("/moves");
     expect(screen.getAllByText(/You are out of the playoffs/).length).toBeGreaterThan(0);
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+  });
+
+  it("never calls a team out while its phase is unknown, even with zero title odds", () => {
+    leagueRow = { ...leagueRow, team_phase: null };
+    digest = digestWith([], [myOdds(0)]);
+    renderAt("/moves");
+    expect(screen.queryByText(/You are out of the playoffs/)).not.toBeInTheDocument();
+  });
+
+  it("shows the playoff label, not the out message, once the season is over", () => {
+    leagueRow = { ...leagueRow, current_week: 18, team_phase: "over", playoff_label: "Eliminated" };
+    digest = digestWith([], [myOdds(0)]);
+    renderAt("/moves");
+    expect(screen.queryByText(/You are out of the playoffs/)).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Eliminated");
     expect(screen.queryAllByRole("listitem")).toHaveLength(0);
   });
 });

@@ -1,13 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider, useLocation } from "react-router-dom";
-import { errorReply, okReply, stubApi } from "@/test/fakeApi";
+import { errorReply, okReply, stubScoped } from "@/test/fakeApi";
 import Login, { safePath } from "./Login";
+import { renderWithProviders } from "@/test/render";
 
 const ME = { email: "friend@example.com", is_admin: false, sleeper_user_id: null };
-
-afterEach(() => vi.unstubAllGlobals());
 
 function Landing() {
   const { pathname, search } = useLocation();
@@ -22,18 +20,14 @@ function open(state?: object) {
     ],
     { initialEntries: [{ pathname: "/login", state }] },
   );
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<RouterProvider router={router} />);
 }
 
 const signedOut = () => errorReply("unauthorized", "Sign in to continue.", 401);
 
 describe("Login", () => {
   it("has labelled fields a password manager can recognise", async () => {
-    stubApi(signedOut);
+    stubScoped("/api/auth/", signedOut);
     open();
     const email = await screen.findByLabelText("Email");
     expect(email).toHaveAttribute("type", "email");
@@ -43,7 +37,7 @@ describe("Login", () => {
   });
 
   it("signs in and goes to the page the visitor was after", async () => {
-    const calls = stubApi((call) => (call.url === "/api/auth/login" ? okReply(ME) : signedOut()));
+    const calls = stubScoped("/api/auth/", (call) => (call.url === "/api/auth/login" ? okReply(ME) : signedOut()));
     open({ from: "/lineup?week=3" });
     const user = userEvent.setup();
     await user.type(await screen.findByLabelText("Email"), "friend@example.com");
@@ -57,7 +51,9 @@ describe("Login", () => {
   });
 
   it("says what went wrong, announces it, clears the password and returns focus to it", async () => {
-    stubApi((call) => (call.url === "/api/auth/login" ? errorReply("invalid", "Wrong email or password.", 401) : signedOut()));
+    stubScoped("/api/auth/", (call) =>
+      call.url === "/api/auth/login" ? errorReply("invalid", "Wrong email or password.", 401) : signedOut(),
+    );
     open();
     const user = userEvent.setup();
     await user.type(await screen.findByLabelText("Email"), "friend@example.com");
@@ -72,15 +68,11 @@ describe("Login", () => {
   it("disables the button while the request is out, so it cannot be sent twice", async () => {
     let release: () => void = () => {};
     const gate = new Promise<void>((resolve) => (release = resolve));
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => {
-        if (url === "/api/auth/login") await gate;
-        return Response.json(url === "/api/auth/login" ? okReply(ME).body : signedOut().body, {
-          status: url === "/api/auth/login" ? 200 : 401,
-        });
-      }),
-    );
+    stubScoped("/api/auth/", async ({ url }) => {
+      if (url !== "/api/auth/login") return signedOut();
+      await gate;
+      return okReply(ME);
+    });
     open();
     const user = userEvent.setup();
     await user.type(await screen.findByLabelText("Email"), "friend@example.com");
@@ -92,13 +84,13 @@ describe("Login", () => {
   });
 
   it("tells a person whose session ended why they are here", async () => {
-    stubApi(signedOut);
+    stubScoped("/api/auth/", signedOut);
     open({ ended: true });
     expect(await screen.findByRole("status")).toHaveTextContent(/session ended/i);
   });
 
   it("passes a person who is already signed in straight through", async () => {
-    stubApi(() => okReply(ME));
+    stubScoped("/api/auth/", () => okReply(ME));
     open({ from: "/moves" });
     expect(await screen.findByText("landed on /moves")).toBeInTheDocument();
   });

@@ -1,12 +1,11 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useState } from "react";
-import { sendJson } from "@/api/envelope";
-import type { MyLeague, SleeperLookup } from "@/api/types";
+import type { SleeperLookup } from "@/api/types";
+import { useEnvelopeMutation } from "@/api/useEnvelope";
 import { Field } from "@/components/Field";
 import { Button } from "@/components/ui/button";
+import { MY_LEAGUES, MY_LEAGUES_KEY } from "./myLeagues";
 import { TeamPicker } from "./TeamPicker";
 
-const MY_LEAGUES_KEY = ["api", "/api/me/leagues"] as const;
 /** Sleeper's own rule for a username; the server checks it again. */
 const USERNAME_PATTERN = "[A-Za-z0-9_]{1,40}";
 
@@ -15,50 +14,40 @@ const USERNAME_PATTERN = "[A-Za-z0-9_]{1,40}";
  * the page says plainly what it does. */
 export function AddLeague() {
   const [username, setUsername] = useState("");
-  const queryClient = useQueryClient();
   const [lookup, setLookup] = useState<SleeperLookup | null>(null);
-  const [looking, setLooking] = useState(false);
-  const [adding, setAdding] = useState<string | null>(null);
   const [picking, setPicking] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [added, setAdded] = useState<string | null>(null);
+  const find = useEnvelopeMutation("post", "/api/me/sleeper/lookup");
+  const add = useEnvelopeMutation("post", MY_LEAGUES, [MY_LEAGUES_KEY]);
+  const adding = add.isPending ? add.variables.body.league_id : null;
+  const error = (find.error ?? add.error)?.message ?? null;
 
-  async function handleFind(event: FormEvent) {
+  function handleFind(event: FormEvent) {
     event.preventDefault();
-    setLooking(true);
-    setError(null);
+    add.reset();
     setAdded(null);
-    const sent = await sendJson<SleeperLookup>("/api/me/sleeper/lookup", "POST", { username: username.trim() });
-    setLooking(false);
-    if (!sent.ok) {
-      setLookup(null);
-      setError(sent.error.message);
-      return;
-    }
-    setLookup(sent.data);
+    find.mutate({ body: { username: username.trim() } }, { onSuccess: setLookup, onError: () => setLookup(null) });
   }
 
-  async function handleAdd(leagueId: string, name: string, rosterId: number) {
-    setAdding(leagueId);
-    setError(null);
+  function handleAdd(leagueId: string, name: string, rosterId: number) {
     const body = { username: username.trim(), league_id: leagueId, roster_id: rosterId };
-    const sent = await sendJson<MyLeague>("/api/me/leagues", "POST", body);
-    setAdding(null);
-    if (!sent.ok) {
-      setError(sent.error.message);
-      return;
-    }
-    setPicking(null);
-    setAdded(name);
-    setLookup((current) =>
-      current ? { ...current, leagues: current.leagues.map((l) => (l.league_id === leagueId ? { ...l, added: true } : l)) } : current,
+    add.mutate(
+      { body },
+      {
+        onSuccess: () => {
+          setPicking(null);
+          setAdded(name);
+          setLookup((current) =>
+            current ? { ...current, leagues: current.leagues.map((l) => (l.league_id === leagueId ? { ...l, added: true } : l)) } : current,
+          );
+        },
+      },
     );
-    await queryClient.invalidateQueries({ queryKey: MY_LEAGUES_KEY });
   }
 
   return (
     <div>
-      <form onSubmit={(e) => void handleFind(e)} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+      <form onSubmit={handleFind} className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <Field
           id="sleeper-username"
           label="Your Sleeper username"
@@ -70,8 +59,8 @@ export function AddLeague() {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
-        <Button type="submit" disabled={looking}>
-          {looking ? "Looking…" : "Find my leagues"}
+        <Button type="submit" disabled={find.isPending}>
+          {find.isPending ? "Looking…" : "Find my leagues"}
         </Button>
       </form>
       <p className="mt-2 max-w-prose text-caption text-muted">
@@ -124,7 +113,7 @@ export function AddLeague() {
                       ownerId={lookup.user_id}
                       confirmLabel={`Add ${l.name}`}
                       isBusy={adding === l.league_id}
-                      onConfirm={(rosterId) => void handleAdd(l.league_id, l.name, rosterId)}
+                      onConfirm={(rosterId) => handleAdd(l.league_id, l.name, rosterId)}
                       onCancel={() => setPicking(null)}
                     />
                   )}

@@ -1,8 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { CopySummaryButton } from "./CopySummaryButton";
 import { copyText } from "@/lib/clipboard";
 import type { Todo } from "./todos";
+import { stubRoutes } from "@/test/fakeApi";
+import { renderWithProviders } from "@/test/render";
 
 vi.mock("@/lib/clipboard", () => ({ copyText: vi.fn() }));
 
@@ -33,7 +34,7 @@ const digest = ok({
     },
   ],
 });
-const routes: Record<string, unknown> = {
+const routes: Record<string, object> = {
   "/api/leagues": ok([{ league_key: "a", name: "Alpha", roster_id: 1, current_week: 10 }]),
   "/api/leagues/a/digest": digest,
 };
@@ -52,22 +53,13 @@ const todos: Todo[] = [
   },
 ];
 
-const show = (pending = false) =>
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <CopySummaryButton todos={todos} pending={pending} />
-    </QueryClientProvider>,
-  );
+const show = (pending = false) => renderWithProviders(<CopySummaryButton todos={todos} pending={pending} />);
 
 beforeEach(() => {
   routes["/api/leagues/a/digest"] = digest;
   vi.mocked(copyText).mockReset();
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string) => new Response(JSON.stringify(routes[new URL(url, "http://x").pathname]))),
-  );
+  stubRoutes(routes);
 });
-afterEach(() => vi.unstubAllGlobals());
 
 const ready = async () => {
   const button = screen.getByRole("button", { name: "Copy summary" });

@@ -34,13 +34,13 @@ function Frame() {
     <div className="flex min-h-screen flex-col">
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-focus focus:px-4 focus:py-3 focus:text-white"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-skip-link focus:rounded focus:bg-focus focus:px-4 focus:py-3 focus:text-white"
       >
         Skip to content
       </a>
       <div
         data-scrolled={scrolled || undefined}
-        className="on-chrome bg-forest text-white shadow-[0_2px_6px_rgba(19,32,26,0.18)] transition-shadow md:sticky md:top-0 md:z-30 data-[scrolled]:md:shadow-[0_4px_16px_rgba(19,32,26,0.28)]"
+        className="on-chrome bg-forest text-white shadow-[0_2px_6px_rgba(19,32,26,0.18)] transition-shadow md:sticky md:top-0 md:z-header data-[scrolled]:md:shadow-[0_4px_16px_rgba(19,32,26,0.28)]"
       >
         <TopBar />
         <nav aria-label="Main" className="hidden bg-chrome-tabs md:block">
@@ -77,7 +77,7 @@ function Frame() {
       </div>
       <nav
         aria-label="Main tabs"
-        className="tab-bar on-chrome fixed inset-x-0 bottom-0 z-10 flex bg-forest shadow-[0_-2px_6px_rgba(19,32,26,0.18)] md:hidden"
+        className="tab-bar on-chrome fixed inset-x-0 bottom-0 z-tab-bar flex bg-forest shadow-[0_-2px_6px_rgba(19,32,26,0.18)] md:hidden"
       >
         {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
           <NavLink

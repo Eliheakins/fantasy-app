@@ -193,12 +193,13 @@ export function WaiversContent() {
   const selected = selection && selection.league === league ? selection.id : null;
   const { rank, setRank, pos, showAll } = useWaiverParams();
   const playoffWeeks = playoffWeeksOf(row);
-  const adds = useLeagueApi<WaiverRow[]>(rank === "playoffs" ? "waivers?horizon=playoffs" : "waivers");
-  const def = useLeagueApi<StreamerRow[]>("streamers?kind=DEF");
-  const kickers = useLeagueApi<StreamerRow[]>("streamers?kind=K");
-  const stash = useLeagueApi<StashData>("stash");
-  const weeks = useEnvelopeQuery<PlayerWeekRow[]>(
-    league && selected ? `/api/leagues/${encodeURIComponent(league)}/player-weeks?gsis_id=${encodeURIComponent(selected)}&n=4` : null,
+  const adds = useLeagueApi("/api/leagues/{league}/waivers", rank === "playoffs" ? { horizon: "playoffs" } : undefined);
+  const def = useLeagueApi("/api/leagues/{league}/streamers", { kind: "DEF" });
+  const kickers = useLeagueApi("/api/leagues/{league}/streamers", { kind: "K" });
+  const stash = useLeagueApi("/api/leagues/{league}/stash");
+  const weeks = useEnvelopeQuery(
+    "/api/leagues/{league}/player-weeks",
+    league && selected ? { path: { league }, query: { gsis_id: selected, n: 4 } } : null,
   );
   return (
     <WaiversView

@@ -1,8 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { screen, within } from "@testing-library/react";
 import { row } from "@/lib/scoreboardFixtures";
 import { WeekScores } from "./WeekScores";
+import { stubRoutes } from "@/test/fakeApi";
+import { renderWithProviders } from "@/test/render";
 
 const ok = (data: unknown) => ({ status: "ok", data, error: null, started_at: null });
 const leagues = [
@@ -10,12 +10,13 @@ const leagues = [
   { league_key: "b", name: "Beta", roster_id: 2 },
 ];
 const final = (a: object, b: object, o: object = {}) => row({ win_prob: null, ...a }, { win_prob: null, ...b }, { status: "Final", ...o });
-const routes: Record<string, unknown> = {
+const scoreboardA = ok([
+  final({ team_name: "Seals", points: 120 }, { team_name: "tsd", points: 99.3 }, { matchup_id: 2 }),
+  final({ team_name: "Lisan", is_me: true, points: 148.5 }, { team_name: "Flowers", points: 160 }),
+]);
+const routes: Record<string, object> = {
   "/api/leagues": ok(leagues),
-  "/api/leagues/a/scoreboard": ok([
-    final({ team_name: "Seals", points: 120 }, { team_name: "tsd", points: 99.3 }, { matchup_id: 2 }),
-    final({ team_name: "Lisan", is_me: true, points: 148.5 }, { team_name: "Flowers", points: 160 }),
-  ]),
+  "/api/leagues/a/scoreboard": scoreboardA,
   "/api/leagues/b/scoreboard": ok([
     row(
       { team_name: "Potty", is_me: true, points: 30, projected: 118, win_prob: 0.64 },
@@ -24,25 +25,14 @@ const routes: Record<string, unknown> = {
   ]),
 };
 
-const scoreboardA = routes["/api/leagues/a/scoreboard"];
 beforeEach(() => {
   routes["/api/leagues"] = ok(leagues);
   routes["/api/leagues/a/scoreboard"] = scoreboardA;
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string) => Response.json(routes[url.split("?")[0] ?? ""] ?? ok([]))),
-  );
+  stubRoutes(routes);
 });
-afterEach(() => vi.unstubAllGlobals());
 
 function renderScores() {
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter>
-        <WeekScores kickoff={null} />
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<WeekScores kickoff={null} />, { route: "/" });
 }
 
 describe("WeekScores", () => {

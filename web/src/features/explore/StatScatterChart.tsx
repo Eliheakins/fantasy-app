@@ -150,7 +150,7 @@ export function StatScatterChart({ points, xLabel, yLabel, className }: StatScat
         })}
       </svg>
       {hover !== null && points[hover] ? (
-        <div className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-md border border-line bg-surface px-3 py-1.5 text-center text-caption shadow-sm">
+        <div className="pointer-events-none absolute left-1/2 top-2 z-raised -translate-x-1/2 rounded-md border border-line bg-surface px-3 py-1.5 text-center text-caption shadow-sm">
           <div className="font-medium text-ink">{points[hover]!.label}</div>
           <div className="mt-0.5 tabular-nums text-muted">
             {xLabel}: {points[hover]!.x.toFixed(3)} · {yLabel}: {points[hover]!.y.toFixed(3)}

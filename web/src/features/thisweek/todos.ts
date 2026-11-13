@@ -3,7 +3,7 @@ import { actionGain, actionSentence, worthActing } from "@/features/thisweek/lea
 import type { ActionRow } from "@/features/thisweek/leagues/logic";
 import { compareEffect, type Effect, effectOf, MIN_PLAYOFF_GAIN } from "@/features/effects/effect";
 import { type EffectWhy, lineupWhy, tradeWhy, waiverWhy } from "@/features/effects/explain";
-import type { Phase } from "@/features/effects/phase";
+import { type Phase, isDone } from "@/features/effects/phase";
 import type { DeadlineWeekState } from "@/lib/deadline";
 import { sleeperLeagueUrl } from "@/lib/sleeper";
 import { leagueName } from "./weekLogic";
@@ -39,9 +39,9 @@ const PTS = (n: number) => n.toFixed(1);
 /** The odds an idea is judged on: title in the playoffs (playoff odds are fixed then), playoff odds before. */
 const ideaOdds = (idea: MoveIdea, phase: Phase) => (phase !== "season" ? idea.title_delta : idea.playoff_delta);
 
-/** The idea with the biggest odds change; none for an eliminated team. */
+/** The idea with the biggest odds change; none for an eliminated team or after the season. */
 const bestIdea = (ideas: readonly MoveIdea[], phase: Phase): MoveIdea | undefined =>
-  phase === "out"
+  isDone(phase)
     ? undefined
     : ideas.reduce<MoveIdea | undefined>(
         (best, w) => ((ideaOdds(w, phase) ?? -Infinity) > ((best && ideaOdds(best, phase)) ?? -Infinity) ? w : best),
@@ -69,7 +69,8 @@ const hrefFor = (page: "lineup" | "moves", leagueKey: string) => `/${page}?leagu
 
 /**
  * One league's to-dos: lineup and injury actions plus the best stored waiver add. Effects come from the responses as given.
- * In the playoffs the add is judged on its title change (playoff odds are fixed); an eliminated team gets no add.
+ * In the playoffs the add is judged on its title change (playoff odds are fixed); an eliminated team gets no add,
+ * and a finished season gets nothing.
  */
 export function leagueTodos(
   league: LeagueRef,
@@ -78,6 +79,7 @@ export function leagueTodos(
   deadlines: Deadlines,
   phase: Phase = "season",
 ): Todo[] {
+  if (phase === "over") return []; // the playoffs are finished: no lineup, injury or add left to act on
   const base = { leagueKey: league.league_key, leagueName: leagueName(league), sleeperUrl: sleeperUrlOf(league) };
   const fromActions = actions
     .filter((a) => a.kind !== "Waiver" && worthActing(a, a.share_better ?? null)) // the stored add below is the waiver to-do
@@ -147,7 +149,7 @@ export function tradeDeadlineTodos(
 
 /** Lineup holes and IR moves as to-dos; the deadline is the lineup deadline (next kickoff). */
 export function holeTodos(league: LeagueRef, holes: readonly HoleRow[], lineupDeadline: string | null, phase: Phase = "season"): Todo[] {
-  if (phase === "out") return []; // an eliminated or non-playoff team has no lineup to cover
+  if (isDone(phase)) return []; // an eliminated team or a finished season has no lineup to cover
   return holes.map((h, i): Todo => {
     const base = {
       leagueKey: league.league_key,

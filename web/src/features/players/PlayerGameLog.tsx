@@ -1,7 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Callout } from "@/components/Callout";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
-import { leagueUrl } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
 import { statIdsFor, statLink } from "@/lib/statLink";
 import { getStatById } from "@/stat/config/statDictionary";
@@ -12,7 +11,6 @@ import { useGameLog } from "./useGameLog";
 import { useProfile } from "./useProfile";
 
 type Props = { gsisId: string; position: string; season: number };
-type PointsRow = { week: number; points: number };
 
 /** League points to one decimal, whatever their size (formatQueryValue shows three below 1). */
 const formatPoints = (v: number | undefined): string => (v === undefined ? "—" : formatNumber(v));
@@ -25,8 +23,9 @@ export function PlayerGameLog({ gsisId, position, season }: Props) {
   const statIds = statIdsFor(position) ?? [];
   const log = useGameLog(gsisId, statIds, season);
   const { league } = useTeam();
-  const points = useEnvelopeQuery<PointsRow[]>(
-    league === null ? null : leagueUrl(league, `player-points?gsis_id=${encodeURIComponent(gsisId)}&season=${season}`),
+  const points = useEnvelopeQuery(
+    "/api/leagues/{league}/player-points",
+    league === null ? null : { path: { league }, query: { gsis_id: gsisId, season } },
   );
   const pointsByWeek = points.kind === "ready" ? new Map(points.data.map((p) => [p.week, p.points])) : null;
   const logByWeek = new Map((log.data?.rows ?? []).map((r) => [Number(r.week), r]));

@@ -3,7 +3,6 @@ import { ApiBoundary } from "@/components/ApiBoundary";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { Confidence, DataTableFallback, Delta, RangeBar, formatNumber, formatPercent, sharedDomain } from "@/viz";
 import { Block, Stat } from "./parts";
-import { leagueUrl } from "@/lib/league";
 import {
   type ActionRow,
   type WinProbability,
@@ -110,8 +109,8 @@ function ActionList({
 
 /** This week's win chance and ranges, then the moves worth making. */
 export function Advice({ leagueKey, mine, teamName }: { leagueKey: string; mine: boolean; teamName: string }) {
-  const odds = useEnvelopeQuery<WinProbability>(leagueUrl(leagueKey, "win-probability"));
-  const actions = useEnvelopeQuery<ActionRow[]>(leagueUrl(leagueKey, "actions"));
+  const odds = useEnvelopeQuery("/api/leagues/{league}/win-probability", { path: { league: leagueKey } });
+  const actions = useEnvelopeQuery("/api/leagues/{league}/actions", { path: { league: leagueKey } });
   const oddsData = odds.kind === "ready" ? odds.data : null;
   const chance = oddsData ? winChance(oddsData) : null;
   return (

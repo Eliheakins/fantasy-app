@@ -1,8 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { addSaved, readSaved, removeSaved, savedHref, writeSaved } from "./savedSearchStore";
 
 beforeEach(() => window.localStorage.clear());
-afterEach(() => vi.restoreAllMocks());
 
 describe("saved searches", () => {
   it("saves the query without league, team and week, under a trimmed name", () => {

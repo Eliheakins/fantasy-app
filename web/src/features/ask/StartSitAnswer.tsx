@@ -21,7 +21,7 @@ const RANGE_WIDTH = 200;
 
 /** Start/sit for the current week from the lineup route; the choice is the Lineup page's own `recommended` flag. */
 export function StartSitAnswer({ a, b, names }: Props) {
-  const lineup = useLeagueApi<LineupRow[]>("lineup");
+  const lineup = useLeagueApi("/api/leagues/{league}/lineup");
   const { pathname, search } = useLocation();
   const lineupLink = `/lineup${navSearch("/lineup", search, pathname)}`;
   return (

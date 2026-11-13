@@ -41,7 +41,7 @@ function Line({ wins, games, row }: ReturnType<typeof needTable>[number]) {
 
 /** The page's one tinted panel: playoff odds by how many of the next four games are won. */
 export function WhatYouNeed() {
-  const state = useLeagueApi<WinNeedRow[]>("win-needs");
+  const state = useLeagueApi("/api/leagues/{league}/win-needs");
   return (
     <section aria-labelledby="what-you-need" className="mb-8 key-panel">
       <h2 id="what-you-need" className="text-section font-semibold">

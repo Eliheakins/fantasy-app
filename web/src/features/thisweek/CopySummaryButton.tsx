@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { phaseOf } from "@/features/effects/phase";
 import { copyText } from "@/lib/clipboard";
-import type { DigestData } from "@/lib/digestTypes";
 import { useAllLeagues, useEachLeague } from "@/lib/league";
 import { summaryText, type SummaryLeague } from "./summary";
 import type { Todo } from "./todos";
@@ -16,9 +15,9 @@ type CopyState = "idle" | "copied" | "failed";
 export function CopySummaryButton({ todos, pending }: { todos: readonly Todo[]; pending: boolean }) {
   const leagues = useAllLeagues();
   const list = leagues.kind === "ready" ? leagues.data : [];
-  const digests = useEachLeague<DigestData>(
+  const digests = useEachLeague(
     list.map((l) => l.league_key),
-    "digest",
+    "/api/leagues/{league}/digest",
   );
   const rows: SummaryLeague[] = list.map((l, i) => {
     const d = digests[i];
@@ -28,7 +27,8 @@ export function CopySummaryButton({ todos, pending }: { todos: readonly Todo[]; 
       name: leagueName(l),
       lastWeek: data?.last_week ?? null,
       odds: odds.find((o) => o.is_me) ?? null,
-      phase: phaseOf(l, odds),
+      phase: phaseOf(l),
+      label: l.playoff_label ?? null,
       failed: d?.kind === "error",
     };
   });

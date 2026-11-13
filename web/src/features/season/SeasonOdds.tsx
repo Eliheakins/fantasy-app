@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { ApiState } from "@/api/envelope";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
 import { OddsHistoryChart } from "@/features/season/outlook/OddsHistoryChart";
@@ -57,7 +58,7 @@ function Chart({
 }: {
   odds: SeasonOddsRow[];
   history: OddsHistoryRow[];
-  events: ReturnType<typeof useLeagueApi<SeasonEventRow[]>>;
+  events: ApiState<SeasonEventRow[]>;
   titleFromWeek: number | null;
 }) {
   const list = useMemo(() => (events.kind === "ready" ? events.data : []), [events]);
@@ -85,9 +86,9 @@ function Chart({
 
 /** The odds chart with my trades, starter injuries and big weeks marked on my line. */
 export function SeasonOdds() {
-  const odds = useLeagueApi<SeasonOddsRow[]>("season-odds");
-  const history = useLeagueApi<OddsHistoryRow[]>("odds-history");
-  const events = useLeagueApi<SeasonEventRow[]>("season-events");
+  const odds = useLeagueApi("/api/leagues/{league}/season-odds");
+  const history = useLeagueApi("/api/leagues/{league}/odds-history");
+  const events = useLeagueApi("/api/leagues/{league}/season-events");
   const row = useLeagueRow();
   // title odds once the playoffs have begun
   const titleFromWeek =

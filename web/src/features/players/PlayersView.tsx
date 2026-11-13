@@ -92,7 +92,7 @@ function PlayerTable({ rows, scope }: { rows: readonly OutlookRow[]; scope: Scop
 
 export function PlayersView() {
   const [scope, setScope] = useState<Scope>("mine");
-  const state = useLeagueApi<OutlookRow[]>(`outlook?scope=${scope}`);
+  const state = useLeagueApi("/api/leagues/{league}/outlook", { scope });
   const title = SCOPES.find((s) => s.key === scope)?.label ?? "Players";
   return (
     <>

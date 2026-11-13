@@ -1,7 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StatusBanner } from "./StatusBanner";
+import { okReply, stubApi } from "@/test/fakeApi";
+import { renderWithProviders } from "@/test/render";
 
 const STATUS = {
   freshness: [{ source: "Sleeper", age_hours: 60, updated_at: "2026-11-01T00:00:00Z" }],
@@ -16,30 +17,17 @@ function mockMedia(matches: boolean) {
 }
 
 function renderBanner() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
-    <QueryClientProvider client={client}>
-      <StatusBanner />
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<StatusBanner />);
 }
 
 const HEALTH = { status: "ok", data_ready: true, data_through: "2026 week 9", built_at: new Date().toISOString(), seasons: [2026] };
 
 /** Answers /api/stat/health with a plain body and every other route with the envelope. */
 function stubFetch(status: unknown, health: unknown = HEALTH) {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string) =>
-      String(url).includes("/api/stat/health")
-        ? Response.json(health)
-        : Response.json({ status: "ok", data: status, error: null, started_at: null }),
-    ),
-  );
+  stubApi(({ url }) => (url === "/api/stat/health" ? Response.json(health) : url === "/api/status" ? okReply(status) : undefined));
 }
 
 beforeEach(() => stubFetch(STATUS));
-afterEach(() => vi.unstubAllGlobals());
 
 describe("StatusBanner", () => {
   it.each([
@@ -86,25 +74,18 @@ describe("StatusBanner", () => {
   });
 
   it("keeps the /api/status notices when the health call fails", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => {
-        if (String(url).includes("/api/stat/health")) return new Response("boom", { status: 500 });
-        return Response.json({ status: "ok", data: STATUS, error: null, started_at: null });
-      }),
+    stubApi(({ url }) =>
+      url === "/api/stat/health" ? new Response("boom", { status: 500 }) : url === "/api/status" ? okReply(STATUS) : undefined,
     );
     renderBanner();
     expect(await screen.findByText(/2 data notices/i)).toBeInTheDocument();
   });
 
   it("shows the not-built notice even when /api/status fails", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (url: string) => {
-        if (String(url).includes("/api/stat/health")) return Response.json({ ...HEALTH, data_ready: false, built_at: null });
-        throw new Error("status down");
-      }),
-    );
+    stubApi(({ url }) => {
+      if (url === "/api/stat/health") return Response.json({ ...HEALTH, data_ready: false, built_at: null });
+      throw new Error("status down");
+    });
     renderBanner();
     await userEvent.setup().click(await screen.findByRole("button", { name: /details/i }));
     expect(screen.getByText(/Stat data is not built/)).toBeInTheDocument();

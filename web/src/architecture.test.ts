@@ -36,8 +36,8 @@ describe("layers", () => {
   test("a feature does not import a page", () => {
     expect(offenders("features", /^pages\//, /\.test\.tsx?$/)).toEqual([]);
   });
-  test("lib and layout components do not import features or pages", () => {
-    expect([...offenders("lib", /^(features|pages)\//), ...offenders("components", /^(features|pages)\//)]).toEqual([]);
+  test.each(["lib", "components", "viz", "hooks", "api"])("shared %s/ does not import features or pages", (folder) => {
+    expect(offenders(folder, /^(features|pages)\//)).toEqual([]);
   });
   test("stat engine, lib and config stay free of the UI and the fantasy API", () => {
     // api/schema is allowed: generated types only, used by nlqIntent.ts to pin zod to the backend at compile time.

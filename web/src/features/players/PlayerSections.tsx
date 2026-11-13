@@ -1,17 +1,19 @@
 import type { ReactNode } from "react";
+import type { components } from "@/api/schema";
+import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { Link, useLocation } from "react-router-dom";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { navSearch } from "@/components/layout/navLinks";
 import { Section } from "@/components/Section";
 import { useLeagueOwners } from "@/features/explore/useLeagueOwners";
+import { useTeam } from "@/lib/teamContext";
 import type { Domain } from "@/viz/rangeAxis";
 import { Delta, Explain, ExplainDelta, formatNumber, formatPercent, RangeBar, sharedDomain, Sparkline } from "@/viz";
 import { marketChange, type PlayerProfile, resultSentence, roleKeysFor, roleSeries } from "./profile";
-import { useLeaguePath, useProfile } from "./useProfile";
+import { useProfile } from "./useProfile";
 
-type MarketRow = { gsis_id: string; value: number; overall_rank: number | null; position_rank: number | null; trend_30_day: number | null };
-
-type HistoryRow = { day: string; value: number };
+type MarketRow = components["schemas"]["MarketValueRow"];
+type HistoryRow = components["schemas"]["MarketHistoryRow"];
 
 const RANGE_WIDTH = 240;
 const MIN_HISTORY_POINTS = 4;
@@ -186,8 +188,15 @@ export function PlayerSections({
   domain?: Domain | null;
 }) {
   const profile = useProfile(gsisId);
-  const history = useLeaguePath<HistoryRow[]>(`market-history?id=${encodeURIComponent(gsisId)}`);
-  const market = useLeaguePath<MarketRow[]>(`market-values?ids=${encodeURIComponent(gsisId)}`);
+  const { league } = useTeam();
+  const history = useEnvelopeQuery(
+    "/api/leagues/{league}/market-history",
+    league === null ? null : { path: { league }, query: { id: gsisId } },
+  );
+  const market = useEnvelopeQuery(
+    "/api/leagues/{league}/market-values",
+    league === null ? null : { path: { league }, query: { ids: gsisId } },
+  );
   return (
     <ApiBoundary state={profile}>
       {(p) => {

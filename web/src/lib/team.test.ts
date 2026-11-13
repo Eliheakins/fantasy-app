@@ -1,21 +1,23 @@
 import { parseTeam, withTeam } from "./team";
 
 describe("withTeam", () => {
+  const roster = { path: { league: "a" } };
   it("sends nothing for the default team", () => {
-    expect(withTeam("/api/leagues/a/roster", null, "a")).toBe("/api/leagues/a/roster");
+    expect(withTeam("/api/leagues/{league}/roster", roster, null, "a")).toBe(roster);
   });
-  it("appends team to a league url, with ? or &", () => {
-    expect(withTeam("/api/leagues/a/roster", 3, "a")).toBe("/api/leagues/a/roster?team=3");
-    expect(withTeam("/api/leagues/a/lineup?week=2", 3, "a")).toBe("/api/leagues/a/lineup?week=2&team=3");
+  it("adds team last to a league route's query", () => {
+    expect(withTeam("/api/leagues/{league}/roster", roster, 3, "a")).toEqual({ path: { league: "a" }, query: { team: 3 } });
+    const lineup = withTeam("/api/leagues/{league}/lineup", { path: { league: "a" }, query: { week: 2 } }, 3, "a");
+    expect(Object.entries(lineup.query ?? {})).toEqual([
+      ["week", 2],
+      ["team", 3],
+    ]);
   });
   it("leaves other leagues, the team list and global routes alone", () => {
-    expect(withTeam("/api/leagues/b/roster", 3, "a")).toBe("/api/leagues/b/roster");
-    expect(withTeam("/api/leagues/a/teams", 3, "a")).toBe("/api/leagues/a/teams");
-    expect(withTeam("/api/status", 3, "a")).toBe("/api/status");
-    expect(withTeam("/api/leagues", 3, "a")).toBe("/api/leagues");
-  });
-  it("matches an encoded league key", () => {
-    expect(withTeam("/api/leagues/a%20b/roster", 2, "a b")).toBe("/api/leagues/a%20b/roster?team=2");
+    expect(withTeam("/api/leagues/{league}/roster", { path: { league: "b" } }, 3, "a")).toEqual({ path: { league: "b" } });
+    expect(withTeam("/api/leagues/{league}/teams", roster, 3, "a")).toBe(roster);
+    expect(withTeam("/api/status", {}, 3, "a")).toEqual({});
+    expect(withTeam("/api/leagues", {}, 3, "a")).toEqual({});
   });
 });
 

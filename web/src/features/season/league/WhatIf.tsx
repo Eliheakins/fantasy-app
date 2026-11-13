@@ -85,7 +85,7 @@ export function WhatIf() {
   const current = leagues.kind === "ready" ? leagues.data.find((l) => l.league_key === league)?.current_week : null;
   const [ahead, setAhead] = useState(0);
   const week = current == null ? 0 : current + ahead;
-  const state = useLeagueApi<WhatIfRow[]>(`what-if?week=${week}`);
+  const state = useLeagueApi("/api/leagues/{league}/what-if", { week });
   const options = Array.from({ length: WEEKS_AHEAD }, (_, i) => ({
     key: String(i),
     label: current == null ? "This week" : `Week ${current + i}`,

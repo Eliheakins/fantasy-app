@@ -3,6 +3,7 @@ import { createBrowserRouter, type RouteObject } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { RequireAdmin } from "@/components/layout/RequireAdmin";
 import { RequireSession } from "@/components/layout/RequireSession";
+import { RouteError } from "@/components/layout/RouteError";
 import { redirectRoutes } from "@/lib/redirects";
 import { NAV_ITEMS, type NavPath } from "@/nav";
 import DevViz from "@/pages/DevViz";
@@ -51,6 +52,8 @@ export const routes: RouteObject[] = [
             </Suspense>
           </>
         ),
+        // a page chunk that 404s after a redeploy lands here instead of React Router's default screen
+        errorElement: <RouteError />,
         children: [
           ...NAV_ITEMS.map(({ path }) => ({ path, element: TABS[path] })),
           { path: "/players/find", element: <Explore /> },

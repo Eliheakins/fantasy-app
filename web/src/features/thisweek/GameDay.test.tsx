@@ -1,10 +1,10 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeEach } from "vitest";
+import { beforeEach } from "vitest";
 import { neededLine } from "./gameDayText";
 import { ThisWeekBoard } from "./ThisWeekBoard";
 import { WinChanceLine } from "./WinChanceLine";
+import { stubApi } from "@/test/fakeApi";
+import { renderWithProviders } from "@/test/render";
 
 const ok = (data: unknown) => ({ status: "ok", data, error: null, started_at: null });
 const point = (run_at: string, win_prob: number, my_points: number) => ({
@@ -56,35 +56,25 @@ beforeEach(() => {
   live = true;
   leaguesFail = false;
   gameDay = () => Response.json(ok({ week: 9, as_of: "2026-11-08T17:20:00Z", current: now, history }));
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string) => {
-      urls.push(url);
-      const path = url.split("?")[0] ?? "";
-      if (path === "/api/status") return Response.json(status(live));
-      if (path === "/api/leagues")
-        return leaguesFail
-          ? Response.json({ status: "error", data: null, error: { code: "server", message: "down" }, started_at: null })
-          : Response.json(ok([{ league_key: "a", name: "Alpha", roster_id: 1 }]));
-      if (path.endsWith("/digest")) return Response.json(ok({ waivers: [], ideas: {} }));
-      if (path === "/api/week-calendar") return Response.json(ok({ week: 9, kickoffs: [], waivers: [] }));
-      if (path === "/api/leagues/a/game-day") return gameDay();
-      return Response.json(ok([]));
-    }),
-  );
+  stubApi(({ url }) => {
+    urls.push(url);
+    const path = url.split("?")[0] ?? "";
+    if (path === "/api/status") return Response.json(status(live));
+    if (path === "/api/leagues")
+      return leaguesFail
+        ? Response.json({ status: "error", data: null, error: { code: "server", message: "down" }, started_at: null })
+        : Response.json(ok([{ league_key: "a", name: "Alpha", roster_id: 1 }]));
+    if (path.endsWith("/digest")) return Response.json(ok({ waivers: [], ideas: {} }));
+    if (path === "/api/week-calendar") return Response.json(ok({ week: 9, kickoffs: [], waivers: [] }));
+    if (path === "/api/leagues/a/game-day") return gameDay();
+    // the rest of the page's blocks, empty here
+    const EMPTY = ["scoreboard", "actions", "holes", "odds-history", "status-changes"].map((p) => `/api/leagues/a/${p}`);
+    return EMPTY.includes(path) ? Response.json(ok([])) : undefined;
+  });
 });
-afterEach(() => vi.unstubAllGlobals());
 
 function renderBoard() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter>
-        <ThisWeekBoard />
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
-  return client;
+  return renderWithProviders(<ThisWeekBoard />, { route: "/" }).client;
 }
 const todoPanel = () => screen.getByRole("heading", { name: "To do, both leagues" }).closest("section")!;
 

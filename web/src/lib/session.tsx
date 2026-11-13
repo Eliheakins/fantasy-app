@@ -1,5 +1,5 @@
 import { type QueryClient, useQuery } from "@tanstack/react-query";
-import { type ApiError, fetchEnvelope, sendJson } from "@/api/envelope";
+import { type ApiError, fetchEnvelope, type Sent, sendJson } from "@/api/envelope";
 import type { Envelope, Me } from "@/api/types";
 
 /** Who is signed in. The server decides: `/api/auth/me` answers 401 when nobody is, and on a
@@ -48,7 +48,7 @@ function scopeStorageTo(envelope: Envelope<Me>): void {
 }
 
 async function fetchMe(): Promise<Envelope<Me>> {
-  const envelope = await fetchEnvelope<Me>(ME_URL);
+  const envelope = await fetchEnvelope("get", ME_URL);
   scopeStorageTo(envelope);
   return envelope;
 }
@@ -76,8 +76,8 @@ function startSession(queryClient: QueryClient, envelope: Envelope<Me>): void {
   queryClient.setQueryData(ME_KEY, envelope);
 }
 
-async function authenticate(queryClient: QueryClient, url: string, body: unknown): Promise<ApiError | null> {
-  const sent = await sendJson<Me>(url, "POST", body);
+async function authenticate(queryClient: QueryClient, sending: Promise<Sent<Me>>): Promise<ApiError | null> {
+  const sent = await sending;
   if (!sent.ok) return sent.error;
   startSession(queryClient, { status: "ok", data: sent.data, error: null, started_at: null });
   return null;
@@ -85,13 +85,13 @@ async function authenticate(queryClient: QueryClient, url: string, body: unknown
 
 /** Null on success; otherwise the message to show. */
 export const signIn = (queryClient: QueryClient, email: string, password: string) =>
-  authenticate(queryClient, "/api/auth/login", { email, password });
+  authenticate(queryClient, sendJson("post", "/api/auth/login", { body: { email, password } }));
 
 /** Sets the password from an invite link and signs in. Null on success. */
 export const redeemInvite = (queryClient: QueryClient, token: string, password: string) =>
-  authenticate(queryClient, "/api/auth/redeem", { token, password });
+  authenticate(queryClient, sendJson("post", "/api/auth/redeem", { body: { token, password } }));
 
 export async function signOut(queryClient: QueryClient, everywhere = false): Promise<void> {
-  await sendJson(everywhere ? "/api/auth/logout-everywhere" : "/api/auth/logout", "POST");
+  await sendJson("post", everywhere ? "/api/auth/logout-everywhere" : "/api/auth/logout");
   startSession(queryClient, SIGNED_OUT);
 }

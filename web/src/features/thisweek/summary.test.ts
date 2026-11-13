@@ -26,6 +26,7 @@ const league = (name: string, over: Partial<SummaryLeague> = {}): SummaryLeague 
     d_title: -0.01,
   },
   phase: "season",
+  label: null,
   failed: false,
   ...over,
 });
@@ -60,6 +61,12 @@ describe("summaryText", () => {
   it("uses title odds in the playoffs and says so when out", () => {
     expect(summaryText([league("Alpha", { phase: "playoffs" })], [])).toContain("Alpha: title odds 10% (-1 points)");
     expect(summaryText([league("Alpha", { phase: "out" })], [])).toContain("Alpha: out of the playoffs");
+  });
+  it("gives the playoff label once the season is over, and no odds or out line", () => {
+    const text = summaryText([league("Alpha", { phase: "over", label: "Champion" })], []);
+    expect(text).toContain("Alpha: Champion");
+    expect(text).not.toMatch(/out of the playoffs|odds/);
+    expect(summaryText([league("Alpha", { phase: "over" })], [])).not.toMatch(/Alpha: (out|title|playoff)/);
   });
   it("stays between 5 and 8 lines, with or without to-dos", () => {
     const two = [league("Alpha"), league("Beta")];

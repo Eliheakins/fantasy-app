@@ -70,42 +70,44 @@ describe("elapsedSeconds", () => {
 });
 
 describe("fetchEnvelope", () => {
-  afterEach(() => vi.unstubAllGlobals());
-  const stub = (body: unknown) => vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 200, json: async () => body }));
+  const stub = (body: unknown, status = 200) => vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json(body, { status })));
 
   it("returns a well-formed envelope", async () => {
     stub({ status: "ok", data: 1, error: null, started_at: null });
-    await expect(fetchEnvelope<number>("/x")).resolves.toMatchObject({ status: "ok", data: 1 });
+    await expect(fetchEnvelope("get", "/api/status")).resolves.toMatchObject({ status: "ok", data: 1 });
   });
   it("rejects an unknown status literal", async () => {
     stub({ status: "weird", data: 1, error: null, started_at: null });
-    await expect(fetchEnvelope("/x")).rejects.toThrow(/Unexpected response/);
+    await expect(fetchEnvelope("get", "/api/status")).rejects.toThrow("Unexpected response from /api/status");
   });
   it("returns an error envelope sent with a non-2xx status", async () => {
-    const body = { status: "error", data: null, error: { code: "invalid", message: "week: too big" }, started_at: null };
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 422, json: async () => body }));
-    const env = await fetchEnvelope<number>("/x");
+    stub({ status: "error", data: null, error: { code: "invalid", message: "week: too big" }, started_at: null }, 422);
+    const env = await fetchEnvelope("get", "/api/status");
     expect(resolveState(env, null)).toEqual({ kind: "error", error: { message: "week: too big", code: "invalid" } });
   });
   it("surfaces error.message from a body that has no status", async () => {
     stub({ error: { code: "server", message: "Something went wrong" } });
-    await expect(fetchEnvelope("/x")).rejects.toThrow("Something went wrong");
+    await expect(fetchEnvelope("get", "/api/status")).rejects.toThrow("Something went wrong");
+  });
+  it("says a body that is not JSON is not JSON, ok or not", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("<html>", { status: 502 })));
+    await expect(fetchEnvelope("get", "/api/status")).rejects.toThrow("Server returned HTTP 502 without JSON");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("<html>", { status: 200 })));
+    await expect(fetchEnvelope("get", "/api/status")).rejects.toThrow("Server returned HTTP 200 without JSON");
   });
 });
 
 describe("sendJson", () => {
-  afterEach(() => vi.unstubAllGlobals());
-
   it("a server reply that is not an envelope keeps its own message, not the network one", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ status: 502, json: async () => ({}) }));
-    const sent = await sendJson("/x", "POST", {});
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({}, { status: 502 })));
+    const sent = await sendJson("post", "/api/auth/logout");
     expect(sent).toMatchObject({ ok: false });
     expect(sent.ok === false && sent.error.message).not.toMatch(/Could not reach the server/);
   });
 
   it("a network failure becomes the plain sentence", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
-    const sent = await sendJson("/x", "POST", {});
+    const sent = await sendJson("post", "/api/auth/logout");
     expect(sent.ok === false && sent.error.message).toMatch(/Could not reach the server/);
   });
 });

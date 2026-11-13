@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { FIXTURE_SEASONS } from "@/stat/testing/seasons";
 
@@ -10,10 +10,6 @@ function mockFetch(status: number, body: unknown) {
     vi.fn(async () => new Response(JSON.stringify(body), { status })),
   );
 }
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
 
 describe("requestIntent", () => {
   it("sends X-Requested-With: fantasy-app, which the server requires on POST", async () => {

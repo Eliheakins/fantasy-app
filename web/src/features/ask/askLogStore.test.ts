@@ -2,7 +2,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { logAsk, readLog } from "./askLogStore";
 
 afterEach(() => {
-  vi.unstubAllGlobals();
   window.localStorage.clear();
 });
 

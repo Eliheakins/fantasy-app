@@ -1,24 +1,29 @@
 import { phaseOf } from "./phase";
 
-const mine = (over = {}) => ({ is_me: true, as_of_week: 15, p_title: 0.2, p_playoffs: 1, ...over }) as never;
 const league = { current_week: 15, playoff_week_start: 15 };
 
 describe("phaseOf", () => {
-  it("is season before the playoff start, whatever the odds", () => {
-    expect(phaseOf({ ...league, current_week: 14 }, [mine({ p_title: 0 })])).toBe("season");
+  it.each([
+    ["regular", "season"],
+    ["playing", "playoffs"],
+    ["bye", "playoffs"],
+    ["consolation", "playoffs"],
+    ["eliminated", "out"],
+    ["champion", "over"],
+    ["over", "over"],
+  ] as const)("maps team_phase %s to %s", (teamPhase, phase) => {
+    expect(phaseOf({ ...league, team_phase: teamPhase })).toBe(phase);
+  });
+  it("reads a runner-up after the final as over, not out", () => {
+    expect(phaseOf({ current_week: 18, playoff_week_start: 15, team_phase: "over" })).toBe("over");
+  });
+  it("falls back to the week when the phase is unknown, and is never out then", () => {
+    expect(phaseOf({ ...league, team_phase: null })).toBe("playoffs");
+    expect(phaseOf({ ...league, current_week: 17 })).toBe("playoffs");
+    expect(phaseOf({ ...league, current_week: 14, team_phase: null })).toBe("season");
   });
   it("is season when the league has no playoff start or is not loaded", () => {
-    expect(phaseOf({ current_week: 15, playoff_week_start: null }, [])).toBe("season");
-    expect(phaseOf(undefined, [])).toBe("season");
-  });
-  it("is playoffs from the start week while my team can still win the title", () => {
-    expect(phaseOf(league, [mine()])).toBe("playoffs");
-    expect(phaseOf(league, [])).toBe("playoffs");
-  });
-  it("is out when my title odds are exactly 0 in a refresh from the playoffs", () => {
-    expect(phaseOf(league, [mine({ p_title: 0 }), mine({ is_me: false, p_title: 0.5 })])).toBe("out");
-  });
-  it("does not call a team out from a refresh older than the playoff start", () => {
-    expect(phaseOf(league, [mine({ p_title: 0, as_of_week: 14 })])).toBe("playoffs");
+    expect(phaseOf({ current_week: 15, playoff_week_start: null })).toBe("season");
+    expect(phaseOf(undefined)).toBe("season");
   });
 });

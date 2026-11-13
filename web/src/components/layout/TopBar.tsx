@@ -1,5 +1,4 @@
 import { useLocation } from "react-router-dom";
-import type { Status } from "@/api/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { useLeague } from "@/lib/league";
@@ -28,7 +27,7 @@ export function TopBar() {
   const weekReady = leagues.kind === "ready";
   const mine = teams.find((t) => t.is_me)?.roster_id ?? null;
   const shown = teams.find((t) => t.roster_id === (team ?? mine));
-  const status = useEnvelopeQuery<Status>("/api/status");
+  const status = useEnvelopeQuery("/api/status");
   const updated = status.kind === "ready" ? latestUpdate(status.data) : null;
   const live = status.kind === "ready" ? liveLabel(status.data, now) : null;
   const list = leagues.kind === "ready" ? leagues.data : [];

@@ -1,12 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it } from "vitest";
 
-import { LeagueProvider } from "@/lib/league";
 import type { LineupRow } from "@/features/lineup/logic";
 
 import { StartSitAnswer } from "./StartSitAnswer";
+import { okReply, stubApi } from "@/test/fakeApi";
+import { renderWithProviders } from "@/test/render";
 
 const row = (id: string, o: Partial<LineupRow> = {}): LineupRow => ({
   slot: "TE",
@@ -30,27 +29,18 @@ const NAMES = { a: "Travis Kelce", b: "George Kittle" };
 let lineup: LineupRow[] = [];
 
 beforeEach(() => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string) => {
-      const data = url.includes("/lineup") ? lineup : [{ league_key: "L1", name: "League", current_week: 9 }];
-      return Response.json({ status: "ok", data, error: null, started_at: null });
-    }),
+  stubApi(({ url }) =>
+    url.startsWith("/api/leagues/L1/lineup")
+      ? okReply(lineup)
+      : url === "/api/leagues"
+        ? okReply([{ league_key: "L1", name: "League", current_week: 9 }])
+        : undefined,
   );
   window.localStorage.clear();
 });
-afterEach(() => vi.unstubAllGlobals());
 
 function renderAnswer() {
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter initialEntries={["/ask?league=L1&team=2&q=x"]}>
-        <LeagueProvider>
-          <StartSitAnswer a="a" b="b" names={NAMES} />
-        </LeagueProvider>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<StartSitAnswer a="a" b="b" names={NAMES} />, { route: "/ask?league=L1&team=2&q=x", league: true });
 }
 
 describe("StartSitAnswer", () => {

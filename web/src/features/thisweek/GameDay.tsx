@@ -1,7 +1,7 @@
 import { isPending } from "@/api/envelope";
 import type { components } from "@/api/schema";
-import type { League, Status } from "@/api/types";
-import { leagueUrl, useAllLeagues } from "@/lib/league";
+import type { League } from "@/api/types";
+import { useAllLeagues } from "@/lib/league";
 import { useEnvelopePolling, useEnvelopeQuery } from "@/api/useEnvelope";
 import { possessive } from "@/lib/text";
 import { Explain, formatNumber, formatPercent } from "@/viz";
@@ -16,7 +16,7 @@ const FALLBACK_TICK_MINUTES = 10; // the live refresh's own interval, if the sta
 
 /** Whether a game of the week is on (the live refresh's own switch) and how often it ticks. Shares the /api/status query with the top bar. */
 export function useLiveStatus(): { live: boolean; intervalMs: number } {
-  const state = useEnvelopeQuery<Status>("/api/status", STATUS_POLL_MS);
+  const state = useEnvelopeQuery("/api/status", {}, STATUS_POLL_MS);
   const live = state.kind === "ready" ? state.data.live_refresh : null;
   return {
     live: Boolean(live?.enabled && live.active),
@@ -29,7 +29,7 @@ const winWhy = (c: Now) =>
   `Share of simulated finishes of this week's matchup in which your total beats ${possessive(c.opp_team)}, counting points already scored. Projected finals: ${c.my_team} ${formatNumber(c.my_projected)}, ${c.opp_team} ${formatNumber(c.opp_projected)}; ${players(c.my_left)} for you, ${players(c.opp_left)} for them.`;
 
 function LeagueGameDay({ league, intervalMs }: { league: League; intervalMs: number }) {
-  const { state, stale } = useEnvelopePolling<GameDayData>(leagueUrl(league.league_key, "game-day"), intervalMs);
+  const { state, stale } = useEnvelopePolling("/api/leagues/{league}/game-day", { path: { league: league.league_key } }, intervalMs);
   const name = leagueName(league);
   if (state.kind === "error")
     return (

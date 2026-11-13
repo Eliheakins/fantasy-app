@@ -1,11 +1,12 @@
 import { render, screen, within } from "@testing-library/react";
+import { leaguePath } from "@/test/fakeApi";
 import userEvent from "@testing-library/user-event";
 import type { ApiState } from "@/api/envelope";
 import { LeagueView as League } from "./LeagueView";
 
 let responder: (path: string) => ApiState<unknown>;
 vi.mock("@/lib/league", () => ({
-  useLeagueApi: (path: string) => responder(path),
+  useLeagueApi: (route: string, query?: object) => responder(leaguePath(route, query)),
   useLeague: () => ({ league: "t", leagues: { kind: "ready", data: [{ league_key: "t", current_week: 7 }] } }),
 }));
 

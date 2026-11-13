@@ -3,7 +3,7 @@ import { type ComponentProps, type ReactNode, useId, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Delta } from "./Delta";
 
-const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F5A43]";
+const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus";
 /** In a sentence the line height stays normal; an invisible pad makes the 44px hit area. */
 const INLINE = "relative after:absolute after:-inset-x-1 after:-inset-y-3 after:content-['']";
 /** A row-level number is its own 44px target. */
@@ -51,7 +51,7 @@ export function Explain({ why, children, about, row = false, inHeading = false }
             e.preventDefault();
             trigger.current.focus();
           }}
-          className="z-50 max-w-[min(20rem,calc(100vw-16px))] rounded-md border border-line bg-surface px-3 py-2 text-caption leading-relaxed text-ink shadow-sm"
+          className="z-popover max-w-[min(20rem,calc(100vw-16px))] rounded-md border border-line bg-surface px-3 py-2 text-caption leading-relaxed text-ink shadow-sm"
         >
           {why}
         </Popover.Content>

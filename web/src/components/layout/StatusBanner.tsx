@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import type { StatHealth, Status } from "@/api/types";
+import { api } from "@/api/client";
+import type { StatHealth } from "@/api/types";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { bannerMessages } from "@/lib/status";
 
@@ -25,9 +26,9 @@ function useStatHealth(): StatHealth | null {
   const { data } = useQuery<StatHealth, Error>({
     queryKey: ["stat-health"],
     queryFn: async () => {
-      const res = await fetch("/api/stat/health");
-      if (!res.ok) throw new Error(`stat health ${res.status}`);
-      return (await res.json()) as StatHealth;
+      const { data, response } = await api.GET("/api/stat/health");
+      if (data === undefined) throw new Error(`stat health ${response.status}`);
+      return data;
     },
     refetchInterval: STAT_HEALTH_REFETCH_MS,
     retry: false,
@@ -39,7 +40,7 @@ const INNER = "mx-auto w-full max-w-page px-[var(--page-pad)]";
 
 /** One amber line at every width with a details disclosure; stacked rows pushed each page's answer down. */
 export function StatusBanner() {
-  const state = useEnvelopeQuery<Status>("/api/status");
+  const state = useEnvelopeQuery("/api/status");
   const [open, setOpen] = useState(false);
   const statHealth = useStatHealth();
   const messages = bannerMessages(state.kind === "ready" ? state.data : null, statHealth);

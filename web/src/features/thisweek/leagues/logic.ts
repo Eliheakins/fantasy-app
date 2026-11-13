@@ -9,7 +9,6 @@ export type LiveScore = Schemas["LiveScoreRow"];
 export type RosterRow = Schemas["RosterRow"];
 export type ActionRow = Schemas["ActionRow"];
 export type WinProbability = Schemas["WinProbabilityData"];
-export type Unmatched = Schemas["UnmatchedData"];
 
 /** "Colgate 5-2 · 801.3 PF · week 7": with fallbacks for missing fields. */
 export function recordLine(l: League): string {

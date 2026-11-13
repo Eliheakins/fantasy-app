@@ -1,11 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { screen, within } from "@testing-library/react";
+import { Route, Routes } from "react-router-dom";
 import { AppShell } from "./AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { rememberExplore } from "@/stat/react/routeMemory";
-import { LeagueProvider } from "@/lib/league";
 import { NAV_ITEMS } from "@/nav";
+import { errorReply, okReply, type Reply, stubApi } from "@/test/fakeApi";
+import { renderWithProviders } from "@/test/render";
 
 const FIVE = ["This week", "Lineup", "Moves", "Season", "Players"];
 
@@ -17,31 +17,25 @@ beforeEach(() => {
     refresh_runs: [],
     live_refresh: { enabled: false, active: false, last_ok_at: null },
   };
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (url: string) =>
-      Response.json({ status: "ok", data: url.startsWith("/api/status") ? status : [], error: null, started_at: null }),
-    ),
-  );
+  const shell: Record<string, Reply> = {
+    "/api/status": okReply(status),
+    "/api/leagues": okReply([]),
+    "/api/auth/me": okReply({ email: "me@example.com", is_admin: false, sleeper_user_id: null }),
+    "/api/stat/health": errorReply("no_data", "No stat data", 404), // the banner then reads no stat health
+  };
+  stubApi(({ url }) => shell[url]);
   window.localStorage.clear();
   rememberExplore("");
 });
-afterEach(() => vi.unstubAllGlobals());
 
 function renderAt(entry: string) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[entry]}>
-        <LeagueProvider>
-          <Routes>
-            <Route element={<AppShell />}>
-              <Route path="*" element={<PageHeader title="page" />} />
-            </Route>
-          </Routes>
-        </LeagueProvider>
-      </MemoryRouter>
-    </QueryClientProvider>,
+  renderWithProviders(
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route path="*" element={<PageHeader title="page" />} />
+      </Route>
+    </Routes>,
+    { route: entry, league: true },
   );
 }
 

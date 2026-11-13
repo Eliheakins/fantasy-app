@@ -1,11 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import Ask from "./Ask";
 import { fetchManifest } from "@/stat/lib/api";
 import { getPlayerDictionary } from "@/stat/lib/players";
 import { FIXTURE_SEASONS } from "@/stat/testing/seasons";
+import { renderWithProviders } from "@/test/render";
 
 vi.mock("@/stat/lib/api", () => ({ fetchManifest: vi.fn() }));
 vi.mock("@/stat/lib/players", () => ({ getPlayerDictionary: vi.fn(), getPlayersByIds: vi.fn(async () => []) }));
@@ -23,13 +23,12 @@ function Where() {
 }
 
 function renderAsk(entry = "/ask?league=a&team=2") {
-  return render(
-    <QueryClientProvider client={new QueryClient()}>
-      <MemoryRouter initialEntries={[entry]}>
-        <Ask />
-        <Where />
-      </MemoryRouter>
-    </QueryClientProvider>,
+  return renderWithProviders(
+    <>
+      <Ask />
+      <Where />
+    </>,
+    { route: entry },
   );
 }
 
@@ -51,7 +50,6 @@ beforeEach(() => {
   });
   vi.mocked(getPlayerDictionary).mockResolvedValue([MAHOMES]);
 });
-afterEach(() => vi.unstubAllGlobals());
 
 describe("Ask page", () => {
   it("answers a ranking with the rules when the intent endpoint is down, keeping league and team in the URL", async () => {

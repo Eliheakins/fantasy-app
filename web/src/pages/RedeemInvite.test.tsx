@@ -1,15 +1,13 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
-import { errorReply, okReply, stubApi } from "@/test/fakeApi";
+import { errorReply, okReply, stubScoped } from "@/test/fakeApi";
 import RedeemInvite from "./RedeemInvite";
+import { renderWithProviders } from "@/test/render";
 
 const ME = { email: "friend@example.com", is_admin: false, sleeper_user_id: null };
 const TOKEN = "invite-token-with-enough-length";
 const GOOD = "a long enough password";
-
-afterEach(() => vi.unstubAllGlobals());
 
 function open() {
   const router = createMemoryRouter(
@@ -19,11 +17,7 @@ function open() {
     ],
     { initialEntries: [`/invite/${TOKEN}`] },
   );
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<RouterProvider router={router} />);
   return router;
 }
 
@@ -36,7 +30,7 @@ async function fill(password: string, again: string) {
 
 describe("RedeemInvite", () => {
   it("asks for a new password with the autocomplete hints a password manager needs", () => {
-    stubApi(() => okReply(ME));
+    stubScoped("/api/auth/", () => okReply(ME));
     open();
     expect(screen.getByRole("heading", { level: 1, name: "Choose a password" })).toBeInTheDocument();
     expect(screen.getByLabelText("New password")).toHaveAttribute("autocomplete", "new-password");
@@ -44,7 +38,7 @@ describe("RedeemInvite", () => {
   });
 
   it("refuses a short password without calling the server", async () => {
-    const calls = stubApi(() => okReply(ME));
+    const calls = stubScoped("/api/auth/", () => okReply(ME));
     open();
     await fill("short", "short");
     expect(await screen.findByRole("alert")).toHaveTextContent("Use at least 12 characters.");
@@ -53,7 +47,7 @@ describe("RedeemInvite", () => {
   });
 
   it("refuses two different passwords without calling the server", async () => {
-    const calls = stubApi(() => okReply(ME));
+    const calls = stubScoped("/api/auth/", () => okReply(ME));
     open();
     await fill(GOOD, `${GOOD}!`);
     expect(await screen.findByRole("alert")).toHaveTextContent("not the same");
@@ -61,7 +55,7 @@ describe("RedeemInvite", () => {
   });
 
   it("sends the token from the link with the password, then opens the app", async () => {
-    const calls = stubApi(() => okReply(ME));
+    const calls = stubScoped("/api/auth/", () => okReply(ME));
     open();
     await fill(GOOD, GOOD);
     expect(await screen.findByText("the app")).toBeInTheDocument();
@@ -69,7 +63,7 @@ describe("RedeemInvite", () => {
   });
 
   it("replaces the invite address after signing in, so the token leaves the history", async () => {
-    stubApi(() => okReply(ME));
+    stubScoped("/api/auth/", () => okReply(ME));
     const router = open();
     await fill(GOOD, GOOD);
     expect(await screen.findByText("the app")).toBeInTheDocument();
@@ -78,7 +72,7 @@ describe("RedeemInvite", () => {
   });
 
   it("shows why a used or expired link failed and stays on the page", async () => {
-    stubApi(() => errorReply("invalid", "This invite link was already used.", 400));
+    stubScoped("/api/auth/", () => errorReply("invalid", "This invite link was already used.", 400));
     open();
     await fill(GOOD, GOOD);
     expect(await screen.findByRole("alert")).toHaveTextContent("This invite link was already used.");

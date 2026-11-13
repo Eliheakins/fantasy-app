@@ -14,7 +14,7 @@ import { CloseCalls } from "@/features/lineup/CloseCalls";
 import { ResultPanel } from "@/features/lineup/ResultPanel";
 import { OPTION_OF, RECOMMENDED_OBJECTIVE, slotCalls, startAnswer, weekOverText, weekResult } from "@/features/lineup/calls";
 import { SLEEPER_WIN_WHY, winChanceWhy } from "@/features/lineup/explain";
-import { WeeksAheadGrid, type LineupGrid } from "@/features/lineup/WeeksAheadGrid";
+import { WeeksAheadGrid } from "@/features/lineup/WeeksAheadGrid";
 import { Comparison } from "@/features/lineup/Comparison";
 import { PlayerTable } from "@/features/lineup/PlayerTables";
 import {
@@ -218,7 +218,7 @@ function ViewToggle({ view }: { view: "week" | "ahead" }) {
 
 function WeeksAhead({ eyebrow }: { eyebrow?: string }) {
   const { league } = useLeague();
-  const grid = useLeagueApi<LineupGrid>("lineup-grid");
+  const grid = useLeagueApi("/api/leagues/{league}/lineup-grid");
   return (
     <>
       <PageHeader title="Lineup" eyebrow={eyebrow} />
@@ -233,9 +233,9 @@ function ThisWeekLineup({ eyebrow }: { eyebrow?: string }) {
   const { league } = useLeague();
   const { week } = useWeek();
   const { team } = useTeam();
-  const lineup = useLeagueApi<LineupRow[]>(`lineup?week=${week}`);
-  const odds = useLeagueApi<WinProbability>(`win-probability?week=${week}`);
-  const board = useLeagueApi<ScoreboardRow[]>(`scoreboard?week=${week}`);
+  const lineup = useLeagueApi("/api/leagues/{league}/lineup", { week });
+  const odds = useLeagueApi("/api/leagues/{league}/win-probability", { week });
+  const board = useLeagueApi("/api/leagues/{league}/scoreboard", { week });
   const toggle = <ViewToggle view="week" />;
   return (
     <>

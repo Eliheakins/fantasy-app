@@ -1,7 +1,6 @@
 import { copyText } from "./clipboard";
 
 describe("copyText", () => {
-  afterEach(() => vi.unstubAllGlobals());
   it("uses the clipboard when it works", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal("navigator", { clipboard: { writeText } });

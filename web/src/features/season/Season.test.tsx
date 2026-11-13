@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import { leaguePath } from "@/test/fakeApi";
 import { MemoryRouter } from "react-router-dom";
 import type { ApiState } from "@/api/envelope";
 import { HISTORY_WAIT_MESSAGE } from "@/features/season/outlook/logic";
@@ -13,7 +14,7 @@ beforeEach(() => {
   leagueRow = undefined;
 });
 vi.mock("@/lib/league", () => ({
-  useLeagueApi: (path: string) => responder(path),
+  useLeagueApi: (route: string, query?: object) => responder(leaguePath(route, query)),
   useLeague: () => ({ league: "a" }),
   useLeagueRow: () => leagueRow,
 }));

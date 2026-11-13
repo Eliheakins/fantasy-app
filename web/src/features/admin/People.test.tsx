@@ -1,14 +1,10 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
-import { TeamProvider } from "@/lib/TeamProvider";
-import { LeagueProvider } from "@/lib/league";
 import { errorReply, first, okReply, stubScoped } from "@/test/fakeApi";
 import { People } from "./People";
+import { renderWithProviders } from "@/test/render";
 
-afterEach(() => vi.unstubAllGlobals());
-
+const ACCOUNTS = "/api/admin/accounts";
 const BOSS = { id: 1, email: "boss@example.com", is_admin: true, has_password: true, invite_pending: false, created_at: "2026-11-01" };
 const FRIEND = { id: 2, email: "friend@example.com", is_admin: false, has_password: true, invite_pending: false, created_at: "2026-11-02" };
 const WAITING = {
@@ -21,22 +17,12 @@ const WAITING = {
 };
 
 function open() {
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter>
-        <LeagueProvider>
-          <TeamProvider>
-            <People />
-          </TeamProvider>
-        </LeagueProvider>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  );
+  renderWithProviders(<People />, { route: "/", league: true, team: true });
 }
 
 describe("People", () => {
   it("lists everyone with their role and status", async () => {
-    stubScoped("/api/admin/", () => okReply([BOSS, FRIEND, WAITING]));
+    stubScoped("/api/admin/", ({ url }) => (url === ACCOUNTS ? okReply([BOSS, FRIEND, WAITING]) : undefined));
     open();
     expect(await screen.findAllByText("boss@example.com")).not.toHaveLength(0);
     expect(screen.getAllByText("Admin").length).toBeGreaterThan(0);
@@ -45,7 +31,7 @@ describe("People", () => {
   });
 
   it("offers no remove or new-link buttons for the admin", async () => {
-    stubScoped("/api/admin/", () => okReply([BOSS]));
+    stubScoped("/api/admin/", ({ url }) => (url === ACCOUNTS ? okReply([BOSS]) : undefined));
     open();
     await screen.findAllByText("boss@example.com");
     expect(screen.queryByRole("button", { name: /remove boss/i })).not.toBeInTheDocument();
@@ -59,7 +45,7 @@ describe("People", () => {
         listed = [BOSS, WAITING];
         return okReply({ email: "waiting@example.com", path: "/invite/abc123", valid_days: 7 });
       }
-      return okReply(listed);
+      return call.url === ACCOUNTS ? okReply(listed) : undefined;
     });
     open();
     const user = userEvent.setup();
@@ -78,7 +64,9 @@ describe("People", () => {
     stubScoped("/api/admin/", (call) =>
       call.url === "/api/admin/invites"
         ? okReply({ email: "waiting@example.com", path: "/invite/abc123", valid_days: 7 })
-        : okReply([BOSS]),
+        : call.url === ACCOUNTS
+          ? okReply([BOSS])
+          : undefined,
     );
     const user = userEvent.setup();
     const copied = vi.spyOn(navigator.clipboard, "writeText");
@@ -92,7 +80,11 @@ describe("People", () => {
 
   it("shows the server's reason when an invite is refused", async () => {
     stubScoped("/api/admin/", (call) =>
-      call.url === "/api/admin/invites" ? errorReply("invalid", "That email is not valid.", 422) : okReply([BOSS]),
+      call.url === "/api/admin/invites"
+        ? errorReply("invalid", "That email is not valid.", 422)
+        : call.url === ACCOUNTS
+          ? okReply([BOSS])
+          : undefined,
     );
     open();
     const user = userEvent.setup();
@@ -105,7 +97,9 @@ describe("People", () => {
     const calls = stubScoped("/api/admin/", (call) =>
       call.url === "/api/admin/invites"
         ? okReply({ email: "friend@example.com", path: "/invite/zzz", valid_days: 7 })
-        : okReply([BOSS, FRIEND]),
+        : call.url === ACCOUNTS
+          ? okReply([BOSS, FRIEND])
+          : undefined,
     );
     open();
     const user = userEvent.setup();
@@ -121,7 +115,7 @@ describe("People", () => {
         listed = [BOSS];
         return okReply({ email: "friend@example.com" });
       }
-      return okReply(listed);
+      return call.url === ACCOUNTS ? okReply(listed) : undefined;
     });
     open();
     const user = userEvent.setup();
@@ -135,7 +129,7 @@ describe("People", () => {
   });
 
   it("lets the admin back out of a removal", async () => {
-    const calls = stubScoped("/api/admin/", () => okReply([BOSS, FRIEND]));
+    const calls = stubScoped("/api/admin/", ({ url }) => (url === ACCOUNTS ? okReply([BOSS, FRIEND]) : undefined));
     open();
     const user = userEvent.setup();
     await user.click(first(await screen.findAllByRole("button", { name: "Remove friend@example.com" })));

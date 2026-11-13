@@ -1,24 +1,15 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { LeagueProvider } from "@/lib/league";
 import { errorReply, okReply, stubApi, type Reply } from "@/test/fakeApi";
 import { WelcomeDialog } from "./WelcomeDialog";
-
-afterEach(() => vi.unstubAllGlobals());
+import { renderWithProviders } from "@/test/render";
 
 const LEAGUE = { league_key: "a", league_id: "1", name: "Colgate" };
 const TITLE = "Welcome. Add your Sleeper leagues";
 
 function open(leagues: unknown[], mine: Reply) {
-  const calls = stubApi((call) => (call.url.startsWith("/api/me/leagues") ? mine : okReply(leagues)));
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <LeagueProvider>
-        <WelcomeDialog />
-      </LeagueProvider>
-    </QueryClientProvider>,
-  );
+  const calls = stubApi((call) => (call.url === "/api/me/leagues" ? mine : call.url === "/api/leagues" ? okReply(leagues) : undefined));
+  renderWithProviders(<WelcomeDialog />, { league: true });
   return calls;
 }
 

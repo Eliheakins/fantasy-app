@@ -2,8 +2,15 @@ import type { LastWeekRow, OddsChangeRow } from "@/lib/digestTypes";
 import type { Phase } from "@/features/effects/phase";
 import type { Todo } from "./todos";
 
-/** `failed`: the league's digest did not load, so there is no result to give. */
-export type SummaryLeague = { name: string; lastWeek: LastWeekRow | null; odds: OddsChangeRow | null; phase: Phase; failed: boolean };
+/** `failed`: the league's digest did not load, so there is no result to give. `label`: the league's playoff label. */
+export type SummaryLeague = {
+  name: string;
+  lastWeek: LastWeekRow | null;
+  odds: OddsChangeRow | null;
+  phase: Phase;
+  label: string | null;
+  failed: boolean;
+};
 
 const MAX_LINES = 8;
 const PERCENT = 100;
@@ -18,6 +25,7 @@ function resultLine(l: SummaryLeague): string {
 
 function oddsLine(l: SummaryLeague): string | null {
   if (l.phase === "out") return `${l.name}: out of the playoffs`;
+  if (l.phase === "over") return l.label === null ? null : `${l.name}: ${l.label}`;
   const o = l.odds;
   const title = l.phase === "playoffs";
   const [p, d] = title ? [o?.p_title, o?.d_title] : [o?.p_playoffs, o?.d_playoffs];

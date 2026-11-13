@@ -1,11 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { ApiState } from "@/api/envelope";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { TeamContext } from "@/lib/teamContext";
 import { PlayerSections } from "./PlayerSections";
 import type { PlayerProfile } from "./profile";
+import { renderWithProviders } from "@/test/render";
 
 vi.mock("@/api/useEnvelope", () => ({ useEnvelopeQuery: vi.fn() }));
 
@@ -62,16 +62,14 @@ function mock(
 }
 
 function renderSections(level: 2 | 3 = 2) {
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <TeamContext.Provider
-        value={{ team: 2, league: "a", teams: [], viewed: null, setTeam: () => {}, notice: null, dismissNotice: () => {} }}
-      >
-        <MemoryRouter>
-          <PlayerSections gsisId="a" level={level} name="Ann" />
-        </MemoryRouter>
-      </TeamContext.Provider>
-    </QueryClientProvider>,
+  renderWithProviders(
+    <TeamContext.Provider
+      value={{ team: 2, league: "a", teams: [], viewed: null, setTeam: () => {}, notice: null, dismissNotice: () => {} }}
+    >
+      <MemoryRouter>
+        <PlayerSections gsisId="a" level={level} name="Ann" />
+      </MemoryRouter>
+    </TeamContext.Provider>,
   );
 }
 const headings = () => screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);

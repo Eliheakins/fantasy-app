@@ -8,7 +8,6 @@ import { OddsTable } from "./OddsTable";
 import { ScheduleTable } from "./ScheduleTable";
 import { seedCaption } from "./logic";
 import { SeedChart } from "./SeedChart";
-import type { ScheduleRow, SeasonOddsRow, SeedRow } from "@/lib/outlookTypes";
 import { capitalize, useWho } from "@/lib/who";
 
 /** Optional blocks show only when they have rows; an error says so. */
@@ -33,9 +32,9 @@ const SCHEDULE_METHOD =
 export function OutlookView() {
   const who = useWho();
   const playoffTeams = usePlayoffTeams();
-  const odds = useLeagueApi<SeasonOddsRow[]>("season-odds");
-  const seeds = useLeagueApi<SeedRow[]>("seeds");
-  const schedule = useLeagueApi<ScheduleRow[]>("schedule");
+  const odds = useLeagueApi("/api/leagues/{league}/season-odds");
+  const seeds = useLeagueApi("/api/leagues/{league}/seeds");
+  const schedule = useLeagueApi("/api/leagues/{league}/schedule");
   return (
     <ApiBoundary state={odds}>
       {(oddsRows) =>

@@ -1,6 +1,5 @@
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Section } from "@/components/Section";
-import type { WhatIfRow } from "@/features/season/league/types";
 import { useLeagueApi } from "@/lib/league";
 import { Explain, formatNumber } from "@/viz";
 import { type RootFor as RootForRow, rootFor } from "./logic";
@@ -10,7 +9,7 @@ const swingWhy = (r: RootForRow) =>
 
 /** Other teams' games this week, ranked by how much each result moves my playoff odds. */
 export function RootForSection() {
-  const state = useLeagueApi<WhatIfRow[]>("what-if?week=0");
+  const state = useLeagueApi("/api/leagues/{league}/what-if", { week: 0 });
   return (
     <Section title="Who to root for" caption="This week's other games, by how much the result moves your playoff odds.">
       <ApiBoundary state={state}>

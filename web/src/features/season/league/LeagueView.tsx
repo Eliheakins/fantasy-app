@@ -10,7 +10,6 @@ import { GradesTable, LuckTable } from "./LuckAndGrades";
 import { PowerRankings, ScheduleStrength } from "./PowerRankings";
 import { PositionalStrength } from "./PositionalStrength";
 import { WhatIf } from "./WhatIf";
-import type { LuckRow, ManagerGradeRow, PowerRankingRow, TeamGradeRow } from "./types";
 
 /** A table section that loads on its own; an empty result says so instead of vanishing. */
 function Rows<T>({
@@ -36,10 +35,10 @@ function Rows<T>({
 }
 
 export function LeagueView() {
-  const power = useLeagueApi<PowerRankingRow[]>("power-rankings");
-  const luck = useLeagueApi<LuckRow[]>("luck");
-  const grades = useLeagueApi<ManagerGradeRow[]>("manager-grades");
-  const teamGrades = useLeagueApi<TeamGradeRow[]>("team-grades");
+  const power = useLeagueApi("/api/leagues/{league}/power-rankings");
+  const luck = useLeagueApi("/api/leagues/{league}/luck");
+  const grades = useLeagueApi("/api/leagues/{league}/manager-grades");
+  const teamGrades = useLeagueApi("/api/leagues/{league}/team-grades");
   const { viewed } = useTeam();
   const owner = viewed?.team_name ? possessive(viewed.team_name) : "your";
   const tabs: { value: string; label: string; body: ReactNode }[] = [

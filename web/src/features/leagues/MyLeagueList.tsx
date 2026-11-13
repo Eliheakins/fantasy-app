@@ -1,16 +1,16 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { type QueryKey, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { sendJson } from "@/api/envelope";
 import type { MyLeague } from "@/api/types";
-import { useEnvelopeQuery } from "@/api/useEnvelope";
+import { apiKey, useEnvelopeMutation, useEnvelopeQuery } from "@/api/useEnvelope";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { Button } from "@/components/ui/button";
 import { useLeague } from "@/lib/league";
+import { MY_LEAGUES, MY_LEAGUES_KEY } from "./myLeagues";
 import { TeamPicker } from "./TeamPicker";
 
-const MY_LEAGUES_URL = "/api/me/leagues";
 const POLL_MS = 8000;
+const LEAGUES_KEY = apiKey("/api/leagues");
 const STATUS_TEXT: Record<string, string> = {
   queued: "Waiting for the next refresh",
   ready: "Ready",
@@ -24,45 +24,45 @@ export function MyLeagueList() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { setLeague } = useLeague();
-  const state = useEnvelopeQuery<MyLeague[]>(MY_LEAGUES_URL, POLL_MS);
+  const state = useEnvelopeQuery(MY_LEAGUES, {}, POLL_MS);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [picking, setPicking] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // No hook-level invalidation: the confirm and picker close when the write returns, and the refetch runs behind them.
+  const removing = useEnvelopeMutation("delete", "/api/me/leagues/{league_id}");
+  const changing = useEnvelopeMutation("put", "/api/me/leagues/{league_id}/team");
+  const refetch = (...keys: readonly QueryKey[]) => {
+    for (const queryKey of keys) void queryClient.invalidateQueries({ queryKey });
+  };
+  const error = (removing.error ?? changing.error)?.message ?? null;
   // null until the list first loads, so a visit does not refetch /api/leagues for leagues already ready.
   const readyBefore = useRef<number | null>(null);
   const ready = state.kind === "ready" ? state.data.filter((l) => l.status === "ready").length : null;
 
   useEffect(() => {
     if (ready === null) return;
-    if (readyBefore.current !== null && ready > readyBefore.current)
-      void queryClient.invalidateQueries({ queryKey: ["api", "/api/leagues"] });
+    if (readyBefore.current !== null && ready > readyBefore.current) void queryClient.invalidateQueries({ queryKey: LEAGUES_KEY });
     readyBefore.current = ready;
   }, [ready, queryClient]);
 
-  async function remove(league: MyLeague) {
-    setError(null);
-    const sent = await sendJson(`${MY_LEAGUES_URL}/${encodeURIComponent(league.league_id)}`, "DELETE");
-    setConfirming(null);
-    if (!sent.ok) {
-      setError(sent.error.message);
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: ["api", MY_LEAGUES_URL] });
-    await queryClient.invalidateQueries({ queryKey: ["api", "/api/leagues"] });
+  function remove(league: MyLeague) {
+    changing.reset();
+    removing.mutate(
+      { params: { path: { league_id: league.league_id } } },
+      { onSettled: () => setConfirming(null), onSuccess: () => refetch(MY_LEAGUES_KEY, LEAGUES_KEY) },
+    );
   }
 
-  async function changeTeam(league: MyLeague, rosterId: number) {
-    setError(null);
-    setSaving(true);
-    const sent = await sendJson(`${MY_LEAGUES_URL}/${encodeURIComponent(league.league_id)}/team`, "PUT", { roster_id: rosterId });
-    setSaving(false);
-    if (!sent.ok) {
-      setError(sent.error.message);
-      return;
-    }
-    setPicking(null);
-    await queryClient.invalidateQueries({ queryKey: ["api"] }); // every page that shows "your team"
+  function changeTeam(league: MyLeague, rosterId: number) {
+    removing.reset();
+    changing.mutate(
+      { params: { path: { league_id: league.league_id } }, body: { roster_id: rosterId } },
+      {
+        onSuccess: () => {
+          setPicking(null);
+          refetch(["api"]); // every page that shows "your team"
+        },
+      },
+    );
   }
 
   function open(league: MyLeague) {
@@ -115,7 +115,7 @@ export function MyLeagueList() {
                     )}
                     {confirming === l.league_id ? (
                       <>
-                        <Button size="sm" onClick={() => void remove(l)}>
+                        <Button size="sm" onClick={() => remove(l)}>
                           Confirm remove {l.name}
                         </Button>
                         <Button size="sm" variant="outline" onClick={() => setConfirming(null)}>
@@ -134,8 +134,8 @@ export function MyLeagueList() {
                       leagueName={l.name}
                       initial={l.roster_id}
                       confirmLabel="Save team"
-                      isBusy={saving}
-                      onConfirm={(rosterId) => void changeTeam(l, rosterId)}
+                      isBusy={changing.isPending}
+                      onConfirm={(rosterId) => changeTeam(l, rosterId)}
                       onCancel={() => setPicking(null)}
                     />
                   )}

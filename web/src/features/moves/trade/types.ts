@@ -4,7 +4,6 @@ type Schemas = components["schemas"];
 
 export type Partner = Schemas["PartnerRow"];
 export type Asset = Schemas["AssetRow"];
-export type Strength = Schemas["StrengthRow"];
 export type FoundTrade = Schemas["FoundTradeRow"];
 export type MarketSummary = Schemas["MarketSummary"];
 export type TradeSide = Schemas["TradeSideRow"];

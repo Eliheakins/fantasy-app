@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import { leaguePath } from "@/test/fakeApi";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { ApiState } from "@/api/envelope";
@@ -8,7 +9,8 @@ const currentLeague = "x";
 const requested: string[] = [];
 vi.mock("@/lib/league", () => ({
   useLeague: () => ({ league: currentLeague, leagues: { kind: "loading" } }),
-  useLeagueApi: (path: string) => {
+  useLeagueApi: (route: string, query?: object) => {
+    const path = leaguePath(route, query);
     requested.push(`${currentLeague}/${path}`);
     return path.startsWith("lineup") ? lineupState : { kind: "loading" };
   },

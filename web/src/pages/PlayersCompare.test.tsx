@@ -1,6 +1,5 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import type { ApiState } from "@/api/envelope";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
@@ -8,6 +7,7 @@ import { TeamContext } from "@/lib/teamContext";
 import { fetchManifest } from "@/stat/lib/api";
 import { getPlayers, getPlayersByIds } from "@/stat/lib/players";
 import PlayersCompare from "./PlayersCompare";
+import { renderWithProviders } from "@/test/render";
 
 vi.mock("@/api/useEnvelope", () => ({ useEnvelopeQuery: vi.fn() }));
 vi.mock("@/stat/lib/api", () => ({ fetchManifest: vi.fn() }));
@@ -67,14 +67,12 @@ afterEach(() => vi.resetAllMocks());
 
 function renderAt(entry: string) {
   const router = createMemoryRouter([{ path: "/players/compare", element: <PlayersCompare /> }], { initialEntries: [entry] });
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <TeamContext.Provider
-        value={{ team: 2, league: "a", teams: [], viewed: null, setTeam: () => {}, notice: null, dismissNotice: () => {} }}
-      >
-        <RouterProvider router={router} />
-      </TeamContext.Provider>
-    </QueryClientProvider>,
+  renderWithProviders(
+    <TeamContext.Provider
+      value={{ team: 2, league: "a", teams: [], viewed: null, setTeam: () => {}, notice: null, dismissNotice: () => {} }}
+    >
+      <RouterProvider router={router} />
+    </TeamContext.Provider>,
   );
   return router;
 }

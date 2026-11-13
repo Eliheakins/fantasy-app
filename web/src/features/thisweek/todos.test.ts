@@ -1,4 +1,5 @@
 import { rankTodos } from "@/features/effects/effect";
+import { phaseOf } from "@/features/effects/phase";
 import { type Todo, holeTodos, leagueTodos, orderByDeadline, tradeDeadlineTodos } from "./todos";
 
 const todo = (id: string, over: Partial<Todo> = {}): Todo => ({
@@ -159,6 +160,10 @@ describe("leagueTodos in the playoffs", () => {
     const actions = [{ kind: "Injury", text: "Cook is Out and in your lineup", delta_points: null }];
     expect(leagueTodos(league, actions as never, [add], deadlines, "out").map((t) => t.kind)).toEqual(["injury"]);
   });
+  it("gives no to-dos at all once the season is over", () => {
+    const actions = [{ kind: "Injury", text: "Cook is Out and in your lineup", delta_points: null }];
+    expect(leagueTodos(league, actions as never, [add], deadlines, "over")).toEqual([]);
+  });
 });
 
 describe("tradeDeadlineTodos", () => {
@@ -238,6 +243,13 @@ describe("holeTodos", () => {
   it("adds no hole to-dos once the team is out", () => {
     const holes: Parameters<typeof holeTodos>[1] = [{ kind: "ir_move", slot: "IR", player_name: "Hurt", fill_ins: [] }];
     expect(holeTodos(league, holes, null, "out")).toEqual([]);
+    expect(holeTodos(league, holes, null, "over")).toEqual([]);
     expect(holeTodos(league, holes, null, "season")).toHaveLength(1);
+  });
+  it("keeps hole to-dos in the playoffs, a consolation game included", () => {
+    const holes: Parameters<typeof holeTodos>[1] = [{ kind: "bye", slot: "TE", player_name: "Kelce", fill_ins: [] }];
+    expect(holeTodos(league, holes, null, phaseOf({ current_week: 16, playoff_week_start: 15, team_phase: "consolation" }))).toHaveLength(
+      1,
+    );
   });
 });

@@ -1,13 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "react-router-dom";
-import type { Status } from "@/api/types";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { LOCAL_EMAIL, signOut, useSession } from "@/lib/session";
 import { navSearch } from "./navLinks";
 
 /** Model scorecard link, data freshness per source, who is signed in, and the attribution Sleeper asks for. */
 export function Footer() {
-  const state = useEnvelopeQuery<Status>("/api/status");
+  const state = useEnvelopeQuery("/api/status");
   const { search, pathname } = useLocation();
   const session = useSession();
   const queryClient = useQueryClient();

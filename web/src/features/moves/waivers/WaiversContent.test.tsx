@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import { leaguePath } from "@/test/fakeApi";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import type { ApiState } from "@/api/envelope";
@@ -9,7 +10,8 @@ const leagueRow = { league_key: "a", league_id: "9", name: "L", current_week: 9,
 vi.mock("@/lib/league", () => ({
   useLeague: () => ({ league: "a", leagues: { kind: "ready", data: [leagueRow] } }),
   useLeagueRow: () => leagueRow,
-  useLeagueApi: (path: string): ApiState<never[]> => {
+  useLeagueApi: (route: string, query?: object): ApiState<never[]> => {
+    const path = leaguePath(route, query);
     paths.push(path);
     return { kind: "ready", data: path === "stash" ? { open_ir_slots: 0, rows: [] } : [] } as ApiState<never[]>;
   },

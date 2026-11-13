@@ -1,4 +1,5 @@
 import { type RenderResult, render as rtlRender, screen } from "@testing-library/react";
+import { leaguePath } from "@/test/fakeApi";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
@@ -12,7 +13,8 @@ const render = (ui: ReactElement): RenderResult => rtlRender(<MemoryRouter>{ui}<
 let responder: (path: string) => ApiState<unknown>;
 const paths: string[] = [];
 vi.mock("@/lib/league", () => ({
-  useLeagueApi: (path: string) => {
+  useLeagueApi: (route: string, query?: object) => {
+    const path = leaguePath(route, query);
     paths.push(path);
     return responder(path);
   },

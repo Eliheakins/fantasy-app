@@ -115,6 +115,15 @@
   --text-caption: var(--fs-caption);
   --text-caption--line-height: var(--lh-caption);
   --font-sans: var(--font-body);
+  /* stacking layers, as `z-<name>`; the scale is in web/CLAUDE.md. Equal values are deliberate: the later element wins. */
+  --z-index-raised: 10;
+  --z-index-tab-bar: 10;
+  --z-index-banner: 20;
+  --z-index-header: 30;
+  --z-index-overlay: 40;
+  --z-index-modal: 50;
+  --z-index-popover: 50;
+  --z-index-skip-link: 50;
 }
 
 html {

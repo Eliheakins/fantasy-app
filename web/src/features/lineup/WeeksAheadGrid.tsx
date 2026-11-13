@@ -51,7 +51,7 @@ export function WeeksAheadGrid({ grid, league }: { grid: LineupGrid; league: str
         </caption>
         <thead>
           <tr>
-            <th scope="col" className="sticky left-0 z-10 border-b border-line bg-page px-3 py-2">
+            <th scope="col" className="sticky left-0 z-raised border-b border-line bg-page px-3 py-2">
               Slot
             </th>
             {grid.weeks.map((w) => (
@@ -71,7 +71,7 @@ export function WeeksAheadGrid({ grid, league }: { grid: LineupGrid; league: str
         <tbody>
           {slots.map((slot, i) => (
             <tr key={`${slot}-${i}`}>
-              <th scope="row" className="sticky left-0 z-10 border-b border-line bg-page px-3 py-2 font-medium">
+              <th scope="row" className="sticky left-0 z-raised border-b border-line bg-page px-3 py-2 font-medium">
                 {slot}
               </th>
               {grid.weeks.map((w) => {

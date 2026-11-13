@@ -88,9 +88,9 @@ function Changes({
 function LeagueSince({ league }: { league: League }) {
   const key = league.league_key;
   const [visit] = useState(() => readVisit(key)); // read once, before anything is written
-  const history = useLeagueQuery<OddsRun[]>(key, visit ? "odds-history" : null);
-  const changes = useLeagueQuery<StatusChange[]>(key, visit ? `status-changes?since=${encodeURIComponent(visit.at)}` : null);
-  const digest = useLeagueQuery<DigestData>(key, "digest");
+  const history = useLeagueQuery(key, visit ? "/api/leagues/{league}/odds-history" : null);
+  const changes = useLeagueQuery(key, visit ? "/api/leagues/{league}/status-changes" : null, visit ? { since: visit.at } : undefined);
+  const digest = useLeagueQuery(key, "/api/leagues/{league}/digest");
   const written = useRef(false);
   const ready = !isPending(digest) && (visit === null || (!isPending(history) && !isPending(changes)));
   const adds = digest.kind === "ready" ? digest.data.waivers.map((w) => w.get) : (visit?.adds ?? []);

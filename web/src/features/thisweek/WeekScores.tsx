@@ -112,9 +112,9 @@ function LeagueScores({ league, state, kickoff }: { league: League; state: ApiSt
 export function WeekScores({ kickoff }: { kickoff: Date | null }) {
   const leagues = useAllLeagues();
   const list = leagues.kind === "ready" ? leagues.data : [];
-  const boards = useEachLeague<ScoreboardRow[]>(
+  const boards = useEachLeague(
     list.map((l) => l.league_key),
-    "scoreboard",
+    "/api/leagues/{league}/scoreboard",
   );
   const rows = boards.flatMap((b) => (b.kind === "ready" ? b.data : []));
   const week = rows[0]?.week;

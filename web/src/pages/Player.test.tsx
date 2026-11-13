@@ -1,6 +1,5 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { ApiState } from "@/api/envelope";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
@@ -9,6 +8,7 @@ import { runStatQuery } from "@/stat/engine/statQuery";
 import { fetchManifest } from "@/stat/lib/api";
 import { getPlayersByIds } from "@/stat/lib/players";
 import Player from "./Player";
+import { renderWithProviders } from "@/test/render";
 
 vi.mock("@/api/useEnvelope", () => ({ useEnvelopeQuery: vi.fn() }));
 vi.mock("@/stat/engine/statQuery", () => ({ runStatQuery: vi.fn() }));
@@ -75,18 +75,16 @@ function mockApi(
 }
 
 function renderPage(entry = "/players/00-1?league=a&team=2&week=5") {
-  return render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <TeamContext.Provider
-        value={{ team: 2, league: "a", teams: [], viewed: null, setTeam: () => {}, notice: null, dismissNotice: () => {} }}
-      >
-        <MemoryRouter initialEntries={[entry]}>
-          <Routes>
-            <Route path="/players/:gsisId" element={<Player />} />
-          </Routes>
-        </MemoryRouter>
-      </TeamContext.Provider>
-    </QueryClientProvider>,
+  return renderWithProviders(
+    <TeamContext.Provider
+      value={{ team: 2, league: "a", teams: [], viewed: null, setTeam: () => {}, notice: null, dismissNotice: () => {} }}
+    >
+      <MemoryRouter initialEntries={[entry]}>
+        <Routes>
+          <Route path="/players/:gsisId" element={<Player />} />
+        </Routes>
+      </MemoryRouter>
+    </TeamContext.Provider>,
   );
 }
 

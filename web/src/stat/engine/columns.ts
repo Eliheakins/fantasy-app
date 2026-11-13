@@ -63,7 +63,11 @@ export function concatenate(parts: ArrayLike<unknown>[]): ArrayLike<unknown> {
 export class ColumnStore {
   private readonly cache = new Map<string, Promise<ArrayLike<unknown>>>();
 
-  constructor(private readonly loader: ColumnLoader) {}
+  private readonly loader: ColumnLoader;
+
+  constructor(loader: ColumnLoader) {
+    this.loader = loader;
+  }
 
   private column(source: ColumnSource, column: string): Promise<ArrayLike<unknown>> {
     const key = `${source.url}\u0000${column}`;

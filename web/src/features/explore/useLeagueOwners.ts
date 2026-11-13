@@ -2,18 +2,16 @@ import { useMemo } from "react";
 
 import type { components } from "@/api/schema";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
-import { leagueUrl } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
 import type { PlayerSet } from "@/stat/engine/statQuery";
 import type { RosterFilter } from "@/stat/lib/queryUrl";
 
 export type OwnerRow = components["schemas"]["OwnerRow"];
-type OwnersData = components["schemas"]["OwnersData"];
 
 /** The rostered players of the selected league and their owners, as the viewed team sees them (`?team=`). */
 export function useLeagueOwners() {
   const { league } = useTeam();
-  const state = useEnvelopeQuery<OwnersData>(league === null ? null : leagueUrl(league, "owners"));
+  const state = useEnvelopeQuery("/api/leagues/{league}/owners", league === null ? null : { path: { league } });
   const rows = state.kind === "ready" ? state.data.rows : null;
   const unmatched = state.kind === "ready" ? state.data.unmatched : 0;
   const byPlayer = useMemo(() => (rows ? new Map(rows.map((r) => [r.gsis_id, r])) : null), [rows]);

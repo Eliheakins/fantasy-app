@@ -4,7 +4,6 @@ import { MemoryRouter } from "react-router-dom";
 import { SavedSearches } from "./SavedSearches";
 
 beforeEach(() => window.localStorage.clear());
-afterEach(() => vi.restoreAllMocks());
 
 const renderAt = (entry: string) =>
   render(

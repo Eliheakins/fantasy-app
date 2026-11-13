@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { fetchManifest } from "./api";
 import { manifestSchema } from "./schemas/manifest";
@@ -17,10 +17,6 @@ const VALID = {
 function respond(body: unknown, init: ResponseInit = { status: 200 }) {
   return vi.fn().mockResolvedValue(new Response(JSON.stringify(body), init));
 }
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
 
 describe("manifestSchema", () => {
   it("accepts the manifest the build writes", () => {

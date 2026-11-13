@@ -1,9 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ManifestProvider, seasonsOf, useManifest } from "./manifest";
 import { fetchManifest } from "@/stat/lib/api";
 import type { Manifest } from "@/stat/lib/schemas/manifest";
+import { renderWithProviders } from "@/test/render";
 
 vi.mock("@/stat/lib/api", () => ({ fetchManifest: vi.fn() }));
 
@@ -22,13 +22,10 @@ function Seasons() {
 }
 
 function renderProvider() {
-  const client = new QueryClient();
-  return render(
-    <QueryClientProvider client={client}>
-      <ManifestProvider>
-        <Seasons />
-      </ManifestProvider>
-    </QueryClientProvider>,
+  return renderWithProviders(
+    <ManifestProvider>
+      <Seasons />
+    </ManifestProvider>,
   );
 }
 
