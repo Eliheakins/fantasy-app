@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router";
 import { addSaved, MAX_NAME_LENGTH, MAX_SAVED, queryWithoutShell, readSaved, removeSaved, savedHref, writeSaved } from "./savedSearchStore";
 import { linkButtonClass } from "@/components/ui/styles";
 

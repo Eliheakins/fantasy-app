@@ -1,4 +1,4 @@
-import { Navigate, type RouteObject, useLocation } from "react-router-dom";
+import { Navigate, type RouteObject, useLocation } from "react-router";
 
 /** Sends an old path to its new home, keeping every query param (league, team, week, Explore's own) and adding `set`. */
 function KeepQuery({ to, set = {} }: { to: string; set?: Record<string, string> }) {

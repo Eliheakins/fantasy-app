@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router";
 import { Loading } from "@/components/ApiBoundary";
 import { Footer } from "./Footer";
 import { navSearch } from "./navLinks";

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { components } from "@/api/schema";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { navSearch, type PageUrl } from "@/components/layout/navLinks";
 import { Section } from "@/components/Section";

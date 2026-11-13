@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 import { ManifestProvider } from "@/stat/react/manifest";
 import { QueryBuilderPanel } from "@/features/explore/QueryBuilderPanel";
 import { TooltipProvider } from "@/components/ui/tooltip";

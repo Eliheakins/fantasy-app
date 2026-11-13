@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 import Ask from "./Ask";
 import { fetchManifest } from "@/stat/lib/api";
 import { getPlayerDictionary } from "@/stat/lib/players";

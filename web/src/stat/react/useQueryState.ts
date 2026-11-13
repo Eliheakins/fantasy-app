@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 
 import { getAllFilterChipIds } from "@/stat/config/queryBuilderOptions";
 import { useFilterChipGroups } from "@/stat/react/filterChipGroups";

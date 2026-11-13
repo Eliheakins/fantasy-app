@@ -1,5 +1,5 @@
 import { lazy, type ReactNode, Suspense } from "react";
-import { createBrowserRouter, Outlet, type RouteObject } from "react-router-dom";
+import { createBrowserRouter, Outlet, type RouteObject } from "react-router";
 import { AppShell } from "@/components/layout/AppShell";
 import { RequireAdmin } from "@/components/layout/RequireAdmin";
 import { RequireSession } from "@/components/layout/RequireSession";

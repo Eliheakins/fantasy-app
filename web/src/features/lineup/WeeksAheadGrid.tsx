@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import type { components } from "@/api/schema";
 import { formatNumber } from "@/viz";
 import { linkButtonClass } from "@/components/ui/styles";

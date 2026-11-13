@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
+import { Link, MemoryRouter, Route, Routes } from "react-router";
 import { PageHeader } from "@/components/PageHeader";
 import { documentTitle, PageNameContext, pageTitle, usePageName, useRouteAnnounce } from "./useRouteAnnounce";
 

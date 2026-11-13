@@ -1,5 +1,5 @@
 import { possessive } from "@/lib/text";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { PlayerLink } from "@/components/PlayerLink";

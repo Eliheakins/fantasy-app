@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import { errorReply, okReply, stubScoped } from "@/test/fakeApi";
 import RedeemInvite from "./RedeemInvite";
 import { renderWithProviders } from "@/test/render";

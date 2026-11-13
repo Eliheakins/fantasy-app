@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ManifestContext } from "@/stat/react/manifest";

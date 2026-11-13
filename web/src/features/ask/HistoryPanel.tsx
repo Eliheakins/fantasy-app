@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import type { FilterChipGroup } from "@/stat/config/queryBuilderOptions";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 import type { PageUrl } from "@/components/layout/navLinks";
 import { Button } from "@/components/ui/button";

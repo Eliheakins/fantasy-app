@@ -1,6 +1,6 @@
 import { type QueryKey, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import type { MyLeague } from "@/api/types";
 import { apiKey, useEnvelopeMutation, useEnvelopeQuery } from "@/api/useEnvelope";
 import { ApiBoundary } from "@/components/ApiBoundary";

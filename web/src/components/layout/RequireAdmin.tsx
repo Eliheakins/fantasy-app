@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet } from "react-router";
 import { useSession } from "@/lib/session";
 
 /** Keeps the admin page's link and screen away from everyone else. The server is what refuses

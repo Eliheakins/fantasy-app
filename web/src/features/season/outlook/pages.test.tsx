@@ -1,7 +1,7 @@
 import { type RenderResult, render as rtlRender, screen } from "@testing-library/react";
 import { leaguePath, onlyRoutes } from "@/test/fakeApi";
 import type { ReactElement } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import userEvent from "@testing-library/user-event";
 import type { ApiState } from "@/api/envelope";
 import { OutlookView as Outlook } from "./OutlookView";

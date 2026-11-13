@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { Callout } from "@/components/Callout";
 import { PageHeader } from "@/components/PageHeader";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";

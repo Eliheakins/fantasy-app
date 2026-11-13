@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 import { TopBar } from "./TopBar";
 import { okReply, stubApi } from "@/test/fakeApi";
 import { renderWithProviders } from "@/test/render";

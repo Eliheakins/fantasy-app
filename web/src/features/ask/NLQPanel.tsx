@@ -1,7 +1,7 @@
 import { PlayerLink } from "@/components/PlayerLink";
 import type { PageUrl } from "@/components/layout/navLinks";
 import { type KeyboardEvent, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 import { useFilterChipGroups } from "@/stat/react/filterChipGroups";
 import { IgnoredFiltersNotice } from "@/features/explore/IgnoredFiltersNotice";

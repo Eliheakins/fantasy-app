@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useRef, useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router";
 import { Field } from "@/components/Field";
 import { PageHeader } from "@/components/PageHeader";
 import type { ApiError } from "@/api/envelope";

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 
 import { useTeam } from "@/lib/teamContext";
 import { getAllFilterChipIds } from "@/stat/config/queryBuilderOptions";

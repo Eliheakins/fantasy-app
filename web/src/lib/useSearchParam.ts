@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 
 /** One URL search param and its setter: a string sets it, null removes it; the other params stay and history is replaced. */
 export function useSearchParam(key: string): [string | null, (next: string | null) => void] {

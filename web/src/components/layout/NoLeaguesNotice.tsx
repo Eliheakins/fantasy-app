@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useLeague } from "@/lib/league";
 import { linkButtonClass } from "@/components/ui/styles";
 

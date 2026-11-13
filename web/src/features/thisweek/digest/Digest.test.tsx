@@ -1,7 +1,7 @@
 import { type RenderResult, render as rtlRender, screen } from "@testing-library/react";
 import { leaguePath } from "@/test/fakeApi";
 import type { ReactElement } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import type { ApiState } from "@/api/envelope";
 import { DigestView as Digest } from "./DigestView";
 import type { DigestData } from "@/lib/digestTypes";

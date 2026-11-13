@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { leaguePath } from "@/test/fakeApi";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import type { ApiState } from "@/api/envelope";
 import { HISTORY_WAIT_MESSAGE } from "@/features/season/outlook/logic";
 import { RootForSection } from "./RootFor";

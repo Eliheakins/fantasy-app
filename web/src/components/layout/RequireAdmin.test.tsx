@@ -1,5 +1,5 @@
 import { screen } from "@testing-library/react";
-import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import { okReply, stubScoped } from "@/test/fakeApi";
 import { RequireAdmin } from "./RequireAdmin";
 import { renderWithProviders } from "@/test/render";

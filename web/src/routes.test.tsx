@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from "@testing-library/react";
-import { createMemoryRouter, matchRoutes, RouterProvider } from "react-router-dom";
+import { createMemoryRouter, matchRoutes, RouterProvider } from "react-router";
 import { EXTRA_TITLES, NAV_ITEMS, PUBLIC_TITLES } from "./nav";
 import { routes } from "./routes";
 import { errorReply, okReply, stubApi } from "@/test/fakeApi";

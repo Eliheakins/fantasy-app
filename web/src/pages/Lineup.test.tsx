@@ -1,6 +1,6 @@
 import { type RenderResult, render as rtlRender, screen, within } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
 import { LineupView } from "./Lineup";

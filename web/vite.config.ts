@@ -18,7 +18,7 @@ export default defineConfig({
           groups: [
             {
               name: "vendor",
-              test: /[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom|cookie|set-cookie-parser|@tanstack[\\/](react-query|query-core))[\\/]/,
+              test: /[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|cookie|set-cookie-parser|@tanstack[\\/](react-query|query-core))[\\/]/,
             },
           ],
         },

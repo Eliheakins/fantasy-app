@@ -1,4 +1,4 @@
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { navSearch } from "@/components/layout/navLinks";
 import { PageHeader } from "@/components/PageHeader";

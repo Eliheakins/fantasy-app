@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { leaguePath, onlyRoutes } from "@/test/fakeApi";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import type { ApiState } from "@/api/envelope";
 import { WaiversContent } from "./WaiversView";
 

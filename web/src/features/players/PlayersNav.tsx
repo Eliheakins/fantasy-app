@@ -1,5 +1,5 @@
 import { ArrowRight, Search } from "lucide-react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router";
 import { navSearch, type PageUrl } from "@/components/layout/navLinks";
 import { cn } from "@/lib/utils";
 

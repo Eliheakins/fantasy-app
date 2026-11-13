@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import { screen, within } from "@testing-library/react";
-import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { createMemoryRouter, RouterProvider } from "react-router";
 import type { ApiState } from "@/api/envelope";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { TeamContext } from "@/lib/teamContext";

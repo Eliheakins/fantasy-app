@@ -1,6 +1,6 @@
 import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { createMemoryRouter, RouterProvider, useLocation } from "react-router-dom";
+import { createMemoryRouter, RouterProvider, useLocation } from "react-router";
 import { UNAUTHORIZED_EVENT } from "@/api/envelope";
 import { errorReply, okReply, stubScoped } from "@/test/fakeApi";
 import { RequireSession } from "./RequireSession";

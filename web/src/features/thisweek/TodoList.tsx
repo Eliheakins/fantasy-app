@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { EffectText } from "@/features/effects/EffectText";
 import { ExternalLink } from "@/components/ExternalLink";
 import { FILL_IN_LABEL, NO_FILL_IN, type Todo } from "./todos";

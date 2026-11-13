@@ -1,6 +1,6 @@
 import { PlayerLink } from "@/components/PlayerLink";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router";
 
 import { buildScatterPoints, StatScatterChart } from "@/features/explore/StatScatterChart";
 import { Callout } from "@/components/Callout";

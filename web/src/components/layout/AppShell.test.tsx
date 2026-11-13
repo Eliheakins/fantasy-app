@@ -1,5 +1,5 @@
 import { screen, within } from "@testing-library/react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router";
 import { AppShell } from "./AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { rememberExplore } from "@/stat/react/routeMemory";

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router";
 import { UNAUTHORIZED_EVENT } from "@/api/envelope";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";

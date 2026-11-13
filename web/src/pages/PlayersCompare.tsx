@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router";
 import { navSearch } from "@/components/layout/navLinks";
 import { PageHeader } from "@/components/PageHeader";
 import { PlayerPicker } from "@/features/players/PlayerPicker";

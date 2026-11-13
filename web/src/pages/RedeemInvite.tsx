@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router";
 import { Field } from "@/components/Field";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";

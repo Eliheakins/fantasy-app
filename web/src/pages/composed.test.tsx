@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import { leaguePath, onlyRoutes } from "@/test/fakeApi";
 import Players from "./Players";
 import Season from "./Season";

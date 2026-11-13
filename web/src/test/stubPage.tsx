@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 
 /** A stand-in page that prints its name and the URL it was mounted at. */
 export const stubPage = (name: string) => () => {

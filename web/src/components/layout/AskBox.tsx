@@ -1,6 +1,6 @@
 import { MessageCircleQuestion } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router";
 
 import { navSearch } from "./navLinks";
 

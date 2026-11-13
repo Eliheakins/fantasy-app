@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { leaguePath, onlyRoutes } from "@/test/fakeApi";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { ApiState } from "@/api/envelope";
 

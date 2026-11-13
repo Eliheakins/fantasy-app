@@ -1,5 +1,5 @@
 import { screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import type { ApiState } from "@/api/envelope";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { TeamContext } from "@/lib/teamContext";
