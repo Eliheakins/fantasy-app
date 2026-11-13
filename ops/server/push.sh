@@ -34,7 +34,8 @@ rsync -az --delete \
 
 if $copy_data; then rsync -az data/ "$host:$REMOTE_DIR/data/"; fi
 
-ssh "$host" "cd $REMOTE_DIR && ~/$REMOTE_UV sync --frozen --no-dev && sudo systemctl restart fantasy-app"
+# archive_tables writes a new archive table empty once (never replaces one), so the next refresh can append to it.
+ssh "$host" "cd $REMOTE_DIR && ~/$REMOTE_UV sync --frozen --no-dev && ~/$REMOTE_UV run --no-sync python -m fantasy.archive_tables && sudo systemctl restart fantasy-app"
 if ssh "$host" 'for _ in $(seq 30); do curl -fsS -o /dev/null http://127.0.0.1:8000/ && exit 0; sleep 1; done; exit 1'; then
   echo "App is up on the server."
 else
