@@ -257,11 +257,13 @@ def end_all_sessions(conn: sqlite3.Connection, account_id: int) -> None:
         conn.execute("DELETE FROM sessions WHERE account_id = ?", (account_id,))
 
 
-def list_accounts(conn: sqlite3.Connection) -> list[dict[str, Any]]:
-    """Every account for the admin panel, without any hash."""
+def list_accounts(conn: sqlite3.Connection, now: datetime) -> list[dict[str, Any]]:
+    """Every account for the admin panel, without any hash. An invite is pending while unused and
+    not expired at `now` (the rule `redeem_invite` applies)."""
     rows = conn.execute(
         "SELECT a.*, EXISTS (SELECT 1 FROM invites i WHERE i.account_id = a.id"
-        " AND i.used_at IS NULL) AS pending FROM accounts a ORDER BY a.id"
+        " AND i.used_at IS NULL AND i.expires_at >= ?) AS pending FROM accounts a ORDER BY a.id",
+        (stamp(now),),
     ).fetchall()
     return [
         {

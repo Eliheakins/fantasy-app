@@ -1454,3 +1454,7 @@ A whole-repo review (quality, language and security reviewers per slice, plus re
 - **Label constants.** `BYE`, `ELIMINATED`, `CHAMPION` live in `_bracket.py`; `status_of` returns them and `_holes.NO_GAME_LABELS` is built from them. `label_for`'s int arguments are keyword-only.
 - **Holes and IR rules moved.** The holes and IR rules (`holes`, `find_holes`, `ir_moves`, `reserve_rules`) moved from `_actions.py` to `_holes.py` in a49445f.
 - **Not a model change:** no projection or distribution method changed, so the model standard does not apply.
+
+## 2026-11-13: audit fixes for #82
+
+- **I. Expired invites are not pending.** `accounts.list_accounts(conn, now)` counts an unused invite as pending only while `expires_at >= now`, the same comparison and clock `redeem_invite` uses, so the admin page no longer shows "Invited, not joined yet" for a link that redeems as expired.

@@ -49,7 +49,7 @@ def main(argv: Sequence[str]) -> int:
             print(f"Send this link (valid {accounts.INVITE_DAYS} days, one use):")
             print(f"{_site_url()}/invite/{token}")
         else:
-            for account in accounts.list_accounts(conn):
+            for account in accounts.list_accounts(conn, datetime.now(UTC)):
                 role = "admin" if account["is_admin"] else "user"
                 state = "active" if account["has_password"] else "invited"
                 print(f"{account['email']}\t{role}\t{state}")
