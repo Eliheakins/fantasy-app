@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-import httpx
+import httpx2
 import pytest
 
 from fantasy.stages import snapshot_odds as so
@@ -58,7 +58,7 @@ def test_log_credits_writes_header_once(tmp_path):
 
 
 def test_a_failed_request_does_not_expose_the_api_key(monkeypatch):
-    monkeypatch.setattr(httpx, "get", lambda *a, **k: httpx.Response(401))
+    monkeypatch.setattr(httpx2, "get", lambda *a, **k: httpx2.Response(401))
     with pytest.raises(RuntimeError) as err:
         so._get(f"{so.BASE}/events", {"apiKey": "SECRET"})
     assert "SECRET" not in str(err.value) and "401" in str(err.value)

@@ -14,7 +14,7 @@ import asyncio
 import re
 from typing import Any
 
-import httpx
+import httpx2
 
 from nfl_stat.core.seasons import current_season as _season_now
 from nfl_stat.schemas.nlq import (
@@ -197,7 +197,7 @@ def to_outcome(
     return QueryOutcome(intent=intent)
 
 
-def _retry_wait(response: httpx.Response) -> float | None:
+def _retry_wait(response: httpx2.Response) -> float | None:
     """Seconds to wait before retrying, or None when the wait is too long to be worth it."""
     header = response.headers.get("retry-after")
     if header is None:
@@ -214,7 +214,7 @@ async def call_jev(
     *,
     api_key: str,
     timeout: float,
-    transport: httpx.AsyncBaseTransport | None = None,
+    transport: httpx2.AsyncBaseTransport | None = None,
 ) -> dict[str, Any]:
     """POST (retrying once on a transport error, 429 or 5xx) and return the answers.
 
@@ -237,21 +237,21 @@ async def _post_with_retry(
     *,
     api_key: str,
     attempt_timeout: float,
-    transport: httpx.AsyncBaseTransport | None,
+    transport: httpx2.AsyncBaseTransport | None,
 ) -> dict[str, Any]:
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
             # A fresh connection per request: reused async TLS connections failed with
             # "bad record mac" in the #71 runs.
-            async with httpx.AsyncClient(timeout=attempt_timeout, transport=transport) as client:
+            async with httpx2.AsyncClient(timeout=attempt_timeout, transport=transport) as client:
                 response = await client.post(
                     JEV_URL, json=payload, headers={"Authorization": f"Bearer {api_key}"}
                 )
-        except (httpx.TransportError, OSError) as e:  # OSError covers ssl.SSLError
+        except (httpx2.TransportError, OSError) as e:  # OSError covers ssl.SSLError
             if attempt == MAX_ATTEMPTS:
                 raise JevError(f"Jev request failed ({type(e).__name__}).") from e
             continue
-        except httpx.HTTPError as e:  # decoding, redirects: a retry would fail the same way
+        except httpx2.HTTPError as e:  # decoding, redirects: a retry would fail the same way
             raise JevError(f"Jev request failed ({type(e).__name__}).") from e
         if response.status_code == 429 or response.status_code >= 500:
             wait = _retry_wait(response)
@@ -279,7 +279,7 @@ async def translate_with_jev(
     model: str,
     timeout: float,
     current_season: int | None = None,
-    transport: httpx.AsyncBaseTransport | None = None,
+    transport: httpx2.AsyncBaseTransport | None = None,
 ) -> IntentOutcome:
     reason = undefined_term(req.question)
     if reason:  # refused in code: Jev would map the term to a near stat

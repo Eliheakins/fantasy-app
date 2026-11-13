@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2
 import polars as pl
 import pytest
 from fastapi.testclient import TestClient
@@ -670,11 +670,11 @@ def test_refresh_second_caller_gets_busy(
 def test_refresh_failure_message_is_fixed_and_hides_the_detail(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def refused(*args: Any, **kwargs: Any) -> httpx.Response:
-        raise httpx.ConnectError("secret-host.internal refused")
+    def refused(*args: Any, **kwargs: Any) -> httpx2.Response:
+        raise httpx2.ConnectError("secret-host.internal refused")
 
     # fail inside the real Sleeper client so the route sees the exception it really raises
-    monkeypatch.setattr(httpx, "get", refused)
+    monkeypatch.setattr(httpx2, "get", refused)
     monkeypatch.setattr(time, "sleep", lambda _: None)
     monkeypatch.setattr(_live, "refresh_live", lambda data_dir: sleeper.fetch("/state/nfl"))
     out = body(client.post("/api/live/refresh"))

@@ -8,7 +8,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.162.0",
-    "httpx>=0.28.1",
+    "httpx2>=2.16.0",  # maintained fork of httpx (Pydantic); openai and the starlette TestClient use it too
     "nflreadpy>=0.1.5",
     "numpy>=2.5.4",
     "openai>=1.40.0",  # client for the local OpenAI-compatible MLX server (nfl_stat)
@@ -31,7 +31,6 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "duckdb>=1.0.0",  # tests/stat/test_metric_reference_values.py runs metrics.json SQL on the shards
-    "httpx2>=2.16.0",
     "mypy>=2.4.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=0.24.0",

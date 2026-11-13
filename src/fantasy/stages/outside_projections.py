@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2
 import polars as pl
 
 from fantasy import store
@@ -109,7 +109,7 @@ def fetch_fftoday(season: int, week: int, position: str) -> str:
         "PosID": FFTODAY_POS_ID[position],
         "LeagueID": 1,
     }
-    resp = httpx.get(FFTODAY_URL, params=params, headers={"User-Agent": USER_AGENT}, timeout=30)
+    resp = httpx2.get(FFTODAY_URL, params=params, headers={"User-Agent": USER_AGENT}, timeout=30)
     resp.raise_for_status()
     return resp.text
 

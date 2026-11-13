@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2
 import polars as pl
 import pytest
 from fastapi.testclient import TestClient
@@ -121,7 +121,7 @@ def test_fetch_values_sends_the_query_and_a_user_agent_and_rejects_bad_bodies(
         seen.update(url=url, **kw)
         return Resp()
 
-    monkeypatch.setattr(httpx, "get", get)
+    monkeypatch.setattr(httpx2, "get", get)
     assert fetch_values(Setting(2, 10, 0.5)) == [item("1")]
     assert seen["params"] == {"isDynasty": "false", "numQbs": 2, "numTeams": 10, "ppr": 0.5}
     assert seen["headers"]["User-Agent"] and seen["timeout"] > 0

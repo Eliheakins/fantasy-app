@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2
 import polars as pl
 
 from fantasy import store
@@ -32,7 +32,7 @@ def fetch_values(setting: Setting) -> list[dict[str, Any]]:
         "numTeams": setting.num_teams,
         "ppr": setting.ppr,
     }
-    resp = httpx.get(
+    resp = httpx2.get(
         URL, params=params, headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT_SECONDS
     )
     resp.raise_for_status()
