@@ -1,7 +1,7 @@
 """Playoff bracket engine: Sleeper-shaped matches resolved over simulated runs.
 
 A team slot is a fixed roster id (int), a reference `("w" | "l", match)` to the winner or loser of
-an earlier match in the same run, or a seed `("s", n)` (an index into the run's seed order). A
+an earlier match in the same run, or a seed `("s", n)` (1-based seed n in the run's seed order). A
 match winner is `w` when set, else the side with the higher sum of the round's week scores (a tie
 goes to t1). The champion wins the `p == 1` match; matches with `p > 1` (placement games) are
 resolved but never counted in reach, win or bye shares.
@@ -296,7 +296,9 @@ def resolve(
         if isinstance(slot, int):
             return np.full(n_sims, index[slot])
         kind, n = slot
-        return {"s": lambda: order[:, n - 1], "w": lambda: won[n], "l": lambda: lost[n]}[kind]()
+        if kind == "s":
+            return order[:, n - 1]
+        return won[n] if kind == "w" else lost[n]
 
     ordered = sorted(matches, key=lambda x: (x.r, x.m))
     rounds = tuple(sorted({m.r for m in ordered if is_title_path(m)}))

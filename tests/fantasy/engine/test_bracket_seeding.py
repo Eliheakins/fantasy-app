@@ -65,7 +65,7 @@ def test_reseeding_pairs_the_top_seed_with_the_lowest_remaining_8() -> None:
     assert winners_of_round(play(EIGHT, 8, seed_type=1), 2) == {0, 2}
 
 
-def test_reseeding_off_follows_the_template_6() -> None:
+def test_reseeding_off_follows_the_6_team_template() -> None:
     assert winners_of_round(play(SIX, 6), 2) == {0, 5}
 
 

@@ -41,8 +41,8 @@ function Cell({ row, league }: { row: GridRow; league: string }) {
 export function WeeksAheadGrid({ grid, league }: { grid: LineupGrid; league: string }) {
   if (grid.weeks.length === 0) return <p className="py-6 text-muted">Season over</p>;
   const current = grid.weeks[0];
+  const byWeek = new Map(grid.weeks.map((w) => [w, grid.rows.filter((r) => r.week === w)]));
   const slots = grid.rows.filter((r) => r.week === current).map((r) => r.slot);
-  const cellOf = (week: number, index: number) => grid.rows.filter((r) => r.week === week)[index];
   return (
     <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Weeks ahead lineup">
       <table className="w-full border-collapse text-left text-body">
@@ -75,7 +75,7 @@ export function WeeksAheadGrid({ grid, league }: { grid: LineupGrid; league: str
                 {slot}
               </th>
               {grid.weeks.map((w) => {
-                const row = cellOf(w, i);
+                const row = byWeek.get(w)?.[i];
                 return (
                   <td key={w} className={CELL}>
                     {row ? <Cell row={row} league={league} /> : "–"}

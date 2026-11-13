@@ -20,21 +20,19 @@ export function CopySummaryButton({ todos, pending }: { todos: readonly Todo[]; 
     list.map((l) => l.league_key),
     "digest",
   );
-  const text = (() => {
-    const rows: SummaryLeague[] = list.map((l, i) => {
-      const d = digests[i];
-      const data = d?.kind === "ready" ? d.data : null;
-      const odds = data?.odds_change ?? [];
-      return {
-        name: leagueName(l),
-        lastWeek: data?.last_week ?? null,
-        odds: odds.find((o) => o.is_me) ?? null,
-        phase: phaseOf(l, odds),
-        failed: d?.kind === "error",
-      };
-    });
-    return summaryText(rows, todos);
-  })();
+  const rows: SummaryLeague[] = list.map((l, i) => {
+    const d = digests[i];
+    const data = d?.kind === "ready" ? d.data : null;
+    const odds = data?.odds_change ?? [];
+    return {
+      name: leagueName(l),
+      lastWeek: data?.last_week ?? null,
+      odds: odds.find((o) => o.is_me) ?? null,
+      phase: phaseOf(l, odds),
+      failed: d?.kind === "error",
+    };
+  });
+  const text = summaryText(rows, todos);
   const [state, setState] = useState<CopyState>("idle");
   const box = useRef<HTMLTextAreaElement>(null);
   const lineCount = text.split("\n").length;

@@ -256,9 +256,9 @@ def stash(league_key: str, data_dir: Path | None = None, team: int | None = None
         **moves.position_of(data),
     }
     playoff = set(horizon_weeks(data, "playoffs"))
-    ahead = data.projections.filter(pl.col("week") >= data.current_week).sort("week")
+    ahead = data.projections.filter(pl.col("week") >= data.current_week)
     points = {
-        g: ([(w, p) for w, p in zip(f["week"], f["projection"], strict=True)])
+        g: list(zip(f["week"], f["projection"], strict=True))
         for (g,), f in ahead.group_by("gsis_id")
     }
 

@@ -7,7 +7,7 @@ from typing import Any
 import polars as pl
 import pytest
 
-from fantasy import store
+from fantasy import _runs, store
 from fantasy.config import Config
 from fantasy.sources.sleeper import SleeperError
 from fantasy.stages import sync_sleeper
@@ -255,8 +255,27 @@ def test_an_empty_or_null_bracket_payload_keeps_the_stored_rows_in_the_playoffs(
     empty = FakeSleeper()
     empty.brackets = {"winners_bracket": payload}
     empty.settings = {"playoff_week_start": 2}  # week 2 is the first playoff week
+    _runs._soft_failures.clear()
     run(empty, monkeypatch)
-    assert table("playoff_brackets")["m"].to_list() == [1]
+    assert table("playoff_brackets")["m"].to_list() == [1]  # fetched at week 2, the start
+    assert any("winners bracket" in note for note in _runs._soft_failures)
+    _runs._soft_failures.clear()
+
+
+@pytest.mark.parametrize("payload", [None, [], [{"m": "bad"}]])
+def test_a_bad_bracket_reply_in_the_playoffs_drops_provisional_rows(
+    world: Path, monkeypatch: pytest.MonkeyPatch, payload: Any
+) -> None:
+    early = FakeSleeper()
+    early.brackets = {"winners_bracket": [{"m": 1, "r": 1, "t1": 2, "t2": 1}]}
+    early.settings = {"leg": 1, "playoff_week_start": 2}  # fetched before the playoffs
+    run(early, monkeypatch)
+    bad = FakeSleeper()
+    bad.brackets = {"winners_bracket": payload}
+    bad.settings = {"leg": 2, "playoff_week_start": 2}
+    run(bad, monkeypatch)
+    assert table("playoff_brackets").height == 0
+    _runs._soft_failures.clear()
 
 
 def test_the_live_tick_makes_no_bracket_call(world: Path, monkeypatch: pytest.MonkeyPatch) -> None:

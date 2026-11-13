@@ -182,8 +182,9 @@ def scoreboard_of(
     else:
         rows = _projected_week(data, mine, week, matchup_of, n_sims, data_dir)
     label = label_for(
-        data.bracket, data.team_names, mine, week,
-        data.current_week, data.playoff_start, data.round_type,
+        data.bracket, data.team_names, roster_id=mine, week=week,
+        current_week=data.current_week, playoff_start=data.playoff_start,
+        round_type=data.round_type,
     )  # fmt: skip
     rows = [{**r, "playoff_label": label if r["a_is_me"] or r["b_is_me"] else None} for r in rows]
     rows.sort(key=lambda r: (not (r["a_is_me"] or r["b_is_me"]), r["matchup_id"] or 0))

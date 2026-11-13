@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 from store_fixture import write_rows
 
-from fantasy import _engine, _live, api, api_envelope, api_routes, data_api
+from fantasy import _engine, _live, api, api_envelope, api_routes, data_api, store
 from fantasy._lock import pipeline_lock
 from fantasy.api_jobs import Busy, JobRunner
 from fantasy.sim.availability import kickoffs
@@ -78,6 +78,19 @@ def test_leagues_has_record_fallback_and_trade_deadline(client: TestClient) -> N
     assert rows[0]["record"] == "no record yet" and rows[0]["trade_deadline"] is None
     assert rows[0]["playoff_label"] is None  # a regular-season week
     assert rows[0]["team_name"] == "Mine"
+
+
+def test_leagues_answers_with_no_label_for_a_league_with_a_corrupt_bracket(
+    client: TestClient, store_dir: Path
+) -> None:
+    leagues = store.read_table("leagues", "raw", store_dir).with_columns(
+        current_week=pl.lit(3, pl.Int64), playoff_week_start=pl.lit(2, pl.Int64)
+    )
+    store.write_table("leagues", leagues, "raw", store_dir)
+    bad = {"league_id": "L1", "bracket": "winners", "r": 1, "m": 1, "t1": 1, "t2_from_kind": "x"}
+    write_rows(store_dir, "playoff_brackets", [bad | {"t2_from_m": 1}], area="raw")
+    rows = body(client.get("/api/leagues"))["data"]
+    assert [(r["league_key"], r["playoff_label"]) for r in rows] == [("t", None)]
 
 
 def test_data_version_follows_the_files_of_the_given_data_dir(tmp_path: Path) -> None:

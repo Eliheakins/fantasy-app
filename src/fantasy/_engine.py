@@ -41,6 +41,13 @@ def _read(name: str, data_dir: Path | None, area: str = "raw") -> pl.DataFrame:
         return pl.DataFrame(schema=store.SCHEMAS[name])
 
 
+def _league_settings(league_id: str, data_dir: Path | None) -> str | None:
+    """A league's raw Sleeper `settings` JSON from the `leagues` table (None when missing)."""
+    table = _read("leagues", data_dir).filter(pl.col("league_id") == league_id)
+    settings = table["settings"].first() if "settings" in table.columns and table.height else None
+    return settings if isinstance(settings, str) else None
+
+
 def current_week(frame: pl.DataFrame) -> int | None:
     """The highest `current_week` over a leagues frame, or None when it has none."""
     week = frame["current_week"].max()

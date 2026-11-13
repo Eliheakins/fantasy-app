@@ -6,6 +6,7 @@ Both read the synced `playoff_brackets` rows, which are trusted only once the pl
 (current week >= playoff week start), the same rule the season simulation follows.
 """
 
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,7 +14,7 @@ from typing import Any
 
 import polars as pl
 
-from fantasy._engine import _read
+from fantasy._engine import _league_settings, _read
 from fantasy._leagues import my_league
 from fantasy.sim.bracket import (
     Match,
@@ -26,7 +27,9 @@ from fantasy.sim.bracket import (
     template,
 )
 
+log = logging.getLogger(__name__)
 ORDINALS = {1: "1st", 2: "2nd", 3: "3rd"}
+BYE, ELIMINATED, CHAMPION = "Bye this round", "Eliminated", "Champion"
 
 
 @dataclass(frozen=True)
@@ -47,10 +50,7 @@ def _matches(league_id: str, data_dir: Path | None) -> tuple[Match, ...]:
 
 
 def _round_type(league_id: str, data_dir: Path | None) -> int:
-    table = _read("leagues", data_dir).filter(pl.col("league_id") == league_id)
-    return (
-        round_type_of(table["settings"][0]) if table.height and "settings" in table.columns else 0
-    )
+    return round_type_of(_league_settings(league_id, data_dir))
 
 
 def _names(league_id: str, data_dir: Path | None) -> dict[int, str]:
@@ -138,10 +138,10 @@ def status_of(
     title = [m for m in matches if m.bracket == "winners" and is_title_path(m)]
     final = next((m for m in title if m.p == 1), None)
     if final is not None and final.w == roster_id and round_no >= final.r:
-        return "Champion"
+        return CHAMPION
     here = _match_of(matches, "winners", roster_id, round_no)
     if here is not None:
-        if here in title:
+        if is_title_path(here):
             return f"Round {round_no} vs {_opponent(here, roster_id, names)}"
         if here.p:
             return (
@@ -149,19 +149,19 @@ def status_of(
             )
         return None
     losers = _match_of(matches, "losers", roster_id, round_no)
-    if losers is not None:
-        game = f": {_ordinal(losers.p)} place game" if losers.p else " game"
-        return f"Consolation{game} vs {_opponent(losers, roster_id, names)}"
+    if losers is not None:  # Sleeper numbers losers-bracket places from 1, so no place here
+        return f"Consolation game vs {_opponent(losers, roster_id, names)}"
     if any(m.r > round_no and roster_id in (m.t1, m.t2) for m in title):
-        return "Bye this round"
+        return BYE
     if any(m.r < round_no and m.l == roster_id for m in title):
-        return "Eliminated"
+        return ELIMINATED
     return None
 
 
 def label_for(
     matches: tuple[Match, ...],
     names: dict[int, str],
+    *,
     roster_id: int,
     week: int,
     current_week: int,
@@ -190,8 +190,9 @@ def _label(
     if current_week < playoff_start or week < playoff_start:
         return None  # skips the table reads outside the playoffs
     return label_for(
-        _matches(league_id, data_dir), _names(league_id, data_dir), roster_id, week,
-        current_week, playoff_start, _round_type(league_id, data_dir),
+        _matches(league_id, data_dir), _names(league_id, data_dir), roster_id=roster_id,
+        week=week, current_week=current_week, playoff_start=playoff_start,
+        round_type=_round_type(league_id, data_dir),
     )  # fmt: skip
 
 
@@ -209,7 +210,7 @@ def playoff_status(
 
 def league_label(row: Mapping[str, Any], data_dir: Path | None = None) -> str | None:
     """`playoff_status` for a `leagues` row's team in the league's current week (None without a
-    team or week)."""
+    team or week, or when the stored bracket rows cannot be read; logged)."""
     roster_id, week, start = (
         row.get("roster_id"),
         row.get("current_week"),
@@ -217,4 +218,8 @@ def league_label(row: Mapping[str, Any], data_dir: Path | None = None) -> str | 
     )
     if roster_id is None or week is None or start is None:
         return None
-    return _label(row["league_id"], int(roster_id), int(week), int(week), int(start), data_dir)
+    try:
+        return _label(row["league_id"], int(roster_id), int(week), int(week), int(start), data_dir)
+    except ValueError:  # corrupt stored bracket rows: one league must not break the list
+        log.warning("league %s: unreadable playoff bracket", row.get("league_key"), exc_info=True)
+        return None

@@ -7,12 +7,12 @@ from typing import Any, Literal
 
 import polars as pl
 
-from fantasy._bracket import label_for
-from fantasy._engine import _id_map, _league, _names, _read, _week_values
+from fantasy._bracket import BYE, CHAMPION, ELIMINATED, label_for
+from fantasy._engine import _id_map, _league, _league_settings, _names, _read, _week_values
 from fantasy._lineup import _flag_status, _is_out, _week_games
 from fantasy.config import SKILL_POSITIONS
 from fantasy.sim import moves
-from fantasy.sim.bracket import settings_dict
+from fantasy.sim.bracket import Match, settings_dict
 from fantasy.sim.lineup import CONSTANT_SLOTS, Player, auto_lineup, lineup_slots
 from fantasy.sim.lineup import ELIGIBLE as SLOT_ELIGIBLE
 from fantasy.sim.odds import LeagueData
@@ -25,7 +25,7 @@ BASE_IR_STATUSES = frozenset({"IR", "PUP"})
 RESERVE_STATUSES = {  # Sleeper's reserve_allow_<key> settings -> injury status
     "out": "Out", "doubtful": "Doubtful", "sus": "Sus", "na": "NA", "dnr": "DNR", "cov": "COV",
 }  # fmt: skip
-NO_GAME_LABELS = frozenset({"Bye this round", "Eliminated", "Champion"})
+NO_GAME_LABELS = frozenset({BYE, ELIMINATED, CHAMPION})
 
 HoleKind = Literal["bye", "out", "empty"]
 
@@ -147,9 +147,7 @@ def reserve_rules(settings_json: str | None) -> tuple[int, frozenset[str]]:
 
 def league_reserve(league_id: str, data_dir: Path | None) -> tuple[int, frozenset[str]]:
     """`reserve_rules` for a league's row in the `leagues` table."""
-    raw = _read("leagues", data_dir).filter(pl.col("league_id") == league_id)
-    settings = raw["settings"].first() if "settings" in raw.columns and raw.height else None
-    return reserve_rules(settings if isinstance(settings, str) else None)
+    return reserve_rules(_league_settings(league_id, data_dir))
 
 
 def ir_moves(
@@ -204,13 +202,14 @@ def _kd_side(
         )
         return tuple(Player(u, kind, float(this_week.get(u, 0.0))) for u in rows["unit"])
 
+    starters, bench = mine_where(True), mine_where(False)
     taken = set(owned["unit"])
     free = tuple(Player(u, kind, float(v)) for u, v in this_week.items() if u not in taken)
-    units = {p.id for p in (*mine_where(True), *mine_where(False), *free)}
+    units = {p.id for p in (*starters, *bench, *free)}
     teams = {u: team_code(u) for u in units}
     return _KdSide(
-        starters=mine_where(True),
-        bench=mine_where(False),
+        starters=starters,
+        bench=bench,
         free=free,
         bye=frozenset(u for u, t in teams.items() if playing and t and t not in playing),
         startable=frozenset(u for u, t in teams.items() if t in kicks and kicks[t] > now),
@@ -218,18 +217,33 @@ def _kd_side(
     )
 
 
+def _never_in_bracket(bracket: tuple[Match, ...], mine: int) -> bool:
+    """True only when the winners bracket's first round is fully seeded (every side a team) and
+    my team is on no winners row: rows still missing or unseeded prove nothing."""
+    winners = [m for m in bracket if m.bracket == "winners"]
+    if not winners:
+        return False
+    first = min(m.r for m in winners)
+    seeded = all(isinstance(s, int) for m in winners if m.r == first for s in (m.t1, m.t2))
+    return seeded and all(mine not in (m.t1, m.t2) for m in winners)
+
+
 def _no_game(data: LeagueData, mine: int) -> bool:
-    """True from the playoff start when my team has no game this week: a bye, out of (or never in)
-    the bracket, champion, or the season is over."""
+    """True from the playoff start when my team surely has no game this week: the season is over,
+    the label says bye, eliminated or champion, or a fully seeded bracket leaves my team out. An
+    unknown label (no rows, or my next-round slot not filled in yet) keeps the holes."""
     week = data.current_week
     if week < data.playoff_start:
         return False
     if week >= data.playoff_start + data.playoff_weeks:
         return True
     label = label_for(
-        data.bracket, data.team_names, mine, week, week, data.playoff_start, data.round_type
-    )
-    return label is None or label in NO_GAME_LABELS
+        data.bracket, data.team_names, roster_id=mine, week=week, current_week=week,
+        playoff_start=data.playoff_start, round_type=data.round_type,
+    )  # fmt: skip
+    if label is not None:
+        return label in NO_GAME_LABELS
+    return _never_in_bracket(data.bracket, mine)
 
 
 def holes(
@@ -239,7 +253,7 @@ def holes(
     now: datetime | None = None,
 ) -> list[dict[str, Any]]:
     """This week's lineup holes and IR moves for my team (see `find_holes`, `ir_moves`); none in a
-    playoff week my team does not play."""
+    playoff week my team surely does not play (`_no_game`)."""
     data, mine = _league(league_key, data_dir, team)
     if _no_game(data, mine):
         return []
@@ -276,7 +290,6 @@ def holes(
         for k in sorted(CONSTANT_SLOTS)
         if k in data.roster_positions
     ]
-    kd_ids = [p.id for side in sides for p in side.bench]
     kd_out = frozenset(
         p.id
         for side in sides
@@ -294,7 +307,7 @@ def holes(
         out=unavailable | kd_out,
         bye=bye.union(*(x.bye for x in sides)),
         startable=startable.union(*(x.startable for x in sides)),
-        ros=ros_value(data, [*bench, *kd_ids]),
+        ros=ros_value(data, bench),
         names=names | {k: v for x in sides for k, v in x.names.items()},
     )
     reserve, allowed = league_reserve(data.league_id, data_dir)

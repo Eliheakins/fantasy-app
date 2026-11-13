@@ -348,3 +348,38 @@ def test_holes_stay_in_a_playoff_game_and_the_regular_season(
     assert regular
     playing = from_rows([{"bracket": "winners", "r": 1, "m": 1, "t1": 1, "t2": 2, "p": 1}])
     assert _holes_with(tmp_path, monkeypatch, playoff_start=3, bracket=playing) == regular
+
+
+def test_holes_stay_when_my_next_round_slot_is_still_a_reference(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    regular = _holes_with(tmp_path, monkeypatch)
+    won_round_one = {"bracket": "winners", "r": 1, "m": 1, "t1": 1, "t2": 6, "w": 1, "l": 6}
+    final = {"bracket": "winners", "r": 2, "m": 2, "t1": 3, "t2_from_kind": "w", "t2_from_m": 1}
+    advanced = from_rows([won_round_one, final | {"p": 1}])
+    assert _holes_with(tmp_path, monkeypatch, playoff_start=2, bracket=advanced) == regular
+
+
+def test_holes_stay_in_the_playoffs_with_no_bracket_rows(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    regular = _holes_with(tmp_path, monkeypatch)
+    assert _holes_with(tmp_path, monkeypatch, playoff_start=3, bracket=()) == regular
+
+
+@pytest.mark.parametrize(
+    ("start", "rows"),
+    [
+        (2, [  # eliminated in round 1
+            {"bracket": "winners", "r": 1, "m": 1, "t1": 1, "t2": 6, "w": 6, "l": 1},
+            {"bracket": "winners", "r": 2, "m": 2, "t1": 3, "t2_from_kind": "w", "t2_from_m": 1},
+        ]),
+        (3, [{"bracket": "winners", "r": 1, "m": 1, "t1": 1, "t2": 2, "p": 1, "w": 1, "l": 2}]),
+        (3, [{"bracket": "winners", "r": 1, "m": 1, "t1": 2, "t2": 3, "p": 1}]),  # never in it
+    ],
+    ids=["eliminated", "champion", "never_in_the_bracket"],
+)  # fmt: skip
+def test_no_holes_when_out_of_the_bracket_or_champion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, start: int, rows: list[dict[str, Any]]
+) -> None:
+    assert _holes_with(tmp_path, monkeypatch, playoff_start=start, bracket=from_rows(rows)) == []

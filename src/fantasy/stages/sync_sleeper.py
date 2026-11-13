@@ -14,6 +14,7 @@ from typing import Any
 import polars as pl
 
 from fantasy import store
+from fantasy._runs import note_soft_failure
 from fantasy.auth import accounts, leagues
 from fantasy.config import Config, load_config
 from fantasy.sources.sleeper import SleeperError, fetch
@@ -259,23 +260,29 @@ def _stored_bracket(league_id: str, bracket: str) -> pl.DataFrame:
 
 
 def bracket_frame(
-    league_id: str, bracket: str, rows: Any, week: int, playoffs_started: bool = False
+    league_id: str, bracket: str, rows: Any, week: int, playoff_start: int | None = None
 ) -> pl.DataFrame:
-    """One bracket's games (`bracket` is "winners" or "losers"). Null or empty gives no rows
-    before the playoffs start and keeps the stored rows once they have; an unreadable payload is
-    logged and the last stored rows of that bracket kept, so one odd response mid-playoffs cannot
-    wipe a good bracket or drop the league."""
-    if not rows and playoffs_started:
-        log.warning(
-            "league %s: empty %s bracket in the playoffs, kept the stored one", league_id, bracket
-        )
-        return _stored_bracket(league_id, bracket)
-    try:
-        parsed = [_bracket_row(league_id, bracket, week, r) for r in rows or []]
-    except (KeyError, ValueError, TypeError, AttributeError):
-        log.warning("league %s: unreadable %s bracket", league_id, bracket, exc_info=True)
-        return _stored_bracket(league_id, bracket)
-    return _frame("playoff_brackets", parsed)
+    """One bracket's games (`bracket` is "winners" or "losers"). Before the playoffs start, null
+    or empty gives no rows and an unreadable payload keeps the stored rows (logged). From the
+    playoff start, a null, empty or unreadable reply keeps only the stored rows fetched at or after
+    the start (provisional rows are no seeds) and records a soft failure, so one odd response
+    mid-playoffs cannot wipe a good bracket or drop the league."""
+    started = playoff_start is not None and week >= playoff_start
+    if rows:
+        try:
+            parsed = [_bracket_row(league_id, bracket, week, r) for r in rows]
+            return _frame("playoff_brackets", parsed)
+        except (KeyError, ValueError, TypeError, AttributeError):
+            log.warning("league %s: unreadable %s bracket", league_id, bracket, exc_info=True)
+            if not started:
+                return _stored_bracket(league_id, bracket)
+    elif not started:
+        return _frame("playoff_brackets", [])
+    kept = _stored_bracket(league_id, bracket).filter(pl.col("fetched_week") >= playoff_start)
+    why = f"league {league_id}: bad {bracket} bracket reply in the playoffs, kept {kept.height}"
+    log.warning(why)
+    note_soft_failure(why)
+    return kept
 
 
 def divisions_frame(league_id: str, rosters: list[dict[str, Any]]) -> pl.DataFrame:
@@ -336,10 +343,9 @@ def _league_frames(
         frames["matchup_players"].append(week_players)
     current = as_int((lg.get("settings") or {}).get("leg")) or 1
     start = as_int((lg.get("settings") or {}).get("playoff_week_start"))
-    started = start is not None and current >= start
     for bracket in ("winners", "losers"):
         raw = fetch(f"/league/{league_id}/{bracket}_bracket")
-        frames["playoff_brackets"].append(bracket_frame(league_id, bracket, raw, current, started))
+        frames["playoff_brackets"].append(bracket_frame(league_id, bracket, raw, current, start))
     for week in range(1, current + 1):
         txs = fetch(f"/league/{league_id}/transactions/{week}")
         frames["transactions"].append(transactions_frame(league_id, week, txs))

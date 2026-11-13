@@ -12,7 +12,7 @@ The FastAPI app (`api.py`, the route package `api_routes/` with one module per a
   - `_leagues.py`: `leagues`, `scoring_labels`, `my_league`, `team_fields`.
   - `_next_game.py` (a team's next unplayed game or bye, and its bye week), `_lineup.py`, `_outlook.py` (`player_owners`, `schedule`, `player_outlook`), `_market.py` (`player_points`, market reads), `_profile.py` (`player_profile`).
   - `_status.py` (`freshness`, `simulation_behind_inputs`, `missing_layers`, `refresh_runs`), `_calendar.py` (`week_calendar`, `status_changes`), `_actions.py` (`actions`, `streamers`).
-  - `_holes.py` (`holes`: this week's lineup holes and IR moves, none in a playoff week my team does not play; `reserve_rules`, `league_reserve` for a league's IR slots and statuses). `_market.stash` uses its IR rules.
+  - `_holes.py` (`holes`: this week's lineup holes and IR moves, none in a playoff week my team surely does not play: a bye, eliminated or champion label, a fully seeded bracket without my team, or the season over; an unknown label keeps them; `reserve_rules`, `league_reserve` for a league's IR slots and statuses). `_market.stash` uses its IR rules.
   - `_bracket.py` (`bracket`; `label_for`, the one playoff-label rule for a team and week, which `_scoreboard`, `playoff_status`, `league_label` (the `LeagueRow.playoff_label` field) and `_holes` all use).
   - `_live.py` (`refresh_live`, `live_win_row`, `record_live_tick`, `game_day`) is the live writer.
   - `_scoreboard.py`, `_scorecard.py`, `_values.py`, `_watch.py`, `_season_events.py`, `_league_view.py`, `_digest.py`, `_schemas.py`, `_view.py` (page logic the API serves).

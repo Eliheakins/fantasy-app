@@ -96,10 +96,9 @@ export function LineupView({ base, odds, week, eyebrow, board = null, toggle }: 
     );
   }
   const hasOdds = odds !== null && odds.options.length > 0;
-  const recommended = RECOMMENDED_OBJECTIVE;
   const differ = hasOdds && lineupsDiffer(odds.comparison);
-  const chosen = differ && picked?.under === recommended ? picked.key : null;
-  const objective = chosen ?? recommended;
+  const chosen = differ && picked?.under === RECOMMENDED_OBJECTIVE ? picked.key : null;
+  const objective = chosen ?? RECOMMENDED_OBJECTIVE;
   const rows = rowsFor(base, odds, objective);
   const { start, bench } = splitLineup(rows);
   const known = sleeperKnown(rows);
@@ -149,7 +148,7 @@ export function LineupView({ base, odds, week, eyebrow, board = null, toggle }: 
           </p>
           {odds.script && (
             <p className="mt-4 text-body">
-              {odds.script}. We start from {labelOf(recommended)}
+              {odds.script}. We start from {labelOf(RECOMMENDED_OBJECTIVE)}
               {chosen ? ` (showing ${labelOf(chosen)})` : ""}.
             </p>
           )}
@@ -158,7 +157,7 @@ export function LineupView({ base, odds, week, eyebrow, board = null, toggle }: 
               label="Optimize for"
               options={OBJECTIVES}
               value={objective}
-              onChange={(key) => setPicked({ key, under: recommended })}
+              onChange={(key) => setPicked({ key, under: RECOMMENDED_OBJECTIVE })}
               className="mt-3 flex flex-wrap gap-2"
               optionClassName={(on) =>
                 `rounded-full border px-3 text-body ${on ? "border-forest bg-forest font-medium text-white" : "border-panel-line bg-surface text-forest hover:border-forest"}`

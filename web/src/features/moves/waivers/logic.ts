@@ -43,3 +43,11 @@ export const posOf = (raw: string | null): Pos | null => POSITIONS.find((p) => p
 /** Adds are skill players only; a kicker or defense is found in the streaming section. */
 export const isStreamPos = (p: Pos): boolean => p === "K" || p === "DEF";
 export const STREAMING_ANCHOR = "streaming";
+
+/** The empty-adds message for a position filter (null: all positions) and my team's name. */
+export function noAddsText(pos: Pos | null, teamName: string | null): string {
+  const team = teamName ?? "your team";
+  if (pos === null) return `No free agent adds expected points for ${team}.`;
+  if (isStreamPos(pos)) return "Adds do not include kickers or defenses. ";
+  return `No ${pos} adds expected points for ${team}.`;
+}

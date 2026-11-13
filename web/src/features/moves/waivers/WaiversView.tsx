@@ -17,6 +17,7 @@ import {
   type PlayerWeekRow,
   type PlayoffWeeks,
   isStreamPos,
+  noAddsText,
   type Pos,
   playoffLabel,
   playoffWeeksOf,
@@ -98,14 +99,11 @@ function AddsSection({ adds, weeks, selected, onSelect, who, sleeperLeagueId, ra
       <ApiBoundary state={adds}>
         {(all) => {
           const rows = pos === null ? all : all.filter((r) => r.position === pos); // K and DEF are never adds
+          const streamPos = pos !== null && isStreamPos(pos);
           return rows.length === 0 ? (
             <p className="py-6 text-muted">
-              {pos === null
-                ? `No free agent adds expected points for ${who.name ?? "your team"}.`
-                : isStreamPos(pos)
-                  ? "Adds do not include kickers or defenses. "
-                  : `No ${pos} adds expected points for ${who.name ?? "your team"}.`}
-              {pos !== null && isStreamPos(pos) && (
+              {noAddsText(pos, who.name)}
+              {streamPos && (
                 <a href={`#${STREAMING_ANCHOR}`} className="inline-flex min-h-[44px] items-center underline underline-offset-2 lg:min-h-0">
                   See streaming picks
                 </a>

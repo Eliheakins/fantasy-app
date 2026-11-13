@@ -172,13 +172,13 @@ def test_losers_rows_do_not_stretch_the_week_to_round_map(tmp_path: Path) -> Non
     assert _status(tmp_path, 1, 16) == "Round 2 vs Theirs"
 
 
-def test_a_losers_bracket_game_is_a_consolation_game(tmp_path: Path) -> None:
+def test_a_losers_bracket_game_is_a_consolation_game_with_no_place(tmp_path: Path) -> None:
     losers = [
         {"league_id": "L1", "bracket": "losers", "r": 1, "m": 1, "t1": 7, "t2": 8, "p": 7},
         {"league_id": "L1", "bracket": "losers", "r": 1, "m": 2, "t1": 9, "t2": 10},
     ]
     _store(tmp_path, [*ROUND_ONE, *losers], current=2)
-    assert _status(tmp_path, 8, 2) == "Consolation: 7th place game vs 7"
+    assert _status(tmp_path, 8, 2) == "Consolation game vs 7"  # losers places count from 1
     assert _status(tmp_path, 9, 2) == "Consolation game vs 10"
     assert _status(tmp_path, 8, 3) is None  # no losers game in round 2
 
