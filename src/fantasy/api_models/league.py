@@ -21,6 +21,9 @@ class LeagueRow(Row):
     scoring_labels: str
     record: str
     trade_deadline: int | None
+    # my team's playoff status this week ("Bye this round", "Champion", ...); null outside the
+    # playoffs. Shown when my scoreboard row is absent.
+    playoff_label: str | None
 
 
 class TeamRow(Row):

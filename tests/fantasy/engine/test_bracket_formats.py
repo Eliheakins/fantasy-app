@@ -82,7 +82,6 @@ def test_round_weeks_follow_the_round_type(
 
 
 def test_templates_have_the_layout_of_the_real_sleeper_brackets() -> None:
-    assert bracket.template(6) == bracket.template_6()
     t8 = {m.m: m for m in bracket.template(8)}
     assert [(t8[i].t1, t8[i].t2) for i in (1, 2, 3, 4)] == [
         (("s", 1), ("s", 8)), (("s", 4), ("s", 5)), (("s", 2), ("s", 7)), (("s", 3), ("s", 6)),

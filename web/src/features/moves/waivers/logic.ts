@@ -21,6 +21,14 @@ export const ADDS_CAPTION_PLAYOFFS =
 export const STREAM_PLAYOFF_NOTE =
   "Playoff weeks column: far-week kicker and defense numbers rest on team strength and byes, and are untested.";
 
+type LeagueWeeks = Pick<components["schemas"]["LeagueRow"], "playoff_week_start" | "playoff_weeks">;
+
+/** The league's first and last playoff weeks, or null until both are known. */
+export const playoffWeeksOf = (row: LeagueWeeks | undefined): PlayoffWeeks =>
+  row?.playoff_week_start != null && row.playoff_weeks
+    ? { first: row.playoff_week_start, last: row.playoff_week_start + row.playoff_weeks - 1 }
+    : null;
+
 /** "playoff weeks 15 to 17" for the status line and caption; the weeks are omitted until the league is known. */
 export const playoffLabel = (w: PlayoffWeeks): string => (w ? `playoff weeks ${w.first} to ${w.last}` : "playoff weeks");
 

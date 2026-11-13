@@ -172,6 +172,28 @@ def test_losers_rows_do_not_stretch_the_week_to_round_map(tmp_path: Path) -> Non
     assert _status(tmp_path, 1, 16) == "Round 2 vs Theirs"
 
 
+def test_a_losers_bracket_game_is_a_consolation_game(tmp_path: Path) -> None:
+    losers = [
+        {"league_id": "L1", "bracket": "losers", "r": 1, "m": 1, "t1": 7, "t2": 8, "p": 7},
+        {"league_id": "L1", "bracket": "losers", "r": 1, "m": 2, "t1": 9, "t2": 10},
+    ]
+    _store(tmp_path, [*ROUND_ONE, *losers], current=2)
+    assert _status(tmp_path, 8, 2) == "Consolation: 7th place game vs 7"
+    assert _status(tmp_path, 9, 2) == "Consolation game vs 10"
+    assert _status(tmp_path, 8, 3) is None  # no losers game in round 2
+
+
+def test_the_league_row_label_reads_my_team_in_the_current_week(tmp_path: Path) -> None:
+    _store(tmp_path, ROUND_ONE, current=2)
+    [row] = data_api.leagues(tmp_path).to_dicts()
+    assert data_api.league_label(row, tmp_path) == "Bye this round"  # roster 1 is mine
+    assert data_api.league_label({**row, "roster_id": 3}, tmp_path) == "Round 1 vs Team 6"
+    _store(tmp_path, FINISHED, current=5)
+    assert data_api.league_label({**row, "current_week": 5}, tmp_path) == "Champion"
+    assert data_api.league_label({**row, "current_week": 1}, tmp_path) is None
+    assert data_api.league_label({**row, "roster_id": None}, tmp_path) is None
+
+
 def test_a_league_with_an_unsupported_round_type_still_lists_with_no_playoff_weeks(
     tmp_path: Path,
 ) -> None:

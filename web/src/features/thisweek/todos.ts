@@ -1,7 +1,7 @@
 import type { components } from "@/api/schema";
 import { actionGain, actionSentence, worthActing } from "@/features/thisweek/leagues/logic";
 import type { ActionRow } from "@/features/thisweek/leagues/logic";
-import { compareEffect, type Effect, MIN_PLAYOFF_GAIN } from "@/features/effects/effect";
+import { compareEffect, type Effect, effectOf, MIN_PLAYOFF_GAIN } from "@/features/effects/effect";
 import { type EffectWhy, lineupWhy, tradeWhy, waiverWhy } from "@/features/effects/explain";
 import type { Phase } from "@/features/effects/phase";
 import type { DeadlineWeekState } from "@/lib/deadline";
@@ -35,8 +35,6 @@ export const NO_FILL_IN = "No free agent left to start this week";
 
 const HOLE_REASON = { bye: "is on bye", out: "is out", empty: "", ir_move: "" } as const;
 const PTS = (n: number) => n.toFixed(1);
-
-const PERCENT = 100;
 
 /** The odds an idea is judged on: title in the playoffs (playoff odds are fixed then), playoff odds before. */
 const ideaOdds = (idea: MoveIdea, phase: Phase) => (phase !== "season" ? idea.title_delta : idea.playoff_delta);
@@ -108,7 +106,7 @@ export function leagueTodos(
             title: `Add ${top.get}, drop ${top.give}`,
             detail: title ? "Best free agent for your title odds" : "Best free agent for your odds",
             href: hrefFor("moves", league.league_key),
-            effect: { playoffPoints: topOdds * PERCENT, points: top.delta_points, ...(title && { odds: "title" as const }) },
+            effect: effectOf(top.playoff_delta, top.title_delta, top.delta_points, phase),
             why: waiverWhy(top.get, top.give, title),
             deadlineDay: deadlines.waiver,
           },
@@ -140,7 +138,7 @@ export function tradeDeadlineTodos(
       title: `Trade deadline: ${top.give} for ${top.get}`,
       detail: `Trades close after week ${deadlineWeek}`,
       href: `${hrefFor("moves", league.league_key)}&view=trades`,
-      effect: { playoffPoints: odds * PERCENT, points: top.delta_points, ...(title && { odds: "title" as const }) },
+      effect: effectOf(top.playoff_delta, top.title_delta, top.delta_points, phase),
       why: tradeWhy(top.give, top.get, title),
       deadlineDay,
     },

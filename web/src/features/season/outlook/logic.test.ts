@@ -9,7 +9,6 @@ import {
   seedCaption,
   matchText,
   roundHeading,
-  playoffStartWeek,
   myBracketStatus,
 } from "./logic";
 import type { BracketMatch, BracketRound, OddsHistoryRow, SeasonOddsRow } from "@/lib/outlookTypes";
@@ -146,15 +145,6 @@ describe("bracket text", () => {
   it("heads a round with its weeks", () => {
     expect(roundHeading({ round: 1, weeks: [15], matches: [] })).toBe("Round 1, week 15");
     expect(roundHeading({ round: 3, weeks: [16, 17], matches: [] })).toBe("Round 3, weeks 16 and 17");
-  });
-  it("finds the first playoff week", () => {
-    expect(
-      playoffStartWeek([
-        { round: 2, weeks: [16], matches: [] },
-        { round: 1, weeks: [15], matches: [] },
-      ]),
-    ).toBe(15);
-    expect(playoffStartWeek([])).toBeNull();
   });
 });
 

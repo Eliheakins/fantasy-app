@@ -11,7 +11,7 @@ import numpy as np
 import polars as pl
 
 from fantasy import store
-from fantasy._bracket import status_of
+from fantasy._bracket import label_for
 from fantasy._engine import (
     KD_SEED_OFFSET,
     LINEUP_SEED,
@@ -22,7 +22,6 @@ from fantasy._engine import (
 )
 from fantasy._schemas import ENGINE_SCHEMAS, empty
 from fantasy.sim import moves
-from fantasy.sim.bracket import round_of_week
 from fantasy.sim.lineup import lineup_slots
 from fantasy.sim.odds import DEFAULT_SIMS, LeagueData
 
@@ -158,17 +157,6 @@ def _projected_week(
     return rows
 
 
-def _playoff_label(data: LeagueData, mine: int, week: int) -> str | None:
-    if data.current_week < data.playoff_start or week < data.playoff_start:
-        return None
-    winners = [m.r for m in data.bracket if m.bracket == "winners"]
-    if not winners:
-        return None
-    n_rounds = max(winners)
-    round_no = round_of_week(week, data.playoff_start, data.round_type, n_rounds)
-    return status_of(data.bracket, data.team_names, mine, round_no)
-
-
 def scoreboard_of(
     data: LeagueData,
     mine: int,
@@ -193,7 +181,10 @@ def scoreboard_of(
         rows = _past_week(data, mine, week, matchup_of, data_dir)
     else:
         rows = _projected_week(data, mine, week, matchup_of, n_sims, data_dir)
-    label = _playoff_label(data, mine, week)
+    label = label_for(
+        data.bracket, data.team_names, mine, week,
+        data.current_week, data.playoff_start, data.round_type,
+    )  # fmt: skip
     rows = [{**r, "playoff_label": label if r["a_is_me"] or r["b_is_me"] else None} for r in rows]
     rows.sort(key=lambda r: (not (r["a_is_me"] or r["b_is_me"]), r["matchup_id"] or 0))
     return pl.DataFrame(rows, schema=ENGINE_SCHEMAS["scoreboard"])

@@ -2,7 +2,8 @@ import type { LastWeekRow, OddsChangeRow } from "@/lib/digestTypes";
 import type { Phase } from "@/features/effects/phase";
 import type { Todo } from "./todos";
 
-export type SummaryLeague = { name: string; lastWeek: LastWeekRow | null; odds: OddsChangeRow | null; phase: Phase };
+/** `failed`: the league's digest did not load, so there is no result to give. */
+export type SummaryLeague = { name: string; lastWeek: LastWeekRow | null; odds: OddsChangeRow | null; phase: Phase; failed: boolean };
 
 const MAX_LINES = 8;
 const PERCENT = 100;
@@ -10,6 +11,7 @@ const signed = (n: number): string => (n > 0 ? `+${n}` : String(n));
 
 function resultLine(l: SummaryLeague): string {
   const w = l.lastWeek;
+  if (l.failed) return `${l.name}: could not load`;
   if (w === null) return `${l.name}: no result yet`;
   return `${l.name}: ${w.result} ${w.points.toFixed(1)} to ${w.opp_points.toFixed(1)}${w.opponent ? ` vs ${w.opponent}` : ""} (week ${w.week})`;
 }

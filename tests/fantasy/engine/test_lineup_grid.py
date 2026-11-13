@@ -77,6 +77,15 @@ def test_out_starter_is_flagged_out(tmp_path: Path) -> None:
     assert (rb["gsis_id"], rb["flag"]) == ("G_RB", "out")
 
 
+def test_out_flag_follows_each_weeks_chance_of_playing(tmp_path: Path) -> None:
+    grid_store(tmp_path)
+    data, _ = _engine._league("t", data_dir=tmp_path)
+    assert _engine._play_probs(data, 3)["G_RB"] < 0.5 <= _engine._play_probs(data, 6)["G_RB"]
+    grid = data_api.lineup_grid("t", data_dir=tmp_path)
+    assert cell(grid, 3, "RB")["flag"] == "out"
+    assert (cell(grid, 6, "RB")["gsis_id"], cell(grid, 6, "RB")["flag"]) == ("G_RB", None)
+
+
 def test_slot_whose_best_player_is_on_bye_is_flagged_bye(tmp_path: Path) -> None:
     grid_store(tmp_path, bye_week_4=True)
     grid = data_api.lineup_grid("t", data_dir=tmp_path)

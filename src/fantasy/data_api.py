@@ -18,9 +18,9 @@ import polars as pl
 
 from fantasy import _digest, _league_view, _season_events, store
 from fantasy._actions import actions as actions
-from fantasy._actions import holes as holes
 from fantasy._actions import streamers as streamers
 from fantasy._bracket import bracket as bracket
+from fantasy._bracket import league_label as league_label
 from fantasy._bracket import playoff_status as playoff_status
 from fantasy._calendar import status_changes as status_changes
 from fantasy._calendar import week_calendar as week_calendar
@@ -31,6 +31,7 @@ from fantasy._engine import _tier_edges as _tier_edges
 from fantasy._engine import data_version as data_version
 from fantasy._engine import file_stamp as file_stamp
 from fantasy._engine import pinned_version as pinned_version
+from fantasy._holes import holes as holes
 from fantasy._leagues import TEAM_COLUMNS, leagues, scoring_labels
 from fantasy._leagues import my_league as my_league
 from fantasy._lineup import lineup, lineup_grid, win_probability
@@ -73,6 +74,7 @@ __all__ = [
     "holes",
     "ideas_are_mine",
     "last_week",
+    "league_label",
     "leagues",
     "lineup",
     "lineup_grid",

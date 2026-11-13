@@ -1,10 +1,12 @@
 """The playoff bracket as the league plays it: the winners bracket with each side's chance to
-advance (`bracket`) and a one-line status for a team in a playoff week (`playoff_status`).
+advance (`bracket`) and a one-line status for a team in a playoff week (`label_for`, the pure
+rule; `playoff_status` and `league_label` read the tables for it).
 
 Both read the synced `playoff_brackets` rows, which are trusted only once the playoffs start
 (current week >= playoff week start), the same rule the season simulation follows.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -117,6 +119,18 @@ def bracket(league_key: str, data_dir: Path | None = None, team: int | None = No
     return BracketView(rounds=rounds)
 
 
+def _match_of(matches: tuple[Match, ...], kind: str, roster_id: int, round_no: int) -> Match | None:
+    return next(
+        (m for m in matches if m.bracket == kind and m.r == round_no and roster_id in (m.t1, m.t2)),
+        None,
+    )
+
+
+def _opponent(match: Match, roster_id: int, names: dict[int, str]) -> str:
+    other = match.t2 if match.t1 == roster_id else match.t1
+    return names.get(other, str(other)) if isinstance(other, int) else "TBD"
+
+
 def status_of(
     matches: tuple[Match, ...], names: dict[int, str], roster_id: int, round_no: int
 ) -> str | None:
@@ -125,27 +139,60 @@ def status_of(
     final = next((m for m in title if m.p == 1), None)
     if final is not None and final.w == roster_id and round_no >= final.r:
         return "Champion"
-    here = next(
-        (
-            m
-            for m in matches
-            if m.bracket == "winners" and m.r == round_no and roster_id in (m.t1, m.t2)
-        ),
-        None,
-    )
+    here = _match_of(matches, "winners", roster_id, round_no)
     if here is not None:
-        other = here.t2 if here.t1 == roster_id else here.t1
-        opponent = names.get(other, str(other)) if isinstance(other, int) else "TBD"
         if here in title:
-            return f"Round {round_no} vs {opponent}"
-        if here.bracket == "winners" and here.p:
-            return f"Consolation: {_ordinal(here.p)} place game vs {opponent}"
+            return f"Round {round_no} vs {_opponent(here, roster_id, names)}"
+        if here.p:
+            return (
+                f"Consolation: {_ordinal(here.p)} place game vs {_opponent(here, roster_id, names)}"
+            )
         return None
+    losers = _match_of(matches, "losers", roster_id, round_no)
+    if losers is not None:
+        game = f": {_ordinal(losers.p)} place game" if losers.p else " game"
+        return f"Consolation{game} vs {_opponent(losers, roster_id, names)}"
     if any(m.r > round_no and roster_id in (m.t1, m.t2) for m in title):
         return "Bye this round"
     if any(m.r < round_no and m.l == roster_id for m in title):
         return "Eliminated"
     return None
+
+
+def label_for(
+    matches: tuple[Match, ...],
+    names: dict[int, str],
+    roster_id: int,
+    week: int,
+    current_week: int,
+    playoff_start: int,
+    round_type: int,
+) -> str | None:
+    """`status_of` for an NFL week: None before the playoffs start (the rows are not trusted yet),
+    for a regular-season week, or with no winners bracket rows."""
+    if current_week < playoff_start or week < playoff_start:
+        return None
+    winners = [m.r for m in matches if m.bracket == "winners"]
+    if not winners:
+        return None
+    round_no = round_of_week(week, playoff_start, round_type, max(winners))
+    return status_of(matches, names, roster_id, round_no)
+
+
+def _label(
+    league_id: str,
+    roster_id: int,
+    week: int,
+    current_week: int,
+    playoff_start: int,
+    data_dir: Path | None,
+) -> str | None:
+    if current_week < playoff_start or week < playoff_start:
+        return None  # skips the table reads outside the playoffs
+    return label_for(
+        _matches(league_id, data_dir), _names(league_id, data_dir), roster_id, week,
+        current_week, playoff_start, _round_type(league_id, data_dir),
+    )  # fmt: skip
 
 
 def playoff_status(
@@ -156,15 +203,18 @@ def playoff_status(
     me = my_league(league_key, data_dir)
     if me is None:
         raise ValueError(f"unknown league {league_key!r}")
-    start = int(me["playoff_week_start"])
-    if int(me["current_week"]) < start or week < start:
+    current, start = int(me["current_week"]), int(me["playoff_week_start"])
+    return _label(me["league_id"], roster_id, week, current, start, data_dir)
+
+
+def league_label(row: Mapping[str, Any], data_dir: Path | None = None) -> str | None:
+    """`playoff_status` for a `leagues` row's team in the league's current week (None without a
+    team or week)."""
+    roster_id, week, start = (
+        row.get("roster_id"),
+        row.get("current_week"),
+        row.get("playoff_week_start"),
+    )
+    if roster_id is None or week is None or start is None:
         return None
-    lid = me["league_id"]
-    matches = _matches(lid, data_dir)
-    if not matches:
-        return None
-    winners = [m for m in matches if m.bracket == "winners"]
-    if not winners:
-        return None
-    round_no = round_of_week(week, start, _round_type(lid, data_dir), max(m.r for m in winners))
-    return status_of(matches, _names(lid, data_dir), roster_id, round_no)
+    return _label(row["league_id"], int(roster_id), int(week), int(week), int(start), data_dir)

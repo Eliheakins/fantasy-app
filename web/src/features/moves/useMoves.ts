@@ -2,7 +2,7 @@ import { isPending } from "@/api/envelope";
 import type { DigestData } from "@/lib/digestTypes";
 import type { WaiverRow } from "@/features/moves/waivers/logic";
 import { type Phase, phaseOf } from "@/features/effects/phase";
-import { useLeague, useLeagueApi } from "@/lib/league";
+import { useLeagueApi, useLeagueRow } from "@/lib/league";
 import { type Move, rankMoves, tradeMoves, waiverMoves } from "./moves";
 
 export type MovesState = {
@@ -20,9 +20,7 @@ export type MovesState = {
 export function useMoves(): MovesState {
   const adds = useLeagueApi<WaiverRow[]>("waivers");
   const digest = useLeagueApi<DigestData>("digest");
-  const { league, leagues } = useLeague();
-  const row = leagues.kind === "ready" ? leagues.data.find((l) => l.league_key === league) : undefined;
-  const phase = phaseOf(row, digest.kind === "ready" ? digest.data.odds_change : []);
+  const phase = phaseOf(useLeagueRow(), digest.kind === "ready" ? digest.data.odds_change : []);
   const addMoves = adds.kind === "ready" ? waiverMoves(adds.data, phase) : [];
   const trades = digest.kind === "ready" ? tradeMoves(digest.data.trades, phase) : [];
   return {

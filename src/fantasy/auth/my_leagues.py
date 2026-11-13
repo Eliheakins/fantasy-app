@@ -23,8 +23,8 @@ from fantasy.auth import accounts, leagues
 from fantasy.auth.ratelimit import FailureLimiter
 from fantasy.config import load_config
 from fantasy.scoring import UnmappedScoring, check_keys
+from fantasy.sim.bracket import shape_problem
 from fantasy.sim.lineup import UnknownSlot, lineup_slots
-from fantasy.sim.season import format_problem
 from fantasy.sources.sleeper import SleeperError, fetch
 
 USERNAME_PATTERN = r"^[A-Za-z0-9_]{1,40}$"  # Sleeper usernames; nothing that could alter the url
@@ -140,7 +140,7 @@ def _teams(league_id: str) -> list[dict[str, Any]]:
 def _problem(lg: dict[str, Any]) -> str | None:
     """Why the season simulation cannot model this league, from Sleeper's own settings."""
     settings = lg.get("settings") or {}
-    shape = format_problem(
+    shape = shape_problem(
         settings.get("num_teams"),
         settings.get("playoff_teams"),
         settings.get("playoff_week_start"),

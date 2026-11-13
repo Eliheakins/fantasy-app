@@ -2280,6 +2280,8 @@ export interface components {
             record: string;
             /** Trade Deadline */
             trade_deadline: number | null;
+            /** Playoff Label */
+            playoff_label: string | null;
         };
         /** LineupGrid */
         LineupGrid: {

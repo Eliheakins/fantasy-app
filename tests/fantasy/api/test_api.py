@@ -76,6 +76,7 @@ def test_leagues_has_record_fallback_and_trade_deadline(client: TestClient) -> N
     rows = body(client.get("/api/leagues"))["data"]
     assert [r["league_key"] for r in rows] == ["t"]
     assert rows[0]["record"] == "no record yet" and rows[0]["trade_deadline"] is None
+    assert rows[0]["playoff_label"] is None  # a regular-season week
     assert rows[0]["team_name"] == "Mine"
 
 

@@ -13,15 +13,19 @@ the sum of its weeks) only changes `round_weeks`.
 import json
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal, cast
 
 import numpy as np
 
-Slot = int | tuple[str, int] | None
+# a roster id, ("s", seed), ("w" | "l", match id) for the winner or loser of that match, or None
+SlotKind = Literal["s", "w", "l"]
+Slot = int | tuple[SlotKind, int] | None
 
 
 @dataclass(frozen=True)
 class Match:
+    """One game as Sleeper lays it out: round `r`, match id `m`, sides `t1` and `t2`."""
+
     bracket: str
     r: int
     m: int
@@ -52,15 +56,15 @@ def _match(r: int, m: int, t1: Slot, t2: Slot, p: int | None = None) -> Match:
     return Match("winners", r, m, t1, t2, p=p)
 
 
-def s(n: int) -> Slot:
+def _seed(n: int) -> Slot:
     return ("s", n)
 
 
-def w(n: int) -> Slot:
+def _winner_of(n: int) -> Slot:
     return ("w", n)
 
 
-def lo(n: int) -> Slot:
+def _loser_of(n: int) -> Slot:
     return ("l", n)
 
 
@@ -72,27 +76,27 @@ def template(playoff_teams: int, round_type: int = 0) -> tuple[Match, ...]:
         raise ValueError(f"round type {round_type} has no template")
     if playoff_teams == 4:
         return (
-            _match(1, 1, s(1), s(4)), _match(1, 2, s(2), s(3)),
-            _match(2, 3, w(1), w(2), 1), _match(2, 4, lo(1), lo(2), 3),
+            _match(1, 1, _seed(1), _seed(4)), _match(1, 2, _seed(2), _seed(3)),
+            _match(2, 3, _winner_of(1), _winner_of(2), 1),
+            _match(2, 4, _loser_of(1), _loser_of(2), 3),
         )  # fmt: skip
     if playoff_teams == 6:
         return (
-            _match(1, 1, s(3), s(6)), _match(1, 2, s(4), s(5)),
-            _match(2, 3, s(2), w(1)), _match(2, 4, s(1), w(2)), _match(2, 5, lo(1), lo(2), 5),
-            _match(3, 6, w(3), w(4), 1), _match(3, 7, lo(3), lo(4), 3),
+            _match(1, 1, _seed(3), _seed(6)), _match(1, 2, _seed(4), _seed(5)),
+            _match(2, 3, _seed(2), _winner_of(1)), _match(2, 4, _seed(1), _winner_of(2)),
+            _match(2, 5, _loser_of(1), _loser_of(2), 5),
+            _match(3, 6, _winner_of(3), _winner_of(4), 1),
+            _match(3, 7, _loser_of(3), _loser_of(4), 3),
         )  # fmt: skip
     if playoff_teams == 8:
         return (
-            _match(1, 1, s(1), s(8)), _match(1, 2, s(4), s(5)),
-            _match(1, 3, s(2), s(7)), _match(1, 4, s(3), s(6)),
-            _match(2, 5, w(1), w(2)), _match(2, 6, w(3), w(4)),
-            _match(3, 7, w(5), w(6), 1), _match(3, 8, lo(5), lo(6), 3),
+            _match(1, 1, _seed(1), _seed(8)), _match(1, 2, _seed(4), _seed(5)),
+            _match(1, 3, _seed(2), _seed(7)), _match(1, 4, _seed(3), _seed(6)),
+            _match(2, 5, _winner_of(1), _winner_of(2)), _match(2, 6, _winner_of(3), _winner_of(4)),
+            _match(3, 7, _winner_of(5), _winner_of(6), 1),
+            _match(3, 8, _loser_of(5), _loser_of(6), 3),
         )  # fmt: skip
     raise ValueError(f"no template for {playoff_teams} playoff teams")
-
-
-def template_6(round_type: int = 0) -> tuple[Match, ...]:
-    return template(6, round_type)
 
 
 def _spans(n_rounds: int, round_type: int) -> tuple[int, ...]:
@@ -109,9 +113,7 @@ def playoff_weeks(playoff_teams: int, round_type: int = 0) -> int:
     return sum(_spans(n, round_type)) if n else 0
 
 
-def round_weeks(
-    r: int, playoff_start: int, round_type: int = 0, n_rounds: int = 3
-) -> tuple[int, ...]:
+def round_weeks(r: int, playoff_start: int, round_type: int, n_rounds: int) -> tuple[int, ...]:
     """The NFL weeks whose scores decide round r (summed when there are two)."""
     spans = _spans(n_rounds, round_type)
     first = playoff_start + sum(spans[: r - 1])
@@ -190,7 +192,9 @@ def _slot(team: Any, kind: Any, source: Any) -> Slot:
     if team is not None:
         return int(team)
     if kind is not None and source is not None:
-        return (str(kind), int(source))
+        if kind not in ("s", "w", "l"):
+            raise ValueError(f"unknown bracket slot kind {kind!r}")
+        return (cast(SlotKind, kind), int(source))
     return None
 
 

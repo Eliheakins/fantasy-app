@@ -46,7 +46,7 @@ export const seedFill = (seed: number, playoffTeams: number): string =>
 /** The seed chart's caption for a league's bracket. */
 export function seedCaption(playoffTeams: number): string {
   const bye = byeSeeds(playoffTeams);
-  const byes = bye > 0 ? `; ${bye === 2 ? "1 and 2" : `1 to ${bye}`} get a bye` : "";
+  const byes = bye > 0 ? "; 1 and 2 get a bye" : ""; // byeSeeds is 0 or 2
   return `Chance of each regular-season seed. Seeds 1 to ${playoffTeams} make the playoffs${byes}.`;
 }
 
@@ -92,12 +92,6 @@ export function dodgeLabels(ys: readonly number[], minGap: number, lo: number, h
   const out = new Array<number>(ys.length).fill(lo);
   for (const it of up) out[it.i] = it.y;
   return out;
-}
-
-/** First week of the first round, or null without a bracket. */
-export function playoffStartWeek(rounds: readonly BracketRound[]): number | null {
-  const weeks = rounds.flatMap((r) => r.weeks);
-  return weeks.length ? Math.min(...weeks) : null;
 }
 
 export function roundHeading(r: BracketRound): string {

@@ -32,6 +32,7 @@ def leagues(request: Request, data_dir: DataDir) -> Any:
                 **r,
                 "record": view.record_string(r["wins"], r["losses"], r["ties"]),
                 "trade_deadline": view.trade_deadline(r["league_key"], data_dir),
+                "playoff_label": data_api.league_label(r, data_dir),
             }
             for r in rows(access.with_account_team(mine, account, data_dir))
         ]

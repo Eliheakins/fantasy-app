@@ -7,7 +7,6 @@ the numbers are comparable with `stages/backtest.py`.
 """
 
 import json
-import warnings
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
@@ -196,9 +195,8 @@ def error_table(scored: pl.DataFrame) -> pl.DataFrame:
 def _kickoff_frame(games: pl.DataFrame, schedules: pl.DataFrame) -> pl.DataFrame:
     rows = []
     for season, week in games.select("season", "week").unique().iter_rows():
-        with warnings.catch_warnings():  # teams with no kickoff time are counted, not warned about
-            warnings.simplefilter("ignore")
-            by_team = kickoffs(schedules, season, week)
+        # teams with no kickoff time are counted, not warned about
+        by_team = kickoffs(schedules, season, week, warn=False)
         rows += [
             {"season": season, "week": week, "team": t, "kickoff": k.astimezone(None)}
             for t, k in by_team.items()

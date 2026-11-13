@@ -73,11 +73,18 @@ function Matchup({ row, kickoff }: { row: ScoreboardRow; kickoff: Date | null })
 
 function LeagueScores({ league, state, kickoff }: { league: League; state: ApiState<ScoreboardRow[]> | undefined; kickoff: Date | null }) {
   const id = `scores-${league.league_key}`;
+  // a bye, a title or an elimination leaves my matchup out or unlabelled: show the league's label once, here
+  const showLeagueLabel = state?.kind === "ready" && league.playoff_label && !state.data.some((r) => isMine(r) && r.playoff_label);
   return (
     <section aria-labelledby={id} className="min-w-0">
       <h3 id={id} className="mb-1 px-3 text-body font-semibold text-label">
         {leagueName(league)}
       </h3>
+      {showLeagueLabel && (
+        <div className="mb-1 px-3">
+          <PlayoffLabel label={league.playoff_label} />
+        </div>
+      )}
       {state?.kind === "ready" ? (
         state.data.length ? (
           <ul className="divide-y divide-line">

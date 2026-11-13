@@ -9,17 +9,20 @@ from fantasy import data_api
 
 
 def stash_store(tmp_path: Path, settings: dict | None = None, fa_status: str | None = "IR") -> None:
-    """Mine: te on IR, rb Out, dl Doubtful. Free agent fa has `fa_status`."""
+    """Mine: te on IR, rb Out, dl Doubtful. Free agent fa has `fa_status`. IR players are
+    "Inactive" in Sleeper's player list."""
     build_store(tmp_path, [(100.0, 90.0)])
     leagues = pl.read_parquet(next(tmp_path.rglob("leagues.parquet")))
     row = {**leagues.row(0, named=True), "settings": json.dumps(settings or {})}
     write_rows(tmp_path, "leagues", [row])
+    flags = {s: fa_status if s == "fa" else inj for s, (_, inj, _) in PLAYERS.items()}
     players = [
         {
-            "sleeper_id": s, "full_name": s, "position": pos, "team": "KC", "status": "Active",
-            "injury_status": fa_status if s == "fa" else inj,
+            "sleeper_id": s, "full_name": s, "position": pos, "team": "KC",
+            "status": "Inactive" if flags[s] == "IR" else "Active",  # as Sleeper lists IR players
+            "injury_status": flags[s],
         }
-        for s, (pos, inj, _) in PLAYERS.items()
+        for s, (pos, _, _) in PLAYERS.items()
     ]  # fmt: skip
     write_rows(tmp_path, "sleeper_players", players)
     base = pl.read_parquet(next(tmp_path.rglob("proj_baseline.parquet")))
@@ -40,6 +43,15 @@ def test_free_agent_on_ir_lists_first_week_and_playoff_points(tmp_path: Path) ->
     assert (fa["status"], fa["owner"], fa["is_mine"]) == ("IR", None, False)
     assert fa["first_week"] == 8  # four zero games from week 3, then a projection
     assert fa["playoff_points"] > 0  # week 15 is a playoff week
+
+
+def test_inactive_ir_players_are_listed_mine_and_free(tmp_path: Path) -> None:
+    stash_store(tmp_path)
+    rows = {r["gsis_id"]: r for r in data_api.stash("t", data_dir=tmp_path)["rows"]}
+    assert (rows["G_TE"]["status"], rows["G_TE"]["is_mine"], rows["G_TE"]["position"]) == (
+        "IR", True, "TE",
+    )  # fmt: skip
+    assert (rows["G_FA"]["status"], rows["G_FA"]["is_mine"]) == ("IR", False)
 
 
 def test_my_out_player_is_listed_as_mine_and_healthy_are_excluded(tmp_path: Path) -> None:

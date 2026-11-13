@@ -228,6 +228,18 @@ def _subtract_absences(
         shift_row -= loss * gone
 
 
+def _trusted_bracket(
+    data: LeagueData,
+) -> tuple[tuple[Match, ...] | None, tuple[int, ...] | None]:
+    """The real winners rows and seeds (roster ids of seeds 1..N), or None for each before the
+    playoffs start (earlier rows are provisional) or when there are none to read."""
+    real = tuple(m for m in data.bracket if m.bracket == "winners")
+    if not real or data.current_week < data.playoff_start:
+        return None, None
+    seeds = seeds_from(real, template(data.playoff_teams, data.round_type))
+    return real, tuple(seeds) if seeds else None
+
+
 def build_inputs(
     data: LeagueData,
     rosters: pl.DataFrame | None,
@@ -241,12 +253,8 @@ def build_inputs(
     rosters = data.rosters if rosters is None else rosters
     last_week = data.playoff_start + data.playoff_weeks - 1
     weeks = list(range(min(data.current_week, data.playoff_start), last_week + 1))
-    off = sum(1 for wk in weeks if wk < data.current_week)  # weeks already played
-    real = [m for m in data.bracket if m.bracket == "winners"]
-    trusted = bool(real) and data.current_week >= data.playoff_start  # earlier rows are provisional
-    seeds = (
-        seeds_from(tuple(real), template(data.playoff_teams, data.round_type)) if trusted else None
-    )
+    off = sum(1 for wk in weeks if wk < data.current_week)  # indexes below off are realized weeks
+    real, seeds = _trusted_bracket(data)
     slots = lineup_slots(data.roster_positions)
     constants = constant_slot_count(data.roster_positions)
     index = {rid: i for i, rid in enumerate(data.roster_ids)}
@@ -328,8 +336,8 @@ def build_inputs(
         points0=np.array([data.points0.get(r, 0.0) for r in data.roster_ids], dtype=float),
         playoff_start=data.playoff_start,
         seed=seed,
-        bracket=tuple(real) if trusted else None,
-        seeds=tuple(seeds) if seeds else None,
+        bracket=real,
+        seeds=seeds,
         playoff_teams=data.playoff_teams,
         round_type=data.round_type,
         seed_type=data.seed_type,

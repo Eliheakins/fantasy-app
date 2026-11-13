@@ -1,8 +1,15 @@
+import type { Phase } from "./phase";
+import { toPoints } from "@/viz";
+
 /**
  * playoffPoints: change in playoff odds, % points (in playoff weeks, with `odds: "title"`, the title odds instead).
  * points: fantasy points. Either may be missing.
  */
 export type Effect = { playoffPoints: number | null; points: number | null; odds?: "title" };
+
+/** The odds an add or trade is judged on: playoff odds in the season, title odds once the seeds are fixed. Changes are fractions. */
+export const effectOf = (playoff: number | null, title: number | null, points: number | null, phase: Phase): Effect =>
+  phase === "season" ? { playoffPoints: toPoints(playoff), points } : { playoffPoints: toPoints(title), points, odds: "title" };
 
 /** A stored add under this (0.5 playoff points) is inside the noise; same bar as the Do this now action. */
 export const MIN_PLAYOFF_GAIN = 0.005;

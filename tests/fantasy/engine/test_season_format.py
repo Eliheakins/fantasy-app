@@ -6,7 +6,7 @@ import polars as pl
 import pytest
 
 from fantasy import _runs, store
-from fantasy.sim.season import format_problem
+from fantasy.sim.bracket import shape_problem
 from fantasy.stages import simulate as sim_stage
 
 
@@ -15,7 +15,7 @@ from fantasy.stages import simulate as sim_stage
     [(10, 6, 15), (12, 6, 14), (6, 6, 15), (14, 6, 15), (10, 4, 16), (12, 8, 15)],
 )
 def test_the_formats_the_app_models_pass(teams: int, playoff_teams: int, start: int) -> None:
-    assert format_problem(teams, playoff_teams, start) is None
+    assert shape_problem(teams, playoff_teams, start) is None
 
 
 @pytest.mark.parametrize(
@@ -33,7 +33,7 @@ def test_the_formats_the_app_models_pass(teams: int, playoff_teams: int, start: 
 def test_the_formats_it_cannot_model_get_a_reason_in_plain_words(
     teams: int | None, playoff_teams: int | None, start: int | None, words: str
 ) -> None:
-    problem = format_problem(teams, playoff_teams, start)
+    problem = shape_problem(teams, playoff_teams, start)
     assert problem is not None
     assert words in problem
 

@@ -54,19 +54,18 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
   return <LeagueContext.Provider value={value}>{children}</LeagueContext.Provider>;
 }
 
-/** The selected league's display name, or null with no provider, no league or the list not loaded. */
-export function useLeagueName(): string | null {
+/** The selected league's row, or undefined with no provider, no league or the list not loaded. */
+export function useLeagueRow(): League | undefined {
   const value = useContext(LeagueContext);
-  if (!value || value.league === null || value.leagues.kind !== "ready") return null;
-  return value.leagues.data.find((l) => l.league_key === value.league)?.name ?? null;
+  if (!value || value.league === null || value.leagues.kind !== "ready") return undefined;
+  return value.leagues.data.find((l) => l.league_key === value.league);
 }
 
+/** The selected league's display name, or null with no provider, no league or the list not loaded. */
+export const useLeagueName = (): string | null => useLeagueRow()?.name ?? null;
+
 /** The selected league's playoff size; 6 (the app's usual league) until the list has loaded. */
-export function usePlayoffTeams(): number {
-  const value = useContext(LeagueContext);
-  if (!value || value.league === null || value.leagues.kind !== "ready") return 6;
-  return value.leagues.data.find((l) => l.league_key === value.league)?.playoff_teams ?? 6;
-}
+export const usePlayoffTeams = (): number => useLeagueRow()?.playoff_teams ?? 6;
 
 export function useLeague(): LeagueContextValue {
   const value = useContext(LeagueContext);

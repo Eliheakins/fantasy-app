@@ -1,6 +1,5 @@
 """My lineup for a week and the lineup with the best chance to win it (see data_api)."""
 
-import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -63,6 +62,7 @@ from fantasy.sim.winprob import (
 LINEUP_SIMS = DEFAULT_SIMS
 UNDERDOG = 0.45  # below this chance to win with the best lineup, variance is an asset
 FAVORITE = 0.55  # above it, protect the floor
+LIKELY_OUT = 0.5  # a grid starter below this chance of playing that week is flagged out
 SWAP_STATUSES = frozenset({"Questionable", "Doubtful"})  # game-day calls settled at inactives
 
 
@@ -386,12 +386,12 @@ def win_probability(
     return pl.DataFrame(rows, schema=ENGINE_SCHEMAS["win_probability"])
 
 
-def _playing_teams(week: int, data_dir: Path | None) -> set[str]:
-    """NFL teams with a game in `week`; empty when the schedule has no rows for it."""
+def _week_games(week: int, data_dir: Path | None) -> tuple[dict[str, datetime], set[str]]:
+    """Kickoff by NFL team, and every team that has a game in `week` (kickoff known or not;
+    empty when the schedule has no rows for it)."""
     schedules, season = _read("nfl_schedules", data_dir), load_config().season
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")  # a missing kickoff still means the team plays
-        return set(kickoffs(schedules, season, week)) | missing_kickoffs(schedules, season, week)
+    kicks = kickoffs(schedules, season, week, warn=False)  # missing kickoffs are handled here
+    return kicks, set(kicks) | missing_kickoffs(schedules, season, week)
 
 
 def lineup_grid(
@@ -400,9 +400,10 @@ def lineup_grid(
     """My auto-lineup for every week from the current one through the last playoff week.
 
     One row per week and slot: the starter, his points, and a flag. "bye": the slot's best player
-    has no game that week and is worth more than whoever fills it; "out": the starter is Out or on
-    IR; "weak": a free stand-in (`stand_ins`) would score more. K and DEF rows carry the team's
-    projection and no player. Totals per week equal `schedule`'s, because both use `_week_lineup`.
+    has no game that week and is worth more than whoever fills it; "out": the starter's chance of
+    playing that week (the one his projection carries) is below `LIKELY_OUT`; "weak": a free
+    stand-in (`stand_ins`) would score more. K and DEF rows carry the team's projection and no
+    player. Totals per week equal `schedule`'s, because both use `_week_lineup`.
     """
     data, mine = _league(league_key, data_dir, team)
     positions, by_week = moves.position_of(data), moves.week_values(data)
@@ -425,9 +426,10 @@ def lineup_grid(
     )
     rows: list[dict[str, Any]] = []
     for week in weeks:
-        playing = _playing_teams(week, data_dir)
+        _, playing = _week_games(week, data_dir)
         byes = [g for g in mine_ids if playing and team_of.get(g) not in playing and g in positions]
         floor = stand_ins(replacements.get(week, []), mine_ids)
+        chance = _play_probs(data, week)
         _, best = _week_lineup(data, mine, week, positions, by_week)
         unfilled: dict[str, list[str]] = {}
         for slot, starter in best.slots:
@@ -442,7 +444,7 @@ def lineup_grid(
             points = by_week.get(week, {}).get(gsis_id, 0.0) if gsis_id else 0.0
             eligible = ELIGIBLE[slot]
             flag: str | None = None
-            if gsis_id is not None and _is_out(data, gsis_id):
+            if gsis_id is not None and chance.get(gsis_id, 1.0) < LIKELY_OUT:
                 flag = "out"
             elif any(positions[g] in eligible and typical.get(g, 0.0) > points for g in byes):
                 flag = "bye"

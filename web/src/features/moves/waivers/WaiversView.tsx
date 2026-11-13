@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { ApiState } from "@/api/envelope";
 import { ApiBoundary } from "@/components/ApiBoundary";
@@ -7,7 +6,8 @@ import { Section } from "@/components/Section";
 import { useEnvelopeQuery } from "@/api/useEnvelope";
 import { ExternalLink } from "@/components/ExternalLink";
 import { sleeperLeagueUrl } from "@/lib/sleeper";
-import { useLeague, useLeagueApi } from "@/lib/league";
+import { useLeague, useLeagueApi, useLeagueRow } from "@/lib/league";
+import { useSearchParam } from "@/lib/useSearchParam";
 import { type Who, useWho, whoFor } from "@/lib/who";
 import { AddsTable } from "./AddsTable";
 import {
@@ -19,6 +19,7 @@ import {
   isStreamPos,
   type Pos,
   playoffLabel,
+  playoffWeeksOf,
   posOf,
   type Rank,
   STREAM_CAPTION,
@@ -58,6 +59,78 @@ const RANKS: { value: Rank; label: string }[] = [
 
 const CHART_HINT = "Select a player to see projected points for the next four weeks.";
 
+type AddsProps = Omit<Required<ViewProps>, "def" | "kickers" | "stash">;
+
+/** The ranked adds with the rank toggle, the position filter and the selected player's chart. */
+function AddsSection({ adds, weeks, selected, onSelect, who, sleeperLeagueId, rank, onRank, playoffWeeks, pos, onShowAll }: AddsProps) {
+  const chartRef = useRef<HTMLDivElement>(null);
+  // On a phone the chart sits below the cards, so bring it into view when a player is picked.
+  useEffect(() => {
+    if (selected !== null) chartRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [selected]);
+  const mode = rank === "playoffs" ? playoffLabel(playoffWeeks) : "rest of season";
+  const count = adds.kind === "ready" ? `, ${adds.data.length} adds` : "";
+  return (
+    <Section title="Adds" caption={rank === "playoffs" ? ADDS_CAPTION_PLAYOFFS : ADDS_CAPTION} howCalculated={ADDS_METHOD}>
+      <ToggleGroup
+        type="single"
+        aria-label="Rank adds by"
+        value={rank}
+        onValueChange={(v) => v && onRank(v as Rank)}
+        className="mb-3 w-full justify-start [&>*]:flex-1 md:w-auto md:[&>*]:flex-none"
+      >
+        {RANKS.map((r) => (
+          <ToggleGroupItem key={r.value} value={r.value}>
+            {r.label}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+      <p role="status" className="sr-only">{`Ranked by ${mode}${count}`}</p>
+      {pos !== null && (
+        <p className="mb-3 text-body">
+          Showing {pos} only,{" "}
+          <button type="button" onClick={onShowAll} className="min-h-[44px] underline underline-offset-2 lg:min-h-0">
+            Show all
+          </button>
+        </p>
+      )}
+      {sleeperLeagueId && <ExternalLink href={sleeperLeagueUrl(sleeperLeagueId)}>Open league in Sleeper</ExternalLink>}
+      <ApiBoundary state={adds}>
+        {(all) => {
+          const rows = pos === null ? all : all.filter((r) => r.position === pos); // K and DEF are never adds
+          return rows.length === 0 ? (
+            <p className="py-6 text-muted">
+              {pos === null
+                ? `No free agent adds expected points for ${who.name ?? "your team"}.`
+                : isStreamPos(pos)
+                  ? "Adds do not include kickers or defenses. "
+                  : `No ${pos} adds expected points for ${who.name ?? "your team"}.`}
+              {pos !== null && isStreamPos(pos) && (
+                <a href={`#${STREAMING_ANCHOR}`} className="inline-flex min-h-[44px] items-center underline underline-offset-2 lg:min-h-0">
+                  See streaming picks
+                </a>
+              )}
+            </p>
+          ) : (
+            <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start xl:gap-6">
+              <AddsTable rows={rows} selected={selected} onSelect={onSelect} />
+              <div ref={chartRef} className="mt-4 xl:sticky xl:top-[calc(var(--chrome-h)+1rem)] xl:mt-0">
+                {selected === null ? (
+                  <p className="hidden text-caption text-muted xl:block">{CHART_HINT}</p>
+                ) : (
+                  <ApiBoundary state={weeks}>
+                    {(w) => <PlayerWeeksChart name={rows.find((r) => r.gsis_id === selected)?.full_name ?? ""} weeks={w} />}
+                  </ApiBoundary>
+                )}
+              </div>
+            </div>
+          );
+        }}
+      </ApiBoundary>
+    </Section>
+  );
+}
+
 /** Presentational: all data comes in as props so tests can pass fixture states. */
 export function WaiversView({
   adds,
@@ -75,70 +148,23 @@ export function WaiversView({
   pos = null,
   onShowAll = () => {},
 }: ViewProps) {
-  const chartRef = useRef<HTMLDivElement>(null);
   const mineMarker = who.name ? "(theirs)" : "(yours)";
-  // On a phone the chart sits below the cards, so bring it into view when a player is picked.
-  useEffect(() => {
-    if (selected !== null) chartRef.current?.scrollIntoView?.({ block: "nearest" });
-  }, [selected]);
-  const mode = rank === "playoffs" ? playoffLabel(playoffWeeks) : "rest of season";
-  const count = adds.kind === "ready" ? `, ${adds.data.length} adds` : "";
   return (
     <div className="space-y-8">
       {stash.kind === "ready" && <OpenIrCallout data={stash.data} />}
-      <Section title="Adds" caption={rank === "playoffs" ? ADDS_CAPTION_PLAYOFFS : ADDS_CAPTION} howCalculated={ADDS_METHOD}>
-        <ToggleGroup
-          type="single"
-          aria-label="Rank adds by"
-          value={rank}
-          onValueChange={(v) => v && onRank(v as Rank)}
-          className="mb-3 w-full justify-start [&>*]:flex-1 md:w-auto md:[&>*]:flex-none"
-        >
-          {RANKS.map((r) => (
-            <ToggleGroupItem key={r.value} value={r.value}>
-              {r.label}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-        <p role="status" className="sr-only">{`Ranked by ${mode}${count}`}</p>
-        {pos !== null && (
-          <p className="mb-3 text-body">
-            Showing {pos} only,{" "}
-            <button type="button" onClick={onShowAll} className="min-h-[44px] underline underline-offset-2 lg:min-h-0">
-              Show all
-            </button>
-          </p>
-        )}
-        {sleeperLeagueId && <ExternalLink href={sleeperLeagueUrl(sleeperLeagueId)}>Open league in Sleeper</ExternalLink>}
-        <ApiBoundary state={adds}>
-          {(all) => {
-            const rows = pos === null ? all : all.filter((r) => r.position === pos); // K and DEF are never adds
-            return rows.length === 0 ? (
-              <p className="py-6 text-muted">
-                {pos === null
-                  ? `No free agent adds expected points for ${who.name ?? "your team"}.`
-                  : isStreamPos(pos)
-                    ? "Adds do not include kickers or defenses. "
-                    : `No ${pos} adds expected points for ${who.name ?? "your team"}.`}
-                {pos !== null && isStreamPos(pos) && <a href={`#${STREAMING_ANCHOR}`}>See streaming picks</a>}
-              </p>
-            ) : (
-              <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start xl:gap-6">
-                <AddsTable rows={rows} selected={selected} onSelect={onSelect} />
-                <div ref={chartRef} className="mt-4 xl:sticky xl:top-[calc(var(--chrome-h)+1rem)] xl:mt-0">
-                  {selected === null ? (
-                    <p className="hidden text-caption text-muted xl:block">{CHART_HINT}</p>
-                  ) : (
-                    <ApiBoundary state={weeks}>
-                      {(w) => <PlayerWeeksChart name={rows.find((r) => r.gsis_id === selected)?.full_name ?? ""} weeks={w} />}
-                    </ApiBoundary>
-                  )}
-                </div>
-              </div>
-            );
-          }}
-        </ApiBoundary>
-      </Section>
+      <AddsSection
+        adds={adds}
+        weeks={weeks}
+        selected={selected}
+        onSelect={onSelect}
+        who={who}
+        sleeperLeagueId={sleeperLeagueId}
+        rank={rank}
+        onRank={onRank}
+        playoffWeeks={playoffWeeks}
+        pos={pos}
+        onShowAll={onShowAll}
+      />
       <StashSection state={stash} />
       <div id={STREAMING_ANCHOR}>
         <Section title="Streaming: defense and kicker" caption={STREAM_CAPTION} howCalculated={STREAM_METHOD}>
@@ -150,46 +176,25 @@ export function WaiversView({
   );
 }
 
+/** The adds ranking (`?rank=playoffs`, else rest of season) and position filter (`?pos=`) from the URL. */
+function useWaiverParams(): { rank: Rank; setRank: (next: Rank) => void; pos: Pos | null; showAll: () => void } {
+  const [rawRank, setRawRank] = useSearchParam("rank");
+  const [rawPos, setPos] = useSearchParam("pos");
+  const setRank = useCallback((next: Rank) => setRawRank(next === "ros" ? null : next), [setRawRank]);
+  const showAll = useCallback(() => setPos(null), [setPos]);
+  return { rank: rawRank === "playoffs" ? "playoffs" : "ros", setRank, pos: posOf(rawPos), showAll };
+}
+
 export function WaiversContent() {
-  const { league, leagues } = useLeague();
-  const sleeperLeagueId = (leagues.kind === "ready" && leagues.data.find((l) => l.league_key === league)?.league_id) || null;
+  const { league } = useLeague();
+  const row = useLeagueRow();
+  const sleeperLeagueId = row?.league_id || null;
   const who = useWho();
   const [selection, setSelection] = useState<{ league: string | null; id: string } | null>(null);
   // A pick belongs to the league it was made in.
   const selected = selection && selection.league === league ? selection.id : null;
-  const [params, setParams] = useSearchParams();
-  const rank: Rank = params.get("rank") === "playoffs" ? "playoffs" : "ros";
-  const setRank = useCallback(
-    (next: Rank) =>
-      setParams(
-        (prev) => {
-          const out = new URLSearchParams(prev);
-          if (next === "ros") out.delete("rank");
-          else out.set("rank", next);
-          return out;
-        },
-        { replace: true },
-      ),
-    [setParams],
-  );
-  const pos = posOf(params.get("pos"));
-  const showAll = useCallback(
-    () =>
-      setParams(
-        (prev) => {
-          const out = new URLSearchParams(prev);
-          out.delete("pos");
-          return out;
-        },
-        { replace: true },
-      ),
-    [setParams],
-  );
-  const row = leagues.kind === "ready" ? leagues.data.find((l) => l.league_key === league) : undefined;
-  const playoffWeeks: PlayoffWeeks =
-    row?.playoff_week_start != null && row.playoff_weeks
-      ? { first: row.playoff_week_start, last: row.playoff_week_start + row.playoff_weeks - 1 }
-      : null;
+  const { rank, setRank, pos, showAll } = useWaiverParams();
+  const playoffWeeks = playoffWeeksOf(row);
   const adds = useLeagueApi<WaiverRow[]>(rank === "playoffs" ? "waivers?horizon=playoffs" : "waivers");
   const def = useLeagueApi<StreamerRow[]>("streamers?kind=DEF");
   const kickers = useLeagueApi<StreamerRow[]>("streamers?kind=K");

@@ -7,15 +7,15 @@ import polars as pl
 
 from fantasy import store
 from fantasy._engine import _id_map, _league, _league_id, _names, _read
+from fantasy._holes import league_reserve
 from fantasy._schemas import ENGINE_SCHEMAS
+from fantasy.config import SKILL_POSITIONS
 from fantasy.sim import moves
 from fantasy.sim.horizon import Horizon, horizon_weeks
 from fantasy.sim.odds import LeagueData
-from fantasy.sim.roster import free_agents
 
 MIN_GAIN = 0.05  # expected points below this are not worth a roster move
 STASH_STATUSES = frozenset({"IR", "PUP", "Out"})
-STASH_POSITIONS = frozenset({"QB", "RB", "WR", "TE"})
 STASH_FREE_AGENTS = 15  # free agents listed; all of mine are
 
 
@@ -234,20 +234,27 @@ def position_strength(
 
 def stash(league_key: str, data_dir: Path | None = None, team: int | None = None) -> dict[str, Any]:
     """Injured (IR, PUP, Out) free agents and my players ranked by points over the playoff weeks,
-    with my open IR slots. `first_week` is the first projected week with points, not a medical
-    return estimate; points are as injury-scaled as the projections already are."""
-    from fantasy._actions import reserve_rules  # _actions imports this module
-
+    with my open IR slots. Free agents are any unrostered QB, RB, WR or TE Sleeper lists, whatever
+    his Sleeper status (IR players are "Inactive"). `first_week` is the first projected week with
+    points, not a medical return estimate; points are as injury-scaled as the projections are."""
     data, mine = _league(league_key, data_dir, team)
     names = _names(data_dir)
-    raw = _read("leagues", data_dir).filter(pl.col("league_id") == data.league_id)
-    settings = raw["settings"].first() if "settings" in raw.columns and raw.height else None
-    reserve, allowed = reserve_rules(settings if isinstance(settings, str) else None)
+    reserve, allowed = league_reserve(data.league_id, data_dir)
     my_rows = _read("rosters", data_dir).filter(
         (pl.col("league_id") == data.league_id) & (pl.col("roster_id") == mine)
     )
     open_slots = max(reserve - my_rows.filter(pl.col("is_ir").fill_null(False)).height, 0)
     owner = dict(zip(data.rosters["gsis_id"], data.rosters["roster_id"], strict=True))
+    listed = (
+        _id_map(data_dir)
+        .filter(pl.col("gsis_id").is_not_null())
+        .join(_read("sleeper_players", data_dir).select("sleeper_id", "position"), on="sleeper_id")
+    )
+    # Sleeper lists IR players as Inactive, so data.positions (active players only) misses them
+    positions = {
+        **dict(zip(listed["gsis_id"], listed["position"], strict=True)),
+        **moves.position_of(data),
+    }
     playoff = set(horizon_weeks(data, "playoffs"))
     ahead = data.projections.filter(pl.col("week") >= data.current_week).sort("week")
     points = {
@@ -261,7 +268,7 @@ def stash(league_key: str, data_dir: Path | None = None, team: int | None = None
         return {
             "gsis_id": g,
             "full_name": names.get(g, g),
-            "position": data.positions[g],
+            "position": positions[g],
             "status": status,
             "owner": data.team_names.get(owner[g]) if g in owner else None,
             "is_mine": owner.get(g) == mine,
@@ -272,10 +279,11 @@ def stash(league_key: str, data_dir: Path | None = None, team: int | None = None
 
     injured = [
         row(g)
-        for g in {*free_agents(data), *(g for g, r in owner.items() if r == mine)}
-        if g in data.injuries
+        for g, position in positions.items()
+        if (g not in owner or owner[g] == mine)
+        and position in SKILL_POSITIONS
+        and g in data.injuries
         and data.injuries[g][0] in STASH_STATUSES
-        and data.positions.get(g) in STASH_POSITIONS
     ]
     injured.sort(key=lambda r: (-r["playoff_points"], r["gsis_id"]))
     free = [r for r in injured if not r["is_mine"]][:STASH_FREE_AGENTS]

@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { type ReactNode, useState } from "react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PageHeader } from "@/components/PageHeader";
 import { ApiBoundary } from "@/components/ApiBoundary";
 import { RadioGroup } from "@/components/RadioGroup";
 import { useLeague, useLeagueApi } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
+import { useSearchParam } from "@/lib/useSearchParam";
 import { usePageEyebrow, useWeek } from "@/lib/week";
 import type { ScoreboardRow } from "@/lib/scoreboard";
 import { ChevronDown } from "lucide-react";
@@ -73,15 +73,24 @@ function Answer({
   );
 }
 
-type ViewProps = { base: LineupRow[]; odds: WinProbability | null; week: number; eyebrow?: string; board?: ScoreboardRow[] | null };
+type ViewProps = {
+  base: LineupRow[];
+  odds: WinProbability | null;
+  week: number;
+  eyebrow?: string;
+  board?: ScoreboardRow[] | null;
+  /** The view toggle, shown right under the page header. */
+  toggle?: ReactNode;
+};
 
-export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProps) {
+export function LineupView({ base, odds, week, eyebrow, board = null, toggle }: ViewProps) {
   // a manual pick belongs to the label it was made under: when the label flips, the default returns
   const [picked, setPicked] = useState<{ key: ObjectiveKey; under: ObjectiveKey } | null>(null);
   if (base.length === 0) {
     return (
       <>
         <PageHeader title="Lineup" eyebrow={eyebrow} />
+        {toggle}
         <p className="py-6 text-body text-muted">No projections for week {week}: either a past week or your players are on bye.</p>
       </>
     );
@@ -118,6 +127,7 @@ export function LineupView({ base, odds, week, eyebrow, board = null }: ViewProp
           )
         }
       />
+      {toggle}
       <ResultPanel
         result={result}
         option={shownOption}
@@ -191,18 +201,10 @@ const LINEUP_VIEWS = [
 ] as const;
 
 function ViewToggle({ view }: { view: "week" | "ahead" }) {
-  const [, setParams] = useSearchParams();
+  const [, setView] = useSearchParam("view");
   const choose = (next: string) => {
     if (!next) return; // clicking the selected item would clear a single-select group
-    setParams(
-      (prev) => {
-        const out = new URLSearchParams(prev);
-        if (next === "week") out.delete("view");
-        else out.set("view", next);
-        return out;
-      },
-      { replace: true },
-    );
+    setView(next === "week" ? null : next);
   };
   return (
     <ToggleGroup type="single" aria-label="Lineup view" value={view} onValueChange={choose} className="mb-4 justify-start">
@@ -227,25 +229,23 @@ function WeeksAhead({ eyebrow }: { eyebrow?: string }) {
   );
 }
 
-export default function Lineup() {
+/** This week's lineup, win chances and scores; only mounted in the week view, so Weeks ahead starts no simulation. */
+function ThisWeekLineup({ eyebrow }: { eyebrow?: string }) {
   const { league } = useLeague();
   const { week } = useWeek();
-  const [params] = useSearchParams();
-  const eyebrow = usePageEyebrow("Lineup", true);
+  const { team } = useTeam();
   const lineup = useLeagueApi<LineupRow[]>(`lineup?week=${week}`);
   const odds = useLeagueApi<WinProbability>(`win-probability?week=${week}`);
   const board = useLeagueApi<ScoreboardRow[]>(`scoreboard?week=${week}`);
-  const { team } = useTeam();
-  if (params.get("view") === "ahead")
-    return (
-      <div key={league}>
-        <WeeksAhead eyebrow={eyebrow} />
-      </div>
-    );
+  const toggle = <ViewToggle view="week" />;
   return (
-    <div key={league}>
-      <ViewToggle view="week" />
-      {lineup.kind !== "ready" && <PageHeader title="Lineup" eyebrow={eyebrow} />}
+    <>
+      {lineup.kind !== "ready" && (
+        <>
+          <PageHeader title="Lineup" eyebrow={eyebrow} />
+          {toggle}
+        </>
+      )}
       <ApiBoundary state={lineup}>
         {(base) => (
           <>
@@ -261,10 +261,18 @@ export default function Lineup() {
               week={week}
               eyebrow={eyebrow}
               board={board.kind === "ready" ? board.data : null}
+              toggle={toggle}
             />
           </>
         )}
       </ApiBoundary>
-    </div>
+    </>
   );
+}
+
+export default function Lineup() {
+  const { league } = useLeague();
+  const [view] = useSearchParam("view");
+  const eyebrow = usePageEyebrow("Lineup", true);
+  return <div key={league}>{view === "ahead" ? <WeeksAhead eyebrow={eyebrow} /> : <ThisWeekLineup eyebrow={eyebrow} />}</div>;
 }

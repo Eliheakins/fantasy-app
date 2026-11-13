@@ -60,6 +60,7 @@ const show = (pending = false) =>
   );
 
 beforeEach(() => {
+  routes["/api/leagues/a/digest"] = digest;
   vi.mocked(copyText).mockReset();
   vi.stubGlobal(
     "fetch",
@@ -81,6 +82,14 @@ describe("CopySummaryButton", () => {
     fireEvent.click(await ready());
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/^Copied 3 lines\.$/));
     expect(vi.mocked(copyText).mock.calls[0]?.[0]).toContain("Alpha: W 100.0 to 90.0 vs Rivals");
+  });
+  it("says a league whose digest failed could not load", async () => {
+    vi.mocked(copyText).mockResolvedValue(true);
+    routes["/api/leagues/a/digest"] = { status: "error", data: null, error: { message: "boom", code: null }, started_at: null };
+    show();
+    fireEvent.click(await ready());
+    await waitFor(() => expect(vi.mocked(copyText)).toHaveBeenCalled());
+    expect(vi.mocked(copyText).mock.calls[0]?.[0]).toContain("Alpha: could not load");
   });
   it("shows the text selected in a textarea when copying fails", async () => {
     vi.mocked(copyText).mockResolvedValue(false);

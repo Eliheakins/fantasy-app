@@ -101,6 +101,12 @@ def run(
         if built is None:
             continue
         data, inp = built
+        started = data.current_week >= data.playoff_start
+        if started and not any(m.bracket == "winners" for m in data.bracket):
+            note_soft_failure(
+                f"simulate {league['league_key']}: playoffs started but no bracket rows; "
+                "title odds use a guessed bracket"
+            )
         result = simulate_season(inp)
         week_rows += team_week_rows(data, inp)
         scores = team_scores(inp)  # one draw for both display tables below

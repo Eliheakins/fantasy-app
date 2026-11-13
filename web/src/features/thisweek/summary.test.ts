@@ -26,6 +26,7 @@ const league = (name: string, over: Partial<SummaryLeague> = {}): SummaryLeague 
     d_title: -0.01,
   },
   phase: "season",
+  failed: false,
   ...over,
 });
 const todo = (title: string, over: Partial<Todo> = {}): Todo => ({
@@ -50,6 +51,11 @@ describe("summaryText", () => {
     expect(text).toContain("Beta: no result yet");
     expect(text).toContain("Alpha: playoff odds 58% (+8 points)");
     expect(text).toContain("1. Add Coleman (Alpha): +2.3 playoff pts, +1.5 points");
+  });
+  it("says a league whose digest failed could not load, not that it has no result yet", () => {
+    const text = summaryText([league("Alpha", { lastWeek: null, odds: null, failed: true })], []);
+    expect(text).toContain("Alpha: could not load");
+    expect(text).not.toContain("no result yet");
   });
   it("uses title odds in the playoffs and says so when out", () => {
     expect(summaryText([league("Alpha", { phase: "playoffs" })], [])).toContain("Alpha: title odds 10% (-1 points)");

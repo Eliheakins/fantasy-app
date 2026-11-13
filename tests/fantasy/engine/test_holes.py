@@ -1,16 +1,19 @@
 """Lineup holes: a bye, Out or missing starter nobody on the bench covers, with free-agent
 fill-ins, and IR moves. The pure logic first, then the read from a tiny store."""
 
+from dataclasses import replace
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 import pytest
 from store_fixture import write_rows
 from test_simulate_load import build_store
 
-from fantasy import _actions, data_api
+from fantasy import _engine, _holes, data_api
 from fantasy.sim.availability import EASTERN
+from fantasy.sim.bracket import from_rows
 from fantasy.sim.lineup import Player
 
 SLOTS = ["QB", "RB", "WR", "TE", "FLEX"]
@@ -32,8 +35,8 @@ def run(
     ros: dict[str, float] | None = None,
 ) -> list[dict]:
     everyone = [*starters, *(bench or []), *(free or [])]
-    return _actions.find_holes(
-        _actions.HoleInputs(
+    return _holes.find_holes(
+        _holes.HoleInputs(
             slots=tuple(slots or SLOTS),
             starters=tuple(starters),
             bench=tuple(bench or []),
@@ -134,6 +137,12 @@ def test_drop_is_the_lowest_ros_non_starter() -> None:
     assert hole["fill_ins"][0]["drop_name"] == "name b"  # ties go to the lower id
 
 
+def test_drop_skips_bench_kickers_and_defenses() -> None:
+    bench = [Player("d", "DEF", 3.0), Player("k", "K", 2.0), Player("w", "WR", 1.0)]
+    [hole] = run(FULL, bench, [Player("f", "TE", 6.0)], bye={"te"}, ros={"w": 5.0})
+    assert hole["fill_ins"][0]["drop_name"] == "name w"  # K and DEF have no ros value
+
+
 def test_drop_is_none_with_an_empty_bench() -> None:
     [hole] = run(FULL, [], [Player("f", "TE", 6.0)], bye={"te"})
     assert hole["fill_ins"][0]["drop_name"] is None
@@ -147,24 +156,32 @@ def test_flex_slot_fills_from_rb_wr_te() -> None:
 def test_ir_moves_need_an_open_slot_and_an_eligible_status() -> None:
     bench = {"a": "IR", "b": "Out", "c": "Questionable", "d": "PUP"}
     allowed = frozenset({"IR", "PUP"})
-    rows = _actions.ir_moves(bench, 1, allowed, {i: f"name {i}" for i in bench})
+    rows = _holes.ir_moves(bench, 1, allowed, {i: f"name {i}" for i in bench})
     assert [(r["kind"], r["slot"], r["player_name"]) for r in rows] == [("ir_move", "IR", "name a")]
-    assert len(_actions.ir_moves(bench, 5, allowed, {i: i for i in bench})) == 2  # a and d only
-    assert _actions.ir_moves(bench, 0, allowed, {i: i for i in bench}) == []
+    assert len(_holes.ir_moves(bench, 5, allowed, {i: i for i in bench})) == 2  # a and d only
+    assert _holes.ir_moves(bench, 0, allowed, {i: i for i in bench}) == []
     out_ok = frozenset({"IR", "PUP", "Out"})
-    assert len(_actions.ir_moves(bench, 5, out_ok, {i: i for i in bench})) == 3
+    assert len(_holes.ir_moves(bench, 5, out_ok, {i: i for i in bench})) == 3
 
 
 def test_reserve_rules_read_slots_and_allowed_statuses() -> None:
-    slots, statuses = _actions.reserve_rules('{"reserve_slots": 2, "reserve_allow_out": 1}')
+    slots, statuses = _holes.reserve_rules('{"reserve_slots": 2, "reserve_allow_out": 1}')
     assert slots == 2 and statuses == {"IR", "PUP", "Out"}
-    off = _actions.reserve_rules('{"reserve_slots": 1, "reserve_allow_out": 0}')
+    off = _holes.reserve_rules('{"reserve_slots": 1, "reserve_allow_out": 0}')
     assert off[1] == {"IR", "PUP"}
+
+
+def test_reserve_rules_spell_sleepers_statuses() -> None:
+    keys = ("out", "doubtful", "sus", "na", "dnr", "cov")
+    settings = "{" + ", ".join(f'"reserve_allow_{k}": 1' for k in keys) + "}"
+    assert _holes.reserve_rules(settings)[1] == {
+        "IR", "PUP", "Out", "Doubtful", "Sus", "NA", "DNR", "COV",
+    }  # fmt: skip
 
 
 @pytest.mark.parametrize("raw", [None, "", "{}", "not json", "[]", '{"reserve_slots": "x"}'])
 def test_missing_or_bad_settings_mean_no_ir_slots(raw: str | None) -> None:
-    assert _actions.reserve_rules(raw)[0] == 0
+    assert _holes.reserve_rules(raw)[0] == 0
 
 
 # --- the read from a tiny store ---
@@ -295,3 +312,39 @@ def test_read_k_hole_uses_streaming_projection_for_free_kickers(tmp_path: Path) 
     kicker = next(h for h in out if h["slot"] == "K")
     assert kicker["kind"] == "bye" and kicker["player_name"] == "kick"
     assert [f["gsis_id"] for f in kicker["fill_ins"]] == ["G_FREEK"]  # theirk is rostered
+
+
+# --- playoff weeks my team does not play ---
+
+
+def _holes_with(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **over: Any) -> list[dict]:
+    sunday = NOW + timedelta(hours=4)
+    holes_store(tmp_path, [_game("BUF", "MIA", sunday), _game("DAL", "NYG", sunday)])
+    data, mine = _engine._league("t", data_dir=tmp_path)
+    monkeypatch.setattr(_holes, "_league", lambda *a, **k: (replace(data, **over), mine))
+    return data_api.holes("t", data_dir=tmp_path, now=NOW)
+
+
+ROUND_ONE_BYE = from_rows(
+    [
+        {"bracket": "winners", "r": 1, "m": 1, "t1": 3, "t2": 6},
+        {"bracket": "winners", "r": 2, "m": 2, "t1": 1, "t2_from_kind": "w", "t2_from_m": 1},
+    ]
+)
+
+
+def test_no_holes_in_a_round_one_bye(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert _holes_with(tmp_path, monkeypatch, playoff_start=3, bracket=ROUND_ONE_BYE) == []
+
+
+def test_no_holes_once_the_season_is_over(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert _holes_with(tmp_path, monkeypatch, current_week=18, playoff_start=15) == []
+
+
+def test_holes_stay_in_a_playoff_game_and_the_regular_season(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    regular = _holes_with(tmp_path, monkeypatch)
+    assert regular
+    playing = from_rows([{"bracket": "winners", "r": 1, "m": 1, "t1": 1, "t2": 2, "p": 1}])
+    assert _holes_with(tmp_path, monkeypatch, playoff_start=3, bracket=playing) == regular

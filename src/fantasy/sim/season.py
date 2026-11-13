@@ -13,34 +13,20 @@ or, once seeded, Sleeper's real rows with played games fixed. Playoff weeks alre
 as zero-noise means (realized points); standings count weeks before `playoff_start` only.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 import polars as pl
 
-from fantasy.sim.bracket import Match, resolve, shape_problem, template, with_division_winners
+from fantasy.sim.bracket import Match, resolve, template, with_division_winners
 
 N_PLAYOFF_TEAMS = 6  # the default size (research scripts)
-
-
-def format_problem(
-    num_teams: int | None,
-    playoff_teams: int | None,
-    playoff_week_start: int | None,
-    round_type: int | None = 0,
-    seed_type: int | None = 0,
-    divisions: int | None = 0,
-) -> str | None:
-    """Why the simulation cannot model a league (`bracket.shape_problem`), or None."""
-    return shape_problem(
-        num_teams, playoff_teams, playoff_week_start, round_type, seed_type, divisions
-    )
 
 
 @dataclass(frozen=True)
 class SeasonInputs:
     roster_ids: list[int]  # length T
-    weeks: list[int]  # simulated weeks in order, regular season then the three playoff weeks
+    weeks: list[int]  # simulated weeks in order: regular season, then the bracket's playoff weeks
     mean: np.ndarray  # (T, W) expected team score, realized points included
     noise_sd: np.ndarray  # (T, W) weekly noise
     shift: np.ndarray  # (T, W, S) persistent player-error shift, zeros if none
@@ -49,7 +35,9 @@ class SeasonInputs:
     points0: np.ndarray  # (T,) points for from completed weeks
     playoff_start: int
     seed: int = 0
-    bracket: tuple[Match, ...] | None = None  # real rows when trusted, else the 6-team template
+    # real winners rows once trusted; None: the template for playoff_teams and round_type (the
+    # one case where seed_type reseeding applies)
+    bracket: tuple[Match, ...] | None = None
     seeds: tuple[int, ...] | None = None  # roster ids of seeds 1..N when the bracket is seeded
     playoff_teams: int = 6
     round_type: int = 0  # Sleeper's playoff_round_type
@@ -66,9 +54,9 @@ class SeasonResult:
     p_seed: np.ndarray  # (T, T): share of runs in which team t takes seed k+1
     made_playoffs: np.ndarray  # (T, S) bool, per run, for paired error estimates
     champion: np.ndarray  # (S,) index of the title winner in each run
-    rounds: tuple[int, ...] = ()  # bracket rounds that count toward the title
-    p_reach: np.ndarray = field(default_factory=lambda: np.zeros((0, 0)))  # (rounds, T)
-    p_win: np.ndarray = field(default_factory=lambda: np.zeros((0, 0)))  # (rounds, T) won a game
+    rounds: tuple[int, ...]  # bracket rounds that count toward the title
+    p_reach: np.ndarray  # (rounds, T)
+    p_win: np.ndarray  # (rounds, T) won a game
 
 
 def noise_matrix(roster_ids: list[int], weeks: list[int], n_sims: int, seed: int) -> np.ndarray:

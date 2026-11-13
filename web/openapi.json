@@ -7761,6 +7761,17 @@
               }
             ],
             "title": "Trade Deadline"
+          },
+          "playoff_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playoff Label"
           }
         },
         "additionalProperties": false,
@@ -7782,7 +7793,8 @@
           "points_for",
           "scoring_labels",
           "record",
-          "trade_deadline"
+          "trade_deadline",
+          "playoff_label"
         ],
         "title": "LeagueRow"
       },

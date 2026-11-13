@@ -25,7 +25,13 @@ export function CopySummaryButton({ todos, pending }: { todos: readonly Todo[]; 
       const d = digests[i];
       const data = d?.kind === "ready" ? d.data : null;
       const odds = data?.odds_change ?? [];
-      return { name: leagueName(l), lastWeek: data?.last_week ?? null, odds: odds.find((o) => o.is_me) ?? null, phase: phaseOf(l, odds) };
+      return {
+        name: leagueName(l),
+        lastWeek: data?.last_week ?? null,
+        odds: odds.find((o) => o.is_me) ?? null,
+        phase: phaseOf(l, odds),
+        failed: d?.kind === "error",
+      };
     });
     return summaryText(rows, todos);
   })();

@@ -242,6 +242,8 @@ def _bracket_row(league_id: str, bracket: str, week: int, row: dict[str, Any]) -
     for side in ("t1", "t2"):
         # a slot fed by an earlier game is {"w"|"l": match id}; a bye or seed has none
         ((kind, source),) = (row.get(f"{side}_from") or {None: None}).items()
+        if kind not in (None, "w", "l"):
+            raise ValueError(f"unknown bracket source {kind!r}")
         out[f"{side}_from_kind"] = kind
         out[f"{side}_from_m"] = as_int(source)
     return out
@@ -256,10 +258,18 @@ def _stored_bracket(league_id: str, bracket: str) -> pl.DataFrame:
     return stored.filter((pl.col("league_id") == league_id) & (pl.col("bracket") == bracket))
 
 
-def bracket_frame(league_id: str, bracket: str, rows: Any, week: int) -> pl.DataFrame:
-    """One bracket's games (`bracket` is "winners" or "losers"). Null or empty gives no rows; an
-    unreadable payload is logged and the last stored rows of that bracket kept, so one odd
-    response mid-playoffs cannot wipe a good bracket or drop the league."""
+def bracket_frame(
+    league_id: str, bracket: str, rows: Any, week: int, playoffs_started: bool = False
+) -> pl.DataFrame:
+    """One bracket's games (`bracket` is "winners" or "losers"). Null or empty gives no rows
+    before the playoffs start and keeps the stored rows once they have; an unreadable payload is
+    logged and the last stored rows of that bracket kept, so one odd response mid-playoffs cannot
+    wipe a good bracket or drop the league."""
+    if not rows and playoffs_started:
+        log.warning(
+            "league %s: empty %s bracket in the playoffs, kept the stored one", league_id, bracket
+        )
+        return _stored_bracket(league_id, bracket)
     try:
         parsed = [_bracket_row(league_id, bracket, week, r) for r in rows or []]
     except (KeyError, ValueError, TypeError, AttributeError):
@@ -325,9 +335,11 @@ def _league_frames(
         frames["matchups"].append(week_teams)
         frames["matchup_players"].append(week_players)
     current = as_int((lg.get("settings") or {}).get("leg")) or 1
+    start = as_int((lg.get("settings") or {}).get("playoff_week_start"))
+    started = start is not None and current >= start
     for bracket in ("winners", "losers"):
         raw = fetch(f"/league/{league_id}/{bracket}_bracket")
-        frames["playoff_brackets"].append(bracket_frame(league_id, bracket, raw, current))
+        frames["playoff_brackets"].append(bracket_frame(league_id, bracket, raw, current, started))
     for week in range(1, current + 1):
         txs = fetch(f"/league/{league_id}/transactions/{week}")
         frames["transactions"].append(transactions_frame(league_id, week, txs))

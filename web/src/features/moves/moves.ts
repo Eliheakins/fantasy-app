@@ -1,8 +1,7 @@
 import type { components } from "@/api/schema";
-import { MIN_PLAYOFF_GAIN, rankTodos, type Effect } from "@/features/effects/effect";
+import { MIN_PLAYOFF_GAIN, effectOf, rankTodos, type Effect } from "@/features/effects/effect";
 import { type EffectWhy, tradeWhy, waiverWhy } from "@/features/effects/explain";
 import type { Phase } from "@/features/effects/phase";
-import { toPoints } from "@/viz";
 
 type Waiver = components["schemas"]["WaiverRow"];
 type Idea = components["schemas"]["MoveIdeaRow"];
@@ -25,10 +24,6 @@ export type Move = {
   /** The player an add drops. Points are net of the drop: the response holds no separate cost for him. */
   drop: { name: string; netPoints: number | null } | null;
 };
-
-/** The odds an add or trade is judged on: playoff odds in the season, title odds once the seeds are fixed. */
-const effectOf = (playoff: number | null, title: number | null, points: number | null, phase: Phase): Effect =>
-  phase === "season" ? { playoffPoints: toPoints(playoff), points } : { playoffPoints: toPoints(title), points, odds: "title" };
 
 export const waiverMoves = (rows: readonly Waiver[], phase: Phase = "season"): Move[] =>
   rows.map((w) => ({

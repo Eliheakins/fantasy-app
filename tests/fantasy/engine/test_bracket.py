@@ -40,21 +40,21 @@ def shape(matches: tuple[bracket.Match, ...]) -> list[tuple[Any, ...]]:
     return [(m.r, m.m, m.p, kind(m.t1), kind(m.t2)) for m in sorted(matches, key=lambda x: x.m)]
 
 
-def test_template_6_has_the_shape_of_sleepers_real_six_team_bracket() -> None:
-    assert shape(bracket.template_6()) == shape(real())
+def test_six_team_template_has_the_shape_of_sleepers_real_six_team_bracket() -> None:
+    assert shape(bracket.template(6)) == shape(real())
 
 
-def test_template_6_seeds_are_3v6_4v5_with_byes_for_1_and_2() -> None:
-    by_m = {m.m: m for m in bracket.template_6()}
+def test_six_team_template_seeds_are_3v6_4v5_with_byes_for_1_and_2() -> None:
+    by_m = {m.m: m for m in bracket.template(6)}
     assert (by_m[1].t1, by_m[1].t2) == (("s", 3), ("s", 6))
     assert (by_m[2].t1, by_m[2].t2) == (("s", 4), ("s", 5))
     assert by_m[3].t1 == ("s", 2) and by_m[3].t2 == ("w", 1)
     assert by_m[4].t1 == ("s", 1) and by_m[4].t2 == ("w", 2)
-    assert [m.m for m in bracket.template_6() if m.p == 1] == [6]
+    assert [m.m for m in bracket.template(6) if m.p == 1] == [6]
 
 
 def test_round_weeks_map_round_one_to_the_playoff_start() -> None:
-    assert [bracket.round_weeks(r, 15) for r in (1, 2, 3)] == [(15,), (16,), (17,)]
+    assert [bracket.round_weeks(r, 15, 0, 3) for r in (1, 2, 3)] == [(15,), (16,), (17,)]
 
 
 def test_zero_noise_ordered_means_make_the_top_seed_win_and_byes_sum_to_two() -> None:

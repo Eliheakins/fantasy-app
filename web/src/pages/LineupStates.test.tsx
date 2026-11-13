@@ -79,6 +79,35 @@ describe("Lineup page states", () => {
     expect(requested).toContain("x/lineup-grid");
     expect(screen.getByRole("radio", { name: "Weeks ahead", checked: true })).toBeTruthy();
   });
+  test("?view=ahead starts no lineup, win-probability or scoreboard request", () => {
+    lineupState = { kind: "ready", data: { weeks: [3], playoff_weeks: [], rows: [] } };
+    requested.length = 0;
+    render(
+      <MemoryRouter initialEntries={["/lineup?view=ahead"]}>
+        <Lineup />
+      </MemoryRouter>,
+    );
+    expect(requested).toEqual(["x/lineup-grid"]);
+  });
+  test("the view toggle follows the page heading in both views", () => {
+    const cases: [string, ApiState<unknown>][] = [
+      ["/lineup", { kind: "loading" }],
+      ["/lineup", { kind: "ready", data: [] }],
+      ["/lineup?view=ahead", { kind: "loading" }],
+    ];
+    for (const [entry, state] of cases) {
+      lineupState = state;
+      const { unmount } = render(
+        <MemoryRouter initialEntries={[entry]}>
+          <Lineup />
+        </MemoryRouter>,
+      );
+      const heading = screen.getByRole("heading", { level: 1 });
+      const toggle = screen.getByRole("radiogroup", { name: "Lineup view" });
+      expect(heading.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      unmount();
+    }
+  });
   test("two leagues build different query keys for the same endpoint", () => {
     const key = (league: string) => `/api/leagues/${encodeURIComponent(league)}/lineup?week=1`;
     expect(key("colgate")).not.toBe(key("yinzburgh"));

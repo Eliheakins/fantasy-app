@@ -9,7 +9,7 @@ import { useMoves } from "@/features/moves/useMoves";
 import { EffectText } from "@/features/effects/EffectText";
 import { WaiversContent } from "@/features/moves/waivers/WaiversView";
 import { deadlineWeekState } from "@/lib/deadline";
-import { useLeague } from "@/lib/league";
+import { useLeague, useLeagueRow } from "@/lib/league";
 import { useTeam } from "@/lib/teamContext";
 import { useHeld } from "@/lib/useHeld";
 import { usePageEyebrow } from "@/lib/week";
@@ -66,8 +66,8 @@ export default function Moves() {
         : moveHeadline(top, failed.length > 0);
   const answer = !out && top && worthMove(top) && !pending ? <EffectText todo={top} playoffNoise={MOVE_NOISE_PERCENT} inline /> : undefined;
   // a background refetch must not unmount the number the reader has open
-  const { league, leagues } = useLeague();
-  const row = leagues.kind === "ready" ? leagues.data.find((l) => l.league_key === league) : undefined;
+  const { league } = useLeague();
+  const row = useLeagueRow();
   const closing =
     deadlineWeekState(row?.current_week, row?.trade_deadline, row?.playoff_week_start == null ? null : row.playoff_week_start - 1) ===
     "closing";

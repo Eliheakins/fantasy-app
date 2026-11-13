@@ -1,7 +1,6 @@
 """The week calendar (kickoffs, waiver clear days) and my players' injury status changes."""
 
 import json
-import warnings
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -38,9 +37,7 @@ def week_calendar(data_dir: Path | None = None) -> dict[str, Any]:
     unknown: set[str] = set()
     if week is not None:
         schedules, season = _read("nfl_schedules", data_dir), load_config().season
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")  # teams with no kickoff time are reported below
-            games = kickoffs(schedules, season, week)
+        games = kickoffs(schedules, season, week, warn=False)  # reported below instead
         unknown = missing_kickoffs(schedules, season, week) - set(games)
     raw = _read("leagues", data_dir)
     settings = dict(raw.select("league_key", "settings").iter_rows()) if "settings" in raw else {}

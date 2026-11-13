@@ -53,7 +53,7 @@ def check_standings(base: pl.DataFrame, teams: pl.DataFrame, lid: str) -> None:
 
 
 def check_league_shape(league: dict[str, Any]) -> None:
-    """Raise for a league the bracket model cannot fit, by the same gate as `format_problem`.
+    """Raise for a league the bracket model cannot fit, by the same gate as `shape_problem`.
     A league with no playoff teams recorded is left to that gate (the stage skips it)."""
     if league.get("playoff_teams") is None:
         return

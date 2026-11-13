@@ -36,6 +36,7 @@ let leagueRow = { league_key: "a", name: "L", current_week: 9, playoff_week_star
 vi.mock("@/lib/league", () => ({
   useLeague: () => ({ league: "a", leagues: { kind: "ready", data: [leagueRow] } }),
   useLeagueName: () => "L",
+  useLeagueRow: () => leagueRow,
   useLeagueApi: (path: string) => (path === "waivers" ? waivers : digest),
 }));
 vi.mock("@/features/moves/waivers/WaiversView", () => ({ WaiversContent: () => <p>waivers details</p> }));

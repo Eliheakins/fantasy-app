@@ -8,7 +8,15 @@ import { SeasonOdds } from "./SeasonOdds";
 import { WhatYouNeed } from "./WhatYouNeed";
 
 let responder: (path: string) => ApiState<unknown>;
-vi.mock("@/lib/league", () => ({ useLeagueApi: (path: string) => responder(path), useLeague: () => ({ league: "a" }) }));
+let leagueRow: { current_week: number; playoff_week_start: number } | undefined;
+beforeEach(() => {
+  leagueRow = undefined;
+});
+vi.mock("@/lib/league", () => ({
+  useLeagueApi: (path: string) => responder(path),
+  useLeague: () => ({ league: "a" }),
+  useLeagueRow: () => leagueRow,
+}));
 
 const ready = (data: unknown): ApiState<unknown> => ({ kind: "ready", data });
 const odds = [
@@ -139,15 +147,18 @@ describe("Season odds chart", () => {
     expect(screen.getByRole("table", { name: /Playoff odds by week/ })).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Marked events" })).toBeInTheDocument();
   });
-  it("plots title odds from the first playoff week and playoff odds before it", () => {
-    responder = (p) =>
-      p === "bracket"
-        ? ready({ rounds: [{ round: 1, weeks: [8], matches: [] }] })
-        : by({
-            "season-odds": odds,
-            "odds-history": [...run("2026-10-20T06:00:00+00:00", 0.6), ...run("2026-10-27T06:00:00+00:00", 0.97)],
-          })(p);
+  it("plots title odds from the first playoff week and playoff odds before it, without asking for the bracket", () => {
+    leagueRow = { current_week: 8, playoff_week_start: 8 };
+    const asked: string[] = [];
+    responder = (p) => {
+      asked.push(p);
+      return by({
+        "season-odds": odds,
+        "odds-history": [...run("2026-10-20T06:00:00+00:00", 0.6), ...run("2026-10-27T06:00:00+00:00", 0.97)],
+      })(p);
+    };
     view(<SeasonOdds />);
+    expect(asked).not.toContain("bracket");
     const table = screen.getByRole("table", { name: /title odds from week 8/ });
     const cells = (week: string) => within(within(table).getByRole("row", { name: new RegExp(`^Wk ${week}`) })).getAllByRole("cell");
     expect(cells("7")[1]).toHaveTextContent("60%");

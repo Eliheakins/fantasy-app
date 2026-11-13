@@ -26,6 +26,7 @@ const routes: Record<string, unknown> = {
 
 const scoreboardA = routes["/api/leagues/a/scoreboard"];
 beforeEach(() => {
+  routes["/api/leagues"] = ok(leagues);
   routes["/api/leagues/a/scoreboard"] = scoreboardA;
   vi.stubGlobal(
     "fetch",
@@ -56,6 +57,28 @@ describe("WeekScores", () => {
     ]);
     renderScores();
     expect(await screen.findAllByText("Round 1 of the playoffs")).toHaveLength(1);
+  });
+
+  it("shows the league's playoff label when my team has no matchup this week", async () => {
+    routes["/api/leagues"] = ok([{ ...leagues[0], playoff_label: "Bye this round" }, leagues[1]]);
+    routes["/api/leagues/a/scoreboard"] = ok([final({ team_name: "Seals", points: 120 }, { team_name: "tsd", points: 99.3 })]);
+    renderScores();
+    const alpha = (await screen.findByRole("heading", { name: "Alpha" })).closest("section")!;
+    expect(await within(alpha).findByText("Bye this round")).toBeInTheDocument();
+  });
+
+  it("does not repeat the league's playoff label when my matchup carries one", async () => {
+    routes["/api/leagues"] = ok([{ ...leagues[0], playoff_label: "Round 1 of the playoffs" }, leagues[1]]);
+    routes["/api/leagues/a/scoreboard"] = ok([
+      final(
+        { team_name: "Lisan", is_me: true, points: 148.5 },
+        { team_name: "Flowers", points: 160 },
+        { playoff_label: "Round 1 of the playoffs" },
+      ),
+    ]);
+    renderScores();
+    await screen.findAllByRole("listitem");
+    expect(screen.getAllByText("Round 1 of the playoffs")).toHaveLength(1);
   });
 
   it("groups every matchup by league with my matchup first", async () => {

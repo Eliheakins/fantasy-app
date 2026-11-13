@@ -157,3 +157,15 @@ def test_run_writes_the_new_tables_in_one_call_with_the_season_tables(
     cond = tables["sim_conditional"]
     assert set(cond["league_id"]) == {LID} and set(cond["as_of_week"]) == {3}
     assert tables["sim_team_weeks"]["week"].max() < 15
+    bracket = tables["sim_bracket"]
+    title = dict(zip(latest["roster_id"], latest["p_title"], strict=True))
+    final = bracket.filter(pl.col("round") == bracket["round"].max())
+    assert final.height > 0
+    for r in final.iter_rows(named=True):
+        assert r["p_win"] == pytest.approx(title[r["roster_id"]], abs=1e-9)
+    first = bracket.filter(pl.col("round") == bracket["round"].min())
+    reach = dict(zip(first["roster_id"], first["p_reach"], strict=True))
+    for r in latest.iter_rows(named=True):
+        assert reach.get(r["roster_id"], 0.0) + r["p_bye"] == pytest.approx(
+            r["p_playoffs"], abs=1e-9
+        )

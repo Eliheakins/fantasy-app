@@ -32,7 +32,11 @@ export function OpenIrCallout({ data }: { data: StashData }) {
   return (
     <aside aria-label="Open IR slot" className="mb-4">
       <Callout variant="info">
-        You have {slots} open IR {slots === 1 ? "slot" : "slots"}. <a href={`#${STASH_ANCHOR}`}>See injured players to stash</a>.
+        You have {slots} open IR {slots === 1 ? "slot" : "slots"}.{" "}
+        <a href={`#${STASH_ANCHOR}`} className="inline-flex min-h-[44px] items-center underline underline-offset-2 lg:min-h-0">
+          See injured players to stash
+        </a>
+        .
       </Callout>
     </aside>
   );

@@ -133,6 +133,13 @@ def test_bracket_null_and_empty_give_no_rows() -> None:
         assert df.height == 0
 
 
+def test_bracket_with_an_unknown_source_kind_is_unreadable(caplog: Any) -> None:
+    odd = {"m": 3, "r": 2, "t1": 2, "t2_from": {"x": 1}}
+    df = s.bracket_frame("L1", "winners", [BRACKET[0], odd], 3)
+    assert df.height == 0  # the stored rows (none here), not a row resolve cannot run
+    assert "bracket" in caplog.text
+
+
 def test_bracket_malformed_row_is_logged_not_raised(caplog: Any) -> None:
     df = s.bracket_frame("L1", "winners", [BRACKET[0], {"m": "x", "r": 1}, "junk"], 3)
     assert df.height == 0

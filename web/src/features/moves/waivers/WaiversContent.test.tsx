@@ -8,6 +8,7 @@ const paths: string[] = [];
 const leagueRow = { league_key: "a", league_id: "9", name: "L", current_week: 9, playoff_week_start: 15, playoff_weeks: 3 };
 vi.mock("@/lib/league", () => ({
   useLeague: () => ({ league: "a", leagues: { kind: "ready", data: [leagueRow] } }),
+  useLeagueRow: () => leagueRow,
   useLeagueApi: (path: string): ApiState<never[]> => {
     paths.push(path);
     return { kind: "ready", data: path === "stash" ? { open_ir_slots: 0, rows: [] } : [] } as ApiState<never[]>;
@@ -53,5 +54,14 @@ describe("WaiversContent rank param", () => {
     expect(screen.getByTestId("search")).toHaveTextContent("league=a");
     await userEvent.click(within(toggle()).getByRole("radio", { name: "Rest of season" }));
     expect(screen.getByTestId("search")).not.toHaveTextContent("rank");
+  });
+});
+
+describe("WaiversContent position param", () => {
+  it("Show all removes ?pos= and keeps the other params", async () => {
+    renderAt("/moves?league=a&pos=RB");
+    await userEvent.click(screen.getByRole("button", { name: "Show all" }));
+    expect(screen.getByTestId("search")).not.toHaveTextContent("pos");
+    expect(screen.getByTestId("search")).toHaveTextContent("league=a");
   });
 });

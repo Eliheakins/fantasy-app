@@ -48,6 +48,7 @@ class FakeSleeper:
         self.no_rosters = no_rosters or set()
         self.paths: list[str] = []
         self.brackets: dict[str, Any] = {}
+        self.settings: dict[str, Any] = {}  # merged into the league's settings
 
     def __call__(self, path: str, params: dict[str, Any] | None = None) -> Any:
         self.paths.append(path)
@@ -55,7 +56,8 @@ class FakeSleeper:
         if league_id in self.broken:
             raise SleeperError(f"Sleeper rejected the request: {path}")
         if path == f"/league/{league_id}":
-            return league_payload(league_id)
+            payload = league_payload(league_id)
+            return {**payload, "settings": {**payload["settings"], **self.settings}}
         if path == f"/league/{league_id}/rosters":
             if league_id in self.no_rosters:
                 return []
@@ -238,8 +240,23 @@ def test_an_empty_or_null_bracket_payload_clears_the_stored_bracket(
     run(good, monkeypatch)
     empty = FakeSleeper()
     empty.brackets = {"winners_bracket": None}
+    empty.settings = {"playoff_week_start": 3}  # week 2: the playoffs have not started
     run(empty, monkeypatch)
     assert table("playoff_brackets").height == 0
+
+
+@pytest.mark.parametrize("payload", [None, []])
+def test_an_empty_or_null_bracket_payload_keeps_the_stored_rows_in_the_playoffs(
+    world: Path, monkeypatch: pytest.MonkeyPatch, payload: Any
+) -> None:
+    good = FakeSleeper()
+    good.brackets = {"winners_bracket": [{"m": 1, "r": 1, "t1": 2, "t2": 1}]}
+    run(good, monkeypatch)
+    empty = FakeSleeper()
+    empty.brackets = {"winners_bracket": payload}
+    empty.settings = {"playoff_week_start": 2}  # week 2 is the first playoff week
+    run(empty, monkeypatch)
+    assert table("playoff_brackets")["m"].to_list() == [1]
 
 
 def test_the_live_tick_makes_no_bracket_call(world: Path, monkeypatch: pytest.MonkeyPatch) -> None:
