@@ -68,6 +68,9 @@ fi
 CSP="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
 printf '%s {\n\tencode zstd gzip\n\theader {\n\t\tStrict-Transport-Security "max-age=31536000"\n\t\tX-Content-Type-Options nosniff\n\t\tX-Frame-Options DENY\n\t\tReferrer-Policy strict-origin-when-cross-origin\n\t\tContent-Security-Policy "%s"\n\t}\n\trequest_body /api/stat/nlq/intent {\n\t\tmax_size 32KB\n\t}\n\treverse_proxy 127.0.0.1:8000\n}\n' \
   "$SITE_HOST" "$CSP" >/etc/caddy/Caddyfile
+# Other apps on this server (joe-camel-poker) keep their own site file here, so rewriting the Caddyfile keeps them.
+install -d -m 755 /etc/caddy/sites
+printf '\nimport /etc/caddy/sites/*.caddy\n' >>/etc/caddy/Caddyfile
 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
 systemctl enable caddy
 systemctl restart caddy
