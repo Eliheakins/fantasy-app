@@ -6,7 +6,7 @@ import type { WinNeedRow } from "./types";
 
 const BAR_WIDTH = 112;
 const BAR_HEIGHT = 8;
-const NO_TABLE = "Not computed yet: run make refresh to see this.";
+const NO_TABLE = "Not computed yet. It comes with the next data refresh.";
 const THIN = "Too few simulated seasons behind these numbers to say.";
 
 const needWhy = (wins: number, games: number, row: WinNeedRow) =>

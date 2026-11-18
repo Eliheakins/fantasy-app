@@ -139,10 +139,10 @@ describe("LineupView answer and evidence", () => {
     render(<LineupView base={allLocked} odds={withCalls} week={3} board={board} />);
     expect(screen.getByRole("heading", { level: 1, name: "Week 3 is over: won 127.9 to 107.5" })).toBeTruthy();
     expect(screen.queryByText(/slots? (is|are) clear/)).toBeNull();
-    const panel = screen.getByRole("region", { name: "Your matchup" });
-    expect(within(panel).getByText("You, final").nextElementSibling).toHaveTextContent("127.9");
-    expect(within(panel).getByText("Opponent, final").nextElementSibling).toHaveTextContent("107.5");
-    expect(within(panel).getByText("Result").nextElementSibling).toHaveTextContent("Won by 20.4");
+    const panel = screen.getByRole("region", { name: "Your lineup vs Sleeper's" });
+    // the title already states the score, so the panel does not repeat it
+    expect(within(panel).queryByText("127.9")).toBeNull();
+    expect(within(panel).getByText(/^Skill slots/)).toBeInTheDocument();
     expect(screen.queryByRole("img", { name: /^Your team:/ })).toBeNull();
     expect(screen.queryByRole("columnheader", { name: /Range/ })).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "Status" })).toBeNull();

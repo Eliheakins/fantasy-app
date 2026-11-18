@@ -1,20 +1,31 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { Link } from "react-router";
+import { LOCAL_EMAIL, useSession } from "@/lib/session";
 import { api } from "@/api/client";
 import type { StatHealth } from "@/api/types";
 import { apiKey, useEnvelopeQuery } from "@/api/useEnvelope";
 import { bannerMessages } from "@/lib/status";
 
-function WithCode({ text }: { text: string }) {
-  const parts = text.split("`make refresh`");
+/** How to fix stale data, for whoever can: the command on a laptop run, the Admin page for the server's admin, nothing for anyone else. */
+function RefreshHint() {
+  const session = useSession();
+  if (session.kind !== "signedIn") return null;
+  if (session.me.email === LOCAL_EMAIL) {
+    return (
+      <>
+        . Run <code>make refresh</code>.
+      </>
+    );
+  }
+  if (!session.me.is_admin) return null;
   return (
     <>
-      {parts.map((part, i) => (
-        <span key={i}>
-          {i > 0 && <code>make refresh</code>}
-          {part}
-        </span>
-      ))}
+      .{" "}
+      <Link to="/admin" className="underline underline-offset-2">
+        Refresh from Admin
+      </Link>
+      .
     </>
   );
 }
@@ -53,7 +64,7 @@ export function StatusBanner() {
             <p>
               <span className="font-medium">{label}</span>
               <span className="hidden sm:inline">
-                . Run <code>make refresh</code>.
+                <RefreshHint />
               </span>
             </p>
             <button
@@ -71,7 +82,7 @@ export function StatusBanner() {
             <ul id="data-notices" aria-live="off" className={`${INNER} list-disc space-y-1 pb-3 pl-[calc(var(--page-pad)+1rem)]`}>
               {messages.map((m) => (
                 <li key={m} className="break-words">
-                  <WithCode text={m} />
+                  {m}
                 </li>
               ))}
             </ul>

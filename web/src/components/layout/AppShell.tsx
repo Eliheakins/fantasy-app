@@ -52,7 +52,7 @@ function Frame() {
                   end={path === "/"}
                   className={({ isActive }) =>
                     cn(
-                      "flex min-h-[48px] items-center border-b-[3px] pt-[3px] text-[15px] leading-6",
+                      "flex min-h-[48px] items-center border-b-[3px] pt-[3px] text-heading",
                       isActive ? "border-chrome-accent font-semibold text-white" : "border-transparent text-chrome-text hover:text-white",
                     )
                   }

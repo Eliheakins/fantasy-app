@@ -17,7 +17,7 @@ const TIER_LABEL: Record<number, string> = {
   2: "High projection third",
 };
 
-export const EMPTY_TEXT = "Fills after the first archived week finishes and you run make refresh.";
+export const EMPTY_TEXT = "Fills after the first archived week finishes and the data refreshes.";
 
 type Cell = { n: number; mae: number | null; bias: number | null };
 export type Line = {

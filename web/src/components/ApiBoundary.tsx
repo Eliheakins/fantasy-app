@@ -11,14 +11,10 @@ function Message({ children, role }: { children: ReactNode; role?: "status" | "a
   );
 }
 
-/** The no-data copy, with the command set in code. */
+/** The no-data copy. */
 export function NoData({ message }: { message?: string }) {
   if (message) return <Message>{message}</Message>;
-  return (
-    <Message>
-      No data yet. Run <code>make refresh</code>, then reload this page.
-    </Message>
-  );
+  return <Message>No data yet. It appears after the next data refresh.</Message>;
 }
 
 /** Reserves room so the page does not jump when data arrives. Also the fallback while a lazy page loads. */

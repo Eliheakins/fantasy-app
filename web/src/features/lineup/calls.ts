@@ -85,9 +85,3 @@ export function weekOverText(week: number, board: readonly ScoreboardRow[] | nul
   const r = weekResult(board);
   return r && `Week ${week} is over: ${r.outcome} ${formatNumber(r.me)} to ${formatNumber(r.them)}`;
 }
-
-/** "Won by 20.4", "Lost by 11.5" or "Tied". */
-export function resultText(r: WeekResult): string {
-  if (r.outcome === "tied") return "Tied";
-  return `${r.outcome === "won" ? "Won" : "Lost"} by ${formatNumber(Math.abs(r.me - r.them))}`;
-}

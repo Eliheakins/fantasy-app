@@ -119,9 +119,7 @@ export function stripNotes(now: Date, calendar: WeekCalendar): string[] {
   const week = calendar.week === null ? "the current week" : `week ${calendar.week}`;
   const notes: string[] = [];
   if (known.length > 0 && outside === known.length) {
-    notes.push(
-      `All kickoffs for ${week} are outside this Tuesday to Monday strip, so none are shown. The data may be behind: run make refresh.`,
-    );
+    notes.push(`All kickoffs for ${week} are outside this Tuesday to Monday strip, so none are shown. The data may be behind.`);
   } else if (outside > 0) {
     notes.push(`${outside} kickoffs for ${week} fall outside this strip and are not shown.`);
   }

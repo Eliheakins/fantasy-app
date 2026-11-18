@@ -26,7 +26,7 @@ export function PageHeader({ title, eyebrow, answer, subtitle, actions }: Props)
         </h1>
         {actions}
       </div>
-      {answer && <p className="measure mt-2 text-[17px] leading-7 text-label">{answer}</p>}
+      {answer && <p className="measure mt-2 text-heading text-label">{answer}</p>}
       {subtitle && <p className="measure mt-1 text-caption text-muted">{subtitle}</p>}
     </div>
   );

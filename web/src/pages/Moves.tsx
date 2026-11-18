@@ -19,6 +19,8 @@ import { usePageEyebrow } from "@/lib/week";
 import { TradeBuilder } from "@/features/moves/trade/TradeBuilder";
 import { TradeDetails } from "@/features/moves/trade/TradeDetails";
 
+const LOOKING = "Looking for your best move…";
+
 const VIEWS = [
   { value: "all", label: "All" },
   { value: "fa", label: "Free agents" },
@@ -77,18 +79,19 @@ export default function Moves() {
     ? phase === "out"
       ? OUT_MESSAGE
       : (row?.playoff_label ?? SEASON_OVER)
-    : pending
-      ? "Looking for your best move…"
+    : pending && !top
+      ? LOOKING
       : failed.length === 2
         ? "Moves did not load"
-        : moveHeadline(top, failed.length > 0);
-  const answer =
-    !done && top && worthMove(top) && !pending ? <EffectText todo={top} playoffNoise={MOVE_NOISE_PERCENT} inline /> : undefined;
+        : moveHeadline(top, failed.length > 0 || pending);
+  const answer = !done && top && worthMove(top) ? <EffectText todo={top} playoffNoise={MOVE_NOISE_PERCENT} inline /> : undefined;
   const closing =
     deadlineWeekState(row?.current_week, row?.trade_deadline, row?.playoff_week_start == null ? null : row.playoff_week_start - 1) ===
     "closing";
   const { team } = useTeam();
-  const header = useHeld({ title, answer }, pending, `${league}|${team}`);
+  const held = useHeld({ title, answer }, pending, `${league}|${team}`);
+  // on first load the list fills in halves: name the best move so far rather than hold the loading title
+  const header = held.title === LOOKING ? { title, answer } : held;
   return (
     <div className="flex flex-col">
       <PageHeader title={header.title} eyebrow={eyebrow} answer={header.answer} />

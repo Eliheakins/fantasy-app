@@ -175,15 +175,18 @@ export function ExploreResultsCanvas({ result, error, details, running, pinnedPl
                     return (
                       <tr key={`${pid}-${i}`} className="border-b border-line last:border-0">
                         {!forTeams && (
-                          <td className="px-3 py-1">
-                            <input
-                              type="checkbox"
-                              checked={compared.includes(pid)}
-                              disabled={!compared.includes(pid) && compared.length >= MAX_COMPARE}
-                              onChange={() => toggleCompared(pid)}
-                              aria-label={`Compare ${label}`}
-                              className="h-5 w-5 accent-focus"
-                            />
+                          <td className="p-0">
+                            {/* the whole cell is the 44px target around the small box */}
+                            <label className="flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center">
+                              <input
+                                type="checkbox"
+                                checked={compared.includes(pid)}
+                                disabled={!compared.includes(pid) && compared.length >= MAX_COMPARE}
+                                onChange={() => toggleCompared(pid)}
+                                aria-label={`Compare ${label}`}
+                                className="h-5 w-5 accent-focus"
+                              />
+                            </label>
                           </td>
                         )}
                         <td className="px-3 py-2 font-medium text-ink">

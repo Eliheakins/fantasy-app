@@ -94,10 +94,10 @@ describe("What you need", () => {
     view(<WhatYouNeed />);
     expect(screen.getByText(/boom/)).toBeInTheDocument();
   });
-  it("points at make refresh when the table has not been written", () => {
+  it("says the table comes with the next refresh when it has not been written", () => {
     responder = by({ "win-needs": [] });
     view(<WhatYouNeed />);
-    expect(screen.getByText(/run make refresh to see this/)).toBeInTheDocument();
+    expect(screen.getByText(/comes with the next data refresh/)).toBeInTheDocument();
   });
 });
 

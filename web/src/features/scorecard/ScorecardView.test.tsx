@@ -26,7 +26,7 @@ const data = (rows: ScorecardRow[], weeks = [7]): ScorecardData => ({
 describe("ScorecardView", () => {
   test("empty state says when it fills and which weeks are archived", () => {
     render(<ScorecardView data={{ ...data([]), weeks_scored: [] }} />);
-    expect(screen.getByText(/Fills after the first archived week finishes and you run make refresh/)).toBeTruthy();
+    expect(screen.getByText(/Fills after the first archived week finishes and the data refreshes/)).toBeTruthy();
     expect(screen.getByText(/Archived now: week 7/)).toBeTruthy();
   });
   test("marks the best model in text and warns about small samples", () => {

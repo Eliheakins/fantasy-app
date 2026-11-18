@@ -113,12 +113,7 @@ const ODDS_COLUMNS: Column<OddsChangeRow>[] = [
 
 export function OddsChange({ rows, mineLabel }: { rows: readonly OddsChangeRow[]; mineLabel: boolean }) {
   const cmp = oddsComparison(rows);
-  if (cmp === null)
-    return (
-      <p className="text-body text-muted">
-        No simulation runs saved yet. Run <code>make refresh</code>.
-      </p>
-    );
+  if (cmp === null) return <p className="text-body text-muted">No simulation runs saved yet. They appear after the next data refresh.</p>;
   return (
     <>
       <p className="mb-2 text-caption text-muted">

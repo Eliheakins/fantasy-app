@@ -1,16 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { LineupRow } from "./logic";
-import {
-  type SlotCall,
-  callText,
-  scratchFallbacks,
-  splitCalls,
-  startAnswer,
-  winnerShare,
-  weekOverText,
-  weekResult,
-  resultText,
-} from "./calls";
+import { type SlotCall, callText, scratchFallbacks, splitCalls, startAnswer, winnerShare, weekOverText } from "./calls";
 import type { ScoreboardRow } from "@/lib/scoreboard";
 
 const call = (slot: string, share: number | null, o: Partial<SlotCall> = {}): SlotCall => ({
@@ -103,9 +93,6 @@ describe("a finished week", () => {
     expect(weekOverText(8, board("Final", 127.9, 107.5))).toBe("Week 8 is over: won 127.9 to 107.5");
     expect(weekOverText(8, board("Final", 100, 107.5))).toBe("Week 8 is over: lost 100.0 to 107.5");
     expect(weekOverText(8, board("Final", 100, 100))).toBe("Week 8 is over: tied 100.0 to 100.0");
-    expect(resultText(weekResult(board("Final", 127.9, 107.5))!)).toBe("Won by 20.4");
-    expect(resultText(weekResult(board("Final", 100, 107.5))!)).toBe("Lost by 7.5");
-    expect(resultText(weekResult(board("Final", 100, 100))!)).toBe("Tied");
   });
   test("is null while games are left or without a scoreboard", () => {
     expect(weekOverText(8, board("Live", 1, 2))).toBeNull();

@@ -11,9 +11,9 @@ const NO_VALUE = "–";
 type Ctx = { known: boolean; domain: ReturnType<typeof tableDomain>; final: boolean; started: boolean };
 type Column = { head: string; width: string; right?: boolean; cell: (r: LineupRow, c: Ctx) => ReactNode };
 
-/** Injury note as amber text under the name, never a boxed chip. */
-function Injury({ row }: { row: LineupRow }) {
-  const injury = injuryLabel(row);
+/** Injury note as amber text under the name, never a boxed chip; none once the week is final. */
+function Injury({ row, final }: { row: LineupRow; final: boolean }) {
+  const injury = final ? null : injuryLabel(row);
   return injury ? <span className="block text-caption text-warning">{injury}</span> : null;
 }
 
@@ -43,10 +43,10 @@ const SLOT: Column = { head: "Slot", width: "10%", cell: (r) => slotLabel(r.slot
 const PLAYER: Column = {
   head: "Player",
   width: "24%",
-  cell: (r) => (
+  cell: (r, c) => (
     <>
       <PlayerLink gsisId={r.gsis_id} name={r.full_name} position={r.position} />
-      <Injury row={r} />
+      <Injury row={r} final={c.final} />
     </>
   ),
 };
@@ -143,7 +143,7 @@ function Cards({ rows, ctx }: { rows: readonly LineupRow[]; ctx: Ctx }) {
               <span className="text-caption text-muted">{ctx.final ? "pts" : "proj"}</span>
             </span>
           </div>
-          <Injury row={r} />
+          <Injury row={r} final={ctx.final} />
           {!ctx.final && hasRange(r) && (
             <div className="mt-1">
               <Bar row={r} domain={ctx.domain} />

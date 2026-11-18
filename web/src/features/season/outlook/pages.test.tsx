@@ -80,7 +80,7 @@ describe("Outlook page", () => {
   it("empty odds shows the no-data copy", () => {
     responder = outlook(ready([]));
     render(<Outlook />);
-    expect(screen.getByText(/make refresh/)).toBeInTheDocument();
+    expect(screen.getByText(/next data refresh/)).toBeInTheDocument();
   });
 });
 

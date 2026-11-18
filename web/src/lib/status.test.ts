@@ -25,9 +25,9 @@ describe("bannerMessages", () => {
       simulation_behind_inputs: "Season odds are older than sleeper: the last refresh may have failed",
     };
     expect(bannerMessages(status)).toEqual([
-      "Stale data: Sleeper (30 hours old). Run `make refresh`.",
-      "Running without: injury model, outlook. Run `make refresh`.",
-      "Season odds are older than sleeper: the last refresh may have failed. Run `make refresh`.",
+      "Stale data: Sleeper (30 hours old).",
+      "Running without: injury model, outlook.",
+      "Season odds are older than sleeper: the last refresh may have failed.",
     ]);
   });
 });
@@ -45,8 +45,8 @@ describe("bannerMessages with refresh runs", () => {
       refresh_runs: [run("score", "ok"), run("digest", "failed", "RuntimeError('boom')"), run("market_values", "failed", "down")],
     };
     expect(bannerMessages(status)).toEqual([
-      "Refresh step digest failed: RuntimeError('boom'). Run `make refresh`.",
-      "Refresh step market_values failed: down. Run `make refresh`.",
+      "Refresh step digest failed: RuntimeError('boom').",
+      "Refresh step market_values failed: down.",
     ]);
   });
   it("tolerates a server without refresh_runs", () => {
@@ -56,8 +56,8 @@ describe("bannerMessages with refresh runs", () => {
   it("cuts a long multi-line error to its first line and handles a null error", () => {
     const long = `${"x".repeat(300)}\nTraceback line 2`;
     const [a, b] = bannerMessages({ ...base, refresh_runs: [run("b_stage", "failed"), run("a_stage", "failed", long)] });
-    expect(a).toBe(`Refresh step a_stage failed: ${"x".repeat(200)}.... Run \`make refresh\`.`);
-    expect(b).toBe("Refresh step b_stage failed. Run `make refresh`.");
+    expect(a).toBe(`Refresh step a_stage failed: ${"x".repeat(200)}....`);
+    expect(b).toBe("Refresh step b_stage failed.");
   });
   it("is quiet when every latest run is ok", () => {
     expect(bannerMessages({ ...base, refresh_runs: [run("score", "ok")] })).toEqual([]);
@@ -81,15 +81,13 @@ describe("bannerMessages with stat data", () => {
   it("lists stale stat data next to the other stale sources", () => {
     const status: Status = { ...base, freshness: [{ source: "Sleeper", updated_at: "", age_hours: 3 }] };
     const old = health({ built_at: "2026-11-02T12:00:00Z" });
-    expect(bannerMessages(status, old, now)).toEqual(["Stale data: Stat data (72 hours old). Run `make refresh`."]);
+    expect(bannerMessages(status, old, now)).toEqual(["Stale data: Stat data (72 hours old)."]);
     expect(bannerMessages({ ...status, freshness: [{ source: "Sleeper", updated_at: "", age_hours: 60 }] }, old, now)).toEqual([
-      "Stale data: Sleeper (60 hours old), Stat data (72 hours old). Run `make refresh`.",
+      "Stale data: Sleeper (60 hours old), Stat data (72 hours old).",
     ]);
   });
   it("says so when the stat shards were never built", () => {
-    expect(bannerMessages(base, health({ data_ready: false, built_at: null, seasons: [] }), now)).toEqual([
-      "Stat data is not built. Run `make refresh`.",
-    ]);
+    expect(bannerMessages(base, health({ data_ready: false, built_at: null, seasons: [] }), now)).toEqual(["Stat data is not built."]);
   });
 });
 

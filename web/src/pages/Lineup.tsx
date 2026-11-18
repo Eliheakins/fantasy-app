@@ -81,9 +81,11 @@ type ViewProps = {
   board?: ScoreboardRow[] | null;
   /** The view toggle, shown right under the page header. */
   toggle?: ReactNode;
+  /** Win probabilities are still running: a status line under the title says so. */
+  simulating?: boolean;
 };
 
-export function LineupView({ base, odds, week, eyebrow, board = null, toggle }: ViewProps) {
+export function LineupView({ base, odds, week, eyebrow, board = null, toggle, simulating = false }: ViewProps) {
   // a manual pick belongs to the label it was made under: when the label flips, the default returns
   const [picked, setPicked] = useState<{ key: ObjectiveKey; under: ObjectiveKey } | null>(null);
   if (base.length === 0) {
@@ -126,6 +128,11 @@ export function LineupView({ base, odds, week, eyebrow, board = null, toggle }: 
           )
         }
       />
+      {simulating && !over && (
+        <p role="status" className="-mt-2 mb-4 text-caption text-muted">
+          Win probabilities are still being simulated. Showing expected points for now.
+        </p>
+      )}
       {toggle}
       <ResultPanel
         result={result}
@@ -247,22 +254,16 @@ function ThisWeekLineup({ eyebrow }: { eyebrow?: string }) {
       )}
       <ApiBoundary state={lineup}>
         {(base) => (
-          <>
-            {odds.kind === "running" && (
-              <p role="status" className="mt-3 text-caption text-muted">
-                Win probabilities are still being simulated. Showing expected points for now.
-              </p>
-            )}
-            <LineupView
-              key={`${league}|${team}|${week}`}
-              base={base}
-              odds={odds.kind === "ready" ? odds.data : null}
-              week={week}
-              eyebrow={eyebrow}
-              board={board.kind === "ready" ? board.data : null}
-              toggle={toggle}
-            />
-          </>
+          <LineupView
+            key={`${league}|${team}|${week}`}
+            base={base}
+            odds={odds.kind === "ready" ? odds.data : null}
+            week={week}
+            eyebrow={eyebrow}
+            board={board.kind === "ready" ? board.data : null}
+            toggle={toggle}
+            simulating={odds.kind === "running"}
+          />
         )}
       </ApiBoundary>
     </>

@@ -26,9 +26,9 @@ export function RootForSection() {
                   <span>
                     Root for <strong>{r.root}</strong> <span className="text-muted">over {r.against}</span>
                   </span>
-                  <span className="whitespace-nowrap">
+                  <span>
                     <Explain why={swingWhy(r)}>
-                      <span className="tabular-nums">{formatNumber(r.swing * 100)}</span>
+                      <span className="whitespace-nowrap tabular-nums">{formatNumber(r.swing * 100)}</span>
                     </Explain>{" "}
                     <span className="text-caption text-muted">
                       pp swing in your playoff odds, from {r.runs.toLocaleString("en-US")} simulated seasons

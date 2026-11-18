@@ -152,7 +152,7 @@ describe("Digest page", () => {
     unmount();
     respond(ready({ ...base, waivers: [], trades: [], ideas: { ...ideas, created_at: null, as_of_week: null } }));
     render(<Digest />);
-    expect(screen.getAllByText(/Run make refresh/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/next data refresh/).length).toBeGreaterThan(0);
   });
 
   it("shows the next lineup action, skipping the waiver one", () => {

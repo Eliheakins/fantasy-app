@@ -34,8 +34,8 @@ describe("ApiBoundary", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Working. This page updates when it finishes.");
   });
 
-  it("no data names the command in code", () => {
+  it("no data says when it fills, with no command a signed-in friend cannot run", () => {
     show({ kind: "no_data", message: "" });
-    expect(screen.getByText("make refresh").tagName).toBe("CODE");
+    expect(screen.getByText("No data yet. It appears after the next data refresh.")).toBeInTheDocument();
   });
 });

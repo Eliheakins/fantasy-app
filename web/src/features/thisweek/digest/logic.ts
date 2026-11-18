@@ -50,13 +50,13 @@ export function ideasNotice(info: IdeasInfo, kind: "waiver" | "trade"): string |
     return "Ideas are generated only for the team that is yours in Sleeper. Switch the team selector back to see them.";
   }
   if (info.created_at === null) {
-    return "No ideas stored yet. Run make refresh; the digest step saves them.";
+    return "No ideas stored yet. They come with the next data refresh.";
   }
   if (kind === "trade" && info.deadline_passed) {
     return `The trade deadline (week ${info.trade_deadline}) has passed, so there are no trade ideas.`;
   }
   if (info.as_of_week !== null && info.current_week !== null && info.as_of_week < info.current_week) {
-    return `These ideas are from week ${info.as_of_week}; it is now week ${info.current_week}. Run make refresh for new ones.`;
+    return `These ideas are from week ${info.as_of_week}; it is now week ${info.current_week}. New ones come with the next data refresh.`;
   }
   return null;
 }

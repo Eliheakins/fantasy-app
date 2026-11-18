@@ -79,7 +79,7 @@ describe("ideasNotice", () => {
     expect(ideasNotice(ideas({ is_mine: false }), "waiver")).toMatch(/only for the team that is yours/);
   });
   it("says the digest has not run when nothing is stored", () => {
-    expect(ideasNotice(ideas({ created_at: null, as_of_week: null }), "waiver")).toMatch(/make refresh/);
+    expect(ideasNotice(ideas({ created_at: null, as_of_week: null }), "waiver")).toMatch(/next data refresh/);
   });
   it("says the deadline passed for trades only", () => {
     const passed = ideas({ deadline_passed: true, trade_deadline: 11, current_week: 12, as_of_week: 12 });

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { PlayoffLabel } from "@/components/PlayoffLabel";
 import { Explain, ExplainDelta, formatNumber, formatPercent } from "@/viz";
-import { type WeekResult, resultText } from "./calls";
+import type { WeekResult } from "./calls";
 import { SLEEPER_POINTS_WHY, winChanceWhy } from "./explain";
 import { type WinProbability, gapIsNoise } from "./logic";
 import { TeamRanges } from "./TeamRanges";
@@ -29,7 +29,8 @@ type Props = {
   playoffLabel?: string | null;
 };
 
-/** The page's one tinted panel: both team totals, the chance to win (or the final result), the lineup against Sleeper. */
+/** The page's one tinted panel: both team totals and the chance to win, then the lineup against Sleeper. Once the week is
+ * final the page title states the score, so the panel keeps only the comparison with Sleeper. */
 export function ResultPanel({ result, option, win, shown, now, gap, playoffLabel }: Props) {
   const sleeperNote =
     gap === null ? null : gapIsNoise(gap) ? (
@@ -42,28 +43,20 @@ export function ResultPanel({ result, option, win, shown, now, gap, playoffLabel
   return (
     <section aria-labelledby="matchup-heading" className="key-panel">
       <h2 id="matchup-heading" className={eyebrowClass}>
-        Your matchup
+        {result ? "Your lineup vs Sleeper's" : "Your matchup"}
       </h2>
       <PlayoffLabel label={playoffLabel} />
       <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
-        {result ? (
+        {!result && option && (
           <>
-            <Stat label="You, final">{formatNumber(result.me)}</Stat>
-            <Stat label="Opponent, final">{formatNumber(result.them)}</Stat>
-            <Stat label="Result">{resultText(result)}</Stat>
+            <Stat label="You, median">{formatNumber(option.median)}</Stat>
+            <Stat label="Opponent, median">{formatNumber(option.opp_median)}</Stat>
+            {win !== null && (
+              <Stat label="Chance to win">
+                <Explain why={winChanceWhy(option)}>{formatPercent(win)}</Explain>
+              </Stat>
+            )}
           </>
-        ) : (
-          option && (
-            <>
-              <Stat label="You, median">{formatNumber(option.median)}</Stat>
-              <Stat label="Opponent, median">{formatNumber(option.opp_median)}</Stat>
-              {win !== null && (
-                <Stat label="Chance to win">
-                  <Explain why={winChanceWhy(option)}>{formatPercent(win)}</Explain>
-                </Stat>
-              )}
-            </>
-          )
         )}
         <Stat label={now === null ? "Skill slots, projected" : "Skill slots, shown vs Sleeper"} note={sleeperNote}>
           {formatNumber(shown)}

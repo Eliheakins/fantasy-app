@@ -20,7 +20,7 @@ export function PlayersNav({ here: { search, pathname } }: { here: PageUrl }) {
               end
               className={({ isActive }) =>
                 cn(
-                  "-mb-px flex min-h-[48px] items-center border-b-[3px] pt-[3px] text-[15px] leading-6",
+                  "-mb-px flex min-h-[48px] items-center border-b-[3px] pt-[3px] text-heading",
                   isActive ? "border-forest font-semibold text-ink" : "border-transparent text-muted hover:text-ink",
                 )
               }

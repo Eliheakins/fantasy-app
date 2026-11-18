@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 log = logging.getLogger(__name__)
-NO_DATA_MESSAGE = "No data yet. Run `make refresh`, then reload."
+NO_DATA_MESSAGE = "No data yet. It appears after the next data refresh."
 SERVER_MESSAGE = "Something went wrong on the server. See the server log."
 
 

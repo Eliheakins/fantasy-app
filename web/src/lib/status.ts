@@ -11,14 +11,14 @@ const MS_PER_HOUR = 3_600_000;
 
 const MAX_ERROR_CHARS = 200;
 
-/** First line of a recorded error ("" for a signed-in friend, whom the server sends none), cut to a banner-sized length; `make refresh` is dropped so the notice keeps one. */
+/** First line of a recorded error ("" for a signed-in friend, whom the server sends none), cut to a banner-sized length, with any backticks around `make refresh` dropped. */
 function shortError(error: string | null): string {
   const line = ((error ?? "").split("\n")[0] ?? "").replaceAll("`make refresh`", "make refresh").trim();
   if (!line) return "";
   return line.length > MAX_ERROR_CHARS ? `${line.slice(0, MAX_ERROR_CHARS)}...` : line;
 }
 
-/** Banner lines; each ends "Run `make refresh`.". */
+/** Banner lines, in words any signed-in user can read; the banner itself says how to refresh to those who can. */
 export function bannerMessages(status: Status | null, statHealth: StatHealth | null = null, now = new Date()): string[] {
   const rows = [...(status?.freshness ?? [])];
   const built = statHealth?.built_at ? Date.parse(statHealth.built_at) : Number.NaN;
@@ -29,18 +29,18 @@ export function bannerMessages(status: Status | null, statHealth: StatHealth | n
     .filter((r) => r.age_hours > (STALE_HOURS[r.source] ?? Number.POSITIVE_INFINITY))
     .map((r) => `${r.source} (${r.age_hours.toFixed(0)} hours old)`);
   const messages: string[] = [];
-  if (old.length) messages.push(`Stale data: ${old.join(", ")}. Run \`make refresh\`.`);
-  if (statHealth && !statHealth.data_ready) messages.push("Stat data is not built. Run `make refresh`.");
+  if (old.length) messages.push(`Stale data: ${old.join(", ")}.`);
+  if (statHealth && !statHealth.data_ready) messages.push("Stat data is not built.");
   if (!status) return messages;
   if (status.missing_layers.length) {
-    messages.push(`Running without: ${status.missing_layers.join(", ")}. Run \`make refresh\`.`);
+    messages.push(`Running without: ${status.missing_layers.join(", ")}.`);
   }
   const failed = (status.refresh_runs ?? []).filter((r) => r.status === "failed").sort((a, b) => a.stage.localeCompare(b.stage));
   for (const run of failed) {
     const error = shortError(run.error);
-    messages.push(`Refresh step ${run.stage} failed${error ? `: ${error}` : ""}. Run \`make refresh\`.`);
+    messages.push(`Refresh step ${run.stage} failed${error ? `: ${error}` : ""}.`);
   }
-  if (status.simulation_behind_inputs) messages.push(`${status.simulation_behind_inputs}. Run \`make refresh\`.`);
+  if (status.simulation_behind_inputs) messages.push(`${status.simulation_behind_inputs}.`);
   return messages;
 }
 
